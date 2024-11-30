@@ -312,8 +312,8 @@ export default {
         { value: 'software', label: 'Software' },
         { value: 'hardware', label: 'Hardware' },
         { value: 'tutorial', label: 'Tutorial' },
-        { value: 'sample_pack', label: 'Sample Pack' },
-        { value: 'preset_pack', label: 'Preset Pack' }
+        { value: 'sounds_kits', label: 'Sounds & Kits' },
+        { value: 'sync_libraries', label: 'Sync Libraries' }
       ],
       errors: {
         name: '',

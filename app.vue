@@ -8,6 +8,9 @@
         <span class="uppercase text-xs">Resources</span>
         <NuxtLink to="#" class="text-base">Software</NuxtLink>
         <NuxtLink to="#" class="text-base flex flex-row gap-4 items-center text-neutral-400 cursor-not-allowed">
+          Hardware <span class="tag">Later</span>
+        </NuxtLink>
+        <NuxtLink to="#" class="text-base flex flex-row gap-4 items-center text-neutral-400 cursor-not-allowed">
           Sounds & Kits <span class="tag">Later</span>
         </NuxtLink>
         <NuxtLink to="#" class="text-base flex flex-row gap-4 items-center whitespace-nowrap text-neutral-400 cursor-not-allowed">
