@@ -61,7 +61,7 @@
           </div>
         </div>
         <div class="table-cell db-cell">
-          ${{ resource.price }}
+          {{ resource.price }}
         </div>
         <div class="table-cell db-cell">
           <div class="flex flex-row gap-4 items-center">
