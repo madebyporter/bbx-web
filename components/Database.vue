@@ -118,6 +118,7 @@ export default {
         const { data, error } = await this.supabase
           .from('resources')
           .select('*')
+          .eq('type', 'software')
           
         if (error) throw error
 
