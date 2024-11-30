@@ -3,7 +3,7 @@
     <aside 
       v-if="show" 
       ref="modal"
-      class="fixed right-4 top-4 bottom-4 w-2/5 bg-white rounded-md p-8 overflow-auto z-50"
+      class="modal"
       style="transform: translateX(100%)"
     >
       <div 
@@ -226,7 +226,7 @@
             Image
             <span class="text-red-500">*</span>
           </label>
-          <div class="relative w-[111px] h-[61px]">
+          <div class="relative w-full min-h-[121px] lg:w-[111px] lg:h-[61px]">
             <input 
               ref="fileInput"
               type="file" 

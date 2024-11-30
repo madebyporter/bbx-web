@@ -22,7 +22,7 @@
       <div class="table-row">
         <div class="table-cell db-cell relative group">
           <div 
-            class="absolute left-4 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2"
+            class="hidden lg:flex absolute left-4 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2"
           >
             <div 
               class="bg-neutral-800 hover:bg-neutral-900 p-2 rounded-md cursor-pointer"
@@ -38,7 +38,7 @@
             </div>
           </div>
           <div class="flex flex-row gap-2 items-center w-fit h-fit">
-            <div class="w-[111px] h-[61px] bg-neutral-200 rounded-md overflow-hidden">
+            <div class="min-w-[111px] max-w-[111px] h-[61px] bg-neutral-200 rounded-md overflow-hidden">
               <img 
                 v-if="resource.image_url" 
                 :src="getImageUrl(resource.image_url)" 

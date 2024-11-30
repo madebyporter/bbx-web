@@ -3,7 +3,7 @@
     <aside 
       v-show="show" 
       ref="modal"
-      class="fixed right-4 top-4 bottom-4 w-2/5 bg-white rounded-md p-8 overflow-auto z-50"
+      class="modal"
       style="transform: translateX(100%)"
     >
       <div 
@@ -16,7 +16,7 @@
       <div @click.stop>
         <h2 class="text-2xl font-bold mb-8">Filter & Sort</h2>
         
-        <div class="grid grid-cols-2 gap-4 mb-8">
+        <div class="grid lg:grid-cols-2 gap-4 mb-8">
           <!-- Column 1: Sort By -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
