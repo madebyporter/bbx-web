@@ -1,5 +1,5 @@
 <template>
-  <div class="table w-full">
+  <div class="table w-full relative">
     <div class="table-header-group">
       <div class="table-row">
         <div class="table-cell db-head db-col-lg">Name</div>
@@ -7,11 +7,18 @@
         <div class="table-cell db-head db-col-md">Tags</div>
         <div class="table-cell db-head db-col-sm">Price</div>
         <div class="table-cell db-head db-col-sm">OS</div>
-        <!-- <div class="table-cell db-head db-col-sm">Owned</div> -->
         <div class="table-cell db-head db-col-sm">Download</div>
       </div>
     </div>
-    <div v-for="resource in resources" :key="resource.id" class="table-row-group">
+
+    <!-- Zero state message -->
+    <div v-if="resources.length === 0" class="absolute py-16 w-full text-center">
+      <h3 class="text-lg font-medium mb-2">No resources found</h3>
+      <p>Try adjusting your filters to see more results</p>
+    </div>
+
+    <!-- Resources table -->
+    <div v-else v-for="resource in resources" :key="resource.id" class="table-row-group">
       <div class="table-row">
         <div class="table-cell db-cell relative group">
           <div 
@@ -63,9 +70,6 @@
             <img v-if="resource.os.includes('linux')" src="/img/db/icon-linux.svg" alt="Linux" />
           </div>
         </div>
-        <!-- <div class="table-cell db-cell">
-          Owned
-        </div> -->
         <div class="table-cell db-cell">
           <a :href="resource.link" target="_blank" class="bg-neutral-100 hover:bg-neutral-200 rounded-md px-4 p-2">
             Download
@@ -89,7 +93,19 @@ export default {
   },
   data() {
     return {
-      resources: []
+      resources: [],
+      currentSort: {
+        sortBy: 'created_at',
+        sortDirection: 'desc'
+      },
+      currentFilters: {
+        price: {
+          free: false,
+          paid: false
+        },
+        os: [],
+        tags: []
+      }
     }
   },
   methods: {
@@ -101,10 +117,59 @@ export default {
         const { data, error } = await this.supabase
           .from('resources')
           .select('*')
-          .order('created_at', { ascending: false })
-
+          
         if (error) throw error
-        this.resources = data
+
+        // Apply filters first
+        let filteredData = data.filter(resource => {
+          // Price filter
+          if (this.currentFilters.price.free || this.currentFilters.price.paid) {
+            const price = parseFloat(resource.price.replace('$', ''))
+            const isFree = price === 0
+            if (this.currentFilters.price.free && !isFree) return false
+            if (this.currentFilters.price.paid && isFree) return false
+          }
+
+          // OS filter
+          if (this.currentFilters.os.length > 0) {
+            const hasMatchingOS = this.currentFilters.os.some(os => 
+              resource.os.includes(os)
+            )
+            if (!hasMatchingOS) return false
+          }
+
+          // Tags filter
+          if (this.currentFilters.tags.length > 0) {
+            const hasAllTags = this.currentFilters.tags.every(tag =>
+              resource.tags.includes(tag)
+            )
+            if (!hasAllTags) return false
+          }
+
+          return true
+        })
+
+        // Then apply sorting
+        if (this.currentSort.sortBy === 'price') {
+          filteredData.sort((a, b) => {
+            const priceA = parseFloat(a.price.replace('$', ''))
+            const priceB = parseFloat(b.price.replace('$', ''))
+            return this.currentSort.sortDirection === 'asc' 
+              ? priceA - priceB 
+              : priceB - priceA
+          })
+        } else {
+          filteredData.sort((a, b) => {
+            const valueA = a[this.currentSort.sortBy]
+            const valueB = b[this.currentSort.sortBy]
+            const comparison = valueA < valueB ? -1 : valueA > valueB ? 1 : 0
+            return this.currentSort.sortDirection === 'asc' 
+              ? comparison 
+              : -comparison
+          })
+        }
+
+        this.resources = filteredData
 
       } catch (error) {
         console.error('Error fetching resources:', error)
@@ -163,6 +228,17 @@ export default {
     handleImageError(e) {
       console.error('Image failed to load:', e.target.src)
       e.target.src = '/img/placeholder.png' // You can add a placeholder image
+    },
+    updateSort(sortParams) {
+      console.log('Updating sort:', sortParams)
+      this.currentSort = sortParams
+      this.fetchResources()
+    },
+    updateFiltersAndSort(params) {
+      console.log('Updating filters and sort:', params)
+      this.currentSort = params.sort
+      this.currentFilters = params.filters
+      this.fetchResources()
     }
   },
   mounted() {

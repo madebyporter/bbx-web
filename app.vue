@@ -3,13 +3,16 @@
     <nav id="navbar" class="col-start-1 col-span-2 bg-neutral-100"></nav>
     <section id="content" class="col-start-3 col-span-10 grid grid-cols-subgrid gap-4 content-start">
       <div class="col-span-full">
-        <SearchFilter @open-modal="showModal = true"></SearchFilter>
+        <SearchFilter 
+          @open-filter-modal="openFilterModal" 
+          @open-modal="showModal = true" 
+        />
       </div>
       <div class="col-span-full">
         <Database 
           ref="database" 
           @edit-resource="handleEdit"
-        ></Database>
+        />
       </div>
     </section>
     <SubmitResource 
@@ -21,6 +24,11 @@
       @resource-added="refreshDatabase"
       @resource-updated="refreshDatabase"
     />
+    <FilterSort
+      :show="showFilterModal"
+      @close="showFilterModal = false"
+      @apply-filters-and-sort="handleFiltersAndSort"
+    />
   </main>
 </template>
 
@@ -29,11 +37,22 @@ export default {
   data() {
     return {
       showModal: false,
+      showFilterModal: false,
       editingResource: null,
       modalKey: 0
     }
   },
   methods: {
+    openFilterModal() {
+      console.log('Opening filter modal')
+      console.log('Before:', this.showFilterModal)
+      this.showFilterModal = true
+      console.log('After:', this.showFilterModal)
+    },
+    closeFilterModal() {
+      console.log('Closing filter modal')
+      this.showFilterModal = false
+    },
     handleEdit(resource) {
       this.editingResource = resource
       this.showModal = true
@@ -46,6 +65,9 @@ export default {
     refreshDatabase() {
       this.$refs.database.fetchResources()
       this.closeModal()
+    },
+    handleFiltersAndSort(params) {
+      this.$refs.database.updateFiltersAndSort(params)
     }
   }
 }

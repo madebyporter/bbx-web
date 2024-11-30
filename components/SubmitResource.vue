@@ -3,7 +3,7 @@
     <aside 
       v-if="show" 
       ref="modal"
-      class="fixed right-4 top-4 bottom-4 w-2/5 bg-white rounded-md p-8 overflow-auto"
+      class="fixed right-4 top-4 bottom-4 w-2/5 bg-white rounded-md p-8 overflow-auto z-50"
       style="transform: translateX(100%)"
     >
       <div 
@@ -14,27 +14,83 @@
       </div>
       <form class="pt-16 flex flex-col gap-8" @submit.prevent="onSubmit">
         <fieldset class="flex flex-col gap-2">
-          <label>Name</label>
-          <input v-model="formData.name" name="softwareName" type="text" class="p-4 bg-neutral-100 rounded-lg" />
+          <label class="flex items-center gap-1">
+            Type
+            <span class="text-red-500">*</span>
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <label 
+              v-for="type in resourceTypes" 
+              :key="type.value"
+              class="flex items-center gap-2 cursor-pointer"
+            >
+              <input 
+                type="radio" 
+                :value="type.value" 
+                v-model="formData.type"
+                class="hidden" 
+              />
+              <div 
+                class="px-3 py-2 rounded-md flex items-center gap-2"
+                :class="[
+                  formData.type === type.value 
+                    ? 'tag-active' 
+                    : 'tag'
+                ]"
+              >
+                <span>{{ type.label }}</span>
+              </div>
+            </label>
+          </div>
+          <span v-if="errors.type" class="text-red-500 text-sm">{{ errors.type }}</span>
         </fieldset>
         <fieldset class="flex flex-col gap-2">
-          <label>Creator</label>
-          <input v-model="formData.creator" name="softwareCreator" type="text" class="p-4 bg-neutral-100 rounded-lg" />
+          <label class="flex items-center gap-1">
+            Name
+            <span class="text-red-500">*</span>
+          </label>
+          <input 
+            v-model="formData.name" 
+            name="softwareName" 
+            type="text" 
+            class="p-4 bg-neutral-100 rounded-lg" 
+            :class="{ 'border border-red-500': errors.name }"
+            required
+          />
+          <span v-if="errors.name" class="text-red-500 text-sm">{{ errors.name }}</span>
         </fieldset>
         <fieldset class="flex flex-col gap-2">
-          <label>Tags</label>
+          <label class="flex items-center gap-1">
+            Creator
+            <span class="text-red-500">*</span>
+          </label>
+          <input 
+            v-model="formData.creator" 
+            name="softwareCreator" 
+            type="text" 
+            class="p-4 bg-neutral-100 rounded-lg"
+            :class="{ 'border border-red-500': errors.creator }"
+            required
+          />
+          <span v-if="errors.creator" class="text-red-500 text-sm">{{ errors.creator }}</span>
+        </fieldset>
+        <fieldset class="flex flex-col gap-2">
+          <label class="flex items-center gap-1">
+            Tags
+            <span class="text-red-500">*</span>
+          </label>
           <div class="relative">
             <div class="flex flex-wrap gap-2 p-4 bg-neutral-100 rounded-lg min-h-[56px]">
               <!-- Selected tags -->
               <div 
                 v-for="tag in selectedTags" 
                 :key="tag" 
-                class="tag flex items-center gap-2"
+                class="tag"
               >
                 {{ tag }}
                 <button 
                   @click="removeTag(tag)" 
-                  class="hover:text-neutral-600"
+                  class="hover:text-neutral-600 cursor-pointer"
                 >
                   ×
                 </button>
@@ -66,13 +122,28 @@
               </div>
             </div>
           </div>
+          <span v-if="errors.tags" class="text-red-500 text-sm">{{ errors.tags }}</span>
         </fieldset>
         <fieldset class="flex flex-col gap-2">
-          <label>Price</label>
-          <input v-model="formData.price" name="softwarePrice" type="text" class="p-4 bg-neutral-100 rounded-lg" />
+          <label class="flex items-center gap-1">
+            Price
+            <span class="text-red-500">*</span>
+          </label>
+          <input 
+            v-model="formData.price" 
+            name="softwarePrice" 
+            type="text" 
+            class="p-4 bg-neutral-100 rounded-lg"
+            :class="{ 'border border-red-500': errors.price }"
+            required
+          />
+          <span v-if="errors.price" class="text-red-500 text-sm">{{ errors.price }}</span>
         </fieldset>
         <fieldset class="flex flex-col gap-2">
-          <label>Operating Systems</label>
+          <label class="flex items-center gap-1">
+            Operating Systems
+            <span class="text-red-500">*</span>
+          </label>
           <div class="flex flex-wrap gap-4 p-4 bg-neutral-100 rounded-lg">
             <label class="flex items-center gap-2 cursor-pointer">
               <input 
@@ -83,10 +154,10 @@
               />
               <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
                 selectedOS.includes('mac') 
-                  ? 'bg-neutral-800 text-white' 
-                  : 'bg-white hover:bg-neutral-200'
+                  ? 'tag-active' 
+                  : 'tag'
               ]">
-                <img src="/img/db/icon-apple.svg" alt="macOS" class="size-4" />
+                <IconApple />
                 <span>macOS</span>
               </div>
             </label>
@@ -100,10 +171,10 @@
               />
               <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
                 selectedOS.includes('windows') 
-                  ? 'bg-neutral-800 text-white' 
-                  : 'bg-white hover:bg-neutral-200'
+                  ? 'tag-active' 
+                  : 'tag'
               ]">
-                <img src="/img/db/icon-windows.svg" alt="Windows" class="size-4" />
+                <IconWindows />
                 <span>Windows</span>
               </div>
             </label>
@@ -117,21 +188,36 @@
               />
               <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
                 selectedOS.includes('linux') 
-                  ? 'bg-neutral-800 text-white' 
-                  : 'bg-white hover:bg-neutral-200'
+                  ? 'tag-active' 
+                  : 'tag'
               ]">
-                <img src="/img/db/icon-linux.svg" alt="Linux" class="size-4" />
+                <IconLinux />
                 <span>Linux</span>
               </div>
             </label>
           </div>
+          <span v-if="errors.os" class="text-red-500 text-sm">{{ errors.os }}</span>
         </fieldset>
         <fieldset class="flex flex-col gap-2">
-          <label>Link</label>
-          <input v-model="formData.link" name="softwareLink" type="text" class="p-4 bg-neutral-100 rounded-lg" />
+          <label class="flex items-center gap-1">
+            Link
+            <span class="text-red-500">*</span>
+          </label>
+          <input 
+            v-model="formData.link" 
+            name="softwareLink" 
+            type="text" 
+            class="p-4 bg-neutral-100 rounded-lg"
+            :class="{ 'border border-red-500': errors.link }"
+            required
+          />
+          <span v-if="errors.link" class="text-red-500 text-sm">{{ errors.link }}</span>
         </fieldset>
         <fieldset class="flex flex-col gap-2">
-          <label>Image</label>
+          <label class="flex items-center gap-1">
+            Image
+            <span class="text-red-500">*</span>
+          </label>
           <div class="relative w-[111px] h-[61px]">
             <input 
               ref="fileInput"
@@ -153,6 +239,7 @@
             </div>
           </div>
           <p v-if="imageError" class="text-red-500 text-sm mt-1">{{ imageError }}</p>
+          <span v-if="errors.image" class="text-red-500 text-sm">{{ errors.image }}</span>
         </fieldset>
         <button 
           type="submit" 
@@ -211,14 +298,32 @@ export default {
         creator: '',
         price: '',
         link: '',
-        image_url: ''
+        image_url: '',
+        type: 'software'
       },
       tagInput: '',
       selectedTags: [],
       availableTags: [],
       showSuggestions: false,
       filteredTags: [],
-      selectedOS: []
+      selectedOS: [],
+      resourceTypes: [
+        { value: 'software', label: 'Software' },
+        { value: 'hardware', label: 'Hardware' },
+        { value: 'tutorial', label: 'Tutorial' },
+        { value: 'sample_pack', label: 'Sample Pack' },
+        { value: 'preset_pack', label: 'Preset Pack' }
+      ],
+      errors: {
+        name: '',
+        creator: '',
+        tags: '',
+        price: '',
+        os: '',
+        link: '',
+        image: '',
+        type: ''
+      }
     }
   },
   watch: {
@@ -240,7 +345,8 @@ export default {
             creator: resource.creator,
             price: resource.price,
             link: resource.link,
-            image_url: resource.image_url
+            image_url: resource.image_url,
+            type: resource.type
           }
           this.selectedTags = resource.tags || []
           this.selectedOS = resource.os || []
@@ -454,6 +560,7 @@ export default {
           tags: this.selectedTags,
           os: this.selectedOS,
           image_url: imageUrl,
+          type: 'software',
           created_at: new Date()
         }
 
@@ -469,7 +576,8 @@ export default {
           creator: '',
           price: '',
           link: '',
-          image_url: ''
+          image_url: '',
+          type: 'software'
         }
         this.selectedTags = []
         this.selectedOS = []
@@ -526,7 +634,8 @@ export default {
           ...this.formData,
           tags: this.selectedTags,
           os: this.selectedOS,
-          image_url: imageUrl
+          image_url: imageUrl,
+          type: 'software'
         }
 
         console.log('Updating with data:', processedData)
@@ -565,7 +674,8 @@ export default {
         creator: '',
         price: '',
         link: '',
-        image_url: ''
+        image_url: '',
+        type: 'software'
       }
       this.selectedTags = []
       this.selectedOS = []
@@ -573,7 +683,77 @@ export default {
       this.imagePreview = null
       this.imageError = null
     },
+    validateForm() {
+      let isValid = true
+      this.errors = {
+        name: '',
+        creator: '',
+        tags: '',
+        price: '',
+        os: '',
+        link: '',
+        image: '',
+        type: ''
+      }
+
+      // Name validation
+      if (!this.formData.name.trim()) {
+        this.errors.name = 'Name is required'
+        isValid = false
+      }
+
+      // Creator validation
+      if (!this.formData.creator.trim()) {
+        this.errors.creator = 'Creator is required'
+        isValid = false
+      }
+
+      // Tags validation
+      if (this.selectedTags.length === 0) {
+        this.errors.tags = 'At least one tag is required'
+        isValid = false
+      }
+
+      // Price validation
+      if (!this.formData.price.trim()) {
+        this.errors.price = 'Price is required'
+        isValid = false
+      }
+
+      // OS validation
+      if (this.selectedOS.length === 0) {
+        this.errors.os = 'At least one operating system is required'
+        isValid = false
+      }
+
+      // Link validation
+      if (!this.formData.link.trim()) {
+        this.errors.link = 'Link is required'
+        isValid = false
+      } else if (!this.formData.link.startsWith('http')) {
+        this.errors.link = 'Please enter a valid URL starting with http:// or https://'
+        isValid = false
+      }
+
+      // Image validation
+      if (!this.imageFile && !this.formData.image_url) {
+        this.errors.image = 'Image is required'
+        isValid = false
+      }
+
+      // Type validation
+      if (!this.formData.type) {
+        this.errors.type = 'Type is required'
+        isValid = false
+      }
+
+      return isValid
+    },
     onSubmit(e) {
+      if (!this.validateForm()) {
+        return
+      }
+
       console.log('Form submitted', this.editMode ? 'update' : 'create')
       if (this.editMode) {
         this.updateResource()
