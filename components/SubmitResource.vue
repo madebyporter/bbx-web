@@ -72,8 +72,59 @@
           <input v-model="formData.price" name="softwarePrice" type="text" class="p-4 bg-neutral-100 rounded-lg" />
         </fieldset>
         <fieldset class="flex flex-col gap-2">
-          <label>OS (comma separated)</label>
-          <input v-model="formData.os" name="softwareOS" type="text" class="p-4 bg-neutral-100 rounded-lg" />
+          <label>Operating Systems</label>
+          <div class="flex flex-wrap gap-4 p-4 bg-neutral-100 rounded-lg">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                value="mac" 
+                v-model="selectedOS"
+                class="hidden"
+              />
+              <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
+                selectedOS.includes('mac') 
+                  ? 'bg-neutral-800 text-white' 
+                  : 'bg-white hover:bg-neutral-200'
+              ]">
+                <img src="/img/db/icon-apple.svg" alt="macOS" class="size-4" />
+                <span>macOS</span>
+              </div>
+            </label>
+            
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                value="windows" 
+                v-model="selectedOS"
+                class="hidden"
+              />
+              <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
+                selectedOS.includes('windows') 
+                  ? 'bg-neutral-800 text-white' 
+                  : 'bg-white hover:bg-neutral-200'
+              ]">
+                <img src="/img/db/icon-windows.svg" alt="Windows" class="size-4" />
+                <span>Windows</span>
+              </div>
+            </label>
+            
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                value="linux" 
+                v-model="selectedOS"
+                class="hidden"
+              />
+              <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
+                selectedOS.includes('linux') 
+                  ? 'bg-neutral-800 text-white' 
+                  : 'bg-white hover:bg-neutral-200'
+              ]">
+                <img src="/img/db/icon-linux.svg" alt="Linux" class="size-4" />
+                <span>Linux</span>
+              </div>
+            </label>
+          </div>
         </fieldset>
         <fieldset class="flex flex-col gap-2">
           <label>Link</label>
@@ -159,7 +210,6 @@ export default {
         name: '',
         creator: '',
         price: '',
-        os: '',
         link: '',
         image_url: ''
       },
@@ -167,7 +217,8 @@ export default {
       selectedTags: [],
       availableTags: [],
       showSuggestions: false,
-      filteredTags: []
+      filteredTags: [],
+      selectedOS: []
     }
   },
   watch: {
@@ -188,11 +239,11 @@ export default {
             name: resource.name,
             creator: resource.creator,
             price: resource.price,
-            os: resource.os.join(', '),
             link: resource.link,
             image_url: resource.image_url
           }
           this.selectedTags = resource.tags || []
+          this.selectedOS = resource.os || []
           if (resource.image_url) {
             this.imagePreview = resource.image_url
           }
@@ -401,7 +452,7 @@ export default {
         const processedData = {
           ...this.formData,
           tags: this.selectedTags,
-          os: this.formData.os.split(',').map(os => os.trim()),
+          os: this.selectedOS,
           image_url: imageUrl,
           created_at: new Date()
         }
@@ -417,10 +468,11 @@ export default {
           name: '',
           creator: '',
           price: '',
-          os: '',
           link: '',
           image_url: ''
         }
+        this.selectedTags = []
+        this.selectedOS = []
         this.imageFile = null
         this.imagePreview = null
 
@@ -473,7 +525,7 @@ export default {
         const processedData = {
           ...this.formData,
           tags: this.selectedTags,
-          os: this.formData.os.split(',').map(os => os.trim()),
+          os: this.selectedOS,
           image_url: imageUrl
         }
 
@@ -512,10 +564,11 @@ export default {
         name: '',
         creator: '',
         price: '',
-        os: '',
         link: '',
         image_url: ''
       }
+      this.selectedTags = []
+      this.selectedOS = []
       this.imageFile = null
       this.imagePreview = null
       this.imageError = null
