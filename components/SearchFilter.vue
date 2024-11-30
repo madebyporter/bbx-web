@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white lg:bg-transparent flex flex-col lg:flex-row gap-4 p-4 lg:pl-0">
+  <div class="bg-white lg:bg-neutral-50 flex flex-col lg:flex-row gap-4 p-4 lg:pl-0">
     <div class="grow flex relative">
       <img src="/img/db/icon-search.svg" alt="Search" class="absolute z-10 top-[50%] translate-y-[-50%] px-4" />
       <input 
