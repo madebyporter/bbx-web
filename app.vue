@@ -6,7 +6,7 @@
     <nav 
       ref="mobileNav"
       id="navbar" 
-      class="flex max-lg:fixed max-lg:bottom-2 max-lg:left-2 max-lg:right-2 max-lg:top-[150px] max-lg:z-50 max-lg:rounded-md max-lg:overflow-scroll lg:relative lg:col-start-1 lg:col-span-2 lg:overflow-hidden bg-white lg:bg-neutral-100 p-8 flex-col gap-16 max-lg:[transform:translateX(-105%)]"
+      class="flex max-lg:fixed max-lg:bottom-2 max-lg:left-2 max-lg:right-2 max-lg:top-[150px] max-lg:z-50 max-lg:rounded-md max-lg:overflow-scroll lg:fixed lg:h-full lg:col-start-1 lg:col-span-2 lg:overflow-hidden bg-white lg:bg-neutral-100 p-8 flex-col gap-16 max-lg:[transform:translateX(-105%)] top-0"
     >
       <div>
         <img src="/img/bbx-logo.svg" alt="BBX Logo" class="size-12" />
