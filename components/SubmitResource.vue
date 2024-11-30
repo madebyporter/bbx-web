@@ -759,6 +759,13 @@ export default {
       return isValid
     },
     onSubmit(e) {
+      //ebm edit
+      // Step 1: Remove all leading $ signs
+      this.formData.price = this.formData.price.replace(/^\$+/, '');
+      
+      // Step 2: Prepend a single $ sign
+      this.formData.price = '$' + this.formData.price;
+      
       if (!this.validateForm()) {
         return
       }
