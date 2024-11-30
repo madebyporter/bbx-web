@@ -1,0 +1,24 @@
+@import "tailwindcss";
+@layer {
+  body {
+    @apply bg-neutral-50;
+  }
+  .db-head {
+    @apply text-left font-normal text-sm px-2 py-4;
+  }
+  .db-col-sm {
+    @apply w-[127px];
+  }
+  .db-col-md {
+    @apply w-[270px];
+  }
+  .db-col-lg {
+    @apply w-[400px];
+  }
+  .db-cell {
+    @apply px-2 py-4 align-middle text-sm;
+  }
+  .tag {
+    @apply text-xs bg-neutral-100 rounded-md py-1 px-2 flex justify-center items-center uppercase;
+  }
+}
