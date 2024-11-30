@@ -12,7 +12,8 @@
       >
         <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-white" />
       </div>
-      <form class="pt-16 flex flex-col gap-8" @submit.prevent="onSubmit">
+      <h2 class="text-2xl font-bold">Submit Resource</h2>
+      <form class="pt-8 flex flex-col gap-8" @submit.prevent="onSubmit">
         <fieldset class="flex flex-col gap-2">
           <label class="flex items-center gap-1">
             Type

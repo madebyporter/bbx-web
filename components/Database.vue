@@ -71,7 +71,7 @@
           </div>
         </div>
         <div class="table-cell db-cell">
-          <a :href="resource.link" target="_blank" class="bg-neutral-100 hover:bg-neutral-200 rounded-md px-4 p-2">
+          <a :href="resource.link" target="_blank" class="btn">
             Download
           </a>
         </div>
