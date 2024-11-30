@@ -22,8 +22,50 @@
           <input v-model="formData.creator" name="softwareCreator" type="text" class="p-4 bg-neutral-100 rounded-lg" />
         </fieldset>
         <fieldset class="flex flex-col gap-2">
-          <label>Tags (comma separated)</label>
-          <input v-model="formData.tags" name="softwareTags" type="text" class="p-4 bg-neutral-100 rounded-lg" />
+          <label>Tags</label>
+          <div class="relative">
+            <div class="flex flex-wrap gap-2 p-4 bg-neutral-100 rounded-lg min-h-[56px]">
+              <!-- Selected tags -->
+              <div 
+                v-for="tag in selectedTags" 
+                :key="tag" 
+                class="tag flex items-center gap-2"
+              >
+                {{ tag }}
+                <button 
+                  @click="removeTag(tag)" 
+                  class="hover:text-neutral-600"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <!-- Tag input -->
+              <input 
+                v-model="tagInput"
+                type="text"
+                class="flex-grow bg-transparent outline-none"
+                placeholder="Type to search or add tags"
+                @input="searchTags"
+                @keydown.enter.prevent="addTag"
+              />
+            </div>
+
+            <!-- Tag suggestions dropdown -->
+            <div 
+              v-if="showSuggestions && filteredTags.length > 0"
+              class="absolute left-0 right-0 mt-1 bg-white rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
+            >
+              <div 
+                v-for="tag in filteredTags" 
+                :key="tag"
+                class="px-4 py-2 hover:bg-neutral-100 cursor-pointer"
+                @click="selectTag(tag)"
+              >
+                {{ tag }}
+              </div>
+            </div>
+          </div>
         </fieldset>
         <fieldset class="flex flex-col gap-2">
           <label>Price</label>
@@ -116,12 +158,16 @@ export default {
       formData: {
         name: '',
         creator: '',
-        tags: '',
         price: '',
         os: '',
         link: '',
         image_url: ''
-      }
+      },
+      tagInput: '',
+      selectedTags: [],
+      availableTags: [],
+      showSuggestions: false,
+      filteredTags: []
     }
   },
   watch: {
@@ -141,12 +187,12 @@ export default {
           this.formData = {
             name: resource.name,
             creator: resource.creator,
-            tags: resource.tags.join(', '),
             price: resource.price,
             os: resource.os.join(', '),
             link: resource.link,
             image_url: resource.image_url
           }
+          this.selectedTags = resource.tags || []
           if (resource.image_url) {
             this.imagePreview = resource.image_url
           }
@@ -286,6 +332,61 @@ export default {
       }
     },
 
+    async fetchTags() {
+      try {
+        const { data, error } = await this.supabase
+          .from('resources')
+          .select('tags')
+
+        if (error) throw error
+
+        // Flatten and deduplicate tags
+        this.availableTags = [...new Set(data.flatMap(resource => resource.tags))]
+          .sort((a, b) => a.localeCompare(b))
+
+      } catch (error) {
+        console.error('Error fetching tags:', error)
+      }
+    },
+
+    searchTags() {
+      if (!this.tagInput) {
+        this.showSuggestions = false
+        return
+      }
+
+      const searchTerm = this.tagInput.toLowerCase()
+      this.filteredTags = this.availableTags
+        .filter(tag => 
+          tag.toLowerCase().includes(searchTerm) && 
+          !this.selectedTags.includes(tag)
+        )
+      this.showSuggestions = true
+    },
+
+    selectTag(tag) {
+      if (!this.selectedTags.includes(tag)) {
+        this.selectedTags.push(tag)
+      }
+      this.tagInput = ''
+      this.showSuggestions = false
+    },
+
+    addTag() {
+      if (!this.tagInput.trim()) return
+      
+      const newTag = this.tagInput.trim().toUpperCase()
+      if (!this.selectedTags.includes(newTag)) {
+        this.selectedTags.push(newTag)
+      }
+      this.tagInput = ''
+      this.showSuggestions = false
+    },
+
+    removeTag(tag) {
+      this.selectedTags = this.selectedTags.filter(t => t !== tag)
+    },
+
     async submitResource() {
       try {
         this.isSubmitting = true
@@ -299,7 +400,7 @@ export default {
         // Convert comma-separated strings to arrays
         const processedData = {
           ...this.formData,
-          tags: this.formData.tags.split(',').map(tag => tag.trim()),
+          tags: this.selectedTags,
           os: this.formData.os.split(',').map(os => os.trim()),
           image_url: imageUrl,
           created_at: new Date()
@@ -315,7 +416,6 @@ export default {
         this.formData = {
           name: '',
           creator: '',
-          tags: '',
           price: '',
           os: '',
           link: '',
@@ -372,7 +472,7 @@ export default {
         // Process the data
         const processedData = {
           ...this.formData,
-          tags: this.formData.tags.split(',').map(tag => tag.trim()),
+          tags: this.selectedTags,
           os: this.formData.os.split(',').map(os => os.trim()),
           image_url: imageUrl
         }
@@ -411,7 +511,6 @@ export default {
       this.formData = {
         name: '',
         creator: '',
-        tags: '',
         price: '',
         os: '',
         link: '',
@@ -431,6 +530,7 @@ export default {
     }
   },
   mounted() {
+    this.fetchTags()
     if (this.show) {
       this.$nextTick(() => {
         this.animateIn()
