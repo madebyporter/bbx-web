@@ -98,15 +98,21 @@
                 </button>
               </div>
               
-              <!-- Tag input -->
+              <!-- Tag input - hide when max tags reached -->
               <input 
+                v-if="selectedTags.length < 3"
                 v-model="tagInput"
                 type="text"
                 class="flex-grow bg-transparent outline-none"
-                placeholder="Type to search or add tags"
+                placeholder="Type to search or add tags (max 3)"
                 @input="searchTags"
                 @keydown.enter.prevent="addTag"
               />
+              
+              <!-- Message when max tags reached -->
+              <span v-else class="text-sm text-neutral-500">
+                Maximum 3 tags reached
+              </span>
             </div>
 
             <!-- Tag suggestions dropdown -->
@@ -524,6 +530,7 @@ export default {
     },
 
     selectTag(tag) {
+      if (this.selectedTags.length >= 3) return
       if (!this.selectedTags.includes(tag)) {
         this.selectedTags.push(tag)
       }
@@ -532,7 +539,7 @@ export default {
     },
 
     addTag() {
-      if (!this.tagInput.trim()) return
+      if (!this.tagInput.trim() || this.selectedTags.length >= 3) return
       
       const newTag = this.tagInput.trim().toUpperCase()
       if (!this.selectedTags.includes(newTag)) {
