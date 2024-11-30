@@ -16,7 +16,7 @@
     @apply min-w-[270px] lg:min-w-[270px];
   }
   .db-col-lg {
-    @apply min-w-[300px] lg:min-w-[400px];
+    @apply min-w-[300px] lg:min-w-[360px];
   }
   .db-cell {
     @apply px-2 py-4 align-middle text-sm;
