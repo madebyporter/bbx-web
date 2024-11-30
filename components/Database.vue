@@ -60,7 +60,7 @@
             </div>
           </div>
         </div>
-        <div class="table-cell db-cell">
+        <div class="table-cell db-cell whitespace-nowrap">
           {{ resource.price }}
         </div>
         <div class="table-cell db-cell">
