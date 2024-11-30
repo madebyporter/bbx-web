@@ -79,6 +79,7 @@
           <label class="flex items-center gap-1">
             Tags
             <span class="text-red-500">*</span>
+            <span class="text-xs text-neutral-400">(type and enter to add)</span>
           </label>
           <div class="relative">
             <div class="flex flex-wrap gap-2 p-4 bg-neutral-100 rounded-lg min-h-[56px]">
