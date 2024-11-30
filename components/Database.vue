@@ -94,6 +94,7 @@ export default {
   data() {
     return {
       resources: [],
+      searchQuery: '',
       currentSort: {
         sortBy: 'created_at',
         sortDirection: 'desc'
@@ -120,8 +121,29 @@ export default {
           
         if (error) throw error
 
-        // Apply filters first
-        let filteredData = data.filter(resource => {
+        // Apply search filter first
+        let filteredData = data
+        if (this.searchQuery) {
+          const query = this.searchQuery.trim().toLowerCase()
+          filteredData = data.filter(resource => {
+            const name = resource.name?.toLowerCase() || ''
+            const creator = resource.creator?.toLowerCase() || ''
+            const tags = resource.tags?.map(tag => tag.toLowerCase()) || []
+            const type = resource.type?.toLowerCase() || ''
+
+            // Split name into words and check if any word starts with the query
+            const nameWords = name.split(' ')
+            const creatorWords = creator.split(' ')
+
+            return nameWords.some(word => word.startsWith(query)) ||
+              creatorWords.some(word => word.startsWith(query)) ||
+              tags.some(tag => tag.startsWith(query)) ||
+              type.startsWith(query)
+          })
+        }
+
+        // Then apply other filters
+        filteredData = filteredData.filter(resource => {
           // Price filter
           if (this.currentFilters.price.free || this.currentFilters.price.paid) {
             const price = parseFloat(resource.price.replace('$', ''))
@@ -149,7 +171,7 @@ export default {
           return true
         })
 
-        // Then apply sorting
+        // Finally apply sorting
         if (this.currentSort.sortBy === 'price') {
           filteredData.sort((a, b) => {
             const priceA = parseFloat(a.price.replace('$', ''))
@@ -238,6 +260,10 @@ export default {
       console.log('Updating filters and sort:', params)
       this.currentSort = params.sort
       this.currentFilters = params.filters
+      this.fetchResources()
+    },
+    handleSearch(query) {
+      this.searchQuery = query
       this.fetchResources()
     }
   },
