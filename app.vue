@@ -6,9 +6,32 @@
     <nav 
       ref="mobileNav"
       id="navbar" 
-      class="flex max-lg:fixed max-lg:bottom-2 max-lg:left-2 max-lg:right-2 max-lg:top-[150px] max-lg:z-50 max-lg:rounded-md max-lg:overflow-scroll lg:fixed lg:h-full lg:col-start-1 lg:col-span-2 lg:overflow-hidden bg-white lg:bg-neutral-100 p-8 flex-col gap-16 max-lg:[transform:translateX(-105%)] top-0"
-    >
-      <div>
+      class="
+        flex 
+        flex-col
+        gap-16
+        bg-white
+        p-8
+        top-0
+        min-w-[235px]
+        max-lg:fixed 
+        max-lg:bottom-2 
+        max-lg:left-2 
+        max-lg:right-2 
+        max-lg:top-[150px] 
+        max-lg:z-50 
+        max-lg:rounded-md 
+        max-lg:overflow-scroll 
+        max-lg:[transform:translateX(-105%)]
+        lg:fixed 
+        lg:h-full 
+        lg:col-start-1 
+        lg:col-span-2 
+        lg:overflow-auto  
+        lg:bg-neutral-100
+        lg:pb-[110px]
+        ">
+      <div class="sticky top-0">
         <img src="/img/bbx-logo.svg" alt="BBX Logo" class="size-12" />
       </div>
       <div class="flex flex-col gap-4">
@@ -47,6 +70,18 @@
         <NuxtLink to="#" class="nav-text-later">
           Display <span class="tag">Later</span>
         </NuxtLink>
+      </div>
+
+      <div class="bg-neutral-200 h-fit fixed bottom-4 left-4 right-4 w-auto rounded-md p-4 flex flex-row items-center max-w-[203px]"> 
+        <div class="flex flex-row gap-2 items-center">
+          <div class="flex justify-center items-center rounded-full overflow-hidden w-8 h-8 min-w-8 min-h-8">
+            <img src="/img/fpo-avatar.jpg" alt="Einstein" class="w-full h-full" />
+          </div>
+          <div class="flex flex-col gap-0 justify-start items-start">
+            <span class="text-sm font-semibold">@madebyporter</span>
+            <button class="cursor-pointer text-xs">Logout</button>
+          </div>
+        </div>
       </div>
     </nav>
     <section id="content" class="col-start-1 col-span-12 lg:col-start-3 lg:col-span-10 grid grid-cols-subgrid gap-4 content-start">
