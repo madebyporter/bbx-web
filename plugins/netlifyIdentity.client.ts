@@ -5,6 +5,17 @@ export default defineNuxtPlugin((nuxtApp) => {
     netlifyIdentity.init({
       locale: 'en'
     })
+
+    if (process.env.NODE_ENV === 'development') {
+      netlifyIdentity.on('signup', async (user) => {
+        try {
+          await netlifyIdentity.confirm(user)
+          await netlifyIdentity.refresh()
+        } catch (error) {
+          console.error('Error auto-confirming user:', error)
+        }
+      })
+    }
   }
 
   return {
