@@ -73,15 +73,16 @@
       </div>
 
       <div class="bg-neutral-200 h-fit fixed bottom-4 left-4 right-4 w-auto rounded-md p-4 flex flex-row items-center max-w-[203px]"> 
-        <div class="flex flex-row gap-2 items-center">
+        <div v-if="user" class="flex flex-row gap-2 items-center">
           <div class="flex justify-center items-center rounded-full overflow-hidden w-8 h-8 min-w-8 min-h-8">
-            <img src="/img/fpo-avatar.jpg" alt="Einstein" class="w-full h-full" />
+            <img :src="user.user_metadata?.avatar_url || '/img/fpo-avatar.jpg'" :alt="user.user_metadata?.full_name || user.email" class="w-full h-full" />
           </div>
           <div class="flex flex-col gap-0 justify-start items-start">
-            <span class="text-sm font-semibold">@madebyporter</span>
-            <button class="cursor-pointer text-xs">Logout</button>
+            <span class="text-sm font-semibold">{{ user.user_metadata?.full_name || user.email }}</span>
+            <button @click="logout" class="cursor-pointer text-xs">Logout</button>
           </div>
         </div>
+        <button v-else @click="login" class="text-sm cursor-pointer">Login</button>
       </div>
     </nav>
     <section id="content" class="col-start-1 col-span-12 lg:col-start-3 lg:col-span-10 grid grid-cols-subgrid gap-4 content-start">
@@ -114,72 +115,100 @@
       @close="showFilterModal = false"
       @apply-filters-and-sort="handleFiltersAndSort"
     />
+    <!-- Admin button (only for admin users) -->
+    <button 
+      v-if="isAdmin"
+      @click="showAdminModal = true"
+      class="fixed bottom-20 right-4 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors"
+    >
+      Manage Submissions
+    </button>
+
+    <!-- Admin Modal -->
+    <AdminResourceManager
+      v-if="showAdminModal"
+      :show="showAdminModal"
+      @close="showAdminModal = false"
+      @resource-updated="refreshDatabase"
+    />
   </main>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useAuth } from '~/composables/useAuth'
+import type { Resource } from '~/types/resource'
 import gsap from 'gsap'
+import AdminResourceManager from '~/components/AdminResourceManager.vue'
 
-export default {
-  data() {
-    return {
-      showModal: false,
-      showFilterModal: false,
-      editingResource: null,
-      modalKey: 0
-    }
-  },
-  methods: {
-    toggleMobileNav() {
-      this.showMobileNav = !this.showMobileNav
-      
-      gsap.to(this.$refs.mobileNav, {
-        duration: 0.3,
-        x: this.showMobileNav ? 0 : '-105%',
-        ease: 'power2.out'
-      })
-    },
-    handleResize() {
-      if (window.innerWidth >= 1024) {
-        // Reset nav position on desktop
-        gsap.set(this.$refs.mobileNav, { x: 0 })
-      } else {
-        // Reset nav position on mobile
-        gsap.set(this.$refs.mobileNav, { x: '-105%' })
-      }
-      this.showMobileNav = false
-    },
-    openFilterModal() {
-      this.showFilterModal = true
-    },
-    closeFilterModal() {
-      this.showFilterModal = false
-    },
-    handleEdit(resource) {
-      this.editingResource = resource
-      this.showModal = true
-      this.modalKey++
-    },
-    closeModal() {
-      this.showModal = false
-      this.editingResource = null
-    },
-    refreshDatabase() {
-      this.$refs.database.fetchResources()
-      this.closeModal()
-    },
-    handleFiltersAndSort(params) {
-      this.$refs.database.updateFiltersAndSort(params)
-    },
-    handleSearch(query) {
-      this.$refs.database.handleSearch(query)
-    }
-  },
-  mounted() {
-    window.addEventListener('resize', this.handleResize)
-  },
-  beforeUnmount() {
-    window.removeEventListener('resize', this.handleResize)
+const { init, user, login, logout, isAdmin } = useAuth()
+const showMobileNav = ref(false)
+const showModal = ref(false)
+const showFilterModal = ref(false)
+const editingResource = ref<Resource | null>(null)
+const modalKey = ref(0)
+const mobileNav = ref(null)
+const showAdminModal = ref(false)
+
+onMounted(() => {
+  init()
+  handleResize()
+  window.addEventListener('resize', handleResize)
+})
+
+const toggleMobileNav = () => {
+  showMobileNav.value = !showMobileNav.value
+  
+  gsap.to(mobileNav.value, {
+    duration: 0.3,
+    x: showMobileNav.value ? 0 : '-105%',
+    ease: 'power2.out'
+  })
+}
+
+const handleResize = () => {
+  if (window.innerWidth >= 1024) {
+    // Reset nav position on desktop
+    gsap.set(mobileNav.value, { x: 0 })
+  } else {
+    // Reset nav position on mobile
+    gsap.set(mobileNav.value, { x: '-105%' })
   }
+  showMobileNav.value = false
+}
+
+const openFilterModal = () => {
+  showFilterModal.value = true
+}
+
+const closeFilterModal = () => {
+  showFilterModal.value = false
+}
+
+const handleEdit = (resource: any) => {
+  editingResource.value = resource
+  showModal.value = true
+  modalKey.value++
+}
+
+const closeModal = () => {
+  showModal.value = false
+  editingResource.value = null
+}
+
+const refreshDatabase = () => {
+  // @ts-ignore
+  database.value?.fetchResources()
+  closeModal()
+}
+
+const handleFiltersAndSort = (params: any) => {
+  // @ts-ignore
+  database.value?.updateFiltersAndSort(params)
+}
+
+const handleSearch = (query: string) => {
+  // @ts-ignore
+  database.value?.handleSearch(query)
 }
 </script>
