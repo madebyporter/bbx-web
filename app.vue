@@ -74,13 +74,18 @@
 
       <div class="bg-neutral-200 h-fit fixed bottom-4 left-4 right-4 w-auto rounded-md p-4 flex flex-row items-center max-w-[203px]"> 
         <div class="flex flex-row gap-2 items-center">
-          <div class="flex justify-center items-center rounded-full overflow-hidden w-8 h-8 min-w-8 min-h-8">
-            <img src="/img/fpo-avatar.jpg" alt="Einstein" class="w-full h-full" />
-          </div>
-          <div class="flex flex-col gap-0 justify-start items-start">
-            <span class="text-sm font-semibold">@madebyporter</span>
-            <button class="cursor-pointer text-xs">Logout</button>
-          </div>
+          <template v-if="user">
+            <div class="flex justify-center items-center rounded-full overflow-hidden w-8 h-8 min-w-8 min-h-8">
+              <img :src="user.user_metadata?.avatar_url || '/img/fpo-avatar.jpg'" :alt="user.user_metadata?.full_name || 'User'" class="w-full h-full" />
+            </div>
+            <div class="flex flex-col gap-0 justify-start items-start">
+              <span class="text-sm font-semibold">{{ user.user_metadata?.full_name || user.email }}</span>
+              <button @click="handleAuth" class="cursor-pointer text-xs">Logout</button>
+            </div>
+          </template>
+          <template v-else>
+            <button @click="handleAuth" class="cursor-pointer text-sm">Login</button>
+          </template>
         </div>
       </div>
     </nav>
@@ -117,9 +122,51 @@
   </main>
 </template>
 
-<script>
+<script setup>
+import { ref, onMounted, computed } from 'vue'
 import gsap from 'gsap'
 
+// Initialize netlify identity
+const user = ref(null)
+const netlifyIdentity = ref(null)
+
+onMounted(() => {
+  // Import netlify-identity-widget dynamically on client-side
+  import('netlify-identity-widget').then((module) => {
+    netlifyIdentity.value = module.default
+    netlifyIdentity.value.init({
+      APIUrl: process.env.NETLIFY_IDENTITY_URL
+    })
+
+    // Set initial user state
+    user.value = netlifyIdentity.value.currentUser()
+
+    // Listen for login events
+    netlifyIdentity.value.on('login', (loginUser) => {
+      user.value = loginUser
+      netlifyIdentity.value.close()
+    })
+
+    // Listen for logout events
+    netlifyIdentity.value.on('logout', () => {
+      user.value = null
+    })
+  })
+})
+
+// Handle login/logout
+const handleAuth = () => {
+  if (user.value) {
+    netlifyIdentity.value.logout()
+  } else {
+    netlifyIdentity.value.open()
+  }
+}
+
+const canEdit = computed(() => !!user.value)
+</script>
+
+<script>
 export default {
   data() {
     return {
