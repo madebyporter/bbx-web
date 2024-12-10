@@ -128,38 +128,30 @@ import gsap from 'gsap'
 
 // Initialize netlify identity
 const user = ref(null)
-const netlifyIdentity = ref(null)
+const { $identity } = useNuxtApp()
 
 onMounted(() => {
-  // Import netlify-identity-widget dynamically on client-side
-  import('netlify-identity-widget').then((module) => {
-    netlifyIdentity.value = module.default
-    netlifyIdentity.value.init({
-      APIUrl: process.env.NETLIFY_IDENTITY_URL
-    })
+  // Set initial user state
+  user.value = $identity.currentUser()
 
-    // Set initial user state
-    user.value = netlifyIdentity.value.currentUser()
+  // Listen for login events
+  $identity.on('login', (loginUser) => {
+    user.value = loginUser
+    $identity.close()
+  })
 
-    // Listen for login events
-    netlifyIdentity.value.on('login', (loginUser) => {
-      user.value = loginUser
-      netlifyIdentity.value.close()
-    })
-
-    // Listen for logout events
-    netlifyIdentity.value.on('logout', () => {
-      user.value = null
-    })
+  // Listen for logout events
+  $identity.on('logout', () => {
+    user.value = null
   })
 })
 
 // Handle login/logout
 const handleAuth = () => {
   if (user.value) {
-    netlifyIdentity.value.logout()
+    $identity.logout()
   } else {
-    netlifyIdentity.value.open()
+    $identity.open()
   }
 }
 
