@@ -6,69 +6,53 @@ const USER_EMAIL = 'general@madebyporter.com';
 
 async function setAdminRole() {
   try {
-    // Get the access token from Netlify CLI
-    const tokenOutput = execSync('netlify api authInfo', { encoding: 'utf8' });
-    const { access_token } = JSON.parse(tokenOutput);
+    // Get access token
+    const response = await fetch('https://bbx-web.netlify.app/.netlify/identity/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: 'grant_type=client_credentials'
+    })
 
-    if (!access_token) {
-      console.error('Could not get access token');
-      return;
-    }
+    const { access_token } = await response.json()
 
-    console.log('Got access token, fetching users...');
-
-    // Get user
-    const response = await fetch(
-      `https://api.netlify.com/api/v1/sites/${SITE_ID}/identity/users`,
-      {
-        headers: {
-          Authorization: `Bearer ${access_token}`,
-        },
+    // Get users
+    const usersResponse = await fetch('https://bbx-web.netlify.app/.netlify/identity/admin/users', {
+      headers: {
+        'Authorization': `Bearer ${access_token}`
       }
-    );
+    })
 
-    if (!response.ok) {
-      console.error('Failed to fetch users:', await response.text());
-      return;
-    }
+    const users = await usersResponse.json()
+    const user = users.find(u => u.email === process.argv[2])
 
-    const users = await response.json();
-    const user = users.find(u => u.email === USER_EMAIL);
-
-    if (!user) {
-      console.error('User not found');
-      return;
-    }
-
-    console.log('Found user, updating roles...');
-
-    // Update user roles
-    const updateResponse = await fetch(
-      `https://api.netlify.com/api/v1/sites/${SITE_ID}/identity/users/${user.id}`,
-      {
+    if (user) {
+      // Update user roles
+      const updateResponse = await fetch(`https://bbx-web.netlify.app/.netlify/identity/admin/users/${user.id}`, {
         method: 'PUT',
         headers: {
-          Authorization: `Bearer ${access_token}`,
-          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${access_token}`,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           app_metadata: {
             roles: ['admin']
           }
         })
-      }
-    );
+      })
 
-    if (updateResponse.ok) {
-      console.log('Successfully set admin role');
+      if (updateResponse.ok) {
+        process.exit(0)
+      } else {
+        process.exit(1)
+      }
     } else {
-      console.error('Failed to set admin role:', await updateResponse.text());
+      process.exit(1)
     }
   } catch (error) {
-    console.error('Error:', error.message);
-    if (error.stdout) console.error('stdout:', error.stdout.toString());
-    if (error.stderr) console.error('stderr:', error.stderr.toString());
+    process.exit(1)
   }
 }
 
-setAdminRole(); 
+setAdminRole() 

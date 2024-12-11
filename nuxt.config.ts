@@ -23,10 +23,32 @@ export default defineNuxtConfig({
   app: {
     head: {
       viewport: 'width=device-width, initial-scale=1.0',
-      title: 'BBX Resource Database',
+      title: 'Beatbox - A curated collection of music production tools and resources.',
       meta: [
         { charset: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1' }
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { name: 'description', content: 'Beatbox - A curated collection of music production tools and resources.' },
+        { name: 'format-detection', content: 'telephone=no' },
+        { name: 'theme-color', content: '#000000' },
+        
+        // Open Graph / Facebook
+        { property: 'og:type', content: 'website' },
+        { property: 'og:title', content: 'Beatbox' },
+        { property: 'og:description', content: 'A curated collection of music production tools and resources.' },
+        { property: 'og:site_name', content: 'Beatbox' },
+        
+        // Twitter
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:title', content: 'Beatbox' },
+        { name: 'twitter:description', content: 'A curated collection of music production tools and resources.' }
+      ],
+      link: [
+        // Favicons
+        { rel: 'icon', type: 'image/png', href: '/favicons/favicon-96x96.png', sizes: '96x96' },
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicons/favicon.svg' },
+        { rel: 'shortcut icon', href: '/favicons/favicon.ico' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/favicons/apple-touch-icon.png' },
+        { rel: 'manifest', href: '/favicons/site.webmanifest' }
       ]
     }
   },
