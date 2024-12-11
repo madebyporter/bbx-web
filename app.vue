@@ -75,9 +75,9 @@
       <div class="bg-neutral-200 h-fit fixed bottom-4 left-4 right-4 w-auto rounded-md p-4 flex flex-row items-center max-w-[203px]"> 
         <div class="flex flex-row gap-2 items-center">
           <template v-if="user">
-            <div class="flex justify-center items-center rounded-full overflow-hidden w-8 h-8 min-w-8 min-h-8">
+            <!-- <div class="flex justify-center items-center rounded-full overflow-hidden w-8 h-8 min-w-8 min-h-8">
               <img :src="user.user_metadata?.avatar_url || '/img/fpo-avatar.jpg'" :alt="user.user_metadata?.full_name || 'User'" class="w-full h-full" />
-            </div>
+            </div> -->
             <div class="flex flex-col gap-0 justify-start items-start">
               <span class="text-sm font-semibold">{{ user.user_metadata?.full_name || user.email }}</span>
               <button @click="handleAuth" class="cursor-pointer text-xs">Logout</button>
@@ -102,6 +102,7 @@
         <Database 
           ref="database" 
           @edit-resource="handleEdit"
+          :can-edit="isAdmin"
         />
       </div>
     </section>
@@ -171,7 +172,9 @@ const handleAuth = () => {
   }
 }
 
-const canEdit = computed(() => !!user.value)
+const isAdmin = computed(() => {
+  return user.value?.app_metadata?.roles?.includes('admin') || false
+})
 </script>
 
 <script>

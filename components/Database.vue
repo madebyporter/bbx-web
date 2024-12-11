@@ -22,7 +22,7 @@
       <div class="table-row">
         <div class="table-cell db-cell relative group">
           <div 
-            v-if="isAdmin"
+            v-if="canEdit"
             class="hidden lg:flex absolute left-4 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2"
           >
             <div 
@@ -84,9 +84,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useSupabase } from '../utils/supabase'
-import { useAuth } from '~/composables/useAuth'
 
-const { isAdmin } = useAuth()
 const { supabase } = useSupabase()
 const resources = ref([])
 const currentSort = ref({ sortBy: 'name', sortDirection: 'asc' })
@@ -266,5 +264,12 @@ defineExpose({
   fetchResources,
   updateFiltersAndSort,
   handleSearch
+})
+
+defineProps({
+  canEdit: {
+    type: Boolean,
+    default: false
+  }
 })
 </script>
