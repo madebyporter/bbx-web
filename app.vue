@@ -87,7 +87,6 @@
             <button @click="handleAuth" class="cursor-pointer text-sm">Login</button>
           </template>
         </div>
-        <button v-else @click="login" class="text-sm cursor-pointer">Login</button>
       </div>
     </nav>
     <section id="content" class="col-start-1 col-span-12 lg:col-start-3 lg:col-span-10 grid grid-cols-subgrid gap-4 content-start">
