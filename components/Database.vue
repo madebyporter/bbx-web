@@ -82,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useSupabase } from '../utils/supabase'
 
 const { supabase } = useSupabase()
@@ -256,6 +256,22 @@ const handleSearch = (query: string) => {
   fetchResources()
 }
 
+const props = defineProps({
+  canEdit: {
+    type: Boolean,
+    default: false
+  }
+})
+
+// Add this to verify the prop is being received
+watch(() => props.canEdit, (newValue) => {
+  console.log('Database canEdit changed:', newValue)
+})
+
+onMounted(() => {
+  console.log('Database mounted with canEdit:', props.canEdit)
+})
+
 onMounted(() => {
   fetchResources()
 })
@@ -264,12 +280,5 @@ defineExpose({
   fetchResources,
   updateFiltersAndSort,
   handleSearch
-})
-
-defineProps({
-  canEdit: {
-    type: Boolean,
-    default: false
-  }
 })
 </script>

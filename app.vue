@@ -140,26 +140,51 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import gsap from 'gsap'
 
 // Initialize netlify identity
 const user = ref(null)
 const { $identity } = useNuxtApp()
 
-onMounted(() => {
-  // Set initial user state
-  user.value = $identity.currentUser()
+// Watch for user changes
+watch(() => user.value, (newUser) => {
+  console.log('User state changed:', newUser)
+  if (newUser) {
+    console.log('User roles:', newUser.app_metadata?.roles)
+  }
+}, { deep: true })
 
-  // Listen for login events
+onMounted(() => {
+  // Set initial user state and force a metadata refresh
+  const currentUser = $identity.currentUser()
+  if (currentUser) {
+    // Store the full user object
+    user.value = {
+      ...currentUser,
+      // Ensure we have the metadata
+      app_metadata: currentUser.app_metadata || {},
+      user_metadata: currentUser.user_metadata || {}
+    }
+    console.log('Mounted with user:', user.value)
+  }
+
+  // Listen for login events with full metadata
   $identity.on('login', (loginUser) => {
-    user.value = loginUser
+    if (loginUser) {
+      user.value = {
+        ...loginUser,
+        app_metadata: loginUser.app_metadata || {},
+        user_metadata: loginUser.user_metadata || {}
+      }
+      console.log('Login with user:', user.value)
+    }
     $identity.close()
   })
 
-  // Listen for logout events
   $identity.on('logout', () => {
     user.value = null
+    console.log('Logged out')
   })
 })
 
@@ -173,7 +198,24 @@ const handleAuth = () => {
 }
 
 const isAdmin = computed(() => {
-  return user.value?.app_metadata?.roles?.includes('admin') || false
+  if (!user.value) return false
+  
+  // Check if user has any metadata
+  console.log('Full user object:', user.value)
+  
+  // Try different ways to access roles
+  const roleFromAppMeta = user.value?.app_metadata?.roles?.includes('admin')
+  const roleFromMeta = user.value?.metadata?.roles?.includes('admin')
+  const roleFromUserMeta = user.value?.user_metadata?.roles?.includes('admin')
+  
+  console.log('Role checks:', {
+    fromAppMeta: roleFromAppMeta,
+    fromMeta: roleFromMeta,
+    fromUserMeta: roleFromUserMeta
+  })
+  
+  // Return true if any of the checks pass
+  return roleFromAppMeta || roleFromMeta || roleFromUserMeta || false
 })
 </script>
 

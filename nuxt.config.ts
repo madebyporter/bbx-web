@@ -15,7 +15,9 @@ export default defineNuxtConfig({
     public: {
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
       supabaseKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY,
-      NETLIFY_IDENTITY_URL: process.env.NETLIFY_IDENTITY_URL
+      NETLIFY_IDENTITY_URL: process.env.NETLIFY_IDENTITY_URL,
+      NETLIFY_SITE_ID: process.env.NETLIFY_SITE_ID,
+      SITE_URL: process.env.SITE_URL
     }
   },
   app: {
