@@ -87,6 +87,7 @@
             <button @click="handleAuth" class="cursor-pointer text-sm">Login</button>
           </template>
         </div>
+        <button v-else @click="login" class="text-sm cursor-pointer">Login</button>
       </div>
     </nav>
     <section id="content" class="col-start-1 col-span-12 lg:col-start-3 lg:col-span-10 grid grid-cols-subgrid gap-4 content-start">
@@ -118,6 +119,22 @@
       :show="showFilterModal"
       @close="showFilterModal = false"
       @apply-filters-and-sort="handleFiltersAndSort"
+    />
+    <!-- Admin button (only for admin users) -->
+    <button 
+      v-if="isAdmin"
+      @click="showAdminModal = true"
+      class="fixed bottom-20 right-4 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors"
+    >
+      Manage Submissions
+    </button>
+
+    <!-- Admin Modal -->
+    <AdminResourceManager
+      v-if="showAdminModal"
+      :show="showAdminModal"
+      @close="showAdminModal = false"
+      @resource-updated="refreshDatabase"
     />
   </main>
 </template>
