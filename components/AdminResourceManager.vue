@@ -1,139 +1,223 @@
 <template>
-  <div class="fixed inset-0 bg-black/50 flex items-center justify-center" v-if="show">
-    <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold">Manage Submissions</h2>
-        <button @click="$emit('close')" class="text-gray-500 hover:text-gray-700">
-          <span class="sr-only">Close</span>
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+  <Teleport to="body">
+    <aside 
+      v-if="show" 
+      ref="modal"
+      class="modal"
+      style="transform: translateX(100%)"
+    >
+      <div 
+        @click="close" 
+        class="flex justify-center items-center bg-neutral-800 hover:bg-neutral-900 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
+      >
+        <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-white" />
       </div>
 
-      <div class="space-y-6">
-        <div v-if="pendingResources.length === 0" class="text-center py-8 text-gray-500">
-          No pending submissions
+      <h2 class="text-2xl font-bold">Manage Submissions</h2>
+
+      <div class="pt-8 flex flex-col gap-8">
+        <!-- Pending Submissions -->
+        <div class="flex flex-col gap-4">
+          <h3 class="text-lg font-medium">Pending Submissions</h3>
+          <div v-if="pendingResources.length === 0" class="text-neutral-500">
+            No pending submissions
+          </div>
+          <div v-else class="flex flex-col gap-2">
+            <div v-for="resource in pendingResources" :key="resource.id" 
+              class="flex flex-row justify-between items-center p-4 bg-neutral-100 rounded-md">
+              <div class="flex flex-col">
+                <span class="font-medium">{{ resource.name }}</span>
+                <span class="text-sm text-neutral-500">by {{ resource.creator }}</span>
+              </div>
+              <div class="flex flex-row gap-2">
+                <button 
+                  @click="approveResource(resource)"
+                  class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                >
+                  Approve
+                </button>
+                <button 
+                  @click="rejectResource(resource)"
+                  class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div v-for="resource in pendingResources" :key="resource.id" class="border rounded-lg p-4 space-y-4">
-          <div class="flex justify-between items-start">
-            <div>
-              <h3 class="font-semibold text-lg">{{ resource.name }}</h3>
-              <p class="text-sm text-gray-600">by {{ resource.creator }}</p>
+        <!-- Recent Activity -->
+        <div class="flex flex-col gap-4">
+          <h3 class="text-lg font-medium">Recent Activity</h3>
+          <div class="flex flex-col gap-2">
+            <div v-for="(activity, index) in recentActivity" :key="index"
+              class="flex flex-row justify-between items-center p-4 bg-neutral-100 rounded-md">
+              <div class="flex flex-col">
+                <span class="font-medium">{{ activity.resource_name }}</span>
+                <span class="text-sm text-neutral-500">
+                  {{ activity.action }} by {{ activity.user }} on {{ formatDate(activity.date) }}
+                </span>
+              </div>
             </div>
-            <span class="px-2 py-1 text-xs rounded-full" :class="{
-              'bg-yellow-100 text-yellow-800': resource.status === 'pending',
-              'bg-green-100 text-green-800': resource.status === 'approved',
-              'bg-red-100 text-red-800': resource.status === 'rejected'
-            }">
-              {{ resource.status }}
-            </span>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p class="text-gray-600">Price:</p>
-              <p>{{ resource.price }}</p>
-            </div>
-            <div>
-              <p class="text-gray-600">Type:</p>
-              <p>{{ resource.type }}</p>
-            </div>
-            <div>
-              <p class="text-gray-600">OS:</p>
-              <p>{{ resource.os.join(', ') }}</p>
-            </div>
-            <div>
-              <p class="text-gray-600">Tags:</p>
-              <p>{{ resource.tags.join(', ') }}</p>
-            </div>
-          </div>
-
-          <div>
-            <p class="text-gray-600 text-sm">Link:</p>
-            <a :href="resource.link" target="_blank" rel="noopener noreferrer" 
-               class="text-blue-600 hover:text-blue-800 break-all">
-              {{ resource.link }}
-            </a>
-          </div>
-
-          <div class="flex justify-end space-x-3 pt-4">
-            <button @click="rejectResource(resource.id)"
-                    class="px-4 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200">
-              Reject
-            </button>
-            <button @click="approveResource(resource.id)"
-                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-              Approve
-            </button>
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </aside>
+  </Teleport>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import type { Resource } from '~/types/resource'
-import { useAuth } from '~/composables/useAuth'
-import type { SupabaseClient } from '@supabase/supabase-js'
+<script>
+import gsap from 'gsap'
+import { useSupabase } from '../utils/supabase'
 
-const props = defineProps<{
-  show: boolean
-}>()
+export default {
+  emits: ['close', 'resource-updated'],
+  setup() {
+    const { supabase } = useSupabase()
+    return {
+      supabase
+    }
+  },
+  props: {
+    show: {
+      type: Boolean,
+      required: true
+    }
+  },
+  data() {
+    return {
+      pendingResources: [],
+      recentActivity: []
+    }
+  },
+  watch: {
+    show(newValue) {
+      if (newValue) {
+        this.$nextTick(() => {
+          this.animateIn()
+        })
+      } else {
+        this.animateOut()
+      }
+    }
+  },
+  methods: {
+    animateIn() {
+      gsap.to(this.$refs.modal, {
+        duration: 0.3,
+        x: 0,
+        ease: 'power2.out'
+      })
+    },
+    animateOut() {
+      gsap.to(this.$refs.modal, {
+        duration: 0.3,
+        x: '100%',
+        ease: 'power2.in',
+        onComplete: () => {
+          this.$emit('close')
+        }
+      })
+    },
+    close() {
+      this.animateOut()
+    },
+    async fetchPendingResources() {
+      try {
+        const { data, error } = await this.supabase
+          .from('resources')
+          .select('*')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
 
-const emit = defineEmits<{
-  close: []
-  resourceUpdated: []
-}>()
+        if (error) throw error
+        this.pendingResources = data
+      } catch (error) {
+        console.error('Error fetching pending resources:', error)
+      }
+    },
+    async fetchRecentActivity() {
+      try {
+        const { data, error } = await this.supabase
+          .from('activity_log')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(10)
 
-const { $supabase } = useNuxtApp()
-const supabase = $supabase as SupabaseClient
-const pendingResources = ref<Resource[]>([])
+        if (error) throw error
+        this.recentActivity = data
+      } catch (error) {
+        console.error('Error fetching recent activity:', error)
+      }
+    },
+    async approveResource(resource) {
+      try {
+        const { error } = await this.supabase
+          .from('resources')
+          .update({ status: 'approved' })
+          .eq('id', resource.id)
 
-const fetchPendingResources = async () => {
-  const { data, error } = await supabase
-    .from('resources')
-    .select('*')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false })
+        if (error) throw error
 
-  if (error) {
-    console.error('Error fetching pending resources:', error)
-    return
+        await this.logActivity(resource, 'approved')
+        await this.fetchPendingResources()
+        await this.fetchRecentActivity()
+        this.$emit('resource-updated')
+      } catch (error) {
+        console.error('Error approving resource:', error)
+      }
+    },
+    async rejectResource(resource) {
+      try {
+        const { error } = await this.supabase
+          .from('resources')
+          .update({ status: 'rejected' })
+          .eq('id', resource.id)
+
+        if (error) throw error
+
+        await this.logActivity(resource, 'rejected')
+        await this.fetchPendingResources()
+        await this.fetchRecentActivity()
+        this.$emit('resource-updated')
+      } catch (error) {
+        console.error('Error rejecting resource:', error)
+      }
+    },
+    async logActivity(resource, action) {
+      try {
+        const { error } = await this.supabase
+          .from('activity_log')
+          .insert({
+            resource_id: resource.id,
+            resource_name: resource.name,
+            action,
+            user: 'Admin',
+            date: new Date().toISOString()
+          })
+
+        if (error) throw error
+      } catch (error) {
+        console.error('Error logging activity:', error)
+      }
+    },
+    formatDate(date) {
+      return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    }
+  },
+  mounted() {
+    this.fetchPendingResources()
+    this.fetchRecentActivity()
+    if (this.show) {
+      this.$nextTick(() => {
+        this.animateIn()
+      })
+    }
   }
-
-  pendingResources.value = data
 }
-
-const updateResourceStatus = async (resourceId: number, status: 'approved' | 'rejected') => {
-  const { error } = await supabase
-    .from('resources')
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq('id', resourceId)
-
-  if (error) {
-    console.error('Error updating resource status:', error)
-    return
-  }
-
-  await fetchPendingResources()
-  emit('resourceUpdated')
-}
-
-const approveResource = (resourceId: number) => updateResourceStatus(resourceId, 'approved')
-const rejectResource = (resourceId: number) => updateResourceStatus(resourceId, 'rejected')
-
-onMounted(() => {
-  fetchPendingResources()
-})
-
-// Refresh the list when the modal is shown
-watch(() => props.show, (newValue) => {
-  if (newValue) {
-    fetchPendingResources()
-  }
-})
 </script> 

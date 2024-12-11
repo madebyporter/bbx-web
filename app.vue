@@ -23,10 +23,12 @@
         max-lg:rounded-md 
         max-lg:overflow-scroll 
         max-lg:[transform:translateX(-105%)]
+        lg:col-start-1 
+        lg:col-span-3 
         lg:fixed 
         lg:h-full 
-        lg:col-start-1 
-        lg:col-span-2 
+        xl:col-start-1 
+        xl:col-span-2 
         lg:overflow-auto  
         lg:bg-neutral-100
         lg:pb-[110px]
@@ -72,7 +74,8 @@
         </NuxtLink>
       </div>
 
-      <div class="bg-neutral-200 h-fit fixed bottom-4 left-4 right-4 w-auto rounded-md p-4 flex flex-row items-center max-w-[203px]"> 
+      <!-- Account UI -->
+      <div class="bg-neutral-200 h-fit fixed bottom-4 left-4 right-4 w-auto rounded-md p-4 hidden lg:flex flex-row items-center max-w-[203px]"> 
         <div class="flex flex-row gap-2 items-center">
           <template v-if="user">
             <!-- <div class="flex justify-center items-center rounded-full overflow-hidden w-8 h-8 min-w-8 min-h-8">
@@ -80,7 +83,16 @@
             </div> -->
             <div class="flex flex-col gap-0 justify-start items-start">
               <span class="text-sm font-semibold">{{ user.user_metadata?.full_name || user.email }}</span>
-              <button @click="handleAuth" class="cursor-pointer text-xs">Logout</button>
+              <div class="flex flex-col justify-start items-start gap-1">
+                <button @click="handleAuth" class="cursor-pointer text-xs hover:text-neutral-600">Logout</button>
+                <button 
+                  v-if="isAdmin"
+                  @click="showAdminModal = true"
+                  class="cursor-pointer text-xs text-purple-600 hover:text-purple-700"
+                >
+                  Manage Submissions
+                </button>
+              </div>
             </div>
           </template>
           <template v-else>
@@ -89,7 +101,7 @@
         </div>
       </div>
     </nav>
-    <section id="content" class="col-start-1 col-span-12 lg:col-start-3 lg:col-span-10 grid grid-cols-subgrid gap-4 content-start">
+    <section id="content" class="col-start-1 col-span-12 lg:col-start-4 lg:col-span-9 xl:col-start-3 xl:col-span-10 grid grid-cols-subgrid gap-4 content-start">
       <div class="col-span-full sticky top-0 z-50">
         <SearchFilter 
           @open-filter-modal="openFilterModal" 
@@ -98,7 +110,7 @@
           @toggle-nav="toggleMobileNav"
         />
       </div>
-      <div class="col-span-full max-w-full lg:max-w-none overflow-x-scroll lg:overflow-visible p-2 lg:p-0">
+      <div class="col-span-full max-w-full lg:max-w-none overflow-x-scroll xl:overflow-visible p-2 lg:p-0">
         <Database 
           ref="database" 
           @edit-resource="handleEdit"
@@ -120,15 +132,6 @@
       @close="showFilterModal = false"
       @apply-filters-and-sort="handleFiltersAndSort"
     />
-    <!-- Admin button (only for admin users) -->
-    <button 
-      v-if="isAdmin"
-      @click="showAdminModal = true"
-      class="fixed bottom-20 right-4 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors"
-    >
-      Manage Submissions
-    </button>
-
     <!-- Admin Modal -->
     <AdminResourceManager
       v-if="showAdminModal"
@@ -203,19 +206,17 @@ const isAdmin = computed(() => {
   // Check if user has any metadata
   console.log('Full user object:', user.value)
   
-  // Try different ways to access roles
+  // Check for roles directly in app_metadata.roles
   const roleFromAppMeta = user.value?.app_metadata?.roles?.includes('admin')
-  const roleFromMeta = user.value?.metadata?.roles?.includes('admin')
-  const roleFromUserMeta = user.value?.user_metadata?.roles?.includes('admin')
   
-  console.log('Role checks:', {
-    fromAppMeta: roleFromAppMeta,
-    fromMeta: roleFromMeta,
-    fromUserMeta: roleFromUserMeta
+  console.log('Role check:', {
+    user: user.value?.email,
+    appMetadata: user.value?.app_metadata,
+    roles: user.value?.app_metadata?.roles,
+    isAdmin: roleFromAppMeta
   })
   
-  // Return true if any of the checks pass
-  return roleFromAppMeta || roleFromMeta || roleFromUserMeta || false
+  return roleFromAppMeta || false
 })
 </script>
 
@@ -225,6 +226,7 @@ export default {
     return {
       showModal: false,
       showFilterModal: false,
+      showAdminModal: false,
       editingResource: null,
       modalKey: 0
     }

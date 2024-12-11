@@ -39,8 +39,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         console.log('Login event:', {
           email: user.email,
           metadata: user.app_metadata,
-          roles: user.app_metadata?.roles,
-          user_metadata: user.user_metadata
+          roles: user.app_metadata?.roles
         })
       }
     })
