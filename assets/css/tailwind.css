@@ -1,5 +1,6 @@
 @import "tailwindcss";
-@layer {
+
+@layer components {
   body {
     @apply bg-neutral-50;
   }
