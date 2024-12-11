@@ -110,7 +110,10 @@
           @toggle-nav="toggleMobileNav"
         />
       </div>
-      <div class="col-span-full max-w-full lg:max-w-none overflow-x-scroll xl:overflow-visible p-2 lg:p-0">
+      <div class="col-span-full max-w-full lg:max-w-none overflow-x-scroll xl:overflow-visible p-2 lg:p-0 flex flex-col gap-8">
+        <header class="pt-8 pb-4 border-b border-neutral-200">
+          <h1 class="text-3xl font-bold indent-1">Music Production Software</h1>
+        </header>
         <Database 
           ref="database" 
           @edit-resource="handleEdit"

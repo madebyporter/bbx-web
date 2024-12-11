@@ -22,8 +22,11 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
+      htmlAttrs: {
+        lang: 'en'
+      },
       viewport: 'width=device-width, initial-scale=1.0',
-      title: 'Beatbox - A curated collection of music production tools and resources.',
+      title: 'Beatbox - A curated collection of music production tools.',
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
@@ -36,13 +39,21 @@ export default defineNuxtConfig({
         { property: 'og:title', content: 'Beatbox' },
         { property: 'og:description', content: 'A curated collection of music production tools and resources.' },
         { property: 'og:site_name', content: 'Beatbox' },
+        { property: 'og:image', content: '/img/og-image.jpg' },
+        { property: 'og:image:width', content: '1200' },
+        { property: 'og:image:height', content: '630' },
+        { property: 'og:url', content: 'https://bbx-web.netlify.app' },
         
         // Twitter
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:title', content: 'Beatbox' },
-        { name: 'twitter:description', content: 'A curated collection of music production tools and resources.' }
+        { name: 'twitter:description', content: 'A curated collection of music production tools and resources.' },
+        { name: 'twitter:image', content: '/img/og-image.jpg' }
       ],
       link: [
+        // Canonical URL
+        { rel: 'canonical', href: 'https://beatbox.studio' },
+        
         // Favicons
         { rel: 'icon', type: 'image/png', href: '/favicons/favicon-96x96.png', sizes: '96x96' },
         { rel: 'icon', type: 'image/svg+xml', href: '/favicons/favicon.svg' },

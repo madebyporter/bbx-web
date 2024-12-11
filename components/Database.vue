@@ -48,7 +48,7 @@
                 @error="handleImageError"
               />
             </div>
-            <h3>{{ resource.name }}</h3>
+            <h2>{{ resource.name }}</h2>
           </div>
         </div>
         <div class="table-cell db-cell">
