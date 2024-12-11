@@ -19,7 +19,13 @@
         <img src="/img/db/icon-bars.svg" alt="Bars" class="min-w-4" />
       </button>
       <button @click="$emit('open-filter-modal')" class="btn w-full lg:w-fit">Filter & Sort</button>
-      <button @click="$emit('open-modal')" class="btn w-full lg:w-fit">Submit</button>
+      <button 
+        v-if="user"
+        @click="$emit('open-modal')" 
+        class="btn w-full lg:w-fit"
+      >
+        Submit
+      </button>
     </div>
   </div>
 </template>
@@ -30,6 +36,50 @@ import { ref, onMounted, onUnmounted } from 'vue'
 const searchQuery = ref('')
 const searchInput = ref(null)
 const emit = defineEmits(['open-modal', 'open-filter-modal', 'search', 'toggle-nav'])
+
+// Get user from Netlify Identity
+const { $identity } = useNuxtApp()
+const user = ref(null)
+
+// Watch for auth state changes
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+  
+  // Initialize Netlify Identity
+  if ($identity) {
+    // Get initial user state
+    const currentUser = $identity.currentUser()
+    if (currentUser) {
+      user.value = currentUser
+    }
+    
+    // Subscribe to auth changes
+    $identity.on('init', (initUser) => {
+      user.value = initUser
+    })
+    
+    $identity.on('login', (loginUser) => {
+      user.value = loginUser
+      console.log('SearchFilter: User logged in', loginUser)
+    })
+    
+    $identity.on('logout', () => {
+      user.value = null
+      console.log('SearchFilter: User logged out')
+    })
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+  
+  // Clean up Netlify Identity listeners
+  if ($identity) {
+    $identity.off('init')
+    $identity.off('login')
+    $identity.off('logout')
+  }
+})
 
 const onSearch = () => {
   emit('search', searchQuery.value)
@@ -42,12 +92,4 @@ const handleKeydown = (e) => {
     searchInput.value?.focus()
   }
 }
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeydown)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown)
-})
 </script>
