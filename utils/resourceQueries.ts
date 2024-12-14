@@ -89,14 +89,23 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
   try {
     // Get current user's ID from Netlify Identity
     const currentUser = $identity.currentUser()
-    console.log('Current Netlify User:', currentUser)  // Debug log
+    console.log('Current Netlify User:', currentUser)
     
     if (!currentUser) throw new Error('Must be logged in to create a resource')
 
-    // 1. Insert the resource first with owner_id and submitted_by
+    // First, create or get the creator
+    const { data: creatorData, error: creatorError } = await supabase
+      .from('creators')
+      .upsert([{ name: resource.creator }], { onConflict: 'name' })
+      .select()
+      .single()
+
+    if (creatorError) throw creatorError
+
+    // 1. Insert the resource with creator_id
     const resourceData = {
       name: resource.name,
-      creator: resource.creator,
+      creator_id: creatorData.id,
       price: resource.price,
       link: resource.link,
       image_url: resource.image_url,
@@ -107,7 +116,7 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
       status: 'pending'
     }
     
-    console.log('Attempting to insert resource with data:', resourceData)  // Debug log
+    console.log('Attempting to insert resource with data:', resourceData)
 
     const { data: newResource, error: resourceError } = await supabase
       .from('resources')
@@ -116,11 +125,11 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
       .single()
 
     if (resourceError) {
-      console.error('Resource insert error:', resourceError)  // Debug log
+      console.error('Resource insert error:', resourceError)
       throw resourceError
     }
 
-    console.log('Successfully created resource:', newResource)  // Debug log
+    console.log('Successfully created resource:', newResource)
 
     // 2. For each tag, ensure it exists in the tags table
     const tagPromises = tags.map(async (tagName) => {
