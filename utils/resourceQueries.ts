@@ -11,6 +11,28 @@ export interface Resource {
   type: string
   tags: string[]
   created_at: string
+  owner_id: string
+  is_public: boolean
+}
+
+export interface User {
+  id: string
+  username: string
+  display_name: string
+  bio: string
+  website: string
+  avatar_url: string
+  user_type: 'producer' | 'engineer' | 'writer' | 'performer' | 'other'
+  social_links: {
+    twitter?: string
+    instagram?: string
+    soundcloud?: string
+    spotify?: string
+    youtube?: string
+    [key: string]: string | undefined
+  }
+  created_at: string
+  updated_at: string
 }
 
 export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
@@ -48,7 +70,11 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
   const { supabase } = useSupabase()
   
   try {
-    // 1. Insert the resource first
+    // Get current user's ID
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Must be logged in to create a resource')
+
+    // 1. Insert the resource first with owner_id and submitted_by
     const { data: newResource, error: resourceError } = await supabase
       .from('resources')
       .insert([{
@@ -58,16 +84,18 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
         link: resource.link,
         image_url: resource.image_url,
         os: resource.os,
-        type: 'software'
+        type: 'software',
+        owner_id: user.id,
+        submitted_by: user.id,
+        status: 'pending'
       }])
       .select()
       .single()
 
     if (resourceError) throw resourceError
 
-    // 2. For each tag, ensure it exists in the tags table and get its ID
+    // 2. For each tag, ensure it exists in the tags table
     const tagPromises = tags.map(async (tagName) => {
-      // Try to insert the tag, if it exists it will return the existing tag
       const { data: tag, error: tagError } = await supabase
         .from('tags')
         .upsert({ name: tagName.toLowerCase() }, { onConflict: 'name' })
@@ -136,5 +164,169 @@ export const deleteResource = async (resourceId: number) => {
   } catch (error) {
     console.error('Error deleting resource:', error)
     throw error
+  }
+}
+
+// Add function to get user profile
+export const getUser = async (userId: string): Promise<User | null> => {
+  const { supabase } = useSupabase()
+  
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error fetching user:', error)
+    return null
+  }
+}
+
+// Add function to update user profile
+export const updateUser = async (user: Partial<User>): Promise<User | null> => {
+  const { supabase } = useSupabase()
+  
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .update(user)
+      .eq('id', user.id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error updating user:', error)
+    return null
+  }
+}
+
+// Record that a user has used a resource
+export const recordResourceUsage = async (resourceId: number): Promise<boolean> => {
+  const { supabase } = useSupabase()
+  
+  try {
+    const { error } = await supabase
+      .from('user_resources')
+      .insert([{
+        resource_id: resourceId,
+        used_at: new Date().toISOString()
+      }])
+
+    if (error) throw error
+    return true
+  } catch (error) {
+    console.error('Error recording resource usage:', error)
+    return false
+  }
+}
+
+// Get a user's resource usage history
+export const getUserResourceHistory = async (): Promise<Resource[]> => {
+  const { supabase } = useSupabase()
+  
+  try {
+    const { data, error } = await supabase
+      .from('user_resources')
+      .select(`
+        resource_id,
+        used_at,
+        resources (
+          *,
+          resource_tags (
+            tags (
+              name
+            )
+          )
+        )
+      `)
+      .order('used_at', { ascending: false })
+
+    if (error) throw error
+
+    // Transform the data to match the Resource interface
+    return data.map(item => ({
+      ...item.resources,
+      tags: item.resources.resource_tags?.map(rt => rt.tags.name) || [],
+      last_used: item.used_at
+    }))
+  } catch (error) {
+    console.error('Error fetching user resource history:', error)
+    return []
+  }
+}
+
+// Add/remove resource from user's collection
+export const toggleResourceCollection = async (resourceId: number): Promise<boolean> => {
+  const { supabase } = useSupabase()
+  
+  try {
+    // Check if resource is already in collection
+    const { data: existing } = await supabase
+      .from('user_collections')
+      .select('*')
+      .eq('resource_id', resourceId)
+      .single()
+
+    if (existing) {
+      // Remove from collection
+      const { error } = await supabase
+        .from('user_collections')
+        .delete()
+        .eq('resource_id', resourceId)
+
+      if (error) throw error
+    } else {
+      // Add to collection
+      const { error } = await supabase
+        .from('user_collections')
+        .insert([{ resource_id: resourceId }])
+
+      if (error) throw error
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error toggling resource collection:', error)
+    return false
+  }
+}
+
+// Get user's collected resources
+export const getUserCollection = async (): Promise<Resource[]> => {
+  const { supabase } = useSupabase()
+  
+  try {
+    const { data, error } = await supabase
+      .from('user_collections')
+      .select(`
+        resource_id,
+        created_at,
+        resources (
+          *,
+          resource_tags (
+            tags (
+              name
+            )
+          )
+        )
+      `)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+
+    return data.map(item => ({
+      ...item.resources,
+      tags: item.resources.resource_tags?.map(rt => rt.tags.name) || [],
+      collected_at: item.created_at
+    }))
+  } catch (error) {
+    console.error('Error fetching user collection:', error)
+    return []
   }
 } 

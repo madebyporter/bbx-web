@@ -147,42 +147,34 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import gsap from 'gsap'
+import { handleNetlifyUser } from '~/utils/netlifyIdentityHook'
+import { useNuxtApp } from 'nuxt/app'
 
-// Initialize netlify identity
-const user = ref(null)
 const { $identity } = useNuxtApp()
-
-// Watch for user changes
-watch(() => user.value, (newUser) => {
-  console.log('User state changed:', newUser)
-  if (newUser) {
-    console.log('User roles:', newUser.app_metadata?.roles)
-  }
-}, { deep: true })
+const user = ref(null)
 
 onMounted(() => {
-  // Set initial user state and force a metadata refresh
   const currentUser = $identity.currentUser()
   if (currentUser) {
     // Store the full user object
     user.value = {
       ...currentUser,
-      // Ensure we have the metadata
       app_metadata: currentUser.app_metadata || {},
       user_metadata: currentUser.user_metadata || {}
     }
-    console.log('Mounted with user:', user.value)
+    // Sync user data to Supabase
+    handleNetlifyUser(currentUser)
   }
 
-  // Listen for login events with full metadata
-  $identity.on('login', (loginUser) => {
+  // Listen for login events
+  $identity.on('login', async (loginUser) => {
     if (loginUser) {
       user.value = {
         ...loginUser,
         app_metadata: loginUser.app_metadata || {},
         user_metadata: loginUser.user_metadata || {}
       }
-      console.log('Login with user:', user.value)
+      await handleNetlifyUser(loginUser)
     }
     $identity.close()
   })
