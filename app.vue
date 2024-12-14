@@ -1,6 +1,6 @@
 <template>
   <main 
-    class="grid grid-cols-12 gap-4 min-h-svh transition-all duration-300" 
+    class="grid grid-cols-12 gap-0 min-h-svh transition-all duration-300" 
     :class="{ 'blur-sm': showModal || showFilterModal }"
   >
     <nav 
@@ -100,7 +100,7 @@
         </div>
       </div>
     </nav>
-    <section id="content" class="col-start-1 col-span-12 lg:col-start-4 lg:col-span-9 xl:col-start-3 xl:col-span-10 grid grid-cols-subgrid gap-4 content-start">
+    <section id="content" class="col-start-1 col-span-12 lg:col-start-4 lg:col-span-9 xl:col-start-3 xl:col-span-10 grid grid-cols-subgrid gap-0 content-start">
       <div class="col-span-full sticky top-0 z-50">
         <SearchFilter 
           @open-filter-modal="openFilterModal" 
