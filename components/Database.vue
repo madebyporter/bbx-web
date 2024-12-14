@@ -84,9 +84,10 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useSupabase } from '../utils/supabase'
+import { fetchResourcesWithTags, deleteResource, type Resource } from '../utils/resourceQueries'
 
 const { supabase } = useSupabase()
-const resources = ref([])
+const resources = ref<Resource[]>([])
 const currentSort = ref({ sortBy: 'name', sortDirection: 'asc' })
 const currentFilters = ref({})
 const searchQuery = ref('')
@@ -99,13 +100,8 @@ const editResource = (resource: Resource) => {
 
 const fetchResources = async () => {
   try {
-    const { data, error } = await supabase
-      .from('resources')
-      .select('*')
-      .eq('type', 'software')
-      
-    if (error) throw error
-
+    const data = await fetchResourcesWithTags()
+    
     // Apply search filter first
     let filteredData = data
     if (searchQuery.value) {
@@ -148,7 +144,7 @@ const fetchResources = async () => {
       // Tags filter
       if (currentFilters.value.tags?.length > 0) {
         const hasAllTags = currentFilters.value.tags.every(tag =>
-          resource.tags.includes(tag)
+          resource.tags.includes(tag.toLowerCase())
         )
         if (!hasAllTags) return false
       }
@@ -186,38 +182,8 @@ const fetchResources = async () => {
 const confirmDelete = async (resource: Resource) => {
   if (confirm('Are you sure you want to delete this resource?')) {
     try {
-      console.log('Deleting resource:', resource.id)
-
-      // Delete image from storage if it exists
-      if (resource.image_url) {
-        const oldPath = resource.image_url.split('/').pop()
-        console.log('Deleting image:', oldPath)
-        const { error: storageError } = await supabase.storage
-          .from('resources')
-          .remove([`resource-images/${oldPath}`])
-        
-        if (storageError) {
-          console.error('Storage delete error:', storageError)
-          throw storageError
-        }
-      }
-
-      // Delete the database record
-      const { error: deleteError } = await supabase
-        .from('resources')
-        .delete()
-        .eq('id', resource.id)
-        .select()
-
-      if (deleteError) {
-        console.error('Database delete error:', deleteError)
-        throw deleteError
-      }
-
-      console.log('Successfully deleted resource')
-      // Refresh the list
+      await deleteResource(resource.id)
       await fetchResources()
-
     } catch (error) {
       console.error('Error deleting resource:', error)
       alert(`Failed to delete resource: ${error.message}`)

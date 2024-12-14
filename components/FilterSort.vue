@@ -265,11 +265,13 @@ export default {
     async fetchTags() {
       try {
         const { data, error } = await this.supabase
-          .from('resources')
-          .select('tags')
+          .from('tags')
+          .select('name')
+          .order('name')
 
         if (error) throw error
-        this.availableTags = [...new Set(data.flatMap(resource => resource.tags))]
+        
+        this.availableTags = data.map(tag => tag.name)
           .sort((a, b) => a.localeCompare(b))
       } catch (error) {
         console.error('Error fetching tags:', error)
@@ -289,8 +291,9 @@ export default {
       this.showSuggestions = true
     },
     selectTag(tag) {
-      if (!this.selectedTags.includes(tag)) {
-        this.selectedTags.push(tag)
+      const normalizedTag = tag.toLowerCase()
+      if (!this.selectedTags.includes(normalizedTag)) {
+        this.selectedTags.push(normalizedTag)
       }
       this.tagInput = ''
       this.showSuggestions = false
@@ -298,7 +301,7 @@ export default {
     addTag() {
       if (!this.tagInput.trim()) return
       
-      const newTag = this.tagInput.trim().toUpperCase()
+      const newTag = this.tagInput.trim().toLowerCase()
       if (!this.selectedTags.includes(newTag)) {
         this.selectedTags.push(newTag)
       }
