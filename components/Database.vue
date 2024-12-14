@@ -19,7 +19,11 @@
 
     <!-- Resources table -->
     <div v-else v-for="resource in resources" :key="resource.id" class="table-row-group hover:bg-neutral-100 rounded-lg">
-      <div class="table-row">
+      <div 
+        class="table-row relative"
+        :class="{ 'pending-resource': resource.status === 'pending' }"
+      >
+       
         <div class="table-cell db-cell relative group">
           <div 
             v-if="canEdit"
@@ -267,3 +271,11 @@ defineExpose({
   handleSearch
 })
 </script>
+
+<style>
+.pending-resource {
+  @apply relative;  /* For the pending badge positioning */
+}
+
+/* You can add any other pending-specific styles here */
+</style>

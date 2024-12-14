@@ -92,4 +92,31 @@ const handleKeydown = (e) => {
     searchInput.value?.focus()
   }
 }
+
+const fetchResources = async () => {
+  try {
+    const data = await fetchResourcesWithTags()
+    
+    // Apply search filter
+    let filteredData = data
+    if (searchQuery.value) {
+      const query = searchQuery.value.trim().toLowerCase()
+      filteredData = data.filter(resource => {
+        const name = resource.name?.toLowerCase() || ''
+        const creator = resource.creator?.toLowerCase() || ''
+        const tags = resource.tags?.map(tag => tag.toLowerCase()) || []
+        const type = resource.type?.toLowerCase() || ''
+
+        return name.includes(query) ||
+          creator.includes(query) ||
+          tags.some(tag => tag.includes(query)) ||
+          type.includes(query)
+      })
+    }
+
+    resources.value = filteredData
+  } catch (error) {
+    console.error('Error fetching resources:', error)
+  }
+}
 </script>

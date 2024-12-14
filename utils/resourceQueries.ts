@@ -1,4 +1,5 @@
 import { useSupabase } from './supabase'
+import { useNuxtApp } from '#app'
 
 export interface Resource {
   id: number
@@ -37,12 +38,19 @@ export interface User {
 
 export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
   const { supabase } = useSupabase()
+  const { $identity } = useNuxtApp()
   
   try {
-    const { data, error } = await supabase
+    // Get current user to check if admin
+    const currentUser = $identity.currentUser()
+    const isAdmin = currentUser?.app_metadata?.roles?.includes('admin')
+
+    // Build query based on user role
+    let query = supabase
       .from('resources')
       .select(`
         *,
+        creators (name),
         resource_tags (
           tags (
             name
@@ -51,11 +59,19 @@ export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
       `)
       .eq('type', 'software')
 
+    // If not admin, only show approved resources
+    if (!isAdmin) {
+      query = query.eq('status', 'approved')
+    }
+
+    const { data, error } = await query
+
     if (error) throw error
 
     // Transform the data to ensure tags are in the expected format
     return data.map(resource => ({
       ...resource,
+      creator: resource.creators.name,
       tags: resource.resource_tags?.map(rt => rt.tags.name) || []
     }))
 
@@ -68,31 +84,52 @@ export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
 // Function to add a new resource with tags
 export const createResourceWithTags = async (resource: Partial<Resource>, tags: string[]) => {
   const { supabase } = useSupabase()
+  const { $identity } = useNuxtApp()
   
   try {
-    // Get current user's ID
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Must be logged in to create a resource')
+    // Get current user's ID from Netlify Identity
+    const currentUser = $identity.currentUser()
+    console.log('Current Netlify User:', currentUser)
+    
+    if (!currentUser) throw new Error('Must be logged in to create a resource')
 
-    // 1. Insert the resource first with owner_id and submitted_by
-    const { data: newResource, error: resourceError } = await supabase
-      .from('resources')
-      .insert([{
-        name: resource.name,
-        creator: resource.creator,
-        price: resource.price,
-        link: resource.link,
-        image_url: resource.image_url,
-        os: resource.os,
-        type: 'software',
-        owner_id: user.id,
-        submitted_by: user.id,
-        status: 'pending'
-      }])
+    // First, create or get the creator
+    const { data: creatorData, error: creatorError } = await supabase
+      .from('creators')
+      .upsert([{ name: resource.creator }], { onConflict: 'name' })
       .select()
       .single()
 
-    if (resourceError) throw resourceError
+    if (creatorError) throw creatorError
+
+    // 1. Insert the resource with creator_id
+    const resourceData = {
+      name: resource.name,
+      creator_id: creatorData.id,
+      price: resource.price,
+      link: resource.link,
+      image_url: resource.image_url,
+      os: resource.os,
+      type: 'software',
+      owner_id: currentUser.id,
+      submitted_by: currentUser.id,
+      status: 'pending'
+    }
+    
+    console.log('Attempting to insert resource with data:', resourceData)
+
+    const { data: newResource, error: resourceError } = await supabase
+      .from('resources')
+      .insert([resourceData])
+      .select()
+      .single()
+
+    if (resourceError) {
+      console.error('Resource insert error:', resourceError)
+      throw resourceError
+    }
+
+    console.log('Successfully created resource:', newResource)
 
     // 2. For each tag, ensure it exists in the tags table
     const tagPromises = tags.map(async (tagName) => {

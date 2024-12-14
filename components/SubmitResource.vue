@@ -278,6 +278,7 @@
 <script>
 import gsap from 'gsap'
 import { useSupabase } from '../utils/supabase'
+import { createResourceWithTags } from '../utils/resourceQueries'
 
 export default {
   emits: ['close', 'resource-added', 'resource-updated'],
@@ -595,6 +596,7 @@ export default {
     async submitResource() {
       try {
         this.isSubmitting = true
+        console.log('Starting resource submission...')
         
         // Upload image first if one is selected
         let imageUrl = null
@@ -602,48 +604,22 @@ export default {
           imageUrl = await this.uploadImage()
         }
 
-        // 1. First insert the resource without tags
-        const { data: newResource, error: resourceError } = await this.supabase
-          .from('resources')
-          .insert([{
-            name: this.formData.name,
-            creator: this.formData.creator,
-            price: this.formData.price,
-            link: this.formData.link,
-            image_url: imageUrl,
-            os: this.selectedOS,
-            type: 'software'
-          }])
-          .select()
-          .single()
+        // Use the createResourceWithTags function instead of direct submission
+        const resourceData = {
+          name: this.formData.name,
+          creator: this.formData.creator,
+          price: this.formData.price,
+          link: this.formData.link,
+          image_url: imageUrl,
+          os: this.selectedOS,
+          type: 'software'
+        }
 
-        if (resourceError) throw resourceError
+        console.log('Resource data:', resourceData)
+        console.log('Selected tags:', this.selectedTags)
 
-        // 2. For each tag, ensure it exists in the tags table
-        const tagPromises = this.selectedTags.map(async (tagName) => {
-          const { data: tag, error: tagError } = await this.supabase
-            .from('tags')
-            .upsert({ name: tagName.toLowerCase() }, { onConflict: 'name' })
-            .select()
-            .single()
-
-          if (tagError) throw tagError
-          return tag
-        })
-
-        const resolvedTags = await Promise.all(tagPromises)
-
-        // 3. Create the resource_tags relationships
-        const resourceTagsData = resolvedTags.map(tag => ({
-          resource_id: newResource.id,
-          tag_id: tag.id
-        }))
-
-        const { error: relationError } = await this.supabase
-          .from('resource_tags')
-          .insert(resourceTagsData)
-
-        if (relationError) throw relationError
+        await createResourceWithTags(resourceData, this.selectedTags)
+        console.log('Resource created successfully')
 
         // Reset form
         this.resetForm()

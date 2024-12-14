@@ -46,4 +46,10 @@
   .image-drop-zone-active {
     @apply bg-neutral-200;
   }
+  .pending-resource {
+    @apply bg-amber-500 text-amber-900;
+    .tag, .btn {
+      @apply bg-amber-600 text-amber-900;
+    }
+  }
 }

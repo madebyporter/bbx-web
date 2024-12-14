@@ -6,30 +6,19 @@ export const handleNetlifyUser = async (user: any) => {
   const { supabase } = useSupabase()
   
   try {
-    // First check if user exists in users table
-    const { data: existingUser } = await supabase
+    // First ensure user exists in users table
+    const { error: userError } = await supabase
       .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single()
+      .upsert([{
+        id: user.id,
+        email: user.email,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }], { onConflict: 'id' })
 
-    // If user doesn't exist, create them with metadata
-    if (!existingUser) {
-      const { error: userError } = await supabase
-        .from('users')
-        .insert([{
-          id: user.id,
-          email: user.email,
-          user_metadata: user.user_metadata,
-          app_metadata: user.app_metadata,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }])
+    if (userError) throw userError
 
-      if (userError) throw userError
-    }
-
-    // Then check if user profile exists
+    // Then check if profile exists
     const { data: existingProfile } = await supabase
       .from('user_profiles')
       .select('*')
