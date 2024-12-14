@@ -226,7 +226,16 @@
             Image
             <span class="text-red-500">*</span>
           </label>
-          <div class="relative w-full min-h-[121px] lg:w-[111px] lg:h-[61px]">
+          <div 
+            class="image-drop-zone relative w-full min-h-[350px] lg:w-full lg:h-full transition-colors duration-200"
+            @dragover.prevent="handleDragOver"
+            @dragleave.prevent="handleDragLeave"
+            @drop.prevent="handleDrop"
+            :class="{ 
+              'image-drop-zone-active': isDragging,
+              'drag-over': !imagePreview 
+            }"
+          >
             <input 
               ref="fileInput"
               type="file" 
@@ -243,7 +252,11 @@
                 class="w-full h-full object-cover"
                 alt="Preview"
               />
-              <span v-else class="text-sm text-neutral-400">Add Image</span>
+              <div v-else class="flex flex-col items-center gap-2 p-4 text-center">
+                <span class="text-sm text-neutral-400">
+                  Drag and drop an image here<br>or click to browse
+                </span>
+              </div>
             </div>
           </div>
           <p v-if="imageError" class="text-red-500 text-sm mt-1">{{ imageError }}</p>
@@ -331,7 +344,8 @@ export default {
         link: '',
         image: '',
         type: ''
-      }
+      },
+      isDragging: false,
     }
   },
   watch: {
@@ -418,41 +432,64 @@ export default {
         throw error
       }
     },
-    handleImageSelect(event) {
-      try {
-        const file = event.target.files[0]
-        if (!file) return
+    handleDragOver(event) {
+      this.isDragging = true
+      event.dataTransfer.dropEffect = 'copy'
+    },
 
-        // Validate file type and size
-        if (!file.type.startsWith('image/')) {
-          this.imageError = 'Please select an image file'
-          return
-        }
-        if (file.size > 5 * 1024 * 1024) { // 5MB limit
-          this.imageError = 'Image must be less than 5MB'
-          return
-        }
+    handleDragLeave() {
+      this.isDragging = false
+    },
 
-        this.imageFile = file
-        this.imageError = null
-
-        // Create preview
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          try {
-            this.imagePreview = e.target.result
-          } catch (error) {
-            console.error('Error setting preview:', error)
-          }
-        }
-        reader.onerror = (error) => {
-          console.error('Error reading file:', error)
-          this.imageError = 'Error reading file'
-        }
-        reader.readAsDataURL(file)
-      } catch (error) {
-        console.error('Error in handleImageSelect:', error)
+    handleDrop(event) {
+      this.isDragging = false
+      const file = event.dataTransfer.files[0]
+      if (file) {
+        this.validateAndProcessImage(file)
       }
+    },
+
+    handleImageSelect(event) {
+      const file = event.target.files[0]
+      if (file) {
+        this.validateAndProcessImage(file)
+      }
+    },
+
+    validateAndProcessImage(file) {
+      // Reset error state
+      this.imageError = null
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        this.imageError = 'Please select an image file'
+        return
+      }
+
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        this.imageError = 'Image must be less than 5MB'
+        return
+      }
+
+      // Store the file
+      this.imageFile = file
+
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          this.imagePreview = e.target.result
+        } catch (error) {
+          console.error('Error setting preview:', error)
+          this.imageError = 'Error creating preview'
+        }
+      }
+      reader.onerror = (error) => {
+        console.error('Error reading file:', error)
+        this.imageError = 'Error reading file'
+      }
+      reader.readAsDataURL(file)
     },
 
     async uploadImage() {
@@ -471,25 +508,27 @@ export default {
             upsert: false
           })
 
-        if (uploadError) {
-          console.error('Upload error:', uploadError)
-          throw uploadError
-        }
+        if (uploadError) throw uploadError
 
-        // Get public URL using the newer method
+        // Get public URL and force HTTPS
         const { data: { publicUrl } } = this.supabase.storage
           .from('resources')
           .getPublicUrl(filePath)
 
+        const httpsUrl = publicUrl.replace('http://', 'https://')
+
         // Verify URL is accessible
-        const testResponse = await fetch(publicUrl)
-        if (!testResponse.ok) {
-          console.error('URL not accessible:', publicUrl)
-          throw new Error('Generated URL is not accessible')
+        try {
+          const testResponse = await fetch(httpsUrl)
+          if (!testResponse.ok) {
+            throw new Error('URL not accessible')
+          }
+        } catch (error) {
+          console.warn('URL verification failed, but continuing:', error)
+          // Continue anyway as the image might still work
         }
 
-        console.log('Successfully uploaded image:', publicUrl)
-        return publicUrl
+        return httpsUrl
 
       } catch (error) {
         console.error('Error in uploadImage:', error)
@@ -563,36 +602,52 @@ export default {
           imageUrl = await this.uploadImage()
         }
 
-        // Convert comma-separated strings to arrays
-        const processedData = {
-          ...this.formData,
-          tags: this.selectedTags,
-          os: this.selectedOS,
-          image_url: imageUrl,
-          type: 'software',
-          created_at: new Date()
-        }
-
-        const { data, error } = await this.supabase
+        // 1. First insert the resource without tags
+        const { data: newResource, error: resourceError } = await this.supabase
           .from('resources')
-          .insert([processedData])
+          .insert([{
+            name: this.formData.name,
+            creator: this.formData.creator,
+            price: this.formData.price,
+            link: this.formData.link,
+            image_url: imageUrl,
+            os: this.selectedOS,
+            type: 'software'
+          }])
+          .select()
+          .single()
 
-        if (error) throw error
+        if (resourceError) throw resourceError
+
+        // 2. For each tag, ensure it exists in the tags table
+        const tagPromises = this.selectedTags.map(async (tagName) => {
+          const { data: tag, error: tagError } = await this.supabase
+            .from('tags')
+            .upsert({ name: tagName.toLowerCase() }, { onConflict: 'name' })
+            .select()
+            .single()
+
+          if (tagError) throw tagError
+          return tag
+        })
+
+        const resolvedTags = await Promise.all(tagPromises)
+
+        // 3. Create the resource_tags relationships
+        const resourceTagsData = resolvedTags.map(tag => ({
+          resource_id: newResource.id,
+          tag_id: tag.id
+        }))
+
+        const { error: relationError } = await this.supabase
+          .from('resource_tags')
+          .insert(resourceTagsData)
+
+        if (relationError) throw relationError
 
         // Reset form
-        this.formData = {
-          name: '',
-          creator: '',
-          price: '',
-          link: '',
-          image_url: '',
-          type: 'software'
-        }
-        this.selectedTags = []
-        this.selectedOS = []
-        this.imageFile = null
-        this.imagePreview = null
-
+        this.resetForm()
+        
         // Close modal with animation
         this.animateOut()
         
@@ -606,6 +661,7 @@ export default {
         this.isSubmitting = false
       }
     },
+
     async updateResource() {
       try {
         this.isSubmitting = true
@@ -613,60 +669,82 @@ export default {
         
         let imageUrl = this.resourceToEdit.image_url
 
-        // If a new image was selected, upload it and delete the old one
+        // Handle image update if needed
         if (this.imageFile) {
-          console.log('Updating image...')
           // Delete old image if it exists
           if (this.resourceToEdit.image_url) {
             const oldPath = this.resourceToEdit.image_url
-              .split('resource-images/')[1] // Get just the filename part
+              .split('resource-images/')[1]
             
             if (oldPath) {
-              const { error: deleteError } = await this.supabase.storage
+              await this.supabase.storage
                 .from('resources')
                 .remove([`resource-images/${oldPath}`])
-              
-              if (deleteError) {
-                console.error('Error deleting old image:', deleteError)
-                throw deleteError
-              }
             }
           }
           
           // Upload new image
           imageUrl = await this.uploadImage()
-          console.log('New image URL:', imageUrl)
         }
 
-        // Process the data
-        const processedData = {
-          ...this.formData,
-          tags: this.selectedTags,
-          os: this.selectedOS,
-          image_url: imageUrl,
-          type: 'software'
-        }
-
-        console.log('Updating with data:', processedData)
-
-        // Update the record
-        const { data, error } = await this.supabase
+        // 1. Update the resource
+        const { data: updatedResource, error: resourceError } = await this.supabase
           .from('resources')
-          .update(processedData)
+          .update({
+            name: this.formData.name,
+            creator: this.formData.creator,
+            price: this.formData.price,
+            link: this.formData.link,
+            image_url: imageUrl,
+            os: this.selectedOS,
+            type: 'software'
+          })
           .eq('id', this.resourceToEdit.id)
           .select()
+          .single()
 
-        if (error) {
-          console.error('Update error:', error)
-          throw error
+        if (resourceError) throw resourceError
+
+        // 2. Delete existing tag relationships
+        const { error: deleteError } = await this.supabase
+          .from('resource_tags')
+          .delete()
+          .eq('resource_id', this.resourceToEdit.id)
+
+        if (deleteError) throw deleteError
+
+        // 3. Create new tags and relationships
+        const tagPromises = this.selectedTags.map(async (tagName) => {
+          const { data: tag, error: tagError } = await this.supabase
+            .from('tags')
+            .upsert({ name: tagName.toLowerCase() }, { onConflict: 'name' })
+            .select()
+            .single()
+
+          if (tagError) throw tagError
+          return tag
+        })
+
+        const resolvedTags = await Promise.all(tagPromises)
+
+        // 4. Create new resource_tags relationships
+        if (resolvedTags.length > 0) {
+          const resourceTagsData = resolvedTags.map(tag => ({
+            resource_id: this.resourceToEdit.id,
+            tag_id: tag.id
+          }))
+
+          const { error: relationError } = await this.supabase
+            .from('resource_tags')
+            .insert(resourceTagsData)
+
+          if (relationError) throw relationError
         }
-
-        console.log('Update successful:', data)
 
         // Emit event to refresh Database.vue
         this.$emit('resource-updated')
         
-        // Close modal with animation first
+        // Close modal with animation
         this.animateOut()
 
       } catch (error) {

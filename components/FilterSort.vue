@@ -326,7 +326,7 @@ export default {
       this.close()
     },
     clearAll() {
-      // Reset all filters and sort to default values
+      // Reset all filters but keep sort as created_at/desc
       this.sortBy = 'created_at'
       this.sortDirection = 'desc'
       this.filters.price.free = false

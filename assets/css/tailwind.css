@@ -17,10 +17,10 @@
     @apply min-w-[270px] lg:min-w-[270px];
   }
   .db-col-lg {
-    @apply min-w-[300px] lg:min-w-[360px];
+    @apply min-w-[300px] lg:min-w-[320px];
   }
   .db-cell {
-    @apply px-2 py-4 align-middle text-sm;
+    @apply px-2 py-4 align-middle text-sm truncate;
   }
   .modal {
     @apply fixed right-2 lg:right-4 top-2 lg:top-4 bottom-2 lg:bottom-4 left-2 lg:left-auto lg:w-2/5 bg-white rounded-md p-8 overflow-auto z-50;
@@ -39,5 +39,11 @@
   }
   .tag-active path {
     @apply fill-neutral-100;
+  }
+  .drag-over {
+    @apply border-neutral-400 border-2 border-dashed;
+  }
+  .image-drop-zone-active {
+    @apply bg-neutral-200;
   }
 }
