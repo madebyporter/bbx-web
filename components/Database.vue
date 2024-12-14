@@ -88,7 +88,7 @@ import { fetchResourcesWithTags, deleteResource, type Resource } from '../utils/
 
 const { supabase } = useSupabase()
 const resources = ref<Resource[]>([])
-const currentSort = ref({ sortBy: 'name', sortDirection: 'asc' })
+const currentSort = ref({ sortBy: 'created_at', sortDirection: 'desc' })
 const currentFilters = ref({})
 const searchQuery = ref('')
 
@@ -192,16 +192,35 @@ const confirmDelete = async (resource: Resource) => {
 }
 
 const getImageUrl = (url: string) => {
-  if (!url) return ''
-  const path = url.split('/').pop() // Get filename
-  return supabase.storage
-    .from('resources')
-    .getPublicUrl(`resource-images/${path}`).data.publicUrl
+  if (!url) return '/img/placeholder.png'
+  
+  try {
+    // If it's already a full URL, return it
+    if (url.startsWith('http')) return url
+    
+    // Get filename from path
+    const path = url.split('/').pop()
+    
+    // Add https:// to force non-QUIC protocol
+    const publicUrl = supabase.storage
+      .from('resources')
+      .getPublicUrl(`resource-images/${path}`).data.publicUrl
+      
+    return publicUrl.replace('http://', 'https://')
+  } catch (error) {
+    console.error('Error getting image URL:', error)
+    return '/img/placeholder.png'
+  }
 }
 
 const handleImageError = (e: Event) => {
-  console.error('Image failed to load:', (e.target as HTMLImageElement).src)
-  ;(e.target as HTMLImageElement).src = '/img/placeholder.png'
+  const img = e.target as HTMLImageElement
+  console.error('Image failed to load:', img.src)
+  
+  // Only set placeholder if not already using it
+  if (!img.src.includes('placeholder.png')) {
+    img.src = '/img/placeholder.png'
+  }
 }
 
 const updateSort = (sortParams: typeof currentSort.value) => {
