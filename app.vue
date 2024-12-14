@@ -9,9 +9,9 @@
       class="
         flex 
         flex-col
-        gap-16
+        gap-4
         bg-white
-        p-8
+        *:p-8
         top-0
         min-w-[235px]
         max-lg:fixed 
@@ -21,61 +21,60 @@
         max-lg:top-[150px] 
         max-lg:z-50 
         max-lg:rounded-md 
-        max-lg:overflow-scroll 
         max-lg:[transform:translateX(-105%)]
         lg:col-start-1 
         lg:col-span-3 
         lg:fixed 
         lg:h-full 
+        lg:bg-neutral-100
         xl:col-start-1 
         xl:col-span-2 
-        lg:overflow-auto  
-        lg:bg-neutral-100
-        lg:pb-[110px]
         ">
       <div class="sticky top-0">
         <img src="/img/bbx-logo.svg" alt="BBX Logo" class="size-12" />
       </div>
-      <div class="flex flex-col gap-4">
-        <span class="uppercase text-xs">Resources</span>
-        <NuxtLink to="#" class="text-base">Software</NuxtLink>
-        <NuxtLink to="#" class="nav-text-later">
-          Hardware <span class="tag">Later</span>
-        </NuxtLink>
-        <NuxtLink to="#" class="nav-text-later">
-          Sounds & Kits <span class="tag">Later</span>
-        </NuxtLink>
-        <NuxtLink to="#" class="nav-text-later">
-          Sync Libraries <span class="tag">Later</span>
-        </NuxtLink>
-        <NuxtLink to="#" class="nav-text-later">
-          Tutorials <span class="tag">Later</span>
-        </NuxtLink>
-      </div>
-      <div class="flex flex-col gap-4">
-        <span class="uppercase text-xs">People</span>
-        <NuxtLink to="#" class="nav-text-later">
-          Producers <span class="tag">Later</span>
-        </NuxtLink>
-        <NuxtLink to="#" class="nav-text-later">
-          Engineers <span class="tag">Later</span>
-        </NuxtLink>
-        <NuxtLink to="#" class="nav-text-later">
-          Musicians <span class="tag">Later</span>
-        </NuxtLink>
-      </div>
-      <div class="flex flex-col gap-4">
-        <span class="uppercase text-xs">Products</span>
-        <NuxtLink to="#" class="nav-text-later">
-          Studio <span class="tag">Later</span>
-        </NuxtLink>
-        <NuxtLink to="#" class="nav-text-later">
-          Display <span class="tag">Later</span>
-        </NuxtLink>
+      <div class="flex flex-col gap-16 grow overflow-auto lg:pb-[130px]">
+        <div class="flex flex-col gap-4">
+          <span class="uppercase text-xs">Resources</span>
+          <NuxtLink to="#" class="text-base">Software</NuxtLink>
+          <NuxtLink to="#" class="nav-text-later">
+            Hardware <span class="tag">Later</span>
+          </NuxtLink>
+          <NuxtLink to="#" class="nav-text-later">
+            Sounds & Kits <span class="tag">Later</span>
+          </NuxtLink>
+          <NuxtLink to="#" class="nav-text-later">
+            Sync Libraries <span class="tag">Later</span>
+          </NuxtLink>
+          <NuxtLink to="#" class="nav-text-later">
+            Tutorials <span class="tag">Later</span>
+          </NuxtLink>
+        </div>
+        <div class="flex flex-col gap-4">
+          <span class="uppercase text-xs">People</span>
+          <NuxtLink to="#" class="nav-text-later">
+            Producers <span class="tag">Later</span>
+          </NuxtLink>
+          <NuxtLink to="#" class="nav-text-later">
+            Engineers <span class="tag">Later</span>
+          </NuxtLink>
+          <NuxtLink to="#" class="nav-text-later">
+            Musicians <span class="tag">Later</span>
+          </NuxtLink>
+        </div>
+        <div class="flex flex-col gap-4">
+          <span class="uppercase text-xs">Products</span>
+          <NuxtLink to="#" class="nav-text-later">
+            Studio <span class="tag">Later</span>
+          </NuxtLink>
+          <NuxtLink to="#" class="nav-text-later">
+            Display <span class="tag">Later</span>
+          </NuxtLink>
+        </div>
       </div>
 
       <!-- Account UI -->
-      <div class="bg-neutral-200 h-fit fixed bottom-4 left-4 right-4 w-auto rounded-md p-4 hidden lg:flex flex-row items-center max-w-[203px]"> 
+      <div class="bg-neutral-200 h-fit fixed bottom-4 left-4 right-4 w-auto rounded-md !p-4 hidden lg:flex flex-row items-center max-w-[203px]"> 
         <div class="flex flex-row gap-2 items-center">
           <template v-if="user">
             <!-- <div class="flex justify-center items-center rounded-full overflow-hidden w-8 h-8 min-w-8 min-h-8">
