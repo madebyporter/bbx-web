@@ -32,13 +32,13 @@
               <div class="flex flex-row gap-2">
                 <button 
                   @click="approveResource(resource)"
-                  class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  class="px-4 py-2 bg-emerald-300 text-emerald-900 rounded-md hover:bg-emerald-400 cursor-pointer"
                 >
                   Approve
                 </button>
                 <button 
                   @click="rejectResource(resource)"
-                  class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  class="px-4 py-2 bg-rose-300 text-rose-900 rounded-md hover:bg-rose-400 cursor-pointer"
                 >
                   Reject
                 </button>
