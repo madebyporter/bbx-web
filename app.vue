@@ -1,6 +1,6 @@
 <template>
   <main 
-    class="grid grid-cols-12 gap-4 min-h-svh transition-all duration-300" 
+    class="grid grid-cols-12 gap-0 min-h-svh transition-all duration-300" 
     :class="{ 'blur-sm': showModal || showFilterModal }"
   >
     <nav 
@@ -100,7 +100,7 @@
         </div>
       </div>
     </nav>
-    <section id="content" class="col-start-1 col-span-12 lg:col-start-4 lg:col-span-9 xl:col-start-3 xl:col-span-10 grid grid-cols-subgrid gap-4 content-start">
+    <section id="content" class="col-start-1 col-span-12 lg:col-start-4 lg:col-span-9 xl:col-start-3 xl:col-span-10 grid grid-cols-subgrid gap-0 content-start">
       <div class="col-span-full sticky top-0 z-50">
         <SearchFilter 
           @open-filter-modal="openFilterModal" 
@@ -147,42 +147,34 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import gsap from 'gsap'
+import { handleNetlifyUser } from '~/utils/netlifyIdentityHook'
+import { useNuxtApp } from 'nuxt/app'
 
-// Initialize netlify identity
-const user = ref(null)
 const { $identity } = useNuxtApp()
-
-// Watch for user changes
-watch(() => user.value, (newUser) => {
-  console.log('User state changed:', newUser)
-  if (newUser) {
-    console.log('User roles:', newUser.app_metadata?.roles)
-  }
-}, { deep: true })
+const user = ref(null)
 
 onMounted(() => {
-  // Set initial user state and force a metadata refresh
   const currentUser = $identity.currentUser()
   if (currentUser) {
     // Store the full user object
     user.value = {
       ...currentUser,
-      // Ensure we have the metadata
       app_metadata: currentUser.app_metadata || {},
       user_metadata: currentUser.user_metadata || {}
     }
-    console.log('Mounted with user:', user.value)
+    // Sync user data to Supabase
+    handleNetlifyUser(currentUser)
   }
 
-  // Listen for login events with full metadata
-  $identity.on('login', (loginUser) => {
+  // Listen for login events
+  $identity.on('login', async (loginUser) => {
     if (loginUser) {
       user.value = {
         ...loginUser,
         app_metadata: loginUser.app_metadata || {},
         user_metadata: loginUser.user_metadata || {}
       }
-      console.log('Login with user:', user.value)
+      await handleNetlifyUser(loginUser)
     }
     $identity.close()
   })

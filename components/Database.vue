@@ -18,12 +18,12 @@
     </div>
 
     <!-- Resources table -->
-    <div v-else v-for="resource in resources" :key="resource.id" class="table-row-group">
+    <div v-else v-for="resource in resources" :key="resource.id" class="table-row-group hover:bg-neutral-100 rounded-lg">
       <div class="table-row">
         <div class="table-cell db-cell relative group">
           <div 
             v-if="canEdit"
-            class="hidden lg:flex absolute left-4 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2"
+            class="hidden lg:flex absolute left-4 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity gap-2"
           >
             <div 
               class="bg-neutral-800 hover:bg-neutral-900 p-2 rounded-md cursor-pointer"
