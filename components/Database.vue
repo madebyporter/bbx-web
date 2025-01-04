@@ -4,9 +4,10 @@
       <div class="table-row">
         <div class="table-cell db-head db-col-lg">Name</div>
         <div class="table-cell db-head db-col-sm">Creator</div>
-        <div class="table-cell db-head db-col-md">Tags</div>
+        <div class="table-cell db-head db-col-sm">Tags</div>
         <div class="table-cell db-head db-col-sm">Price</div>
         <div class="table-cell db-head db-col-sm">OS</div>
+        <div class="table-cell db-head db-col-sm">I Use This</div>
         <div class="table-cell db-head db-col-sm">Download</div>
       </div>
     </div>
@@ -76,6 +77,24 @@
           </div>
         </div>
         <div class="table-cell db-cell">
+          <div class="flex flex-row gap-0 items-stretch rounded-sm overflow-hidden w-fit">
+            <div class="flex items-center justify-center bg-neutral-600 text-white p-1 px-2">
+              {{ useCounts[resource.id] || 0 }}
+            </div>
+            <div 
+              class="flex items-center justify-center p-1 px-2 cursor-pointer"
+              :class="userUsedResources[resource.id] ? 'bg-neutral-800' : 'bg-neutral-400 hover:bg-neutral-500'"
+              @click="toggleUse(resource)"
+            >
+              <img 
+                :src="userUsedResources[resource.id] ? '/img/db/icon-check.svg' : '/img/db/icon-checkbox.svg'" 
+                :alt="userUsedResources[resource.id] ? 'Remove from I Use This' : 'Add to I Use This'" 
+                class="min-w-3 min-h-auto" 
+              />
+            </div>
+          </div>
+        </div>
+        <div class="table-cell db-cell">
           <a :href="resource.link" target="_blank" class="btn">
             Download
           </a>
@@ -89,14 +108,24 @@
 import { ref, onMounted, watch } from 'vue'
 import { useSupabase } from '../utils/supabase'
 import { fetchResourcesWithTags, deleteResource, type Resource } from '../utils/resourceQueries'
+import { useAuth } from '../composables/useAuth'
+
+interface ResourceFilters {
+  price?: { free: boolean; paid: boolean }
+  os?: string[]
+  tags?: string[]
+}
 
 const { supabase } = useSupabase()
+const auth = useAuth()
 const resources = ref<Resource[]>([])
 const currentSort = ref({ sortBy: 'created_at', sortDirection: 'desc' })
-const currentFilters = ref({})
+const currentFilters = ref<ResourceFilters>({})
 const searchQuery = ref('')
+const useCounts = ref<{[key: number]: number}>({})
+const userUsedResources = ref<{[key: number]: boolean}>({})
 
-const emit = defineEmits(['edit-resource'])
+const emit = defineEmits(['edit-resource', 'show-signup'])
 
 const editResource = (resource: Resource) => {
   emit('edit-resource', resource)
@@ -127,7 +156,7 @@ const fetchResources = async () => {
       })
     }
 
-    // Then apply other filters
+    // Then apply filters
     filteredData = filteredData.filter(resource => {
       // Price filter
       if (currentFilters.value.price?.free || currentFilters.value.price?.paid) {
@@ -138,15 +167,15 @@ const fetchResources = async () => {
       }
 
       // OS filter
-      if (currentFilters.value.os?.length > 0) {
-        const hasMatchingOS = currentFilters.value.os.some(os => 
-          resource.os.includes(os)
+      if (currentFilters.value.os && currentFilters.value.os.length > 0) {
+        const hasMatchingOS = currentFilters.value.os.some(osType => 
+          resource.os.includes(osType)
         )
         if (!hasMatchingOS) return false
       }
 
       // Tags filter
-      if (currentFilters.value.tags?.length > 0) {
+      if (currentFilters.value.tags && currentFilters.value.tags.length > 0) {
         const hasAllTags = currentFilters.value.tags.every(tag =>
           resource.tags.includes(tag.toLowerCase())
         )
@@ -167,8 +196,9 @@ const fetchResources = async () => {
       })
     } else {
       filteredData.sort((a, b) => {
-        const valueA = a[currentSort.value.sortBy]
-        const valueB = b[currentSort.value.sortBy]
+        const valueA = a[currentSort.value.sortBy as keyof Resource]
+        const valueB = b[currentSort.value.sortBy as keyof Resource]
+        if (valueA === undefined || valueB === undefined) return 0
         const comparison = valueA < valueB ? -1 : valueA > valueB ? 1 : 0
         return currentSort.value.sortDirection === 'asc' 
           ? comparison 
@@ -188,9 +218,9 @@ const confirmDelete = async (resource: Resource) => {
     try {
       await deleteResource(resource.id)
       await fetchResources()
-    } catch (error) {
-      console.error('Error deleting resource:', error)
-      alert(`Failed to delete resource: ${error.message}`)
+    } catch (error: unknown) {
+      console.error('Error deleting resource:', error instanceof Error ? error.message : 'Unknown error')
+      alert(`Failed to delete resource: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 }
@@ -245,6 +275,85 @@ const handleSearch = (query: string) => {
   fetchResources()
 }
 
+// Watch for user login to refresh use counts
+watch(() => auth.user.value, async (newUser, oldUser) => {
+  console.log('User changed:', { 
+    hadUser: !!oldUser, 
+    hasUser: !!newUser,
+    userId: newUser?.id
+  })
+  if (newUser) {
+    await fetchUseCounts()
+  } else {
+    // Reset states when user logs out
+    useCounts.value = {}
+    userUsedResources.value = {}
+  }
+}, { immediate: true })
+
+const toggleUse = async (resource: Resource) => {
+  console.log('Toggle Use clicked for:', resource.name)
+  console.log('Current user:', auth.user.value)
+  console.log('Current state:', {
+    isUsed: userUsedResources.value[resource.id],
+    currentCount: useCounts.value[resource.id] || 0
+  })
+
+  if (!auth.user.value) {
+    console.log('No user logged in, showing signup modal')
+    emit('show-signup')
+    return
+  }
+
+  try {
+    const wasMarked = await auth.markResourceAsUsed(resource.id)
+    console.log('Toggle result:', wasMarked ? 'Marked as used' : 'Unmarked')
+    
+    // Update local state based on the result
+    userUsedResources.value[resource.id] = wasMarked
+    useCounts.value[resource.id] = (useCounts.value[resource.id] || 0) + (wasMarked ? 1 : -1)
+    
+    console.log('Updated state:', {
+      resource: resource.name,
+      isUsed: wasMarked,
+      newCount: useCounts.value[resource.id]
+    })
+  } catch (error) {
+    console.error('Error toggling resource use:', error)
+  }
+}
+
+const fetchUseCounts = async () => {
+  console.log('Fetching use counts...')
+  try {
+    const { data, error } = await supabase
+      .from('user_resources')
+      .select('resource_id, user_id')
+    
+    if (error) throw error
+
+    // Count uses per resource
+    const counts: {[key: number]: number} = {}
+    const userUsed: {[key: number]: boolean} = {}
+    
+    data?.forEach((row: { resource_id: number; user_id: string }) => {
+      counts[row.resource_id] = (counts[row.resource_id] || 0) + 1
+      if (auth.user.value && row.user_id === auth.user.value.id) {
+        userUsed[row.resource_id] = true
+      }
+    })
+
+    console.log('Updated use counts:', counts)
+    console.log('Updated user used states:', userUsed)
+    console.log('Current user ID:', auth.user.value?.id)
+
+    useCounts.value = counts
+    userUsedResources.value = userUsed
+  } catch (error: any) {
+    console.error('Error fetching use counts:', error)
+  }
+}
+
 const props = defineProps({
   canEdit: {
     type: Boolean,
@@ -257,12 +366,13 @@ watch(() => props.canEdit, (newValue) => {
   console.log('Database canEdit changed:', newValue)
 })
 
-onMounted(() => {
+onMounted(async () => {
   console.log('Database mounted with canEdit:', props.canEdit)
-})
-
-onMounted(() => {
-  fetchResources()
+  await fetchResources()
+  if (auth.user.value) {
+    console.log('User present on mount, fetching counts')
+    await fetchUseCounts()
+  }
 })
 
 defineExpose({

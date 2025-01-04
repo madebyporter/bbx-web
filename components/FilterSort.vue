@@ -8,9 +8,9 @@
     >
       <div 
         @click="close" 
-        class="flex justify-center items-center bg-neutral-800 hover:bg-neutral-900 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
+        class="flex justify-center items-center bg-neutral-200 hover:bg-neutral-300 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
       >
-        <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-white" />
+        <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-neutral-800" />
       </div>
 
       <div @click.stop>

@@ -1,108 +1,166 @@
-import type { User } from 'netlify-identity-widget'
-import { ref, computed } from 'vue'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { ref, computed } from 'vue'
+import { useNuxtApp } from '#app'
+
+// Define our own User type since the Netlify one isn't exported
+interface NetlifyUser {
+  id: string
+  email: string
+  user_metadata: {
+    avatar_url?: string
+    full_name?: string
+    [key: string]: any
+  }
+  app_metadata: {
+    roles?: string[]
+    [key: string]: any
+  }
+  created_at?: string
+}
+
+// Create a global state
+const globalUser = ref<NetlifyUser | null>(null)
+const globalIsAdmin = computed(() => globalUser.value?.app_metadata?.roles?.includes('admin'))
 
 export const useAuth = () => {
-  const { $netlifyIdentity, $supabase } = useNuxtApp()
-  const user = ref<User | null>(null)
-  const isAdmin = computed(() => user.value?.app_metadata?.roles?.includes('admin'))
-  const supabase = $supabase as SupabaseClient
+  const { $identity, $supabase } = useNuxtApp()
 
-  const init = async () => {
-    $netlifyIdentity.on('init', (initUser: User | null) => {
-      user.value = initUser
-      if (initUser) {
-        syncUserWithSupabase(initUser)
-      }
-    })
-
-    $netlifyIdentity.on('login', (loginUser: User) => {
-      user.value = loginUser
-      syncUserWithSupabase(loginUser)
-    })
-
-    $netlifyIdentity.on('logout', () => {
-      user.value = null
-    })
+  // Initialize Supabase
+  const initSupabase = () => {
+    if (!$supabase) {
+      console.error('Supabase client not available')
+      return false
+    }
+    return true
   }
 
-  const syncUserWithSupabase = async (netlifyUser: User) => {
-    const { error } = await supabase
-      .from('users')
-      .upsert({
-        id: netlifyUser.id,
-        email: netlifyUser.email,
-        user_metadata: netlifyUser.user_metadata,
-        app_metadata: netlifyUser.app_metadata,
-        created_at: netlifyUser.created_at,
-        updated_at: new Date().toISOString(),
-      })
+  const syncUserWithSupabase = async (netlifyUser: NetlifyUser) => {
+    if (!initSupabase()) return
 
-    if (error) {
-      console.error('Error syncing user with Supabase:', error)
+    try {
+      const { error } = await $supabase
+        .from('users')
+        .upsert({
+          id: netlifyUser.id,
+          email: netlifyUser.email,
+          user_metadata: netlifyUser.user_metadata,
+          app_metadata: netlifyUser.app_metadata,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+
+      if (error) {
+        console.error('Error syncing user with Supabase:', error)
+      }
+    } catch (error) {
+      console.error('Failed to sync user with Supabase:', error)
     }
   }
 
-  const login = () => {
-    $netlifyIdentity.open('login')
-  }
+  const init = async () => {
+    console.log('Initializing auth state...')
+    
+    // Initialize Supabase first
+    if (!initSupabase()) {
+      console.error('Failed to initialize Supabase')
+      return
+    }
 
-  const logout = () => {
-    $netlifyIdentity.logout()
+    // Initialize user state
+    const currentUser = $identity?.currentUser()
+    console.log('Current Netlify user:', currentUser)
+    
+    if (currentUser) {
+      globalUser.value = {
+        id: currentUser.id,
+        email: currentUser.email,
+        user_metadata: currentUser.user_metadata || {},
+        app_metadata: currentUser.app_metadata || {},
+        created_at: new Date().toISOString()
+      }
+      console.log('Setting user state to:', globalUser.value)
+      try {
+        await syncUserWithSupabase(globalUser.value)
+      } catch (error) {
+        console.error('Failed to sync initial user state:', error)
+      }
+    } else {
+      console.log('No current user, setting user state to null')
+      globalUser.value = null
+    }
   }
 
   const markResourceAsUsed = async (resourceId: number) => {
-    if (!user.value) return
+    if (!globalUser.value || !initSupabase()) {
+      console.error('User not logged in or Supabase not initialized')
+      return false
+    }
 
-    const { error } = await supabase
-      .from('user_resources')
-      .upsert({
-        user_id: user.value.id,
-        resource_id: resourceId,
-        used_at: new Date().toISOString(),
+    try {
+      console.log('Checking if resource is already used by user:', {
+        resourceId,
+        userId: globalUser.value.id
       })
+      
+      // First check if the user already has this resource marked as used
+      const { data: existingRecord, error: checkError } = await $supabase
+        .from('user_resources')
+        .select('*')
+        .eq('resource_id', resourceId)
+        .eq('user_id', globalUser.value.id)
+        .single()
 
-    if (error) {
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError
+      }
+
+      if (existingRecord) {
+        console.log('Resource already marked as used, removing...')
+        // If it exists, delete it (unmark)
+        const { error } = await $supabase
+          .from('user_resources')
+          .delete()
+          .eq('resource_id', resourceId)
+          .eq('user_id', globalUser.value.id)
+
+        if (error) throw error
+        console.log('Successfully removed resource usage')
+        return false
+      } else {
+        console.log('Resource not marked as used, adding...')
+        // If it doesn't exist, create it (mark as used)
+        const { error } = await $supabase
+          .from('user_resources')
+          .insert([{
+            user_id: globalUser.value.id,
+            resource_id: resourceId,
+            used_at: new Date().toISOString(),
+          }])
+
+        if (error) throw error
+        console.log('Successfully added resource usage')
+        return true
+      }
+    } catch (error) {
       console.error('Error marking resource as used:', error)
       throw error
     }
   }
 
-  const submitResource = async (resourceData: {
-    name: string
-    creator: string
-    tags: string[]
-    price: string
-    os: string[]
-    link: string
-    image_url?: string
-    type: string
-  }) => {
-    if (!user.value) return
+  const login = () => {
+    $identity?.open()
+  }
 
-    const { error } = await supabase
-      .from('resources')
-      .insert({
-        ...resourceData,
-        submitted_by: user.value.id,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-
-    if (error) {
-      console.error('Error submitting resource:', error)
-      throw error
-    }
+  const logout = () => {
+    $identity?.logout()
   }
 
   return {
-    user,
-    isAdmin,
+    user: globalUser,
+    isAdmin: globalIsAdmin,
     init,
     login,
     logout,
-    markResourceAsUsed,
-    submitResource,
+    markResourceAsUsed
   }
 } 

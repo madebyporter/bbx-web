@@ -11,13 +11,13 @@
     @apply text-left font-normal text-sm px-2 py-4;
   }
   .db-col-sm {
-    @apply min-w-[127px] lg:min-w-[127px];
+    @apply min-w-[127px] lg:max-w-[127px];
   }
   .db-col-md {
-    @apply min-w-[270px] lg:min-w-[270px];
+    @apply min-w-[270px] lg:max-w-[270px];
   }
   .db-col-lg {
-    @apply min-w-[300px] lg:min-w-[320px];
+    @apply min-w-[300px] lg:max-w-[320px];
   }
   .db-cell {
     @apply px-2 py-4 align-middle text-sm truncate;

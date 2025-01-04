@@ -14,6 +14,7 @@ export interface Resource {
   created_at: string
   owner_id: string
   is_public: boolean
+  status?: 'pending' | 'approved' | 'rejected'
 }
 
 export interface User {

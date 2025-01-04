@@ -109,15 +109,18 @@
           @toggle-nav="toggleMobileNav"
         />
       </div>
-      <div class="col-span-full max-w-full lg:max-w-none overflow-x-scroll xl:overflow-visible p-2 lg:p-0 flex flex-col gap-8">
+      <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8">
         <header class="pt-8 pb-4 border-b border-neutral-200">
           <h1 class="text-3xl font-bold indent-1">Music Production Software</h1>
         </header>
-        <Database 
-          ref="database" 
-          @edit-resource="handleEdit"
-          :can-edit="isAdmin"
-        />
+        <div class="overflow-x-scroll xl:overflow-auto">
+          <Database 
+            ref="database" 
+            @edit-resource="handleEdit"
+            @show-signup="handleShowSignup"
+            :can-edit="isAdmin"
+          />
+        </div>
       </div>
     </section>
     <SubmitResource 
@@ -149,48 +152,48 @@ import { ref, onMounted, computed, watch } from 'vue'
 import gsap from 'gsap'
 import { handleNetlifyUser } from '~/utils/netlifyIdentityHook'
 import { useNuxtApp } from 'nuxt/app'
+import { useAuth } from '~/composables/useAuth'
 
 const { $identity } = useNuxtApp()
-const user = ref(null)
+const { user, init: initAuth } = useAuth()
 
-onMounted(() => {
-  const currentUser = $identity.currentUser()
-  if (currentUser) {
-    // Store the full user object
-    user.value = {
-      ...currentUser,
-      app_metadata: currentUser.app_metadata || {},
-      user_metadata: currentUser.user_metadata || {}
-    }
-    // Sync user data to Supabase
-    handleNetlifyUser(currentUser)
-  }
-
-  // Listen for login events
-  $identity.on('login', async (loginUser) => {
-    if (loginUser) {
-      user.value = {
-        ...loginUser,
-        app_metadata: loginUser.app_metadata || {},
-        user_metadata: loginUser.user_metadata || {}
+// Initialize auth on mount
+onMounted(async () => {
+  try {
+    console.log('Starting auth initialization...')
+    
+    // Try initialization a few times with increasing delays
+    for (let i = 0; i < 3; i++) {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, i)))
+        await initAuth()
+        console.log('Auth initialized successfully, user:', user.value)
+        break
+      } catch (error) {
+        console.warn(`Auth initialization attempt ${i + 1} failed:`, error)
+        if (i === 2) throw error
       }
-      await handleNetlifyUser(loginUser)
     }
-    $identity.close()
-  })
-
-  $identity.on('logout', () => {
-    user.value = null
-    console.log('Logged out')
-  })
+  } catch (error) {
+    console.error('All auth initialization attempts failed:', error)
+  }
 })
 
-// Handle login/logout
+// Separate handler for "I Use This" signup flow
+const handleShowSignup = () => {
+  console.log('Show signup called, current user:', user.value)
+  if (!user.value) {
+    $identity?.open('signup')
+  }
+}
+
+// Regular auth handler for login/logout button
 const handleAuth = () => {
+  console.log('Handle auth called, current user:', user.value)
   if (user.value) {
-    $identity.logout()
+    $identity?.logout()
   } else {
-    $identity.open()
+    $identity?.open()
   }
 }
 

@@ -64,6 +64,8 @@ export default defineNuxtConfig({
     }
   },
   plugins: [
+    '~/plugins/supabase.client.ts',
+    '~/plugins/netlifyIdentity.client.ts',
     '~/plugins/google-analytics.client.ts'
   ]
 })
