@@ -42,6 +42,7 @@ export default defineNuxtConfig({
         { property: 'og:image', content: 'https://beatbox.studio/img/og-image.jpg' },
         { property: 'og:image:width', content: '1200' },
         { property: 'og:image:height', content: '630' },
+        { property: 'og:image:alt', content: 'Beatbox - A curated collection of music production tools' },
         { property: 'og:url', content: 'https://beatbox.studio' },
         
         // Twitter
@@ -49,6 +50,7 @@ export default defineNuxtConfig({
         { name: 'twitter:title', content: 'Beatbox' },
         { name: 'twitter:description', content: 'A curated collection of music production tools and resources.' },
         { name: 'twitter:image', content: 'https://beatbox.studio/img/og-image.jpg' },
+        { name: 'twitter:image:alt', content: 'Beatbox - A curated collection of music production tools' },
         { name: 'twitter:site', content: '@beatboxstudio' }
       ],
       link: [
