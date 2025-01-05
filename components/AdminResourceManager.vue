@@ -24,24 +24,51 @@
           </div>
           <div v-else class="flex flex-col gap-2">
             <div v-for="resource in pendingResources" :key="resource.id" 
-              class="flex flex-row justify-between items-center p-4 bg-neutral-100 rounded-md">
-              <div class="flex flex-col">
-                <span class="font-medium">{{ resource.name }}</span>
-                <span class="text-sm text-neutral-500">by {{ resource.creator }}</span>
+              class="flex flex-col gap-4 p-4 bg-neutral-100 rounded-md">
+              <div class="flex flex-row justify-between items-center">
+                <div class="flex flex-col">
+                  <span class="font-medium">{{ resource.name }}</span>
+                  <span class="text-sm text-neutral-500">by {{ resource.creator }}</span>
+                </div>
+                <div class="flex flex-row gap-2">
+                  <button 
+                    @click="approveResource(resource)"
+                    class="px-4 py-2 bg-emerald-300 text-emerald-900 rounded-md hover:bg-emerald-400 cursor-pointer"
+                  >
+                    Approve
+                  </button>
+                  <button 
+                    @click="rejectResource(resource)"
+                    class="px-4 py-2 bg-rose-300 text-rose-900 rounded-md hover:bg-rose-400 cursor-pointer"
+                  >
+                    Reject
+                  </button>
+                </div>
               </div>
-              <div class="flex flex-row gap-2">
-                <button 
-                  @click="approveResource(resource)"
-                  class="px-4 py-2 bg-emerald-300 text-emerald-900 rounded-md hover:bg-emerald-400 cursor-pointer"
-                >
-                  Approve
-                </button>
-                <button 
-                  @click="rejectResource(resource)"
-                  class="px-4 py-2 bg-rose-300 text-rose-900 rounded-md hover:bg-rose-400 cursor-pointer"
-                >
-                  Reject
-                </button>
+
+              <!-- Show duplicates if any exist -->
+              <div v-if="resource.duplicates?.length > 0" class="mt-2">
+                <div class="text-sm font-medium text-amber-600">Possible duplicates found:</div>
+                <div class="mt-1 space-y-2">
+                  <div 
+                    v-for="duplicate in resource.duplicates" 
+                    :key="duplicate.id"
+                    class="flex flex-col p-2 bg-white rounded border border-amber-200"
+                  >
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <span class="font-medium">{{ duplicate.name }}</span>
+                        <span class="text-sm text-neutral-500">&nbsp;by {{ duplicate.creator }}</span>
+                      </div>
+                      <span class="text-xs text-amber-600">
+                        Duplicate {{ getDuplicateType(resource, duplicate) }}
+                      </span>
+                    </div>
+                    <div class="text-sm text-neutral-600 mt-1">
+                      Status: {{ duplicate.status || 'approved' }}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -125,14 +152,48 @@ export default {
     },
     async fetchPendingResources() {
       try {
-        const { data, error } = await this.supabase
+        // First, get pending resources with their creators
+        const { data: pendingData, error: pendingError } = await this.supabase
           .from('resources')
-          .select('*')
+          .select(`
+            *,
+            creators (
+              name
+            )
+          `)
           .eq('status', 'pending')
           .order('created_at', { ascending: false })
 
-        if (error) throw error
-        this.pendingResources = data
+        if (pendingError) throw pendingError
+
+        // For each pending resource, check for duplicates
+        const pendingWithDuplicates = await Promise.all(pendingData.map(async (resource) => {
+          // Check for resources with same name or link (excluding the current pending one)
+          const { data: duplicates, error: dupError } = await this.supabase
+            .from('resources')
+            .select(`
+              *,
+              creators (
+                name
+              )
+            `)
+            .or(`name.ilike.${resource.name},link.eq.${resource.link}`)
+            .neq('id', resource.id)
+            .neq('status', 'rejected')
+
+          if (dupError) throw dupError
+
+          return {
+            ...resource,
+            creator: resource.creators?.name || 'Unknown',
+            duplicates: duplicates.map(dup => ({
+              ...dup,
+              creator: dup.creators?.name || 'Unknown'
+            }))
+          }
+        }))
+
+        this.pendingResources = pendingWithDuplicates
       } catch (error) {
         console.error('Error fetching pending resources:', error)
       }
@@ -208,6 +269,15 @@ export default {
         month: 'short',
         day: 'numeric'
       })
+    },
+    getDuplicateType(original, duplicate) {
+      if (original.name.toLowerCase() === duplicate.name.toLowerCase()) {
+        return 'name'
+      }
+      if (original.link === duplicate.link) {
+        return 'link'
+      }
+      return 'unknown'
     }
   },
   mounted() {

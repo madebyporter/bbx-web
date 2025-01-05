@@ -54,6 +54,12 @@ export const useAuth = () => {
     if (!initSupabase()) return
 
     try {
+      console.log('Attempting to sync user:', {
+        id: netlifyUser.id,
+        email: netlifyUser.email
+      })
+
+      // First sync the users table
       const userData = {
         id: netlifyUser.id,
         email: netlifyUser.email,
@@ -63,16 +69,43 @@ export const useAuth = () => {
         created_at: netlifyUser.created_at || new Date().toISOString()
       }
 
-      const { error } = await $supabase
+      const { error: userError } = await $supabase
         .from('users')
-        .upsert(userData, {
-          onConflict: 'id',
-          ignoreDuplicates: false
+        .upsert(userData)
+
+      if (userError) {
+        console.error('Error syncing user with Supabase:', userError)
+        throw userError
+      }
+
+      // Then ensure user profile exists
+      const profileData = {
+        id: netlifyUser.id,
+        username: netlifyUser.email?.split('@')[0] || `user_${netlifyUser.id}`,
+        display_name: netlifyUser.user_metadata?.full_name || netlifyUser.email?.split('@')[0] || `User ${netlifyUser.id}`,
+        avatar_url: netlifyUser.user_metadata?.avatar_url || '',
+        created_at: netlifyUser.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+
+      console.log('Attempting to create/update profile:', profileData)
+
+      const { error: profileError } = await $supabase
+        .from('user_profiles')
+        .upsert(profileData, {
+          onConflict: 'id'
         })
 
-      if (error) {
-        console.error('Error syncing user with Supabase:', error)
-        throw error
+      if (profileError) {
+        console.error('Error syncing user profile with Supabase:', profileError)
+        if (profileError.code === '42501') {
+          console.error('Permission denied. Please ensure RLS policies are properly configured for user_profiles table.')
+          console.error('Required policies:')
+          console.error('1. Allow users to insert their own profile')
+          console.error('2. Allow users to update their own profile')
+          console.error('3. Allow users to read any profile')
+        }
+        throw profileError
       }
     } catch (error) {
       console.error('Failed to sync user with Supabase:', error)
