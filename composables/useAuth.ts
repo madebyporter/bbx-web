@@ -38,22 +38,29 @@ export const useAuth = () => {
     if (!initSupabase()) return
 
     try {
+      const userData = {
+        id: netlifyUser.id,
+        email: netlifyUser.email,
+        user_metadata: netlifyUser.user_metadata,
+        app_metadata: netlifyUser.app_metadata,
+        updated_at: new Date().toISOString(),
+        created_at: netlifyUser.created_at || new Date().toISOString()
+      }
+
       const { error } = await $supabase
         .from('users')
-        .upsert({
-          id: netlifyUser.id,
-          email: netlifyUser.email,
-          user_metadata: netlifyUser.user_metadata,
-          app_metadata: netlifyUser.app_metadata,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+        .upsert(userData, {
+          onConflict: 'id',
+          ignoreDuplicates: false
         })
 
       if (error) {
         console.error('Error syncing user with Supabase:', error)
+        throw error
       }
     } catch (error) {
       console.error('Failed to sync user with Supabase:', error)
+      throw error
     }
   }
 
@@ -103,16 +110,17 @@ export const useAuth = () => {
       })
       
       // First check if the user already has this resource marked as used
-      const { data: existingRecord, error: checkError } = await $supabase
+      const { data: existingRecords, error: checkError } = await $supabase
         .from('user_resources')
-        .select('*')
-        .eq('resource_id', resourceId)
-        .eq('user_id', globalUser.value.id)
-        .single()
+        .select('id')
+        .match({
+          resource_id: resourceId,
+          user_id: globalUser.value.id
+        })
 
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError
-      }
+      if (checkError) throw checkError
+
+      const existingRecord = existingRecords?.[0]
 
       if (existingRecord) {
         console.log('Resource already marked as used, removing...')
@@ -120,8 +128,10 @@ export const useAuth = () => {
         const { error } = await $supabase
           .from('user_resources')
           .delete()
-          .eq('resource_id', resourceId)
-          .eq('user_id', globalUser.value.id)
+          .match({
+            resource_id: resourceId,
+            user_id: globalUser.value.id
+          })
 
         if (error) throw error
         console.log('Successfully removed resource usage')

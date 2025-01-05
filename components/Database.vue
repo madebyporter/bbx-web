@@ -82,15 +82,20 @@
               {{ useCounts[resource.id] || 0 }}
             </div>
             <div 
-              class="flex items-center justify-center p-1 px-2 cursor-pointer"
+              class="group flex items-center justify-center p-1 px-2 cursor-pointer"
               :class="userUsedResources[resource.id] ? 'bg-neutral-800' : 'bg-neutral-400 hover:bg-neutral-500'"
               @click="toggleUse(resource)"
             >
-              <img 
-                :src="userUsedResources[resource.id] ? '/img/db/icon-check.svg' : '/img/db/icon-checkbox.svg'" 
-                :alt="userUsedResources[resource.id] ? 'Remove from I Use This' : 'Add to I Use This'" 
-                class="min-w-3 min-h-auto" 
-              />
+              <template v-if="userUsedResources[resource.id]">
+                <img 
+                  src="/img/db/icon-check.svg" 
+                  alt="Remove from I Use This" 
+                  class="min-w-3 min-h-auto" 
+                />
+              </template>
+              <template v-else>
+                <div class="w-3 h-3 border-2 border-white rounded-full group-hover:bg-white/50"></div>
+              </template>
             </div>
           </div>
         </div>
@@ -326,22 +331,41 @@ const toggleUse = async (resource: Resource) => {
 const fetchUseCounts = async () => {
   console.log('Fetching use counts...')
   try {
-    const { data, error } = await supabase
-      .from('user_resources')
-      .select('resource_id, user_id')
-    
-    if (error) throw error
+    // Get all resource_ids first
+    const { data: resourceIds, error: resourceError } = await supabase
+      .from('resources')
+      .select('id')
 
-    // Count uses per resource
+    if (resourceError) throw resourceError
+
+    // Initialize counts
     const counts: {[key: number]: number} = {}
-    const userUsed: {[key: number]: boolean} = {}
     
-    data?.forEach((row: { resource_id: number; user_id: string }) => {
-      counts[row.resource_id] = (counts[row.resource_id] || 0) + 1
-      if (auth.user.value && row.user_id === auth.user.value.id) {
+    // Get counts for each resource
+    await Promise.all(resourceIds?.map(async ({ id }) => {
+      const { count, error } = await supabase
+        .from('user_resources')
+        .select('*', { count: 'exact', head: true })
+        .eq('resource_id', id)
+
+      if (error) throw error
+      counts[id] = count || 0
+    }) || [])
+
+    // If user is logged in, get their specific usage
+    const userUsed: {[key: number]: boolean} = {}
+    if (auth.user.value) {
+      const { data: userData, error: userError } = await supabase
+        .from('user_resources')
+        .select('resource_id')
+        .eq('user_id', auth.user.value.id)
+      
+      if (userError) throw userError
+
+      userData?.forEach((row: { resource_id: number }) => {
         userUsed[row.resource_id] = true
-      }
-    })
+      })
+    }
 
     console.log('Updated use counts:', counts)
     console.log('Updated user used states:', userUsed)
@@ -369,10 +393,7 @@ watch(() => props.canEdit, (newValue) => {
 onMounted(async () => {
   console.log('Database mounted with canEdit:', props.canEdit)
   await fetchResources()
-  if (auth.user.value) {
-    console.log('User present on mount, fetching counts')
-    await fetchUseCounts()
-  }
+  await fetchUseCounts() // Always fetch counts on mount
 })
 
 defineExpose({

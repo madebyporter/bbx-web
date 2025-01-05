@@ -72,8 +72,8 @@ export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
     // Transform the data to ensure tags are in the expected format
     return data.map(resource => ({
       ...resource,
-      creator: resource.creators.name,
-      tags: resource.resource_tags?.map(rt => rt.tags.name) || []
+      creator: resource.creators?.name || 'Unknown',
+      tags: resource.resource_tags?.map(rt => rt.tags?.name).filter(Boolean) || []
     }))
 
   } catch (error) {
