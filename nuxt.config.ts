@@ -39,16 +39,17 @@ export default defineNuxtConfig({
         { property: 'og:title', content: 'Beatbox' },
         { property: 'og:description', content: 'A curated collection of music production tools and resources.' },
         { property: 'og:site_name', content: 'Beatbox' },
-        { property: 'og:image', content: '/img/og-image.jpg' },
+        { property: 'og:image', content: 'https://beatbox.studio/img/og-image.jpg' },
         { property: 'og:image:width', content: '1200' },
         { property: 'og:image:height', content: '630' },
-        { property: 'og:url', content: 'https://bbx-web.netlify.app' },
+        { property: 'og:url', content: 'https://beatbox.studio' },
         
         // Twitter
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:title', content: 'Beatbox' },
         { name: 'twitter:description', content: 'A curated collection of music production tools and resources.' },
-        { name: 'twitter:image', content: '/img/og-image.jpg' }
+        { name: 'twitter:image', content: 'https://beatbox.studio/img/og-image.jpg' },
+        { name: 'twitter:site', content: '@beatboxstudio' }
       ],
       link: [
         // Canonical URL
