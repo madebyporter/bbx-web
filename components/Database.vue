@@ -280,20 +280,59 @@ const handleSearch = (query: string) => {
   fetchResources()
 }
 
-// Watch for user login to refresh use counts
+const fetchUseCounts = async () => {
+  console.log('Fetching use counts...')
+  try {
+    // Get total counts for all resources (public data)
+    const { data: resourceCounts, error: countError } = await supabase
+      .rpc('get_resource_use_counts')
+
+    if (countError) throw countError
+
+    // Transform array of counts into object
+    const counts: {[key: number]: number} = {}
+    if (resourceCounts) {
+      resourceCounts.forEach((row: { resource_id: number; use_count: number }) => {
+        counts[row.resource_id] = row.use_count
+      })
+    }
+    useCounts.value = counts
+
+    // If user is logged in, get their specific usage
+    if (auth.user.value) {
+      const { data: userData, error: userError } = await supabase
+        .from('user_resources')
+        .select('resource_id')
+        .eq('user_id', auth.user.value.id)
+      
+      if (userError) throw userError
+
+      const userUsed: {[key: number]: boolean} = {}
+      userData?.forEach((row: { resource_id: number }) => {
+        userUsed[row.resource_id] = true
+      })
+      userUsedResources.value = userUsed
+    } else {
+      userUsedResources.value = {}
+    }
+
+    console.log('Updated use counts:', counts)
+    console.log('Updated user used states:', userUsedResources.value)
+    console.log('Current user ID:', auth.user.value?.id)
+
+  } catch (error: any) {
+    console.error('Error fetching use counts:', error)
+  }
+}
+
+// Watch for user login to refresh user's usage state
 watch(() => auth.user.value, async (newUser, oldUser) => {
   console.log('User changed:', { 
     hadUser: !!oldUser, 
     hasUser: !!newUser,
     userId: newUser?.id
   })
-  if (newUser) {
-    await fetchUseCounts()
-  } else {
-    // Reset states when user logs out
-    useCounts.value = {}
-    userUsedResources.value = {}
-  }
+  await fetchUseCounts() // Always fetch counts, regardless of auth state
 }, { immediate: true })
 
 const toggleUse = async (resource: Resource) => {
@@ -325,56 +364,6 @@ const toggleUse = async (resource: Resource) => {
     })
   } catch (error) {
     console.error('Error toggling resource use:', error)
-  }
-}
-
-const fetchUseCounts = async () => {
-  console.log('Fetching use counts...')
-  try {
-    // Get all resource_ids first
-    const { data: resourceIds, error: resourceError } = await supabase
-      .from('resources')
-      .select('id')
-
-    if (resourceError) throw resourceError
-
-    // Initialize counts
-    const counts: {[key: number]: number} = {}
-    
-    // Get counts for each resource
-    await Promise.all(resourceIds?.map(async ({ id }) => {
-      const { count, error } = await supabase
-        .from('user_resources')
-        .select('*', { count: 'exact', head: true })
-        .eq('resource_id', id)
-
-      if (error) throw error
-      counts[id] = count || 0
-    }) || [])
-
-    // If user is logged in, get their specific usage
-    const userUsed: {[key: number]: boolean} = {}
-    if (auth.user.value) {
-      const { data: userData, error: userError } = await supabase
-        .from('user_resources')
-        .select('resource_id')
-        .eq('user_id', auth.user.value.id)
-      
-      if (userError) throw userError
-
-      userData?.forEach((row: { resource_id: number }) => {
-        userUsed[row.resource_id] = true
-      })
-    }
-
-    console.log('Updated use counts:', counts)
-    console.log('Updated user used states:', userUsed)
-    console.log('Current user ID:', auth.user.value?.id)
-
-    useCounts.value = counts
-    userUsedResources.value = userUsed
-  } catch (error: any) {
-    console.error('Error fetching use counts:', error)
   }
 }
 
