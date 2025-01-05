@@ -25,7 +25,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         user_metadata: currentUser.user_metadata
       })
       // Initialize auth state with current user
-      auth.init()
+      auth.updateUserState(currentUser)
     }
 
     // Enhanced event logging
@@ -38,34 +38,55 @@ export default defineNuxtPlugin((nuxtApp) => {
           user_metadata: user.user_metadata
         })
         // Initialize auth state on init event
-        auth.init()
+        auth.updateUserState(user)
       }
     })
 
-    IdentityWidget.on('login', user => {
+    IdentityWidget.on('login', async user => {
       if (user) {
         console.log('Login event:', {
           email: user.email,
           metadata: user.app_metadata,
           roles: user.app_metadata?.roles
         })
-        // Initialize auth state on login
-        auth.init()
+        
+        try {
+          // Close the modal first
+          IdentityWidget.close()
+          
+          // Update state immediately with the user we have
+          auth.updateUserState(user)
+          
+          // Wait for Netlify Identity to fully initialize
+          await new Promise(resolve => setTimeout(resolve, 500))
+          
+          // Get fresh user data and sync with Supabase
+          const currentUser = IdentityWidget.currentUser()
+          if (currentUser) {
+            await auth.syncUserWithSupabase(currentUser)
+          } else {
+            console.error('Failed to get current user after login')
+          }
+        } catch (error) {
+          console.error('Error during login:', error)
+        }
       }
     })
 
     IdentityWidget.on('logout', () => {
-      console.log('Logout event - clearing user data')
-      // Clear auth state on logout
-      auth.init()
+      console.log('Logout event')
+      auth.updateUserState(null)
     })
 
-    IdentityWidget.on('error', err => console.error('Identity error:', err))
-  }
+    IdentityWidget.on('error', err => {
+      console.error('Netlify Identity error:', err)
+    })
 
-  return {
-    provide: {
-      identity: IdentityWidget
+    // Provide the identity widget to the app
+    return {
+      provide: {
+        identity: IdentityWidget
+      }
     }
   }
 }) 

@@ -34,6 +34,22 @@ export const useAuth = () => {
     return true
   }
 
+  const updateUserState = (user: any | null) => {
+    if (user) {
+      globalUser.value = {
+        id: user.id,
+        email: user.email,
+        user_metadata: user.user_metadata || {},
+        app_metadata: user.app_metadata || {},
+        created_at: user.created_at || new Date().toISOString()
+      }
+      console.log('Updated user state to:', globalUser.value)
+    } else {
+      globalUser.value = null
+      console.log('Cleared user state')
+    }
+  }
+
   const syncUserWithSupabase = async (netlifyUser: NetlifyUser) => {
     if (!initSupabase()) return
 
@@ -78,99 +94,81 @@ export const useAuth = () => {
     console.log('Current Netlify user:', currentUser)
     
     if (currentUser) {
-      globalUser.value = {
-        id: currentUser.id,
-        email: currentUser.email,
-        user_metadata: currentUser.user_metadata || {},
-        app_metadata: currentUser.app_metadata || {},
-        created_at: new Date().toISOString()
-      }
-      console.log('Setting user state to:', globalUser.value)
+      updateUserState(currentUser)
       try {
-        await syncUserWithSupabase(globalUser.value)
+        await syncUserWithSupabase(currentUser)
       } catch (error) {
         console.error('Failed to sync initial user state:', error)
       }
     } else {
-      console.log('No current user, setting user state to null')
-      globalUser.value = null
+      updateUserState(null)
     }
-  }
-
-  const markResourceAsUsed = async (resourceId: number) => {
-    if (!globalUser.value || !initSupabase()) {
-      console.error('User not logged in or Supabase not initialized')
-      return false
-    }
-
-    try {
-      console.log('Checking if resource is already used by user:', {
-        resourceId,
-        userId: globalUser.value.id
-      })
-      
-      // First check if the user already has this resource marked as used
-      const { data: existingRecords, error: checkError } = await $supabase
-        .from('user_resources')
-        .select('id')
-        .match({
-          resource_id: resourceId,
-          user_id: globalUser.value.id
-        })
-
-      if (checkError) throw checkError
-
-      const existingRecord = existingRecords?.[0]
-
-      if (existingRecord) {
-        console.log('Resource already marked as used, removing...')
-        // If it exists, delete it (unmark)
-        const { error } = await $supabase
-          .from('user_resources')
-          .delete()
-          .match({
-            resource_id: resourceId,
-            user_id: globalUser.value.id
-          })
-
-        if (error) throw error
-        console.log('Successfully removed resource usage')
-        return false
-      } else {
-        console.log('Resource not marked as used, adding...')
-        // If it doesn't exist, create it (mark as used)
-        const { error } = await $supabase
-          .from('user_resources')
-          .insert([{
-            user_id: globalUser.value.id,
-            resource_id: resourceId,
-            used_at: new Date().toISOString(),
-          }])
-
-        if (error) throw error
-        console.log('Successfully added resource usage')
-        return true
-      }
-    } catch (error) {
-      console.error('Error marking resource as used:', error)
-      throw error
-    }
-  }
-
-  const login = () => {
-    $identity?.open()
-  }
-
-  const logout = () => {
-    $identity?.logout()
   }
 
   return {
     user: globalUser,
     isAdmin: globalIsAdmin,
     init,
-    login,
-    logout,
-    markResourceAsUsed
+    updateUserState,
+    syncUserWithSupabase,
+    markResourceAsUsed: async (resourceId: number) => {
+      if (!globalUser.value || !initSupabase()) {
+        console.error('User not logged in or Supabase not initialized')
+        return false
+      }
+
+      try {
+        console.log('Checking if resource is already used by user:', {
+          resourceId,
+          userId: globalUser.value.id
+        })
+        
+        // First check if the user already has this resource marked as used
+        const { data: existingRecords, error: checkError } = await $supabase
+          .from('user_resources')
+          .select('id')
+          .match({
+            resource_id: resourceId,
+            user_id: globalUser.value.id
+          })
+
+        if (checkError) throw checkError
+
+        const existingRecord = existingRecords?.[0]
+
+        if (existingRecord) {
+          console.log('Resource already marked as used, removing...')
+          // If it exists, delete it (unmark)
+          const { error } = await $supabase
+            .from('user_resources')
+            .delete()
+            .match({
+              resource_id: resourceId,
+              user_id: globalUser.value.id
+            })
+
+          if (error) throw error
+          console.log('Successfully removed resource usage')
+          return false
+        } else {
+          console.log('Resource not marked as used, adding...')
+          // If it doesn't exist, create it (mark as used)
+          const { error } = await $supabase
+            .from('user_resources')
+            .insert([{
+              user_id: globalUser.value.id,
+              resource_id: resourceId,
+              used_at: new Date().toISOString(),
+            }])
+
+          if (error) throw error
+          console.log('Successfully added resource usage')
+          return true
+        }
+      } catch (error) {
+        console.error('Error marking resource as used:', error)
+        throw error
+      }
+    }
   }
 } 
