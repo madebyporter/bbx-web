@@ -129,6 +129,15 @@ const currentFilters = ref<ResourceFilters>({})
 const searchQuery = ref('')
 const useCounts = ref<{[key: number]: number}>({})
 const userUsedResources = ref<{[key: number]: boolean}>({})
+const isSupabaseReady = ref(false)
+
+// Add initialization check
+watch(() => supabase, (newSupabase) => {
+  if (newSupabase) {
+    isSupabaseReady.value = true
+    console.log('Supabase client is ready')
+  }
+}, { immediate: true })
 
 const emit = defineEmits(['edit-resource', 'show-signup'])
 
@@ -283,6 +292,11 @@ const handleSearch = (query: string) => {
 const fetchUseCounts = async () => {
   console.log('Fetching use counts...')
   try {
+    if (!isSupabaseReady.value || !supabase) {
+      console.log('Waiting for Supabase to be ready...')
+      return
+    }
+
     // Get total counts for all resources (public data)
     const { data: resourceCounts, error: countError } = await supabase
       .rpc('get_resource_use_counts')
@@ -291,7 +305,7 @@ const fetchUseCounts = async () => {
 
     // Transform array of counts into object
     const counts: {[key: number]: number} = {}
-    if (resourceCounts) {
+    if (resourceCounts && Array.isArray(resourceCounts)) {
       resourceCounts.forEach((row: { resource_id: number; use_count: number }) => {
         counts[row.resource_id] = row.use_count
       })
@@ -308,9 +322,11 @@ const fetchUseCounts = async () => {
       if (userError) throw userError
 
       const userUsed: {[key: number]: boolean} = {}
-      userData?.forEach((row: { resource_id: number }) => {
-        userUsed[row.resource_id] = true
-      })
+      if (userData && Array.isArray(userData)) {
+        (userData as Array<{ resource_id: number }>).forEach((row) => {
+          userUsed[row.resource_id] = true
+        })
+      }
       userUsedResources.value = userUsed
     } else {
       userUsedResources.value = {}
@@ -332,7 +348,15 @@ watch(() => auth.user.value, async (newUser, oldUser) => {
     hasUser: !!newUser,
     userId: newUser?.id
   })
-  await fetchUseCounts() // Always fetch counts, regardless of auth state
+  
+  // Add a small delay to ensure Supabase is initialized
+  await new Promise(resolve => setTimeout(resolve, 100))
+  
+  if (isSupabaseReady.value && supabase) {
+    await fetchUseCounts()
+  } else {
+    console.log('Waiting for Supabase to be ready before fetching counts...')
+  }
 }, { immediate: true })
 
 const toggleUse = async (resource: Resource) => {

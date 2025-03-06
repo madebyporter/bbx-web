@@ -11,13 +11,33 @@ export default defineNuxtConfig({
   css: ['~/assets/css/tailwind.css'],
   // Development
   devtools: { enabled: true },
+  // PostCSS configuration
+  postcss: {
+    plugins: {
+      'tailwindcss/nesting': {},
+      '@tailwindcss/postcss': {},
+      autoprefixer: {},
+    }
+  },
   runtimeConfig: {
+    // Private keys are only available on the server
+    supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY,
+    
+    // Public keys that are exposed to the client
     public: {
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
       supabaseKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY,
       NETLIFY_IDENTITY_URL: process.env.NETLIFY_IDENTITY_URL,
       NETLIFY_SITE_ID: process.env.NETLIFY_SITE_ID,
       SITE_URL: process.env.SITE_URL
+    }
+  },
+  nitro: {
+    devProxy: {
+      '/.netlify/identity': {
+        target: process.env.NETLIFY_IDENTITY_URL || 'http://localhost:9999/.netlify/identity',
+        changeOrigin: true
+      }
     }
   },
   app: {

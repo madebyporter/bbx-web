@@ -2,15 +2,38 @@ import { createClient } from '@supabase/supabase-js'
 import { defineNuxtPlugin, useRuntimeConfig } from '#app'
 import type { NetlifyIdentityUser } from '~/types/netlify-identity'
 
+let supabaseInstance: ReturnType<typeof createClient> | null = null
+
 export default defineNuxtPlugin(async (nuxtApp) => {
+  // If we already have an instance, return it
+  if (supabaseInstance) {
+    return {
+      provide: {
+        supabase: supabaseInstance
+      }
+    }
+  }
+
   const config = useRuntimeConfig()
   
-  if (!config.public.supabaseUrl || !config.public.supabaseKey) {
-    console.error('Supabase configuration missing:', {
+  // Add retry logic for config
+  let retries = 0
+  const maxRetries = 5
+  
+  while (!config.public.supabaseUrl || !config.public.supabaseKey) {
+    if (retries >= maxRetries) {
+      console.error('Failed to initialize Supabase after', maxRetries, 'retries')
+      throw new Error('Supabase configuration missing')
+    }
+    
+    console.log('Waiting for Supabase configuration...', {
       url: !!config.public.supabaseUrl,
-      key: !!config.public.supabaseKey
+      key: !!config.public.supabaseKey,
+      retry: retries + 1
     })
-    throw new Error('Supabase configuration missing')
+    
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    retries++
   }
 
   console.log('Initializing Supabase with URL:', config.public.supabaseUrl)
@@ -47,82 +70,56 @@ export default defineNuxtPlugin(async (nuxtApp) => {
       }
     }
 
-    // Merge headers
+    // Merge headers with required Supabase headers
     const headers = new Headers(options.headers || {})
+    
+    // Always include the Supabase API key
     headers.set('apikey', config.public.supabaseKey)
     
+    // Add authorization header if we have a token
     if (token) {
       headers.set('Authorization', `Bearer ${token}`)
-      // Log full headers for debugging
-      console.log('Request headers:', {
-        authorization: `Bearer ${token.substring(0, 20)}...`,
-        apikey: config.public.supabaseKey.substring(0, 20) + '...',
-        url: typeof input === 'string' ? input : input.toString(),
-        method: options.method || 'GET'
-      })
-    } else {
-      console.warn('No Netlify Identity token available for Supabase request')
     }
 
-    // Return modified fetch with error handling
-    try {
-      const response = await fetch(input, {
-        ...options,
-        headers
-      })
-      
-      if (!response.ok) {
-        console.error('Supabase request failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          url: typeof input === 'string' ? input : input.toString(),
-          userId: currentUser?.id
-        })
-      }
-      
-      return response
-    } catch (error) {
-      console.error('Supabase request error:', error)
-      throw error
-    }
+    // Log headers for debugging (excluding sensitive values)
+    console.log('Request headers:', {
+      hasApiKey: !!headers.get('apikey'),
+      hasAuth: !!headers.get('Authorization'),
+      url: typeof input === 'string' ? input : input.toString(),
+      method: options.method || 'GET'
+    })
+
+    return fetch(input, { ...options, headers })
   }
-  
-  // Create Supabase client
-  const supabase = createClient(
-    config.public.supabaseUrl,
-    config.public.supabaseKey,
-    {
-      db: {
-        schema: 'public'
-      },
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
-      },
-      global: {
-        fetch: customFetch
-      }
-    }
-  )
 
-  // Test the connection
   try {
-    const { data, error } = await supabase
-      .from('user_resources')
-      .select('count')
-      .limit(1)
-      .single()
+    supabaseInstance = createClient(
+      config.public.supabaseUrl,
+      config.public.supabaseKey,
+      {
+        auth: {
+          persistSession: false
+        },
+        global: {
+          fetch: customFetch
+        }
+      }
+    )
+
+    // Test the connection
+    const { data, error } = await supabaseInstance.from('resources').select('count').limit(1)
     if (error) throw error
     console.log('Supabase connection successful')
-  } catch (error) {
-    console.error('Supabase connection error:', error)
-  }
 
-  // Provide it to the app
-  return {
-    provide: {
-      supabase
+    return {
+      provide: {
+        supabase: supabaseInstance
+      }
     }
+  } catch (error) {
+    console.error('Failed to initialize Supabase:', error)
+    // Clear the instance if initialization failed
+    supabaseInstance = null
+    throw error
   }
 }) 
