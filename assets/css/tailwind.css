@@ -44,13 +44,13 @@
     @apply text-xs bg-stone-500 text-white rounded-md py-1 px-2 flex justify-center items-center uppercase gap-2;
   }
   .tag-active path {
-    @apply fill-neutral-100;
+    @apply fill-stone-100;
   }
   .drag-over {
-    @apply border-neutral-400 border-2 border-dashed;
+    @apply border-stone-800 hover:border-stone-700 border-1 border-dashed;
   }
   .image-drop-zone-active {
-    @apply bg-neutral-200;
+    @apply bg-stone-700;
   }
   .pending-resource {
     @apply bg-amber-500 text-amber-900;

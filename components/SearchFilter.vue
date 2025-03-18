@@ -20,7 +20,9 @@
         @click="$emit('toggle-nav')"
         class="btn w-fit !px-2 flex items-center lg:hidden"
       >
-        <img src="/img/db/icon-bars.svg" alt="Bars" class="min-w-4" />
+        <svg viewBox="0 0 13 11" fill="none" xmlns="http://www.w3.org/2000/svg" class="min-w-4">
+          <path d="M0 0.5H12.25V2.25H0V0.5ZM0 4.875H12.25V6.625H0V4.875ZM12.25 9.25V11H0V9.25H12.25Z" class="fill-stone-400" />
+        </svg>
       </button>
       <button @click="$emit('open-filter-modal')" class="btn w-full lg:w-fit">Filter & Sort</button>
       <button 

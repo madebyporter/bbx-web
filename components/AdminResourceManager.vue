@@ -8,9 +8,9 @@
     >
       <div 
         @click="close" 
-        class="flex justify-center items-center bg-neutral-200 hover:bg-neutral-300 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
+        class="flex justify-center items-center border border-stone-800 hover:border-stone-700 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
       >
-        <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-neutral-800" />
+        <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-stone-700" />
       </div>
 
       <h2 class="text-2xl font-bold">Manage Submissions</h2>
@@ -53,7 +53,7 @@
                   <div 
                     v-for="duplicate in resource.duplicates" 
                     :key="duplicate.id"
-                    class="flex flex-col p-2 bg-white rounded border border-amber-200"
+                    class="flex flex-col p-2 bg-stone-900 rounded border border-amber-200"
                   >
                     <div class="flex items-center justify-between">
                       <div>

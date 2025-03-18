@@ -10,14 +10,16 @@
         flex 
         flex-col
         gap-4
-        bg-white
+        border 
+        border-stone-800
+        bg-stone-900
         *:p-8
         min-w-[235px]
         max-lg:fixed 
         max-lg:bottom-2 
         max-lg:left-2 
         max-lg:right-2 
-        max-lg:top-[150px] 
+        max-lg:top-[144px] 
         max-lg:z-50 
         max-lg:rounded-md 
         max-lg:[transform:translateX(-105%)]
@@ -28,9 +30,6 @@
         lg:left-2
         lg:bottom-2
         lg:rounded-md
-        lg:bg-transparent
-        lg:border 
-        lg:border-stone-800
         xl:col-start-1 
         xl:col-span-2 
         ">
@@ -91,16 +90,16 @@
                 <button 
                   v-if="isAdmin"
                   @click="showAdminModal = true"
-                  class="cursor-pointer text-xs text-purple-600 hover:text-purple-700"
+                  class="cursor-pointer text-xs text-amber-300 hover:text-amber-400"
                 >
                   Manage Submissions
                 </button>
-                <button 
+                <!-- <button 
                   @click="toggleDarkMode"
                   class="cursor-pointer text-xs hover:text-neutral-600"
                 >
                   {{ isDarkMode ? 'Light Mode' : 'Dark Mode' }}
-                </button>
+                </button> -->
               </div>
             </div>
           </template>
