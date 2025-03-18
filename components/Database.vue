@@ -19,7 +19,7 @@
     </div>
 
     <!-- Resources table -->
-    <div v-else v-for="resource in resources" :key="resource.id" class="table-row-group hover:ring-1 hover:ring-stone-800 hover:bg-stone-800/5">
+    <div v-else v-for="resource in resources" :key="resource.id" class="table-row-group hover:ring-1 hover:ring-neutral-800 hover:bg-neutral-800/5">
       <div 
         class="table-row relative"
         :class="{ 'pending-resource': resource.status === 'pending' }"
@@ -31,7 +31,7 @@
             class="hidden lg:flex absolute left-4 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity gap-2"
           >
             <div 
-              class="bg-neutral-800 hover:bg-stone-900 p-2 rounded-md cursor-pointer"
+              class="bg-neutral-800 hover:bg-neutral-900 p-2 rounded-md cursor-pointer"
               @click="editResource(resource)"
             >
               <img src="/img/db/icon-edit.svg" alt="Edit" class="size-4" />
@@ -44,7 +44,7 @@
             </div>
           </div>
           <div class="flex flex-row gap-2 items-center w-fit h-fit">
-            <div class="min-w-[111px] max-w-[111px] h-[61px] bg-stone-200 rounded-md overflow-hidden">
+            <div class="min-w-[111px] max-w-[111px] h-[61px] bg-neutral-200 rounded-md overflow-hidden">
               <img 
                 v-if="resource.image_url" 
                 :src="getImageUrl(resource.image_url)" 
@@ -73,19 +73,19 @@
           <div class="flex flex-row gap-4 items-center">
             <div v-if="resource.os.includes('mac')">
               <svg width="12" height="15" viewBox="0 0 12 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path class="fill-stone-700" d="M9.9375 7.40984C9.9375 7.47234 9.84375 9.31609 11.875 10.2848C11.5 11.4411 10.1875 14.0036 8.65625 14.0036C7.78125 14.0036 7.28125 13.4411 6.28125 13.4411C5.25 13.4411 4.6875 14.0036 3.90625 14.0036C2.40625 14.0661 0.96875 11.2536 0.5625 10.0973C0.25 9.22234 0.125 8.37859 0.125 7.56609C0.125 4.78484 1.96875 3.44109 3.71875 3.40984C4.5625 3.40984 5.625 4.00359 6.09375 4.00359C6.53125 4.00359 7.75 3.28484 8.875 3.37859C10.0312 3.47234 10.9062 3.90984 11.5 4.75359C10.4688 5.40984 9.9375 6.25359 9.9375 7.40984ZM8.1875 2.28484C7.5625 3.00359 6.8125 3.40984 6 3.34734C5.9375 2.50359 6.25 1.72234 6.8125 1.09734C7.3125 0.534843 8.1875 0.0660934 8.9375 0.00359344C8.9375 0.347343 9.03125 1.28484 8.1875 2.28484Z" />
+                <path class="fill-neutral-700" d="M9.9375 7.40984C9.9375 7.47234 9.84375 9.31609 11.875 10.2848C11.5 11.4411 10.1875 14.0036 8.65625 14.0036C7.78125 14.0036 7.28125 13.4411 6.28125 13.4411C5.25 13.4411 4.6875 14.0036 3.90625 14.0036C2.40625 14.0661 0.96875 11.2536 0.5625 10.0973C0.25 9.22234 0.125 8.37859 0.125 7.56609C0.125 4.78484 1.96875 3.44109 3.71875 3.40984C4.5625 3.40984 5.625 4.00359 6.09375 4.00359C6.53125 4.00359 7.75 3.28484 8.875 3.37859C10.0312 3.47234 10.9062 3.90984 11.5 4.75359C10.4688 5.40984 9.9375 6.25359 9.9375 7.40984ZM8.1875 2.28484C7.5625 3.00359 6.8125 3.40984 6 3.34734C5.9375 2.50359 6.25 1.72234 6.8125 1.09734C7.3125 0.534843 8.1875 0.0660934 8.9375 0.00359344C8.9375 0.347343 9.03125 1.28484 8.1875 2.28484Z" />
               </svg>
             </div>
             <div v-if="resource.os.includes('windows')">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path class="fill-stone-700" d="M0 1.94109V6.69109H5.71875V1.15984L0 1.94109ZM0 12.0973V7.40984H5.71875V12.8786L0 12.0973ZM6.34375 12.9723V7.40984H14V14.0036L6.34375 12.9723ZM6.34375 1.06609L14 0.00359344V6.69109H6.34375V1.06609Z" />
+                <path class="fill-neutral-700" d="M0 1.94109V6.69109H5.71875V1.15984L0 1.94109ZM0 12.0973V7.40984H5.71875V12.8786L0 12.0973ZM6.34375 12.9723V7.40984H14V14.0036L6.34375 12.9723ZM6.34375 1.06609L14 0.00359344V6.69109H6.34375V1.06609Z" />
               </svg>
             </div>
           </div>
         </div>
         <!-- I Use This -->
         <div class="table-cell db-cell">
-          <div class="group flex flex-row gap-0 items-stretch rounded-sm overflow-hidden w-fit border border-stone-800 hover:border-stone-700">
+          <div class="group flex flex-row gap-0 items-stretch rounded-sm overflow-hidden w-fit border border-neutral-800 hover:border-neutral-700">
             <div class="flex items-center justify-center bg-transparent text-white p-1 px-2">
               {{ useCounts[resource.id] || 0 }}
             </div>
@@ -102,7 +102,7 @@
                 />
               </template>
               <template v-else>
-                <div class="w-3 h-3 border-1 border-stone-800 rounded-full group-hover:border-stone-700 hover:bg-stone-700"></div>
+                <div class="w-3 h-3 border-1 border-neutral-800 rounded-full group-hover:border-neutral-700 hover:bg-neutral-700"></div>
               </template>
             </div>
           </div>

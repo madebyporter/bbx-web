@@ -8,9 +8,9 @@
     >
       <div 
         @click="close" 
-        class="flex justify-center items-center border border-stone-800 hover:border-stone-700 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
+        class="flex justify-center items-center border border-neutral-800 hover:border-neutral-700 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
       >
-        <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-stone-700" />
+        <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-neutral-700" />
       </div>
 
       <div @click.stop>
@@ -22,7 +22,7 @@
             <label class="block nav-header mb-2">Sort By</label>
             <select 
               v-model="sortBy" 
-              class="w-full p-2 border border-stone-800 rounded-md"
+              class="w-full p-2 border border-neutral-800 rounded-md"
             >
               <option value="created_at">Date Added</option>
               <option value="name">Name</option>
@@ -36,7 +36,7 @@
             <label class="block nav-header mb-2">Direction</label>
             <select 
               v-model="sortDirection" 
-              class="w-full p-2 border border-stone-800 rounded-md"
+              class="w-full p-2 border border-neutral-800 rounded-md"
             >
               <option value="asc">Ascending</option>
               <option value="desc">Descending</option>
@@ -129,7 +129,7 @@
           <!-- Tags Filter -->
           <div>
             <label class="block nav-header mb-2">Tags</label>
-            <div class="flex flex-wrap gap-2 p-4 bg-stone-900 ring-1 ring-stone-800 rounded-lg min-h-[56px]">
+            <div class="flex flex-wrap gap-2 p-4 bg-neutral-900 ring-1 ring-neutral-800 rounded-lg min-h-[56px]">
               <div 
                 v-for="tag in selectedTags" 
                 :key="tag" 
@@ -138,7 +138,7 @@
                 {{ tag }}
                 <button 
                   @click="removeTag(tag)" 
-                  class="hover:text-stone-600 cursor-pointer"
+                  class="hover:text-neutral-600 cursor-pointer"
                 >
                   ×
                 </button>
@@ -156,12 +156,12 @@
             <!-- Tag suggestions dropdown -->
             <div 
               v-if="showSuggestions && filteredTags.length > 0"
-              class="mt-1 bg-stone-800 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
+              class="mt-1 bg-neutral-800 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
             >
               <div 
                 v-for="tag in filteredTags" 
                 :key="tag"
-                class="px-4 py-2 hover:bg-stone-700 cursor-pointer"
+                class="px-4 py-2 hover:bg-neutral-700 cursor-pointer"
                 @click="selectTag(tag)"
               >
                 {{ tag }}

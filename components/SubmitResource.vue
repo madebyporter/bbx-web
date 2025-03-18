@@ -8,18 +8,18 @@
     >
       <div 
         @click="close" 
-        class="flex justify-center items-center border border-stone-800 hover:border-stone-700 hover:border-stone-700 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
+        class="flex justify-center items-center border border-neutral-800 hover:border-neutral-700 hover:border-neutral-700 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
       >
-        <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-stone-700" />
+        <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-neutral-700" />
       </div>
       
       <!-- Success Message -->
       <div v-if="showSuccessMessage" class="h-full flex flex-col items-center justify-center text-center gap-4">
         <h2 class="text-xl">Thanks for your submission.</h2>
-        <p class="text-stone-600">We will review and add this submission if it fits our criteria.</p>
+        <p class="text-neutral-600">We will review and add this submission if it fits our criteria.</p>
         <button 
           @click="resetAndShowForm" 
-          class="text-stone-800 hover:text-stone-600 underline mt-4 cursor-pointer"
+          class="text-neutral-800 hover:text-neutral-600 underline mt-4 cursor-pointer"
         >
           Submit another resource
         </button>
@@ -69,7 +69,7 @@
               v-model="formData.name" 
               name="softwareName" 
               type="text" 
-              class="p-4 border border-stone-800 hover:border-stone-700 rounded-lg" 
+              class="p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg" 
               :class="{ 'border border-red-500': errors.name }"
               required
             />
@@ -85,7 +85,7 @@
                 v-model="creatorInput" 
                 name="softwareCreator" 
                 type="text" 
-                class="p-4 border border-stone-800 hover:border-stone-700 rounded-lg w-full"
+                class="p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg w-full"
                 :class="{ 'border border-red-500': errors.creator }"
                 @input="searchCreators"
                 required
@@ -98,7 +98,7 @@
                 <div 
                   v-for="creator in filteredCreators" 
                   :key="creator"
-                  class="px-4 py-2 hover:bg-stone-100 cursor-pointer"
+                  class="px-4 py-2 hover:bg-neutral-100 cursor-pointer"
                   @click="selectCreator(creator)"
                 >
                   {{ creator }}
@@ -111,10 +111,10 @@
             <label class="flex items-center gap-1">
               Tags
               <span class="text-red-500">*</span>
-              <span class="text-xs text-stone-400">(type and enter to add)</span>
+              <span class="text-xs text-neutral-400">(type and enter to add)</span>
             </label>
             <div class="relative">
-              <div class="flex flex-wrap gap-2 p-4 border border-stone-800 hover:border-stone-700 rounded-lg min-h-[56px]">
+              <div class="flex flex-wrap gap-2 p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg min-h-[56px]">
                 <!-- Selected tags -->
                 <div 
                   v-for="tag in selectedTags" 
@@ -124,7 +124,7 @@
                   {{ tag }}
                   <button 
                     @click="removeTag(tag)" 
-                    class="hover:text-stone-600 cursor-pointer"
+                    class="hover:text-neutral-600 cursor-pointer"
                   >
                     ×
                   </button>
@@ -142,7 +142,7 @@
                 />
                 
                 <!-- Message when max tags reached -->
-                <span v-else class="text-sm text-stone-500">
+                <span v-else class="text-sm text-neutral-500">
                   Maximum 3 tags reached
                 </span>
               </div>
@@ -155,7 +155,7 @@
                 <div 
                   v-for="tag in filteredTags" 
                   :key="tag"
-                  class="px-4 py-2 hover:bg-stone-100 cursor-pointer"
+                  class="px-4 py-2 hover:bg-neutral-100 cursor-pointer"
                   @click="selectTag(tag)"
                 >
                   {{ tag }}
@@ -173,7 +173,7 @@
               v-model="formData.price" 
               name="softwarePrice" 
               type="text" 
-              class="p-4 border border-stone-800 hover:border-stone-700 rounded-lg"
+              class="p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg"
               :class="{ 'border border-red-500': errors.price }"
               required
             />
@@ -184,7 +184,7 @@
               Operating Systems
               <span class="text-red-500">*</span>
             </label>
-            <div class="flex flex-wrap gap-4 p-4 border border-stone-800 hover:border-stone-700 rounded-lg">
+            <div class="flex flex-wrap gap-4 p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input 
                   type="checkbox" 
@@ -230,7 +230,7 @@
               v-model="formData.link" 
               name="softwareLink" 
               type="text" 
-              class="p-4 border border-stone-800 hover:border-stone-700 rounded-lg"
+              class="p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg"
               :class="{ 'border border-red-500': errors.link }"
               required
             />
@@ -259,7 +259,7 @@
                 @change="handleImageSelect"
               />
               <div 
-                class="absolute inset-0 border border-stone-800 hover:border-stone-700 rounded-md flex items-center justify-center overflow-hidden z-10"
+                class="absolute inset-0 border border-neutral-800 hover:border-neutral-700 rounded-md flex items-center justify-center overflow-hidden z-10"
               >
                 <img 
                   v-if="imagePreview" 
@@ -268,7 +268,7 @@
                   alt="Preview"
                 />
                 <div v-else class="flex flex-col items-center gap-2 p-4 text-center">
-                  <span class="text-sm text-stone-400">
+                  <span class="text-sm text-neutral-400">
                     Drag and drop an image here<br>or click to browse
                   </span>
                 </div>

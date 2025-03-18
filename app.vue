@@ -11,8 +11,8 @@
         flex-col
         gap-4
         border 
-        border-stone-800
-        bg-stone-900
+        border-neutral-800
+        bg-neutral-900
         *:p-8
         min-w-[235px]
         max-lg:fixed 
@@ -77,7 +77,7 @@
       </div>
 
       <!-- Account UI -->
-      <div class="bg-stone-900 ring-1 ring-stone-800 text-stone-200 h-fit absolute bottom-4 left-4 right-4 w-auto rounded-md !p-4 hidden lg:flex flex-row items-center max-w-[203px]"> 
+      <div class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit absolute bottom-4 left-4 right-4 w-auto rounded-md !p-4 hidden lg:flex flex-row items-center max-w-[203px]"> 
         <div class="flex flex-row gap-2 items-center">
           <template v-if="user">
             <!-- <div class="flex justify-center items-center rounded-full overflow-hidden w-8 h-8 min-w-8 min-h-8">
@@ -118,8 +118,8 @@
           @toggle-nav="toggleMobileNav"
         />
       </div>
-      <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-stone-300">
-        <header class="pt-8 pb-4 border-b border-stone-800">
+      <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
+        <header class="pt-8 pb-4 border-b border-neutral-800">
           <h1 class="text-3xl font-bold indent-1">Music Production Software</h1>
         </header>
         <div class="overflow-x-scroll xl:overflow-auto">
