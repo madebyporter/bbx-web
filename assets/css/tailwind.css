@@ -34,6 +34,9 @@
   .nav-link-later {
     @apply text-base flex flex-row gap-4 items-center text-stone-600 cursor-not-allowed whitespace-nowrap;
   }
+  .nav-link-later .tag {
+    @apply text-stone-700 hover:bg-stone-800;
+  }
   .tag {
     @apply text-xs bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-sm py-0.5 px-2 flex justify-center items-center uppercase gap-2 whitespace-nowrap;
   }
