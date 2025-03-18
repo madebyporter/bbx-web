@@ -8,9 +8,9 @@
     >
       <div 
         @click="close" 
-        class="flex justify-center items-center bg-neutral-200 hover:bg-neutral-300 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
+        class="flex justify-center items-center border border-stone-800 hover:border-stone-700 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
       >
-        <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-neutral-800" />
+        <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-stone-700" />
       </div>
 
       <div @click.stop>
@@ -19,10 +19,10 @@
         <div class="grid lg:grid-cols-2 gap-4 mb-8">
           <!-- Column 1: Sort By -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+            <label class="block nav-header mb-2">Sort By</label>
             <select 
               v-model="sortBy" 
-              class="w-full p-2 border border-gray-300 rounded-md"
+              class="w-full p-2 border border-stone-800 rounded-md"
             >
               <option value="created_at">Date Added</option>
               <option value="name">Name</option>
@@ -33,10 +33,10 @@
 
           <!-- Column 2: Direction -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Direction</label>
+            <label class="block nav-header mb-2">Direction</label>
             <select 
               v-model="sortDirection" 
-              class="w-full p-2 border border-gray-300 rounded-md"
+              class="w-full p-2 border border-stone-800 rounded-md"
             >
               <option value="asc">Ascending</option>
               <option value="desc">Descending</option>
@@ -48,7 +48,7 @@
         <div class="flex flex-col gap-6">
           <!-- Price Filter -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Price</label>
+            <label class="block nav-header mb-2">Price</label>
             <div class="flex gap-2">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input 
@@ -79,7 +79,7 @@
 
           <!-- OS Filter -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Operating System</label>
+            <label class="block nav-header mb-2">Operating System</label>
             <div class="flex gap-2">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input 
@@ -128,8 +128,8 @@
 
           <!-- Tags Filter -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Tags</label>
-            <div class="flex flex-wrap gap-2 p-4 bg-neutral-100 rounded-lg min-h-[56px]">
+            <label class="block nav-header mb-2">Tags</label>
+            <div class="flex flex-wrap gap-2 p-4 bg-stone-900 ring-1 ring-stone-800 rounded-lg min-h-[56px]">
               <div 
                 v-for="tag in selectedTags" 
                 :key="tag" 
@@ -138,7 +138,7 @@
                 {{ tag }}
                 <button 
                   @click="removeTag(tag)" 
-                  class="hover:text-neutral-600 cursor-pointer"
+                  class="hover:text-stone-600 cursor-pointer"
                 >
                   ×
                 </button>
@@ -156,12 +156,12 @@
             <!-- Tag suggestions dropdown -->
             <div 
               v-if="showSuggestions && filteredTags.length > 0"
-              class="mt-1 bg-white rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
+              class="mt-1 bg-stone-800 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
             >
               <div 
                 v-for="tag in filteredTags" 
                 :key="tag"
-                class="px-4 py-2 hover:bg-neutral-100 cursor-pointer"
+                class="px-4 py-2 hover:bg-stone-700 cursor-pointer"
                 @click="selectTag(tag)"
               >
                 {{ tag }}

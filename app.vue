@@ -12,7 +12,6 @@
         gap-4
         bg-white
         *:p-8
-        top-0
         min-w-[235px]
         max-lg:fixed 
         max-lg:bottom-2 
@@ -25,8 +24,13 @@
         lg:col-start-1 
         lg:col-span-3 
         lg:fixed 
-        lg:h-full 
-        lg:bg-neutral-100
+        lg:top-2
+        lg:left-2
+        lg:bottom-2
+        lg:rounded-md
+        lg:bg-transparent
+        lg:border 
+        lg:border-stone-800
         xl:col-start-1 
         xl:col-span-2 
         ">
@@ -35,46 +39,46 @@
       </div>
       <div class="flex flex-col gap-16 grow overflow-auto lg:pb-[130px]">
         <div class="flex flex-col gap-4">
-          <span class="uppercase text-xs">Resources</span>
-          <NuxtLink to="#" class="text-base">Software</NuxtLink>
-          <NuxtLink to="#" class="nav-text-later">
+          <span class="nav-header">Resources</span>
+          <NuxtLink to="#" class="nav-link">Software</NuxtLink>
+          <NuxtLink to="#" class="nav-link-later">
             Hardware <span class="tag">Later</span>
           </NuxtLink>
-          <NuxtLink to="#" class="nav-text-later">
+          <NuxtLink to="#" class="nav-link-later">
             Sounds & Kits <span class="tag">Later</span>
           </NuxtLink>
-          <NuxtLink to="#" class="nav-text-later">
+          <NuxtLink to="#" class="nav-link-later">
             Sync Libraries <span class="tag">Later</span>
           </NuxtLink>
-          <NuxtLink to="#" class="nav-text-later">
+          <NuxtLink to="#" class="nav-link-later">
             Tutorials <span class="tag">Later</span>
           </NuxtLink>
         </div>
         <div class="flex flex-col gap-4">
-          <span class="uppercase text-xs">People</span>
-          <NuxtLink to="#" class="nav-text-later">
+          <span class="nav-header">People</span>
+          <NuxtLink to="#" class="nav-link-later">
             Producers <span class="tag">Later</span>
           </NuxtLink>
-          <NuxtLink to="#" class="nav-text-later">
+          <NuxtLink to="#" class="nav-link-later">
             Engineers <span class="tag">Later</span>
           </NuxtLink>
-          <NuxtLink to="#" class="nav-text-later">
+          <NuxtLink to="#" class="nav-link-later">
             Musicians <span class="tag">Later</span>
           </NuxtLink>
         </div>
         <div class="flex flex-col gap-4">
-          <span class="uppercase text-xs">Products</span>
-          <NuxtLink to="#" class="nav-text-later">
+          <span class="nav-header">Products</span>
+          <NuxtLink to="#" class="nav-link-later">
             Studio <span class="tag">Later</span>
           </NuxtLink>
-          <NuxtLink to="#" class="nav-text-later">
+          <NuxtLink to="#" class="nav-link-later">
             Display <span class="tag">Later</span>
           </NuxtLink>
         </div>
       </div>
 
       <!-- Account UI -->
-      <div class="bg-neutral-200 h-fit fixed bottom-4 left-4 right-4 w-auto rounded-md !p-4 hidden lg:flex flex-row items-center max-w-[203px]"> 
+      <div class="bg-stone-900 ring-1 ring-stone-800 text-stone-200 h-fit absolute bottom-4 left-4 right-4 w-auto rounded-md !p-4 hidden lg:flex flex-row items-center max-w-[203px]"> 
         <div class="flex flex-row gap-2 items-center">
           <template v-if="user">
             <!-- <div class="flex justify-center items-center rounded-full overflow-hidden w-8 h-8 min-w-8 min-h-8">
@@ -91,6 +95,12 @@
                 >
                   Manage Submissions
                 </button>
+                <button 
+                  @click="toggleDarkMode"
+                  class="cursor-pointer text-xs hover:text-neutral-600"
+                >
+                  {{ isDarkMode ? 'Light Mode' : 'Dark Mode' }}
+                </button>
               </div>
             </div>
           </template>
@@ -100,7 +110,7 @@
         </div>
       </div>
     </nav>
-    <section id="content" class="col-start-1 col-span-12 lg:col-start-4 lg:col-span-9 xl:col-start-3 xl:col-span-10 grid grid-cols-subgrid gap-0 content-start">
+    <section id="content" class="col-start-1 col-span-12 lg:col-start-4 lg:col-span-9 xl:col-start-3 xl:col-span-10 grid grid-cols-subgrid gap-0 content-start lg:pl-4">
       <div class="col-span-full sticky top-0 z-50">
         <SearchFilter 
           @open-filter-modal="openFilterModal" 
@@ -109,8 +119,8 @@
           @toggle-nav="toggleMobileNav"
         />
       </div>
-      <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8">
-        <header class="pt-8 pb-4 border-b border-neutral-200">
+      <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-stone-300">
+        <header class="pt-8 pb-4 border-b border-stone-800">
           <h1 class="text-3xl font-bold indent-1">Music Production Software</h1>
         </header>
         <div class="overflow-x-scroll xl:overflow-auto">
@@ -156,6 +166,22 @@ import { useAuth } from '~/composables/useAuth'
 
 const { $identity } = useNuxtApp()
 const { user, init: initAuth } = useAuth()
+
+// Add dark mode state
+const isDarkMode = ref(false)
+
+const toggleDarkMode = () => {
+  isDarkMode.value = !isDarkMode.value
+  document.documentElement.classList.toggle('dark', isDarkMode.value)
+  localStorage.setItem('darkMode', isDarkMode.value)
+}
+
+// Initialize dark mode from saved preference
+onMounted(() => {
+  const savedDarkMode = localStorage.getItem('darkMode') === 'true'
+  isDarkMode.value = savedDarkMode
+  document.documentElement.classList.toggle('dark', savedDarkMode)
+})
 
 // Initialize auth on mount
 onMounted(async () => {
