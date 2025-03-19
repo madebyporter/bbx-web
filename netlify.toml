@@ -3,10 +3,11 @@
   publish = "dist"
 
 [dev]
-  command = "nuxt dev"
+  command = "npm run dev"
   targetPort = 3000
-  port = 8888
-  framework = "nuxt"
+  port = 9999
+  framework = "#custom"
+  publish = "dist"
 
 [[redirects]]
   from = "/*"
@@ -14,4 +15,6 @@
   status = 200
 
 [functions]
-  directory = "netlify/functions" 
+  directory = "functions"
+  node_bundler = "esbuild"
+  included_files = ["package.json", "package-lock.json"] 

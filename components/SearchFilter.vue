@@ -1,13 +1,17 @@
 <template>
-  <div class="bg-white lg:bg-neutral-50 flex flex-col lg:flex-row gap-4 p-4 lg:pl-0">
+  <div class="bg-neutral-900 flex flex-col lg:flex-row gap-4 p-4 lg:pl-0">
     <div class="grow flex relative">
-      <img src="/img/db/icon-search.svg" alt="Search" class="absolute z-10 top-[50%] translate-y-[-50%] px-4" />
+      <div class="absolute z-10 top-[50%] translate-y-[-50%] px-4">
+        <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path class="fill-neutral-700" d="M10.0625 6.4375C10.0625 4.87891 9.21484 3.45703 7.875 2.66406C6.50781 1.87109 4.83984 1.87109 3.5 2.66406C2.13281 3.45703 1.3125 4.87891 1.3125 6.4375C1.3125 8.02344 2.13281 9.44531 3.5 10.2383C4.83984 11.0312 6.50781 11.0312 7.875 10.2383C9.21484 9.44531 10.0625 8.02344 10.0625 6.4375ZM9.21484 10.9219C8.23047 11.6875 7 12.125 5.6875 12.125C2.54297 12.125 0 9.58203 0 6.4375C0 3.32031 2.54297 0.75 5.6875 0.75C8.80469 0.75 11.375 3.32031 11.375 6.4375C11.375 7.77734 10.9102 9.00781 10.1445 9.99219L13.5352 13.3828L14 13.8477L13.0703 14.75L12.6055 14.2852L9.21484 10.8945V10.9219Z" />
+        </svg>
+      </div>
       <input 
         ref="searchInput"
         type="text" 
         v-model="searchQuery"
         @input="onSearch"
-        class="rounded-full bg-neutral-200 text-left p-4 px-12 grow z-0 relative w-full lg:w-auto" 
+        class="rounded-full bg-neutral-900 ring-1 ring-neutral-800 hover:ring-neutral-700 text-left p-4 px-12 grow z-0 relative w-full lg:w-auto text-neutral-200 placeholder:text-neutral-500" 
         placeholder="Search (CMD/CTRL+K)" 
       />
     </div>
@@ -16,11 +20,13 @@
         @click="$emit('toggle-nav')"
         class="btn w-fit !px-2 flex items-center lg:hidden"
       >
-        <img src="/img/db/icon-bars.svg" alt="Bars" class="min-w-4" />
+        <svg viewBox="0 0 13 11" fill="none" xmlns="http://www.w3.org/2000/svg" class="min-w-4">
+          <path d="M0 0.5H12.25V2.25H0V0.5ZM0 4.875H12.25V6.625H0V4.875ZM12.25 9.25V11H0V9.25H12.25Z" class="fill-neutral-400" />
+        </svg>
       </button>
       <button @click="$emit('open-filter-modal')" class="btn w-full lg:w-fit">Filter & Sort</button>
       <button 
-        v-if="user"
+        v-if="hasUser"
         @click="$emit('open-modal')" 
         class="btn w-full lg:w-fit"
       >
@@ -31,57 +37,36 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
+import { useAuth } from '~/composables/useAuth'
 
 const searchQuery = ref('')
 const searchInput = ref(null)
 const emit = defineEmits(['open-modal', 'open-filter-modal', 'search', 'toggle-nav'])
 
-// Get user from Netlify Identity
-const { $identity } = useNuxtApp()
-const user = ref(null)
+// Get user from useAuth composable
+const auth = useAuth()
+const user = computed(() => auth.user.value)
+const isReady = computed(() => auth.isReady.value)
 
-// Watch for auth state changes
+// Add a computed property for user state
+const hasUser = computed(() => {
+  if (!isReady.value) return false
+  console.log('SearchFilter: Computing hasUser, user:', user.value)
+  return !!user.value
+})
+
 onMounted(() => {
+  console.log('SearchFilter: Component mounted, user:', user.value)
   window.addEventListener('keydown', handleKeydown)
-  
-  // Initialize Netlify Identity
-  if ($identity) {
-    // Get initial user state
-    const currentUser = $identity.currentUser()
-    if (currentUser) {
-      user.value = currentUser
-    }
-    
-    // Subscribe to auth changes
-    $identity.on('init', (initUser) => {
-      user.value = initUser
-    })
-    
-    $identity.on('login', (loginUser) => {
-      user.value = loginUser
-      console.log('SearchFilter: User logged in', loginUser)
-    })
-    
-    $identity.on('logout', () => {
-      user.value = null
-      console.log('SearchFilter: User logged out')
-    })
-  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
-  
-  // Clean up Netlify Identity listeners
-  if ($identity) {
-    $identity.off('init')
-    $identity.off('login')
-    $identity.off('logout')
-  }
 })
 
 const onSearch = () => {
+  console.log('SearchFilter: Emitting search event with query:', searchQuery.value)
   emit('search', searchQuery.value)
 }
 

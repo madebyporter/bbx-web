@@ -1,5 +1,5 @@
 import { useSupabase } from './supabase'
-import { useNuxtApp } from '#app'
+import { useAuth } from '~/composables/useAuth'
 
 export interface Resource {
   id: number
@@ -17,7 +17,7 @@ export interface Resource {
   status?: 'pending' | 'approved' | 'rejected'
 }
 
-export interface User {
+export interface UserProfile {
   id: string
   username: string
   display_name: string
@@ -39,58 +39,55 @@ export interface User {
 
 export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
   const { supabase } = useSupabase()
-  const { $identity } = useNuxtApp()
   
-  try {
-    // Get current user to check if admin
-    const currentUser = $identity.currentUser()
-    const isAdmin = currentUser?.app_metadata?.roles?.includes('admin')
+  if (!supabase) {
+    console.error('Supabase client not initialized')
+    return []
+  }
 
-    // Build query based on user role
-    let query = supabase
+  try {
+    // Fetch resources with their tags and creator
+    const { data: resources, error } = await supabase
       .from('resources')
       .select(`
         *,
-        creators (name),
+        creators (
+          name,
+          contact_info
+        ),
         resource_tags (
+          tag_id,
           tags (
             name
           )
         )
       `)
-      .eq('type', 'software')
-
-    // If not admin, only show approved resources
-    if (!isAdmin) {
-      query = query.eq('status', 'approved')
-    }
-
-    const { data, error } = await query
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false })
 
     if (error) throw error
 
-    // Transform the data to ensure tags are in the expected format
-    return data.map(resource => ({
+    // Transform the data to include tags array and creator name
+    return resources.map((resource: any) => ({
       ...resource,
       creator: resource.creators?.name || 'Unknown',
-      tags: resource.resource_tags?.map(rt => rt.tags?.name).filter(Boolean) || []
+      tags: resource.resource_tags?.map((rt: any) => rt.tags.name) || []
     }))
-
   } catch (error) {
     console.error('Error fetching resources:', error)
-    throw error
+    return []
   }
 }
 
 // Function to add a new resource with tags
 export const createResourceWithTags = async (resource: Partial<Resource>, tags: string[]) => {
   const { supabase } = useSupabase()
-  const { $identity } = useNuxtApp()
+  const auth = useAuth()
   
   try {
-    // Get current user's ID from Netlify Identity
-    const currentUser = $identity.currentUser()
-    console.log('Current Netlify User:', currentUser)
+    // Get current user's ID from Supabase auth
+    const currentUser = auth.user.value
+    console.log('Current Supabase User:', currentUser)
     
     if (!currentUser) throw new Error('Must be logged in to create a resource')
 
@@ -167,38 +164,21 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
 }
 
 // Function to delete a resource and its tag relationships
-export const deleteResource = async (resourceId: number) => {
+export const deleteResource = async (resourceId: number): Promise<boolean> => {
   const { supabase } = useSupabase()
   
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+
   try {
-    // Delete image from storage if it exists
-    const { data: resource } = await supabase
-      .from('resources')
-      .select('image_url')
-      .eq('id', resourceId)
-      .single()
-
-    if (resource?.image_url) {
-      const oldPath = resource.image_url.split('/').pop()
-      if (oldPath) {
-        const { error: storageError } = await supabase.storage
-          .from('resources')
-          .remove([`resource-images/${oldPath}`])
-        
-        if (storageError) {
-          console.error('Storage delete error:', storageError)
-        }
-      }
-    }
-
-    // The resource_tags entries will be automatically deleted due to ON DELETE CASCADE
     const { error } = await supabase
       .from('resources')
       .delete()
       .eq('id', resourceId)
 
     if (error) throw error
-
+    return true
   } catch (error) {
     console.error('Error deleting resource:', error)
     throw error
@@ -206,7 +186,7 @@ export const deleteResource = async (resourceId: number) => {
 }
 
 // Add function to get user profile
-export const getUser = async (userId: string): Promise<User | null> => {
+export const getUser = async (userId: string): Promise<UserProfile | null> => {
   const { supabase } = useSupabase()
   
   try {
@@ -225,7 +205,7 @@ export const getUser = async (userId: string): Promise<User | null> => {
 }
 
 // Add function to update user profile
-export const updateUser = async (user: Partial<User>): Promise<User | null> => {
+export const updateUser = async (user: Partial<UserProfile>): Promise<UserProfile | null> => {
   const { supabase } = useSupabase()
   
   try {

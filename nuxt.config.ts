@@ -8,18 +8,44 @@ export default defineNuxtConfig({
       tailwindcss()
     ]
   },
+  
   css: ['~/assets/css/tailwind.css'],
+  
   // Development
   devtools: { enabled: true },
+  
+  // Pages configuration
+  pages: true,
+  
+  // Router configuration
+  router: {
+    options: {
+      strict: true
+    }
+  },
+  
+  // PostCSS configuration
+  postcss: {
+    plugins: {
+      'postcss-import': {},
+      'postcss-nesting': {},
+      '@tailwindcss/postcss': {},
+      autoprefixer: {},
+    }
+  },
+  
   runtimeConfig: {
+    // Private keys are only available on the server
+    supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY,
+    
+    // Public keys that are exposed to the client
     public: {
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
       supabaseKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY,
-      NETLIFY_IDENTITY_URL: process.env.NETLIFY_IDENTITY_URL,
-      NETLIFY_SITE_ID: process.env.NETLIFY_SITE_ID,
       SITE_URL: process.env.SITE_URL
     }
   },
+  
   app: {
     head: {
       htmlAttrs: {
@@ -42,6 +68,7 @@ export default defineNuxtConfig({
         { property: 'og:image', content: 'https://beatbox.studio/img/og-image.jpg' },
         { property: 'og:image:width', content: '1200' },
         { property: 'og:image:height', content: '630' },
+        { property: 'og:image:alt', content: 'Beatbox - A curated collection of music production tools' },
         { property: 'og:url', content: 'https://beatbox.studio' },
         
         // Twitter
@@ -49,6 +76,7 @@ export default defineNuxtConfig({
         { name: 'twitter:title', content: 'Beatbox' },
         { name: 'twitter:description', content: 'A curated collection of music production tools and resources.' },
         { name: 'twitter:image', content: 'https://beatbox.studio/img/og-image.jpg' },
+        { name: 'twitter:image:alt', content: 'Beatbox - A curated collection of music production tools' },
         { name: 'twitter:site', content: '@beatboxstudio' }
       ],
       link: [
@@ -64,9 +92,14 @@ export default defineNuxtConfig({
       ]
     }
   },
+  
   plugins: [
     '~/plugins/supabase.client.ts',
-    '~/plugins/netlifyIdentity.client.ts',
     '~/plugins/google-analytics.client.ts'
-  ]
+  ],
+
+  // Set compatibility date
+  nitro: {
+    compatibilityDate: '2024-04-03'
+  }
 })
