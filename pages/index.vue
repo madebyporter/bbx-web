@@ -26,4 +26,10 @@ const { isAdmin } = useAuth()
 const database = ref(null)
 
 defineEmits(['edit-resource', 'show-signup'])
+
+// Expose the database ref to parent
+defineExpose({
+  database,
+  handleSearch: (query) => database.value?.handleSearch(query)
+})
 </script> 

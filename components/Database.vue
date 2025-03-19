@@ -154,32 +154,26 @@ const isSupabaseReady = ref(false)
 
 const fetchResources = async () => {
   if (!supabase) {
-    console.error('Supabase client not initialized')
+    console.error('Database: Supabase client not initialized')
     return
   }
 
   try {
+    console.log('Database: Fetching resources...')
     const data = await fetchResourcesWithTags()
+    console.log('Database: Fetched', data.length, 'resources')
     
     // Apply search filter first
     let filteredData = data
     if (searchQuery.value) {
+      console.log('Database: Applying search filter with query:', searchQuery.value)
       const query = searchQuery.value.trim().toLowerCase()
       filteredData = data.filter(resource => {
         const name = resource.name?.toLowerCase() || ''
-        const creator = resource.creator?.toLowerCase() || ''
-        const tags = resource.tags?.map(tag => tag.toLowerCase()) || []
-        const type = resource.type?.toLowerCase() || ''
-
-        // Split name into words and check if any word starts with the query
-        const nameWords = name.split(' ')
-        const creatorWords = creator.split(' ')
-
-        return nameWords.some(word => word.startsWith(query)) ||
-          creatorWords.some(word => word.startsWith(query)) ||
-          tags.some(tag => tag.startsWith(query)) ||
-          type.startsWith(query)
+        console.log('Database: Checking resource:', name, 'against query:', query)
+        return name.includes(query)
       })
+      console.log('Database: After search filter:', filteredData.length, 'resources')
     }
 
     // Then apply filters
@@ -242,12 +236,13 @@ const fetchResources = async () => {
 
 // Initialize Supabase
 onMounted(async () => {
+  console.log('Database: Component mounted')
   if (supabase) {
     isSupabaseReady.value = true
-    console.log('Supabase client is ready')
+    console.log('Database: Supabase client is ready')
     await fetchResources()
   } else {
-    console.log('Waiting for Supabase client...')
+    console.log('Database: Waiting for Supabase client...')
   }
 })
 
@@ -379,9 +374,17 @@ const toggleUse = async (resource: Resource) => {
   }
 }
 
+const handleSearch = (query: string) => {
+  console.log('Database: handleSearch called with query:', query)
+  searchQuery.value = query
+  console.log('Database: Updated searchQuery to:', searchQuery.value)
+  fetchResources()
+}
+
 // Expose methods for parent components
 defineExpose({
-  fetchResources
+  fetchResources,
+  handleSearch
 })
 </script>
 

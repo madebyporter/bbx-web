@@ -66,6 +66,7 @@ onUnmounted(() => {
 })
 
 const onSearch = () => {
+  console.log('SearchFilter: Emitting search event with query:', searchQuery.value)
   emit('search', searchQuery.value)
 }
 

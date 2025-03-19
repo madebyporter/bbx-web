@@ -76,11 +76,11 @@
         </div>
 
         <!-- Account UI -->
-        <div class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit absolute bottom-4 left-4 right-4 w-auto rounded-md !p-4 hidden lg:flex flex-row items-center max-w-[203px]"> 
-          <div class="flex flex-row gap-2 items-center">
+        <div class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit absolute bottom-4 left-4 right-4 rounded-md !p-4 hidden lg:flex flex-row items-center overflow-hidden"> 
+          <div class="flex flex-row gap-2 items-center w-full">
             <template v-if="user">
-              <div class="flex flex-col gap-0 justify-start items-start">
-                <span class="text-sm font-semibold">{{ user.email }}</span>
+              <div class="flex flex-col gap-0 justify-start items-start w-full overflow-hidden text-ellipsis">
+                <span class="block text-sm font-semibold w-full">{{ user.email }}</span>
                 <div class="flex flex-col justify-start items-start gap-1">
                   <button @click="handleAuth" class="cursor-pointer text-xs hover:text-neutral-600">Logout</button>
                   <button 
@@ -110,9 +110,17 @@
           />
         </div>
         <NuxtPage 
+          ref="pageRef"
           @edit-resource="handleEdit"
           @show-signup="handleShowSignup"
-        />
+        >
+          <template #default="{ Component }">
+            <component 
+              :is="Component"
+              ref="databaseRef"
+            />
+          </template>
+        </NuxtPage>
       </section>
     </main>
 
@@ -222,6 +230,8 @@ const showFilterModal = ref(false)
 const editingResource = ref(null)
 const modalKey = ref(0)
 const showMobileNav = ref(false)
+const pageRef = ref(null)
+const databaseRef = ref(null)
 
 // Navigation
 const mobileNav = ref(null)
@@ -302,7 +312,15 @@ const handleFiltersAndSort = (params) => {
 }
 
 const handleSearch = (query) => {
-  // Handle search
+  console.log('App: handleSearch called with query:', query)
+  
+  // Access the database component directly through the ref
+  if (databaseRef.value) {
+    console.log('App: Found database component')
+    databaseRef.value.handleSearch(query)
+  } else {
+    console.log('App: Could not find database component')
+  }
 }
 
 // Handle "I Use This" signup flow
