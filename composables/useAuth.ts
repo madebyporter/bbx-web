@@ -1,207 +1,113 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { ref, computed } from 'vue'
-import { useNuxtApp } from '#app'
+import { useSupabase } from '~/utils/supabase'
+import type { Subscription } from '@supabase/supabase-js'
+import type { AuthUser } from '~/types/auth'
 
-// Define our own User type since the Netlify one isn't exported
-interface NetlifyUser {
-  id: string
-  email: string
-  user_metadata: {
-    avatar_url?: string
-    full_name?: string
-    [key: string]: any
-  }
-  app_metadata: {
-    roles?: string[]
-    [key: string]: any
-  }
-  created_at?: string
-}
+// Create a singleton instance
+let instance: ReturnType<typeof createAuth> | null = null
 
-// Create a global state
-const globalUser = ref<NetlifyUser | null>(null)
-const globalIsAdmin = computed(() => globalUser.value?.app_metadata?.roles?.includes('admin'))
+const createAuth = () => {
+  const { supabase } = useSupabase()
+  const user = ref<AuthUser | null>(null)
+  const isAdmin = ref(false)
+  const isReady = ref(false)
+  let subscription: Subscription | null = null
 
-export const useAuth = () => {
-  const { $identity, $supabase } = useNuxtApp()
+  // Computed property for user state
+  const currentUser = computed(() => {
+    console.log('useAuth: currentUser computed, user:', user.value)
+    return user.value
+  })
 
-  // Initialize Supabase
-  const initSupabase = () => {
-    if (!$supabase) {
-      console.error('Supabase client not available')
-      return false
-    }
-    return true
-  }
-
-  const updateUserState = (user: any | null) => {
-    if (user) {
-      globalUser.value = {
-        id: user.id,
-        email: user.email,
-        user_metadata: user.user_metadata || {},
-        app_metadata: user.app_metadata || {},
-        created_at: user.created_at || new Date().toISOString()
-      }
-      console.log('Updated user state to:', globalUser.value)
-    } else {
-      globalUser.value = null
-      console.log('Cleared user state')
-    }
-  }
-
-  const syncUserWithSupabase = async (netlifyUser: NetlifyUser) => {
-    if (!initSupabase()) return
-
-    try {
-      console.log('Attempting to sync user:', {
-        id: netlifyUser.id,
-        email: netlifyUser.email
-      })
-
-      // First sync the users table
-      const userData = {
-        id: netlifyUser.id,
-        email: netlifyUser.email,
-        user_metadata: netlifyUser.user_metadata,
-        app_metadata: netlifyUser.app_metadata,
-        updated_at: new Date().toISOString(),
-        created_at: netlifyUser.created_at || new Date().toISOString()
-      }
-
-      const { error: userError } = await $supabase
-        .from('users')
-        .upsert(userData)
-
-      if (userError) {
-        console.error('Error syncing user with Supabase:', userError)
-        throw userError
-      }
-
-      // Then ensure user profile exists
-      const profileData = {
-        id: netlifyUser.id,
-        username: netlifyUser.email?.split('@')[0] || `user_${netlifyUser.id}`,
-        display_name: netlifyUser.user_metadata?.full_name || netlifyUser.email?.split('@')[0] || `User ${netlifyUser.id}`,
-        avatar_url: netlifyUser.user_metadata?.avatar_url || '',
-        created_at: netlifyUser.created_at || new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-
-      console.log('Attempting to create/update profile:', profileData)
-
-      const { error: profileError } = await $supabase
-        .from('user_profiles')
-        .upsert(profileData, {
-          onConflict: 'id'
-        })
-
-      if (profileError) {
-        console.error('Error syncing user profile with Supabase:', profileError)
-        if (profileError.code === '42501') {
-          console.error('Permission denied. Please ensure RLS policies are properly configured for user_profiles table.')
-          console.error('Required policies:')
-          console.error('1. Allow users to insert their own profile')
-          console.error('2. Allow users to update their own profile')
-          console.error('3. Allow users to read any profile')
-        }
-        throw profileError
-      }
-    } catch (error) {
-      console.error('Failed to sync user with Supabase:', error)
-      throw error
-    }
-  }
-
+  // Initialize auth state
   const init = async () => {
-    console.log('Initializing auth state...')
-    
-    // Initialize Supabase first
-    if (!initSupabase()) {
-      console.error('Failed to initialize Supabase')
+    if (!supabase) {
+      console.error('Supabase not initialized')
       return
     }
 
-    // Initialize user state
-    const currentUser = $identity?.currentUser()
-    console.log('Current Netlify user:', currentUser)
-    
-    if (currentUser) {
-      updateUserState(currentUser)
-      try {
-        await syncUserWithSupabase(currentUser)
-      } catch (error) {
-        console.error('Failed to sync initial user state:', error)
+    if (isReady.value) {
+      console.log('Auth already initialized')
+      return
+    }
+
+    try {
+      // Get initial session
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log('Initial session:', session)
+      
+      if (session?.user) {
+        user.value = session.user as AuthUser
+        isAdmin.value = session.user.app_metadata.roles?.includes('admin') || false
+        console.log('User initialized:', user.value)
       }
-    } else {
-      updateUserState(null)
+
+      // Set up auth state change listener
+      const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((event, session) => {
+        console.log('Auth state changed:', event, session)
+        
+        if (session?.user) {
+          user.value = session.user as AuthUser
+          isAdmin.value = session.user.app_metadata.roles?.includes('admin') || false
+          console.log('User state updated:', user.value)
+        } else if (event === 'SIGNED_OUT') {
+          user.value = null
+          isAdmin.value = false
+          console.log('User state cleared (sign out)')
+        }
+      })
+      subscription = sub
+      isReady.value = true
+    } catch (error) {
+      console.error('Auth initialization error:', error)
+    }
+  }
+
+  // Auth methods
+  const signIn = async (email: string, password: string) => {
+    if (!supabase) throw new Error('Supabase not initialized')
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+    return data
+  }
+
+  const signUp = async (email: string, password: string) => {
+    if (!supabase) throw new Error('Supabase not initialized')
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) throw error
+    return data
+  }
+
+  const signOut = async () => {
+    if (!supabase) throw new Error('Supabase not initialized')
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
+  }
+
+  // Cleanup
+  const cleanup = () => {
+    if (subscription) {
+      subscription.unsubscribe()
+      subscription = null
     }
   }
 
   return {
-    user: globalUser,
-    isAdmin: globalIsAdmin,
+    user: currentUser,
+    isAdmin,
+    isReady,
     init,
-    updateUserState,
-    syncUserWithSupabase,
-    markResourceAsUsed: async (resourceId: number) => {
-      if (!globalUser.value || !initSupabase()) {
-        console.error('User not logged in or Supabase not initialized')
-        return false
-      }
-
-      try {
-        console.log('Checking if resource is already used by user:', {
-          resourceId,
-          userId: globalUser.value.id
-        })
-        
-        // First check if the user already has this resource marked as used
-        const { data: existingRecords, error: checkError } = await $supabase
-          .from('user_resources')
-          .select('id')
-          .match({
-            resource_id: resourceId,
-            user_id: globalUser.value.id
-          })
-
-        if (checkError) throw checkError
-
-        const existingRecord = existingRecords?.[0]
-
-        if (existingRecord) {
-          console.log('Resource already marked as used, removing...')
-          // If it exists, delete it (unmark)
-          const { error } = await $supabase
-            .from('user_resources')
-            .delete()
-            .match({
-              resource_id: resourceId,
-              user_id: globalUser.value.id
-            })
-
-          if (error) throw error
-          console.log('Successfully removed resource usage')
-          return false
-        } else {
-          console.log('Resource not marked as used, adding...')
-          // If it doesn't exist, create it (mark as used)
-          const { error } = await $supabase
-            .from('user_resources')
-            .insert([{
-              user_id: globalUser.value.id,
-              resource_id: resourceId,
-              used_at: new Date().toISOString(),
-            }])
-
-          if (error) throw error
-          console.log('Successfully added resource usage')
-          return true
-        }
-      } catch (error) {
-        console.error('Error marking resource as used:', error)
-        throw error
-      }
-    }
+    signIn,
+    signUp,
+    signOut,
+    cleanup
   }
+}
+
+// Export a singleton instance
+export const useAuth = () => {
+  if (!instance) {
+    instance = createAuth()
+  }
+  return instance
 } 

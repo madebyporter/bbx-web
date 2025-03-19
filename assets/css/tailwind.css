@@ -56,9 +56,10 @@
     @apply bg-neutral-700;
   }
   .pending-resource {
-    @apply bg-amber-500 text-amber-900;
-    .tag, .btn {
-      @apply bg-amber-600 text-amber-900;
-    }
+    @apply bg-amber-500/5;
+  }
+  .pending-resource .tag, 
+  .pending-resource .btn {
+    @apply bg-amber-600 text-amber-900;
   }
 }

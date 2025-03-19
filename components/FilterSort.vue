@@ -195,7 +195,7 @@ import gsap from 'gsap'
 import IconApple from './IconApple.vue'
 import IconWindows from './IconWindows.vue'
 import IconLinux from './IconLinux.vue'
-import { useSupabase } from '../utils/supabase'
+import { useSupabase } from '~/utils/supabase'
 
 export default {
   components: {

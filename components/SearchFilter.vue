@@ -26,7 +26,7 @@
       </button>
       <button @click="$emit('open-filter-modal')" class="btn w-full lg:w-fit">Filter & Sort</button>
       <button 
-        v-if="user"
+        v-if="hasUser"
         @click="$emit('open-modal')" 
         class="btn w-full lg:w-fit"
       >
@@ -37,54 +37,32 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
+import { useAuth } from '~/composables/useAuth'
 
 const searchQuery = ref('')
 const searchInput = ref(null)
 const emit = defineEmits(['open-modal', 'open-filter-modal', 'search', 'toggle-nav'])
 
-// Get user from Netlify Identity
-const { $identity } = useNuxtApp()
-const user = ref(null)
+// Get user from useAuth composable
+const auth = useAuth()
+const user = computed(() => auth.user.value)
+const isReady = computed(() => auth.isReady.value)
 
-// Watch for auth state changes
+// Add a computed property for user state
+const hasUser = computed(() => {
+  if (!isReady.value) return false
+  console.log('SearchFilter: Computing hasUser, user:', user.value)
+  return !!user.value
+})
+
 onMounted(() => {
+  console.log('SearchFilter: Component mounted, user:', user.value)
   window.addEventListener('keydown', handleKeydown)
-  
-  // Initialize Netlify Identity
-  if ($identity) {
-    // Get initial user state
-    const currentUser = $identity.currentUser()
-    if (currentUser) {
-      user.value = currentUser
-    }
-    
-    // Subscribe to auth changes
-    $identity.on('init', (initUser) => {
-      user.value = initUser
-    })
-    
-    $identity.on('login', (loginUser) => {
-      user.value = loginUser
-      console.log('SearchFilter: User logged in', loginUser)
-    })
-    
-    $identity.on('logout', () => {
-      user.value = null
-      console.log('SearchFilter: User logged out')
-    })
-  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
-  
-  // Clean up Netlify Identity listeners
-  if ($identity) {
-    $identity.off('init')
-    $identity.off('login')
-    $identity.off('logout')
-  }
 })
 
 const onSearch = () => {

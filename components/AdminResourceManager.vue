@@ -96,7 +96,7 @@
 
 <script>
 import gsap from 'gsap'
-import { useSupabase } from '../utils/supabase'
+import { useSupabase } from '~/utils/supabase'
 
 export default {
   emits: ['close', 'resource-updated'],

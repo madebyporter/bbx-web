@@ -119,15 +119,28 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { useSupabase } from '../utils/supabase'
-import { fetchResourcesWithTags, deleteResource, type Resource } from '../utils/resourceQueries'
-import { useAuth } from '../composables/useAuth'
+import { useSupabase } from '~/utils/supabase'
+import { fetchResourcesWithTags, deleteResource, type Resource } from '~/utils/resourceQueries'
+import { useAuth } from '~/composables/useAuth'
 
 interface ResourceFilters {
   price?: { free: boolean; paid: boolean }
   os?: string[]
   tags?: string[]
 }
+
+interface ResourceUseCount {
+  resource_id: number
+  count: string
+}
+
+interface ResourceUserUse {
+  resource_id: number
+}
+
+const props = defineProps<{
+  canEdit: boolean
+}>()
 
 const { supabase } = useSupabase()
 const auth = useAuth()
@@ -139,21 +152,12 @@ const useCounts = ref<{[key: number]: number}>({})
 const userUsedResources = ref<{[key: number]: boolean}>({})
 const isSupabaseReady = ref(false)
 
-// Add initialization check
-watch(() => supabase, (newSupabase) => {
-  if (newSupabase) {
-    isSupabaseReady.value = true
-    console.log('Supabase client is ready')
-  }
-}, { immediate: true })
-
-const emit = defineEmits(['edit-resource', 'show-signup'])
-
-const editResource = (resource: Resource) => {
-  emit('edit-resource', resource)
-}
-
 const fetchResources = async () => {
+  if (!supabase) {
+    console.error('Supabase client not initialized')
+    return
+  }
+
   try {
     const data = await fetchResourcesWithTags()
     
@@ -229,9 +233,85 @@ const fetchResources = async () => {
     }
 
     resources.value = filteredData
+    await fetchUseCounts()
 
   } catch (error) {
     console.error('Error fetching resources:', error)
+  }
+}
+
+// Initialize Supabase
+onMounted(async () => {
+  if (supabase) {
+    isSupabaseReady.value = true
+    console.log('Supabase client is ready')
+    await fetchResources()
+  } else {
+    console.log('Waiting for Supabase client...')
+  }
+})
+
+// Watch for auth changes
+watch(() => auth.user, async (newUser, oldUser) => {
+  console.log('User changed:', {
+    hadUser: oldUser?.value !== null,
+    hasUser: newUser?.value !== null,
+    userId: newUser?.value?.id
+  })
+
+  if (isSupabaseReady.value) {
+    await fetchUseCounts()
+  } else {
+    console.log('Waiting for Supabase to be ready before fetching counts...')
+  }
+}, { immediate: true })
+
+const emit = defineEmits(['edit-resource', 'show-signup'])
+
+const editResource = (resource: Resource) => {
+  emit('edit-resource', resource)
+}
+
+const fetchUseCounts = async () => {
+  if (!supabase) {
+    console.error('Supabase client not initialized')
+    return
+  }
+
+  try {
+    // Get total use counts using raw SQL
+    const { data: useCountsData, error: countError } = await supabase
+      .rpc('get_resource_use_counts')
+    
+    if (countError) throw countError
+
+    const counts: {[key: number]: number} = {}
+    if (useCountsData) {
+      (useCountsData as ResourceUseCount[]).forEach(row => {
+        counts[row.resource_id] = parseInt(row.count)
+      })
+    }
+    useCounts.value = counts
+
+    // If user is logged in, fetch their used resources
+    if (auth.user.value) {
+      const { data: userUses, error: userError } = await supabase
+        .from('user_resources')
+        .select('resource_id')
+        .eq('user_id', auth.user.value.id)
+
+      if (userError) throw userError
+
+      const userResources: {[key: number]: boolean} = {}
+      if (userUses) {
+        (userUses as ResourceUserUse[]).forEach(row => {
+          userResources[row.resource_id] = true
+        })
+      }
+      userUsedResources.value = userResources
+    }
+  } catch (error) {
+    console.error('Error fetching use counts:', error)
   }
 }
 
@@ -248,186 +328,62 @@ const confirmDelete = async (resource: Resource) => {
 }
 
 const getImageUrl = (url: string) => {
-  if (!url) return '/img/placeholder.png'
-  
-  try {
-    // If it's already a full URL, return it
-    if (url.startsWith('http')) return url
-    
-    // Get filename from path
-    const path = url.split('/').pop()
-    
-    // Add https:// to force non-QUIC protocol
-    const publicUrl = supabase.storage
-      .from('resources')
-      .getPublicUrl(`resource-images/${path}`).data.publicUrl
-      
-    return publicUrl.replace('http://', 'https://')
-  } catch (error) {
-    console.error('Error getting image URL:', error)
-    return '/img/placeholder.png'
-  }
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  return `${process.env.NUXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/resource-images/${url}`
 }
 
-const handleImageError = (e: Event) => {
-  const img = e.target as HTMLImageElement
-  console.error('Image failed to load:', img.src)
-  
-  // Only set placeholder if not already using it
-  if (!img.src.includes('placeholder.png')) {
-    img.src = '/img/placeholder.png'
-  }
+const handleImageError = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  img.src = '/img/placeholder.png'
 }
-
-const updateSort = (sortParams: typeof currentSort.value) => {
-  console.log('Updating sort:', sortParams)
-  currentSort.value = sortParams
-  fetchResources()
-}
-
-const updateFiltersAndSort = (params: { sort: typeof currentSort.value, filters: any }) => {
-  console.log('Updating filters and sort:', params)
-  currentSort.value = params.sort
-  currentFilters.value = params.filters
-  fetchResources()
-}
-
-const handleSearch = (query: string) => {
-  searchQuery.value = query
-  fetchResources()
-}
-
-const fetchUseCounts = async () => {
-  console.log('Fetching use counts...')
-  try {
-    if (!isSupabaseReady.value || !supabase) {
-      console.log('Waiting for Supabase to be ready...')
-      return
-    }
-
-    // Get total counts for all resources (public data)
-    const { data: resourceCounts, error: countError } = await supabase
-      .rpc('get_resource_use_counts')
-
-    if (countError) throw countError
-
-    // Transform array of counts into object
-    const counts: {[key: number]: number} = {}
-    if (resourceCounts && Array.isArray(resourceCounts)) {
-      resourceCounts.forEach((row: { resource_id: number; use_count: number }) => {
-        counts[row.resource_id] = row.use_count
-      })
-    }
-    useCounts.value = counts
-
-    // If user is logged in, get their specific usage
-    if (auth.user.value) {
-      const { data: userData, error: userError } = await supabase
-        .from('user_resources')
-        .select('resource_id')
-        .eq('user_id', auth.user.value.id)
-      
-      if (userError) throw userError
-
-      const userUsed: {[key: number]: boolean} = {}
-      if (userData && Array.isArray(userData)) {
-        (userData as Array<{ resource_id: number }>).forEach((row) => {
-          userUsed[row.resource_id] = true
-        })
-      }
-      userUsedResources.value = userUsed
-    } else {
-      userUsedResources.value = {}
-    }
-
-    console.log('Updated use counts:', counts)
-    console.log('Updated user used states:', userUsedResources.value)
-    console.log('Current user ID:', auth.user.value?.id)
-
-  } catch (error: any) {
-    console.error('Error fetching use counts:', error)
-  }
-}
-
-// Watch for user login to refresh user's usage state
-watch(() => auth.user.value, async (newUser, oldUser) => {
-  console.log('User changed:', { 
-    hadUser: !!oldUser, 
-    hasUser: !!newUser,
-    userId: newUser?.id
-  })
-  
-  // Add a small delay to ensure Supabase is initialized
-  await new Promise(resolve => setTimeout(resolve, 100))
-  
-  if (isSupabaseReady.value && supabase) {
-    await fetchUseCounts()
-  } else {
-    console.log('Waiting for Supabase to be ready before fetching counts...')
-  }
-}, { immediate: true })
 
 const toggleUse = async (resource: Resource) => {
-  console.log('Toggle Use clicked for:', resource.name)
-  console.log('Current user:', auth.user.value)
-  console.log('Current state:', {
-    isUsed: userUsedResources.value[resource.id],
-    currentCount: useCounts.value[resource.id] || 0
-  })
-
-  if (!auth.user.value) {
-    console.log('No user logged in, showing signup modal')
+  if (!auth.user.value || !supabase) {
     emit('show-signup')
     return
   }
 
   try {
-    const wasMarked = await auth.markResourceAsUsed(resource.id)
-    console.log('Toggle result:', wasMarked ? 'Marked as used' : 'Unmarked')
+    const isUsing = userUsedResources.value[resource.id]
     
-    // Update local state based on the result
-    userUsedResources.value[resource.id] = wasMarked
-    useCounts.value[resource.id] = (useCounts.value[resource.id] || 0) + (wasMarked ? 1 : -1)
-    
-    console.log('Updated state:', {
-      resource: resource.name,
-      isUsed: wasMarked,
-      newCount: useCounts.value[resource.id]
-    })
+    if (isUsing) {
+      // Remove use
+      const { error } = await supabase
+        .from('user_resources')
+        .delete()
+        .eq('resource_id', resource.id)
+        .eq('user_id', auth.user.value.id)
+
+      if (error) throw error
+      
+      userUsedResources.value[resource.id] = false
+      useCounts.value[resource.id] = (useCounts.value[resource.id] || 1) - 1
+    } else {
+      // Add use
+      const { error } = await supabase
+        .from('user_resources')
+        .insert({
+          resource_id: resource.id,
+          user_id: auth.user.value.id
+        })
+
+      if (error) throw error
+      
+      userUsedResources.value[resource.id] = true
+      useCounts.value[resource.id] = (useCounts.value[resource.id] || 0) + 1
+    }
   } catch (error) {
     console.error('Error toggling resource use:', error)
+    alert('Failed to update resource use')
   }
 }
 
-const props = defineProps({
-  canEdit: {
-    type: Boolean,
-    default: false
-  }
-})
-
-// Add this to verify the prop is being received
-watch(() => props.canEdit, (newValue) => {
-  console.log('Database canEdit changed:', newValue)
-})
-
-onMounted(async () => {
-  console.log('Database mounted with canEdit:', props.canEdit)
-  await fetchResources()
-  await fetchUseCounts() // Always fetch counts on mount
-})
-
+// Expose methods for parent components
 defineExpose({
-  fetchResources,
-  updateFiltersAndSort,
-  handleSearch
+  fetchResources
 })
 </script>
 
-<style>
-.pending-resource {
-  @apply relative;  /* For the pending badge positioning */
-}
-
-/* You can add any other pending-specific styles here */
+<style scoped>
 </style>

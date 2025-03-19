@@ -293,7 +293,7 @@
 
 <script>
 import gsap from 'gsap'
-import { useSupabase } from '../utils/supabase'
+import { useSupabase } from '~/utils/supabase'
 import { createResourceWithTags } from '../utils/resourceQueries'
 
 export default {

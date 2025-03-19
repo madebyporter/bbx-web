@@ -8,17 +8,32 @@ export default defineNuxtConfig({
       tailwindcss()
     ]
   },
+  
   css: ['~/assets/css/tailwind.css'],
+  
   // Development
   devtools: { enabled: true },
+  
+  // Pages configuration
+  pages: true,
+  
+  // Router configuration
+  router: {
+    options: {
+      strict: true
+    }
+  },
+  
   // PostCSS configuration
   postcss: {
     plugins: {
-      'tailwindcss/nesting': {},
+      'postcss-import': {},
+      'postcss-nesting': {},
       '@tailwindcss/postcss': {},
       autoprefixer: {},
     }
   },
+  
   runtimeConfig: {
     // Private keys are only available on the server
     supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY,
@@ -27,19 +42,10 @@ export default defineNuxtConfig({
     public: {
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
       supabaseKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY,
-      NETLIFY_IDENTITY_URL: process.env.NETLIFY_IDENTITY_URL,
-      NETLIFY_SITE_ID: process.env.NETLIFY_SITE_ID,
       SITE_URL: process.env.SITE_URL
     }
   },
-  nitro: {
-    devProxy: {
-      '/.netlify/identity': {
-        target: process.env.NETLIFY_IDENTITY_URL || 'http://localhost:9999/.netlify/identity',
-        changeOrigin: true
-      }
-    }
-  },
+  
   app: {
     head: {
       htmlAttrs: {
@@ -86,9 +92,14 @@ export default defineNuxtConfig({
       ]
     }
   },
+  
   plugins: [
     '~/plugins/supabase.client.ts',
-    '~/plugins/netlifyIdentity.client.ts',
     '~/plugins/google-analytics.client.ts'
-  ]
+  ],
+
+  // Set compatibility date
+  nitro: {
+    compatibilityDate: '2024-04-03'
+  }
 })
