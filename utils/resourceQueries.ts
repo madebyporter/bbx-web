@@ -46,11 +46,15 @@ export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
   }
 
   try {
-    // Fetch resources with their tags
+    // Fetch resources with their tags and creator
     const { data: resources, error } = await supabase
       .from('resources')
       .select(`
         *,
+        creators (
+          name,
+          contact_info
+        ),
         resource_tags (
           tag_id,
           tags (
@@ -63,9 +67,10 @@ export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
 
     if (error) throw error
 
-    // Transform the data to include tags array
+    // Transform the data to include tags array and creator name
     return resources.map((resource: any) => ({
       ...resource,
+      creator: resource.creators?.name || 'Unknown',
       tags: resource.resource_tags?.map((rt: any) => rt.tags.name) || []
     }))
   } catch (error) {
