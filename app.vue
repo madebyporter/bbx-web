@@ -310,20 +310,20 @@ const handleFiltersAndSort = (params) => {
 }
 
 const handleSearch = (query) => {
-  console.log('App: handleSearch called with query:', query)
+  ('App: handleSearch called with query:', query)
   
   // Access the database component directly through the ref
   if (databaseRef.value) {
-    console.log('App: Found database component')
+    ('App: Found database component')
     databaseRef.value.handleSearch(query)
   } else {
-    console.log('App: Could not find database component')
+    ('App: Could not find database component')
   }
 }
 
 // Handle "I Use This" signup flow
 const handleShowSignup = () => {
-  console.log('Show signup called, current user:', user.value)
+  ('Show signup called, current user:', user.value)
   if (!user.value) {
     showAuthModal.value = true
     isSignUp.value = true
@@ -332,7 +332,7 @@ const handleShowSignup = () => {
 
 // Initialize auth state
 onMounted(async () => {
-  console.log('App: Starting auth initialization...')
+  ('App: Starting auth initialization...')
   await auth.init()
   isInitialized.value = true
   console.log('App: Auth initialized successfully, user:', user.value)
