@@ -38,12 +38,10 @@
         <div class="flex flex-col gap-16 grow overflow-auto lg:pb-[130px]">
           <div class="flex flex-col gap-4">
             <span class="nav-header">Resources</span>
-            <NuxtLink to="#" class="nav-link">Software</NuxtLink>
+            <NuxtLink to="/" class="nav-link">Software</NuxtLink>
+            <NuxtLink to="/sounds" class="nav-link">Sounds & Kits</NuxtLink>
             <NuxtLink to="#" class="nav-link-later">
               Hardware <span class="tag">Later</span>
-            </NuxtLink>
-            <NuxtLink to="#" class="nav-link-later">
-              Sounds & Kits <span class="tag">Later</span>
             </NuxtLink>
             <NuxtLink to="#" class="nav-link-later">
               Sync Libraries <span class="tag">Later</span>
