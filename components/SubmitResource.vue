@@ -19,7 +19,7 @@
         <p class="text-neutral-600">We will review and add this submission if it fits our criteria.</p>
         <button 
           @click="resetAndShowForm" 
-          class="text-neutral-800 hover:text-neutral-600 underline mt-4 cursor-pointer"
+          class="text-amber-300 hover:text-amber-400 underline mt-4 cursor-pointer"
         >
           Submit another resource
         </button>
@@ -37,24 +37,24 @@
             <div class="flex flex-wrap gap-2">
               <label 
                 v-for="type in resourceTypes" 
-                :key="type.value"
+                :key="type.id"
                 class="flex items-center gap-2 cursor-pointer"
               >
                 <input 
                   type="radio" 
-                  :value="type.value" 
-                  v-model="formData.type"
+                  :value="type.id" 
+                  v-model="formData.type_id"
                   class="hidden" 
                 />
                 <div 
                   class="px-3 py-2 rounded-md flex items-center gap-2"
                   :class="[
-                    formData.type === type.value 
+                    formData.type_id === type.id 
                       ? 'tag-active' 
                       : 'tag'
                   ]"
                 >
-                  <span>{{ type.label }}</span>
+                  <span>{{ type.display_name }}</span>
                 </div>
               </label>
             </div>
@@ -291,625 +291,610 @@
   </Teleport>
 </template>
 
-<script>
-import gsap from 'gsap'
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue'
 import { useSupabase } from '~/utils/supabase'
-import { createResourceWithTags } from '../utils/resourceQueries'
-
-export default {
-  emits: ['close', 'resource-added', 'resource-updated'],
-  setup() {
-    const { supabase } = useSupabase()
-    
-    return {
-      supabase
-    }
-  },
-  props: {
-    show: {
-      type: Boolean,
-      required: true,
-    },
-    editMode: {
-      type: Boolean,
-      default: false
-    },
-    resourceToEdit: {
-      type: Object,
-      default: null
-    }
-  },
-  computed: {
-    submitButtonText() {
-      if (this.isSubmitting) return 'Submitting...'
-      return this.editMode ? 'Update' : 'Submit'
-    }
-  },
-  data() {
-    return {
-      showSuccessMessage: false,
-      isSubmitting: false,
-      imageFile: null,
-      imagePreview: null,
-      imageError: null,
-      formData: {
-        name: '',
-        creator: '',
-        price: '',
-        link: '',
-        image_url: '',
-        type: 'software'
-      },
-      creatorInput: '',
-      availableCreators: [],
-      showCreatorSuggestions: false,
-      filteredCreators: [],
-      tagInput: '',
-      selectedTags: [],
-      availableTags: [],
-      showSuggestions: false,
-      filteredTags: [],
-      selectedOS: [],
-      resourceTypes: [
-        { value: 'software', label: 'Software' },
-        { value: 'hardware', label: 'Hardware' },
-        { value: 'tutorial', label: 'Tutorial' },
-        { value: 'sounds_kits', label: 'Sounds & Kits' },
-        { value: 'sync_libraries', label: 'Sync Libraries' }
-      ],
-      errors: {
-        name: '',
-        creator: '',
-        tags: '',
-        price: '',
-        os: '',
-        link: '',
-        image: '',
-        type: ''
-      },
-      isDragging: false,
-    }
-  },
-  watch: {
-    show(newValue) {
-      if (newValue) {
-        this.$nextTick(() => {
-          this.animateIn()
-        })
-      } else {
-        this.animateOut()
-      }
-    },
-    resourceToEdit: {
-      immediate: true,
-      handler(resource) {
-        if (resource) {
-          this.formData = {
-            name: resource.name,
-            creator: resource.creator,
-            price: resource.price,
-            link: resource.link,
-            image_url: resource.image_url,
-            type: resource.type
-          }
-          this.selectedTags = resource.tags || []
-          this.selectedOS = resource.os || []
-          if (resource.image_url) {
-            this.imagePreview = resource.image_url
-          }
-        }
-      }
-    }
-  },
-  methods: {
-    animateIn() {
-      gsap.to(this.$refs.modal, {
-        duration: 0.3,
-        x: 0,
-        ease: 'power2.out'
-      })
-    },
-    animateOut() {
-      gsap.to(this.$refs.modal, {
-        duration: 0.3,
-        x: '100%',
-        ease: 'power2.in',
-        onComplete: () => {
-          this.resetForm()
-          this.$emit('close')
-        }
-      })
-    },
-    close() {
-      this.animateOut()
-    },
-    async ensureTableStructure() {
-      try {
-        const { error: tableError } = await this.supabase
-          .from('resources')
-          .select('id')
-          .limit(1)
-
-        if (tableError) {
-          // Table doesn't exist, create it
-          const { error: createError } = await this.supabase.rpc('create_resources_table', {
-            sql: `
-              CREATE TABLE IF NOT EXISTS resources (
-                id BIGSERIAL PRIMARY KEY,
-                name TEXT NOT NULL,
-                creator TEXT NOT NULL,
-                tags TEXT[] NOT NULL,
-                price TEXT NOT NULL,
-                os TEXT[] NOT NULL,
-                link TEXT NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-              );
-            `
-          })
-
-          if (createError) throw createError
-        }
-      } catch (error) {
-        console.error('Error ensuring table structure:', error)
-        throw error
-      }
-    },
-    handleDragOver(event) {
-      this.isDragging = true
-      event.dataTransfer.dropEffect = 'copy'
-    },
-
-    handleDragLeave() {
-      this.isDragging = false
-    },
-
-    handleDrop(event) {
-      this.isDragging = false
-      const file = event.dataTransfer.files[0]
-      if (file) {
-        this.validateAndProcessImage(file)
-      }
-    },
-
-    handleImageSelect(event) {
-      const file = event.target.files[0]
-      if (file) {
-        this.validateAndProcessImage(file)
-      }
-    },
-
-    validateAndProcessImage(file) {
-      // Reset error state
-      this.imageError = null
-
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        this.imageError = 'Please select an image file'
-        return
-      }
-
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        this.imageError = 'Image must be less than 5MB'
-        return
-      }
-
-      // Store the file
-      this.imageFile = file
-
-      // Create preview
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        try {
-          this.imagePreview = e.target.result
-        } catch (error) {
-          console.error('Error setting preview:', error)
-          this.imageError = 'Error creating preview'
-        }
-      }
-      reader.onerror = (error) => {
-        console.error('Error reading file:', error)
-        this.imageError = 'Error reading file'
-      }
-      reader.readAsDataURL(file)
-    },
-
-    async uploadImage() {
-      if (!this.imageFile) return null
-
-      try {
-        const fileExt = this.imageFile.name.split('.').pop()
-        const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`
-        const filePath = `resource-images/${fileName}`
-
-        // Upload the file
-        const { error: uploadError } = await this.supabase.storage
-          .from('resources')
-          .upload(filePath, this.imageFile, {
-            cacheControl: '3600',
-            upsert: false
-          })
-
-        if (uploadError) throw uploadError
-
-        // Get public URL and force HTTPS
-        const { data: { publicUrl } } = this.supabase.storage
-          .from('resources')
-          .getPublicUrl(filePath)
-
-        const httpsUrl = publicUrl.replace('http://', 'https://')
-
-        // Verify URL is accessible
-        try {
-          const testResponse = await fetch(httpsUrl)
-          if (!testResponse.ok) {
-            throw new Error('URL not accessible')
-          }
-        } catch (error) {
-          console.warn('URL verification failed, but continuing:', error)
-          // Continue anyway as the image might still work
-        }
-
-        return httpsUrl
-
-      } catch (error) {
-        console.error('Error in uploadImage:', error)
-        throw error
-      }
-    },
-
-    async fetchTags() {
-      try {
-        const { data, error } = await this.supabase
-          .from('tags')
-          .select('name')
-          .order('name')
-
-        if (error) throw error
-        
-        this.availableTags = data.map(tag => tag.name)
-          .sort((a, b) => a.localeCompare(b))
-      } catch (error) {
-        console.error('Error fetching tags:', error)
-      }
-    },
-
-    searchTags() {
-      if (!this.tagInput) {
-        this.showSuggestions = false
-        return
-      }
-
-      const searchTerm = this.tagInput.toLowerCase()
-      this.filteredTags = this.availableTags
-        .filter(tag => 
-          tag.toLowerCase().includes(searchTerm) && 
-          !this.selectedTags.includes(tag)
-        )
-      this.showSuggestions = true
-    },
-
-    selectTag(tag) {
-      if (this.selectedTags.length >= 3) return
-      const normalizedTag = tag.toLowerCase()
-      if (!this.selectedTags.includes(normalizedTag)) {
-        this.selectedTags.push(normalizedTag)
-      }
-      this.tagInput = ''
-      this.showSuggestions = false
-    },
-
-    addTag() {
-      if (!this.tagInput.trim() || this.selectedTags.length >= 3) return
-      
-      const newTag = this.tagInput.trim().toLowerCase()
-      if (!this.selectedTags.includes(newTag)) {
-        this.selectedTags.push(newTag)
-      }
-      this.tagInput = ''
-      this.showSuggestions = false
-    },
-
-    removeTag(tag) {
-      this.selectedTags = this.selectedTags.filter(t => t !== tag)
-    },
-
-    async fetchCreators() {
-      try {
-        const { data, error } = await this.supabase
-          .from('creators')
-          .select('name')
-          .order('name')
-
-        if (error) throw error
-        
-        this.availableCreators = data.map(creator => creator.name)
-          .sort((a, b) => a.localeCompare(b))
-      } catch (error) {
-        console.error('Error fetching creators:', error)
-      }
-    },
-
-    searchCreators() {
-      if (!this.creatorInput) {
-        this.showCreatorSuggestions = false
-        return
-      }
-
-      const searchTerm = this.creatorInput.toLowerCase()
-      this.filteredCreators = this.availableCreators
-        .filter(creator => 
-          creator.toLowerCase().includes(searchTerm)
-        )
-      this.showCreatorSuggestions = true
-    },
-
-    selectCreator(creator) {
-      this.creatorInput = creator
-      this.formData.creator = creator
-      this.showCreatorSuggestions = false
-    },
-
-    async submitResource() {
-      try {
-        this.isSubmitting = true
-        console.log('Starting resource submission...')
-        
-        // Upload image first if one is selected
-        let imageUrl = null
-        if (this.imageFile) {
-          imageUrl = await this.uploadImage()
-        }
-
-        // Use the createResourceWithTags function instead of direct submission
-        const resourceData = {
-          name: this.formData.name,
-          creator: this.creatorInput,
-          price: this.formData.price,
-          link: this.formData.link,
-          image_url: imageUrl,
-          os: this.selectedOS,
-          type: this.formData.type
-        }
-
-        console.log('Resource data:', resourceData)
-        console.log('Selected tags:', this.selectedTags)
-
-        await createResourceWithTags(resourceData, this.selectedTags)
-        console.log('Resource created successfully')
-
-        // Show success message
-        this.showSuccessMessage = true
-        
-        // Reset form in background
-        this.resetForm()
-        // Re-show success message since resetForm clears it
-        this.showSuccessMessage = true
-
-      } catch (error) {
-        console.error('Error submitting resource:', error)
-        alert('Failed to submit resource. Please try again.')
-      } finally {
-        this.isSubmitting = false
-      }
-    },
-
-    async updateResource() {
-      try {
-        this.isSubmitting = true
-        console.log('Starting update for resource:', this.resourceToEdit.id)
-        
-        let imageUrl = this.resourceToEdit.image_url
-
-        // Handle image update if needed
-        if (this.imageFile) {
-          // Delete old image if it exists
-          if (this.resourceToEdit.image_url) {
-            const oldPath = this.resourceToEdit.image_url
-              .split('resource-images/')[1]
-            
-            if (oldPath) {
-              await this.supabase.storage
-                .from('resources')
-                .remove([`resource-images/${oldPath}`])
-            }
-          }
-          
-          // Upload new image
-          imageUrl = await this.uploadImage()
-        }
-
-        // 1. Update the resource
-        const { data: updatedResource, error: resourceError } = await this.supabase
-          .from('resources')
-          .update({
-            name: this.formData.name,
-            creator: this.formData.creator,
-            price: this.formData.price,
-            link: this.formData.link,
-            image_url: imageUrl,
-            os: this.selectedOS,
-            type: 'software'
-          })
-          .eq('id', this.resourceToEdit.id)
-          .select()
-          .single()
-
-        if (resourceError) throw resourceError
-
-        // 2. Delete existing tag relationships
-        const { error: deleteError } = await this.supabase
-          .from('resource_tags')
-          .delete()
-          .eq('resource_id', this.resourceToEdit.id)
-
-        if (deleteError) throw deleteError
-
-        // 3. Create new tags and relationships
-        const tagPromises = this.selectedTags.map(async (tagName) => {
-          const { data: tag, error: tagError } = await this.supabase
-            .from('tags')
-            .upsert({ name: tagName.toLowerCase() }, { onConflict: 'name' })
-            .select()
-            .single()
-
-          if (tagError) throw tagError
-          return tag
-        })
-
-        const resolvedTags = await Promise.all(tagPromises)
-
-        // 4. Create new resource_tags relationships
-        if (resolvedTags.length > 0) {
-          const resourceTagsData = resolvedTags.map(tag => ({
-            resource_id: this.resourceToEdit.id,
-            tag_id: tag.id
-          }))
-
-          const { error: relationError } = await this.supabase
-            .from('resource_tags')
-            .insert(resourceTagsData)
-
-          if (relationError) throw relationError
-        }
-
-        // Emit event to refresh Database.vue
-        this.$emit('resource-updated')
-        
-        // Close modal with animation
-        this.animateOut()
-
-      } catch (error) {
-        console.error('Error updating resource:', error)
-        alert(`Failed to update resource: ${error.message}`)
-      } finally {
-        this.isSubmitting = false
-      }
-    },
-
-    resetAndShowForm() {
-      this.showSuccessMessage = false
-      // Form is already reset from previous submission
-    },
-
-    resetForm() {
-      this.formData = {
-        name: '',
-        creator: '',
-        price: '',
-        link: '',
-        image_url: '',
-        type: 'software'
-      }
-      this.creatorInput = ''
-      this.selectedTags = []
-      this.selectedOS = []
-      this.imageFile = null
-      this.imagePreview = null
-      this.imageError = null
-      this.showSuccessMessage = false
-    },
-    validateForm() {
-      let isValid = true
-      this.errors = {
-        name: '',
-        creator: '',
-        tags: '',
-        price: '',
-        os: '',
-        link: '',
-        image: '',
-        type: ''
-      }
-
-      // Name validation
-      if (!this.formData.name.trim()) {
-        this.errors.name = 'Name is required'
-        isValid = false
-      }
-
-      // Creator validation
-      if (!this.creatorInput.trim()) {
-        this.errors.creator = 'Creator is required'
-        isValid = false
-      }
-
-      // Tags validation
-      if (this.selectedTags.length === 0) {
-        this.errors.tags = 'At least one tag is required'
-        isValid = false
-      }
-
-      // Price validation
-      if (!this.formData.price.trim()) {
-        this.errors.price = 'Price is required'
-        isValid = false
-      }
-
-      // OS validation
-      if (this.selectedOS.length === 0) {
-        this.errors.os = 'At least one operating system is required'
-        isValid = false
-      }
-
-      // Link validation
-      if (!this.formData.link.trim()) {
-        this.errors.link = 'Link is required'
-        isValid = false
-      } else if (!this.formData.link.startsWith('http')) {
-        this.errors.link = 'Please enter a valid URL starting with http:// or https://'
-        isValid = false
-      }
-
-      // Image validation
-      if (!this.imageFile && !this.formData.image_url) {
-        this.errors.image = 'Image is required'
-        isValid = false
-      }
-
-      // Type validation
-      if (!this.formData.type) {
-        this.errors.type = 'Type is required'
-        isValid = false
-      }
-
-      return isValid
-    },
-    async onSubmit(e) {
-      e.preventDefault();
-      
-      //ebm edit
-      // Step 1: Remove all leading $ signs
-      this.formData.price = this.formData.price.replace(/^\$+/, '');
-      
-      // Step 2: Prepend a single $ sign
-      this.formData.price = '$' + this.formData.price;
-      
-      if (!this.validateForm()) {
-        return
-      }
-
-      console.log('Form submitted', this.editMode ? 'update' : 'create')
-      try {
-        if (this.editMode) {
-          await this.updateResource()
-        } else {
-          await this.submitResource()
-        }
-      } catch (error) {
-        console.error('Error in form submission:', error)
-      }
-    },
-  },
-  mounted() {
-    this.fetchTags()
-    this.fetchCreators()
-    if (this.show) {
-      this.$nextTick(() => {
-        this.animateIn()
-      })
-    }
+import { createResourceWithTags, fetchResourceTypes, type ResourceType } from '../utils/resourceQueries'
+import gsap from 'gsap'
+
+interface Creator {
+  name: string;
+}
+
+interface ResourceToEdit {
+  id: number;
+  image_url: string | null;
+}
+
+interface Resource {
+  name: string;
+  creator: string;
+  price: string;
+  link: string;
+  image_url?: string;
+  os: string[];
+  type: ResourceType;
+}
+
+interface Tag {
+  id: number;
+  name: string;
+}
+
+const { supabase } = useSupabase()
+
+const modal = ref<HTMLElement | null>(null)
+const show = ref(false)
+const editMode = ref(false)
+const resourceToEdit = ref<ResourceToEdit | null>(null)
+const showSuccessMessage = ref(false)
+const isSubmitting = ref(false)
+const imageFile = ref<File | null>(null)
+const imagePreview = ref<string | null>(null)
+const imageError = ref<string | null>(null)
+const creatorInput = ref('')
+const availableCreators = ref<string[]>([])
+const showCreatorSuggestions = ref(false)
+const filteredCreators = ref<string[]>([])
+const tagInput = ref('')
+const selectedTags = ref<string[]>([])
+const availableTags = ref<string[]>([])
+const showSuggestions = ref(false)
+const filteredTags = ref<string[]>([])
+const selectedOS = ref<string[]>([])
+const resourceTypes = ref<ResourceType[]>([])
+
+const errors = ref({
+  name: '',
+  creator: '',
+  tags: '',
+  price: '',
+  os: '',
+  link: '',
+  image: '',
+  type: ''
+})
+
+const isDragging = ref(false)
+
+const submitButtonText = computed(() => {
+  if (isSubmitting.value) return 'Submitting...'
+  return editMode.value ? 'Update' : 'Submit'
+})
+
+const formData = ref({
+  name: '',
+  type_id: null as number | null,
+  creator: '',
+  price: '',
+  link: '',
+  image_url: '',
+  os: [] as string[]
+})
+
+// Fetch resource types on mount
+onMounted(async () => {
+  resourceTypes.value = await fetchResourceTypes()
+})
+
+const resetForm = () => {
+  formData.value = {
+    name: '',
+    type_id: null,
+    creator: '',
+    price: '',
+    link: '',
+    image_url: '',
+    os: []
+  }
+  selectedTags.value = []
+  imageFile.value = null
+  imagePreview.value = null
+  imageError.value = null
+  errors.value = {
+    name: '',
+    creator: '',
+    tags: '',
+    price: '',
+    os: '',
+    link: '',
+    image: '',
+    type: ''
   }
 }
+
+const animateIn = () => {
+  if (!modal.value) return
+  gsap.to(modal.value, {
+    duration: 0.3,
+    x: 0,
+    ease: 'power2.out'
+  })
+}
+
+const animateOut = () => {
+  if (!modal.value) return
+  gsap.to(modal.value, {
+    duration: 0.3,
+    x: '100%',
+    ease: 'power2.in',
+    onComplete: () => {
+      resetForm()
+      show.value = false
+    }
+  })
+}
+
+const close = () => {
+  animateOut()
+}
+
+const handleDragOver = (event: DragEvent) => {
+  event.preventDefault()
+  isDragging.value = true
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'copy'
+  }
+}
+
+const handleDragLeave = (event: DragEvent) => {
+  event.preventDefault()
+  isDragging.value = false
+}
+
+const handleDrop = (event: DragEvent) => {
+  event.preventDefault()
+  isDragging.value = false
+  if (event.dataTransfer?.files.length) {
+    const file = event.dataTransfer.files[0]
+    validateAndProcessImage(file)
+  }
+}
+
+const handleImageSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target?.files?.[0]) {
+    validateAndProcessImage(target.files[0])
+  }
+}
+
+const validateAndProcessImage = (file: File) => {
+  // Reset error state
+  imageError.value = null
+
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    imageError.value = 'Please select an image file'
+    return
+  }
+
+  // Validate file size (5MB limit)
+  if (file.size > 5 * 1024 * 1024) {
+    imageError.value = 'Image must be less than 5MB'
+    return
+  }
+
+  // Store the file
+  imageFile.value = file
+
+  // Create preview
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const result = e.target?.result
+      if (typeof result === 'string') {
+        imagePreview.value = result
+      } else {
+        throw new Error('Invalid image data')
+      }
+    } catch (error) {
+      console.error('Error setting preview:', error)
+      imageError.value = 'Error creating preview'
+    }
+  }
+  reader.onerror = (error) => {
+    console.error('Error reading file:', error)
+    imageError.value = 'Error reading file'
+  }
+  reader.readAsDataURL(file)
+}
+
+const uploadImage = async () => {
+  if (!imageFile.value || !supabase) return null
+
+  try {
+    const fileExt = imageFile.value.name.split('.').pop()
+    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`
+    const filePath = `resource-images/${fileName}`
+
+    // Upload the file
+    const { error: uploadError } = await supabase.storage
+      .from('resources')
+      .upload(filePath, imageFile.value, {
+        cacheControl: '3600',
+        upsert: false
+      })
+
+    if (uploadError) throw uploadError
+
+    // Get public URL and force HTTPS
+    const { data: { publicUrl } } = supabase.storage
+      .from('resources')
+      .getPublicUrl(filePath)
+
+    const httpsUrl = publicUrl.replace('http://', 'https://')
+
+    // Verify URL is accessible
+    try {
+      const testResponse = await fetch(httpsUrl)
+      if (!testResponse.ok) {
+        throw new Error('URL not accessible')
+      }
+    } catch (error) {
+      console.warn('URL verification failed, but continuing:', error)
+      // Continue anyway as the image might still work
+    }
+
+    return httpsUrl
+
+  } catch (error) {
+    console.error('Error in uploadImage:', error)
+    throw error
+  }
+}
+
+const fetchTags = async () => {
+  if (!supabase) return
+
+  try {
+    const { data, error } = await supabase
+      .from('tags')
+      .select('name')
+      .order('name')
+
+    if (error) throw error
+    
+    availableTags.value = (data as { name: string }[])
+      .map(tag => tag.name)
+      .sort((a, b) => a.localeCompare(b))
+  } catch (error) {
+    console.error('Error fetching tags:', error)
+  }
+}
+
+const searchTags = () => {
+  if (!tagInput.value) {
+    showSuggestions.value = false
+    return
+  }
+
+  const searchTerm = tagInput.value.toLowerCase()
+  filteredTags.value = availableTags.value
+    .filter((tag: string) => 
+      tag.toLowerCase().includes(searchTerm) && 
+      !selectedTags.value.includes(tag)
+    )
+  showSuggestions.value = true
+}
+
+const selectTag = (tag: string) => {
+  if (selectedTags.value.length >= 3) return
+  const normalizedTag = tag.toLowerCase()
+  if (!selectedTags.value.includes(normalizedTag)) {
+    selectedTags.value.push(normalizedTag)
+  }
+  tagInput.value = ''
+  showSuggestions.value = false
+}
+
+const addTag = () => {
+  if (!tagInput.value.trim() || selectedTags.value.length >= 3) return
+  
+  const newTag = tagInput.value.trim().toLowerCase()
+  if (!selectedTags.value.includes(newTag)) {
+    selectedTags.value.push(newTag)
+  }
+  tagInput.value = ''
+  showSuggestions.value = false
+}
+
+const removeTag = (tag: string) => {
+  selectedTags.value = selectedTags.value.filter(t => t !== tag)
+}
+
+const fetchCreators = async () => {
+  if (!supabase) return
+
+  try {
+    const { data, error } = await supabase
+      .from('creators')
+      .select('name')
+      .order('name')
+
+    if (error) throw error
+    
+    availableCreators.value = (data as Creator[])
+      .map(creator => creator.name)
+      .sort((a, b) => a.localeCompare(b))
+  } catch (error) {
+    console.error('Error fetching creators:', error)
+  }
+}
+
+const searchCreators = () => {
+  if (!creatorInput.value) {
+    showCreatorSuggestions.value = false
+    return
+  }
+
+  const searchTerm = creatorInput.value.toLowerCase()
+  filteredCreators.value = availableCreators.value
+    .filter(creator => 
+      creator.toLowerCase().includes(searchTerm)
+    )
+  showCreatorSuggestions.value = true
+}
+
+const selectCreator = (creator: string) => {
+  creatorInput.value = creator
+  formData.value.creator = creator
+  showCreatorSuggestions.value = false
+}
+
+const submitResource = async () => {
+  try {
+    isSubmitting.value = true
+    console.log('Starting resource submission...')
+    
+    // Upload image first if one is selected
+    let imageUrl: string | null = null
+    if (imageFile.value) {
+      imageUrl = await uploadImage()
+    }
+
+    // Use the createResourceWithTags function instead of direct submission
+    const resourceData: Partial<Resource> = {
+      name: formData.value.name,
+      creator: creatorInput.value,
+      price: formData.value.price,
+      link: formData.value.link,
+      image_url: imageUrl || undefined,
+      os: selectedOS.value,
+      type: formData.value.type_id as unknown as ResourceType
+    }
+
+    console.log('Resource data:', resourceData)
+    console.log('Selected tags:', selectedTags.value)
+
+    await createResourceWithTags(resourceData, selectedTags.value)
+    console.log('Resource created successfully')
+
+    // Show success message
+    showSuccessMessage.value = true
+    
+    // Reset form in background
+    resetForm()
+    // Re-show success message since resetForm clears it
+    showSuccessMessage.value = true
+
+  } catch (error) {
+    console.error('Error submitting resource:', error)
+    if (error instanceof Error) {
+      alert(`Failed to submit resource: ${error.message}`)
+    } else {
+      alert('Failed to submit resource. Please try again.')
+    }
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+const updateResource = async () => {
+  const currentResource = resourceToEdit.value
+  if (!currentResource || !supabase) return
+
+  try {
+    isSubmitting.value = true
+    console.log('Starting update for resource:', currentResource.id)
+    
+    let imageUrl = currentResource.image_url
+
+    // Handle image update if needed
+    if (imageFile.value) {
+      // Delete old image if it exists
+      if (currentResource.image_url) {
+        const oldPath = currentResource.image_url
+          .split('resource-images/')[1]
+        
+        if (oldPath) {
+          await supabase.storage
+            .from('resources')
+            .remove([`resource-images/${oldPath}`])
+        }
+      }
+      
+      // Upload new image
+      imageUrl = await uploadImage()
+    }
+
+    // 1. Update the resource
+    const { data: updatedResource, error: resourceError } = await supabase
+      .from('resources')
+      .update({
+        name: formData.value.name,
+        creator: formData.value.creator,
+        price: formData.value.price,
+        link: formData.value.link,
+        image_url: imageUrl,
+        os: selectedOS.value,
+        type: formData.value.type_id as unknown as ResourceType
+      })
+      .eq('id', currentResource.id)
+      .select()
+      .single()
+
+    if (resourceError) throw resourceError
+
+    // 2. Delete existing tag relationships
+    const { error: deleteError } = await supabase
+      .from('resource_tags')
+      .delete()
+      .eq('resource_id', currentResource.id)
+
+    if (deleteError) throw deleteError
+
+    // 3. Create new tags and relationships
+    const tagPromises = selectedTags.value.map(async (tagName) => {
+      const { data: tag, error: tagError } = await supabase
+        .from('tags')
+        .upsert({ name: tagName.toLowerCase() }, { onConflict: 'name' })
+        .select()
+        .single()
+
+      if (tagError) throw tagError
+      return tag
+    })
+
+    const resolvedTags = await Promise.all(tagPromises)
+
+    // 4. Create new resource_tags relationships
+    if (resolvedTags.length > 0) {
+      const resourceTagsData = resolvedTags.map(tag => ({
+        resource_id: currentResource.id,
+        tag_id: tag.id
+      }))
+
+      const { error: relationError } = await supabase
+        .from('resource_tags')
+        .insert(resourceTagsData)
+
+      if (relationError) throw relationError
+    }
+
+    // Emit event to refresh Database.vue
+    emit('resource-updated')
+    
+    // Close modal with animation
+    animateOut()
+
+  } catch (error) {
+    console.error('Error updating resource:', error)
+    if (error instanceof Error) {
+      alert(`Failed to update resource: ${error.message}`)
+    } else {
+      alert('Failed to update resource. Please try again.')
+    }
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+const resetAndShowForm = () => {
+  showSuccessMessage.value = false
+  // Form is already reset from previous submission
+}
+
+const validateForm = () => {
+  let isValid = true
+  errors.value = {
+    name: '',
+    creator: '',
+    tags: '',
+    price: '',
+    os: '',
+    link: '',
+    image: '',
+    type: ''
+  }
+
+  // Name validation
+  if (!formData.value.name.trim()) {
+    errors.value.name = 'Name is required'
+    isValid = false
+  }
+
+  // Creator validation
+  if (!creatorInput.value.trim()) {
+    errors.value.creator = 'Creator is required'
+    isValid = false
+  }
+
+  // Tags validation
+  if (selectedTags.value.length === 0) {
+    errors.value.tags = 'At least one tag is required'
+    isValid = false
+  }
+
+  // Price validation
+  if (!formData.value.price.trim()) {
+    errors.value.price = 'Price is required'
+    isValid = false
+  }
+
+  // OS validation
+  if (selectedOS.value.length === 0) {
+    errors.value.os = 'At least one operating system is required'
+    isValid = false
+  }
+
+  // Link validation
+  if (!formData.value.link.trim()) {
+    errors.value.link = 'Link is required'
+    isValid = false
+  } else if (!formData.value.link.startsWith('http')) {
+    errors.value.link = 'Please enter a valid URL starting with http:// or https://'
+    isValid = false
+  }
+
+  // Image validation
+  if (!imageFile.value && !formData.value.image_url) {
+    errors.value.image = 'Image is required'
+    isValid = false
+  }
+
+  // Type validation
+  if (!formData.value.type_id) {
+    errors.value.type = 'Type is required'
+    isValid = false
+  }
+
+  return isValid
+}
+
+const onSubmit = async (e: Event) => {
+  e.preventDefault();
+  
+  //ebm edit
+  // Step 1: Remove all leading $ signs
+  formData.value.price = formData.value.price.replace(/^\$+/, '');
+  
+  // Step 2: Prepend a single $ sign
+  formData.value.price = '$' + formData.value.price;
+  
+  if (!validateForm()) {
+    return
+  }
+
+  console.log('Form submitted', editMode.value ? 'update' : 'create')
+  try {
+    if (editMode.value) {
+      await updateResource()
+    } else {
+      await submitResource()
+    }
+  } catch (error) {
+    console.error('Error in form submission:', error)
+  }
+}
+
+const emit = defineEmits(['resource-updated'])
+
+onMounted(() => {
+  fetchTags()
+  fetchCreators()
+  if (show.value) {
+    animateIn()
+  }
+})
 </script>
 

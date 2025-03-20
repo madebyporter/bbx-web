@@ -120,7 +120,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useSupabase } from '~/utils/supabase'
-import { fetchResourcesWithTags, deleteResource, type Resource } from '~/utils/resourceQueries'
+import { fetchResourcesWithTags, deleteResource, type Resource, type ResourceType } from '~/utils/resourceQueries'
 import { useAuth } from '~/composables/useAuth'
 
 interface ResourceFilters {
@@ -161,14 +161,21 @@ const fetchResources = async () => {
   try {
     console.log('Database: Fetching resources...')
     const data = await fetchResourcesWithTags()
-    console.log('Database: Fetched', data.length, 'resources')
+    console.log('Database: Fetched raw data:', data)
     
-    // Apply search filter first
-    let filteredData = data
+    // Filter for software resources first
+    let filteredData = data.filter(resource => {
+      const resourceType = resource.type as ResourceType
+      console.log('Database: Resource type for', resource.name, ':', resourceType)
+      return resourceType?.slug === 'software'
+    })
+    console.log('Database: Filtered to', filteredData.length, 'software resources:', filteredData)
+
+    // Apply search filter
     if (searchQuery.value) {
       console.log('Database: Applying search filter with query:', searchQuery.value)
       const query = searchQuery.value.trim().toLowerCase()
-      filteredData = data.filter(resource => {
+      filteredData = filteredData.filter(resource => {
         const name = resource.name?.toLowerCase() || ''
         console.log('Database: Checking resource:', name, 'against query:', query)
         return name.includes(query)

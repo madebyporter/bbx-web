@@ -93,7 +93,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useSupabase } from '~/utils/supabase'
-import { fetchResourcesWithTags, type Resource } from '~/utils/resourceQueries'
+import { fetchResourcesWithTags, type Resource, type ResourceType } from '~/utils/resourceQueries'
 import { useAuth } from '~/composables/useAuth'
 
 interface Props {
@@ -135,7 +135,10 @@ const fetchResources = async () => {
     // Filter by type if specified
     let filteredData = data
     if (props.type) {
-      filteredData = data.filter(resource => resource.type === props.type)
+      filteredData = data.filter(resource => {
+        const resourceType = resource.type as ResourceType
+        return resourceType?.slug === props.type
+      })
       console.log(`DatabaseGrid: Filtered to ${filteredData.length} resources of type ${props.type}`)
     }
 

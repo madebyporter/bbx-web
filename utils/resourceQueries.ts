@@ -1,6 +1,13 @@
 import { useSupabase } from './supabase'
 import { useAuth } from '~/composables/useAuth'
 
+export interface ResourceType {
+  id: number
+  slug: string
+  display_name: string
+  created_at: string
+}
+
 export interface Resource {
   id: number
   name: string
@@ -9,7 +16,8 @@ export interface Resource {
   link: string
   image_url: string
   os: string[]
-  type: string
+  type_id: number
+  type?: ResourceType
   tags: string[]
   created_at: string
   owner_id: string
@@ -37,6 +45,33 @@ export interface UserProfile {
   updated_at: string
 }
 
+interface Creator {
+  id: number
+  name: string
+  contact_info?: string
+}
+
+interface Tag {
+  id: number
+  name: string
+}
+
+interface ResourceWithTags extends Resource {
+  resource_tags?: { tags: { name: string } }[]
+}
+
+interface ResourceUsageRecord {
+  resource_id: number
+  used_at: string
+  resources: ResourceWithTags
+}
+
+interface ResourceCollectionRecord {
+  resource_id: number
+  created_at: string
+  resources: ResourceWithTags
+}
+
 export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
   const { supabase } = useSupabase()
   
@@ -46,7 +81,8 @@ export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
   }
 
   try {
-    // Fetch resources with their tags and creator
+    console.log('ResourceQueries: Fetching resources with tags...')
+    // Fetch resources with their tags, creator, and type
     const { data: resources, error } = await supabase
       .from('resources')
       .select(`
@@ -60,6 +96,11 @@ export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
           tags (
             name
           )
+        ),
+        resource_types (
+          id,
+          slug,
+          display_name
         )
       `)
       .eq('status', 'approved')
@@ -67,14 +108,42 @@ export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
 
     if (error) throw error
 
-    // Transform the data to include tags array and creator name
-    return resources.map((resource: any) => ({
+    console.log('ResourceQueries: Raw resources from DB:', resources)
+
+    // Transform the data to include tags array, creator name, and type
+    const transformedResources = resources.map((resource: any) => ({
       ...resource,
       creator: resource.creators?.name || 'Unknown',
-      tags: resource.resource_tags?.map((rt: any) => rt.tags.name) || []
+      tags: resource.resource_tags?.map((rt: any) => rt.tags.name) || [],
+      type: resource.resource_types
     }))
+
+    console.log('ResourceQueries: Transformed resources:', transformedResources)
+    return transformedResources
   } catch (error) {
     console.error('Error fetching resources:', error)
+    return []
+  }
+}
+
+// Fetch all available resource types
+export const fetchResourceTypes = async (): Promise<ResourceType[]> => {
+  const { supabase } = useSupabase()
+  
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('resource_types')
+      .select('*')
+      .order('display_name') as { data: ResourceType[] | null, error: any }
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Error fetching resource types:', error)
     return []
   }
 }
@@ -84,21 +153,26 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
   const { supabase } = useSupabase()
   const auth = useAuth()
   
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+
   try {
     // Get current user's ID from Supabase auth
     const currentUser = auth.user.value
     console.log('Current Supabase User:', currentUser)
     
-    if (!currentUser) throw new Error('Must be logged in to create a resource')
+    if (!currentUser?.id) throw new Error('Must be logged in to create a resource')
 
     // First, create or get the creator
     const { data: creatorData, error: creatorError } = await supabase
       .from('creators')
       .upsert([{ name: resource.creator }], { onConflict: 'name' })
       .select()
-      .single()
+      .single() as { data: Creator | null, error: any }
 
     if (creatorError) throw creatorError
+    if (!creatorData) throw new Error('Failed to create/get creator')
 
     // 1. Insert the resource with creator_id
     const resourceData = {
@@ -108,7 +182,7 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
       link: resource.link,
       image_url: resource.image_url,
       os: resource.os,
-      type: 'software',
+      type_id: resource.type_id,
       owner_id: currentUser.id,
       submitted_by: currentUser.id,
       status: 'pending'
@@ -119,13 +193,21 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
     const { data: newResource, error: resourceError } = await supabase
       .from('resources')
       .insert([resourceData])
-      .select()
+      .select(`
+        *,
+        resource_types (
+          id,
+          slug,
+          display_name
+        )
+      `)
       .single()
 
     if (resourceError) {
       console.error('Resource insert error:', resourceError)
       throw resourceError
     }
+    if (!newResource) throw new Error('Failed to create resource')
 
     console.log('Successfully created resource:', newResource)
 
@@ -135,9 +217,10 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
         .from('tags')
         .upsert({ name: tagName.toLowerCase() }, { onConflict: 'name' })
         .select()
-        .single()
+        .single() as { data: Tag | null, error: any }
 
       if (tagError) throw tagError
+      if (!tag) throw new Error(`Failed to create/get tag: ${tagName}`)
       return tag
     })
 
@@ -189,12 +272,16 @@ export const deleteResource = async (resourceId: number): Promise<boolean> => {
 export const getUser = async (userId: string): Promise<UserProfile | null> => {
   const { supabase } = useSupabase()
   
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+
   try {
     const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('id', userId)
-      .single()
+      .single() as { data: UserProfile | null, error: any }
 
     if (error) throw error
     return data
@@ -205,16 +292,20 @@ export const getUser = async (userId: string): Promise<UserProfile | null> => {
 }
 
 // Add function to update user profile
-export const updateUser = async (user: Partial<UserProfile>): Promise<UserProfile | null> => {
+export const updateUser = async (userProfile: Partial<UserProfile> & { id: string }): Promise<UserProfile | null> => {
   const { supabase } = useSupabase()
   
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+
   try {
     const { data, error } = await supabase
       .from('users')
-      .update(user)
-      .eq('id', user.id)
+      .update(userProfile)
+      .eq('id', userProfile.id)
       .select()
-      .single()
+      .single() as { data: UserProfile | null, error: any }
 
     if (error) throw error
     return data
@@ -228,6 +319,10 @@ export const updateUser = async (user: Partial<UserProfile>): Promise<UserProfil
 export const recordResourceUsage = async (resourceId: number): Promise<boolean> => {
   const { supabase } = useSupabase()
   
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+
   try {
     const { error } = await supabase
       .from('user_resources')
@@ -248,6 +343,10 @@ export const recordResourceUsage = async (resourceId: number): Promise<boolean> 
 export const getUserResourceHistory = async (): Promise<Resource[]> => {
   const { supabase } = useSupabase()
   
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+
   try {
     const { data, error } = await supabase
       .from('user_resources')
@@ -263,16 +362,17 @@ export const getUserResourceHistory = async (): Promise<Resource[]> => {
           )
         )
       `)
-      .order('used_at', { ascending: false })
+      .order('used_at', { ascending: false }) as { data: ResourceUsageRecord[] | null, error: any }
 
     if (error) throw error
+    if (!data) return []
 
     // Transform the data to match the Resource interface
     return data.map(item => ({
       ...item.resources,
       tags: item.resources.resource_tags?.map(rt => rt.tags.name) || [],
       last_used: item.used_at
-    }))
+    })) as Resource[]
   } catch (error) {
     console.error('Error fetching user resource history:', error)
     return []
@@ -283,6 +383,10 @@ export const getUserResourceHistory = async (): Promise<Resource[]> => {
 export const toggleResourceCollection = async (resourceId: number): Promise<boolean> => {
   const { supabase } = useSupabase()
   
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+
   try {
     // Check if resource is already in collection
     const { data: existing } = await supabase
@@ -319,6 +423,10 @@ export const toggleResourceCollection = async (resourceId: number): Promise<bool
 export const getUserCollection = async (): Promise<Resource[]> => {
   const { supabase } = useSupabase()
   
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+
   try {
     const { data, error } = await supabase
       .from('user_collections')
@@ -334,15 +442,16 @@ export const getUserCollection = async (): Promise<Resource[]> => {
           )
         )
       `)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false }) as { data: ResourceCollectionRecord[] | null, error: any }
 
     if (error) throw error
+    if (!data) return []
 
     return data.map(item => ({
       ...item.resources,
       tags: item.resources.resource_tags?.map(rt => rt.tags.name) || [],
       collected_at: item.created_at
-    }))
+    })) as Resource[]
   } catch (error) {
     console.error('Error fetching user collection:', error)
     return []
