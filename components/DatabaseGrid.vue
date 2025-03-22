@@ -132,9 +132,7 @@ const fetchResources = async () => {
   }
 
   try {
-    console.log('DatabaseGrid: Fetching resources...')
     const data = await fetchResourcesWithTags()
-    console.log('DatabaseGrid: Fetched', data.length, 'resources')
     
     // Filter by type if specified
     let filteredData = data
@@ -143,7 +141,6 @@ const fetchResources = async () => {
         const resourceType = resource.type as ResourceType
         return resourceType?.slug === props.type
       })
-      console.log(`DatabaseGrid: Filtered to ${filteredData.length} resources of type ${props.type}`)
     }
 
     resources.value = filteredData
@@ -157,20 +154,24 @@ const fetchUseCounts = async () => {
   if (!supabase || !resources.value.length) return
 
   try {
-    // Get use counts for all resources
-    const { data: counts, error: countsError } = await supabase
+    // Get all user_resources entries for the relevant resource_ids
+    const { data: userResourceEntries, error: entriesError } = await supabase
       .from('user_resources')
-      .select('resource_id, count(*)')
-      .in('resource_id', resources.value.map(r => r.id))
-      .group('resource_id') as { data: ResourceUseCount[] | null, error: any }
+      .select('resource_id')
+      .in('resource_id', resources.value.map(r => r.id)) as { 
+        data: { resource_id: number }[] | null, 
+        error: any 
+      }
 
-    if (countsError) throw countsError
+    if (entriesError) throw entriesError
 
-    // Convert to object for easy lookup
-    useCounts.value = (counts || []).reduce((acc: {[key: number]: number}, curr: ResourceUseCount) => {
-      acc[curr.resource_id] = parseInt(curr.count)
+    // Count occurrences of each resource_id
+    const counts = userResourceEntries?.reduce((acc: {[key: number]: number}, entry) => {
+      acc[entry.resource_id] = (acc[entry.resource_id] || 0) + 1
       return acc
     }, {})
+
+    useCounts.value = counts || {}
 
     // Get current user's used resources
     const userId = auth.user?.value?.id
@@ -179,11 +180,14 @@ const fetchUseCounts = async () => {
         .from('user_resources')
         .select('resource_id')
         .eq('user_id', userId)
-        .in('resource_id', resources.value.map(r => r.id)) as { data: UserResource[] | null, error: any }
+        .in('resource_id', resources.value.map(r => r.id)) as {
+          data: { resource_id: number }[] | null,
+          error: any
+        }
 
       if (usesError) throw usesError
 
-      userUsedResources.value = (userUses || []).reduce((acc: {[key: number]: boolean}, curr: UserResource) => {
+      userUsedResources.value = (userUses || []).reduce((acc: {[key: number]: boolean}, curr) => {
         acc[curr.resource_id] = true
         return acc
       }, {})
@@ -241,12 +245,9 @@ const handleImageError = (event: Event) => {
 
 // Initialize
 onMounted(async () => {
-  console.log('DatabaseGrid: Component mounted')
   if (supabase) {
-    console.log('DatabaseGrid: Supabase client is ready')
     await fetchResources()
   } else {
-    console.log('DatabaseGrid: Waiting for Supabase client...')
   }
 })
 

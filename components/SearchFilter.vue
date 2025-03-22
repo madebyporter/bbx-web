@@ -52,12 +52,10 @@ const isReady = computed(() => auth.isReady.value)
 // Add a computed property for user state
 const hasUser = computed(() => {
   if (!isReady.value) return false
-  console.log('SearchFilter: Computing hasUser, user:', user.value)
   return !!user.value
 })
 
 onMounted(() => {
-  console.log('SearchFilter: Component mounted, user:', user.value)
   window.addEventListener('keydown', handleKeydown)
 })
 
@@ -66,7 +64,6 @@ onUnmounted(() => {
 })
 
 const onSearch = () => {
-  console.log('SearchFilter: Emitting search event with query:', searchQuery.value)
   emit('search', searchQuery.value)
 }
 

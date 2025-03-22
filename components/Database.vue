@@ -159,28 +159,22 @@ const fetchResources = async () => {
   }
 
   try {
-    console.log('Database: Fetching resources...')
     const data = await fetchResourcesWithTags()
-    console.log('Database: Fetched raw data:', data)
     
     // Filter for software resources first
     let filteredData = data.filter(resource => {
       const resourceType = resource.type as ResourceType
-      console.log('Database: Resource type for', resource.name, ':', resourceType)
       return resourceType?.slug === 'software'
     })
-    console.log('Database: Filtered to', filteredData.length, 'software resources:', filteredData)
 
     // Apply search filter
     if (searchQuery.value) {
-      console.log('Database: Applying search filter with query:', searchQuery.value)
       const query = searchQuery.value.trim().toLowerCase()
       filteredData = filteredData.filter(resource => {
         const name = resource.name?.toLowerCase() || ''
-        console.log('Database: Checking resource:', name, 'against query:', query)
+
         return name.includes(query)
       })
-      console.log('Database: After search filter:', filteredData.length, 'resources')
     }
 
     // Then apply filters
@@ -243,28 +237,18 @@ const fetchResources = async () => {
 
 // Initialize Supabase
 onMounted(async () => {
-  console.log('Database: Component mounted')
   if (supabase) {
     isSupabaseReady.value = true
-    console.log('Database: Supabase client is ready')
     await fetchResources()
   } else {
-    console.log('Database: Waiting for Supabase client...')
   }
 })
 
 // Watch for auth changes
 watch(() => auth.user, async (newUser, oldUser) => {
-  console.log('User changed:', {
-    hadUser: oldUser?.value !== null,
-    hasUser: newUser?.value !== null,
-    userId: newUser?.value?.id
-  })
-
   if (isSupabaseReady.value) {
     await fetchUseCounts()
   } else {
-    console.log('Waiting for Supabase to be ready before fetching counts...')
   }
 }, { immediate: true })
 
@@ -382,9 +366,7 @@ const toggleUse = async (resource: Resource) => {
 }
 
 const handleSearch = (query: string) => {
-  console.log('Database: handleSearch called with query:', query)
   searchQuery.value = query
-  console.log('Database: Updated searchQuery to:', searchQuery.value)
   fetchResources()
 }
 

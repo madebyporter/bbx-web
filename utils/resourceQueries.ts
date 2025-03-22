@@ -81,7 +81,6 @@ export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
   }
 
   try {
-    console.log('ResourceQueries: Fetching resources with tags...')
     // Fetch resources with their tags, creator, and type
     const { data: resources, error } = await supabase
       .from('resources')
@@ -108,8 +107,6 @@ export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
 
     if (error) throw error
 
-    console.log('ResourceQueries: Raw resources from DB:', resources)
-
     // Transform the data to include tags array, creator name, and type
     const transformedResources = resources.map((resource: any) => ({
       ...resource,
@@ -117,8 +114,6 @@ export const fetchResourcesWithTags = async (): Promise<Resource[]> => {
       tags: resource.resource_tags?.map((rt: any) => rt.tags.name) || [],
       type: resource.resource_types
     }))
-
-    console.log('ResourceQueries: Transformed resources:', transformedResources)
     return transformedResources
   } catch (error) {
     console.error('Error fetching resources:', error)
@@ -160,7 +155,6 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
   try {
     // Get current user's ID from Supabase auth
     const currentUser = auth.user.value
-    console.log('Current Supabase User:', currentUser)
     
     if (!currentUser?.id) throw new Error('Must be logged in to create a resource')
 
@@ -187,8 +181,6 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
       submitted_by: currentUser.id,
       status: 'pending'
     }
-    
-    console.log('Attempting to insert resource with data:', resourceData)
 
     const { data: newResource, error: resourceError } = await supabase
       .from('resources')
@@ -208,8 +200,6 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
       throw resourceError
     }
     if (!newResource) throw new Error('Failed to create resource')
-
-    console.log('Successfully created resource:', newResource)
 
     // 2. For each tag, ensure it exists in the tags table
     const tagPromises = tags.map(async (tagName) => {

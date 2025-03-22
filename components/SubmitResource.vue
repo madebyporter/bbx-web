@@ -1,10 +1,10 @@
 <template>
   <Teleport to="body">
     <aside 
-      v-if="show" 
+      v-if="props.show" 
       ref="modal"
       class="modal"
-      style="transform: translateX(100%)"
+      :style="{ transform: `translateX(${initialX}%)` }"
     >
       <div 
         @click="close" 
@@ -292,10 +292,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { createResourceWithTags, fetchResourceTypes, type ResourceType } from '../utils/resourceQueries'
 import gsap from 'gsap'
+
+interface Props {
+  show: boolean
+  editMode?: boolean
+  resourceToEdit?: ResourceToEdit | null
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  editMode: false,
+  resourceToEdit: null
+})
+
+const emit = defineEmits(['resource-updated', 'update:show', 'resourceAdded'])
 
 interface Creator {
   name: string;
@@ -323,10 +336,8 @@ interface Tag {
 
 const { supabase } = useSupabase()
 
+const initialX = ref(100)
 const modal = ref<HTMLElement | null>(null)
-const show = ref(false)
-const editMode = ref(false)
-const resourceToEdit = ref<ResourceToEdit | null>(null)
 const showSuccessMessage = ref(false)
 const isSubmitting = ref(false)
 const imageFile = ref<File | null>(null)
@@ -359,7 +370,7 @@ const isDragging = ref(false)
 
 const submitButtonText = computed(() => {
   if (isSubmitting.value) return 'Submitting...'
-  return editMode.value ? 'Update' : 'Submit'
+  return props.editMode ? 'Update' : 'Submit'
 })
 
 const formData = ref({
@@ -376,6 +387,20 @@ const formData = ref({
 onMounted(async () => {
   resourceTypes.value = await fetchResourceTypes()
 })
+
+// Update the watch to handle both opening and closing
+watch(() => props.show, (newVal, oldVal) => {
+  if (newVal) {
+    // When opening, start from 100% and animate in
+    initialX.value = 100
+    nextTick(() => {
+      animateIn()
+    })
+  } else if (oldVal) {
+    // Only animate out if it was previously shown
+    animateOut()
+  }
+}, { immediate: true })
 
 const resetForm = () => {
   formData.value = {
@@ -420,7 +445,7 @@ const animateOut = () => {
     ease: 'power2.in',
     onComplete: () => {
       resetForm()
-      show.value = false
+      emit('update:show', false)
     }
   })
 }
@@ -644,7 +669,6 @@ const selectCreator = (creator: string) => {
 const submitResource = async () => {
   try {
     isSubmitting.value = true
-    console.log('Starting resource submission...')
     
     // Upload image first if one is selected
     let imageUrl: string | null = null
@@ -663,11 +687,7 @@ const submitResource = async () => {
       type: formData.value.type_id as unknown as ResourceType
     }
 
-    console.log('Resource data:', resourceData)
-    console.log('Selected tags:', selectedTags.value)
-
     await createResourceWithTags(resourceData, selectedTags.value)
-    console.log('Resource created successfully')
 
     // Show success message
     showSuccessMessage.value = true
@@ -676,6 +696,10 @@ const submitResource = async () => {
     resetForm()
     // Re-show success message since resetForm clears it
     showSuccessMessage.value = true
+
+    // Emit events
+    emit('resource-updated')
+    emit('resourceAdded')
 
   } catch (error) {
     console.error('Error submitting resource:', error)
@@ -690,12 +714,11 @@ const submitResource = async () => {
 }
 
 const updateResource = async () => {
-  const currentResource = resourceToEdit.value
+  const currentResource = props.resourceToEdit
   if (!currentResource || !supabase) return
 
   try {
     isSubmitting.value = true
-    console.log('Starting update for resource:', currentResource.id)
     
     let imageUrl = currentResource.image_url
 
@@ -874,10 +897,8 @@ const onSubmit = async (e: Event) => {
   if (!validateForm()) {
     return
   }
-
-  console.log('Form submitted', editMode.value ? 'update' : 'create')
   try {
-    if (editMode.value) {
+    if (props.editMode) {
       await updateResource()
     } else {
       await submitResource()
@@ -887,12 +908,10 @@ const onSubmit = async (e: Event) => {
   }
 }
 
-const emit = defineEmits(['resource-updated'])
-
 onMounted(() => {
   fetchTags()
   fetchCreators()
-  if (show.value) {
+  if (props.show) {
     animateIn()
   }
 })

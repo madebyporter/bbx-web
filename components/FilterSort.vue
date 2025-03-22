@@ -4,7 +4,7 @@
       v-show="show" 
       ref="modal"
       class="modal"
-      style="transform: translateX(100%)"
+      :style="{ transform: `translateX(${initialX}%)` }"
     >
       <div 
         @click="close" 
@@ -190,158 +190,167 @@
   </Teleport>
 </template>
 
-<script>
+<script setup>
 import gsap from 'gsap'
 import IconApple from './IconApple.vue'
 import IconWindows from './IconWindows.vue'
 import IconLinux from './IconLinux.vue'
 import { useSupabase } from '~/utils/supabase'
+import { ref, watch, nextTick, onMounted } from 'vue'
 
-export default {
-  components: {
-    IconApple,
-    IconWindows,
-    IconLinux
-  },
-  setup() {
-    const { supabase } = useSupabase()
-    return {
-      supabase
-    }
-  },
-  props: {
-    show: {
-      type: Boolean,
-      default: false
-    }
-  },
-  data() {
-    return {
-      sortBy: 'created_at',
-      sortDirection: 'desc',
-      filters: {
-        price: {
-          free: false,
-          paid: false
-        },
-        os: [],
-        tags: []
-      },
-      tagInput: '',
-      selectedTags: [],
-      availableTags: [],
-      showSuggestions: false,
-      filteredTags: []
-    }
-  },
-  watch: {
-    show(newValue) {
-      if (newValue) {
-        this.animateIn()
-      }
-    }
-  },
-  methods: {
-    animateIn() {
-      gsap.to(this.$refs.modal, {
-        duration: 0.3,
-        x: 0,
-        ease: 'power2.out'
-      })
-    },
-    animateOut() {
-      gsap.to(this.$refs.modal, {
-        duration: 0.3,
-        x: '100%',
-        ease: 'power2.in',
-        onComplete: () => {
-          this.$emit('close')
-        }
-      })
-    },
-    close() {
-      this.animateOut()
-    },
-    async fetchTags() {
-      try {
-        const { data, error } = await this.supabase
-          .from('tags')
-          .select('name')
-          .order('name')
+const props = defineProps({
+  show: {
+    type: Boolean,
+    default: false
+  }
+})
 
-        if (error) throw error
-        
-        this.availableTags = data.map(tag => tag.name)
-          .sort((a, b) => a.localeCompare(b))
-      } catch (error) {
-        console.error('Error fetching tags:', error)
-      }
-    },
-    searchTags() {
-      if (!this.tagInput) {
-        this.showSuggestions = false
-        return
-      }
-      const searchTerm = this.tagInput.toLowerCase()
-      this.filteredTags = this.availableTags
-        .filter(tag => 
-          tag.toLowerCase().includes(searchTerm) && 
-          !this.selectedTags.includes(tag)
-        )
-      this.showSuggestions = true
-    },
-    selectTag(tag) {
-      const normalizedTag = tag.toLowerCase()
-      if (!this.selectedTags.includes(normalizedTag)) {
-        this.selectedTags.push(normalizedTag)
-      }
-      this.tagInput = ''
-      this.showSuggestions = false
-    },
-    addTag() {
-      if (!this.tagInput.trim()) return
-      
-      const newTag = this.tagInput.trim().toLowerCase()
-      if (!this.selectedTags.includes(newTag)) {
-        this.selectedTags.push(newTag)
-      }
-      this.tagInput = ''
-      this.showSuggestions = false
-    },
-    removeTag(tag) {
-      this.selectedTags = this.selectedTags.filter(t => t !== tag)
-    },
-    applyFiltersAndSort() {
-      this.$emit('apply-filters-and-sort', {
-        sort: {
-          sortBy: this.sortBy,
-          sortDirection: this.sortDirection
-        },
-        filters: {
-          price: this.filters.price,
-          os: this.filters.os,
-          tags: this.selectedTags
-        }
-      })
-      this.close()
-    },
-    clearAll() {
-      // Reset all filters but keep sort as created_at/desc
-      this.sortBy = 'created_at'
-      this.sortDirection = 'desc'
-      this.filters.price.free = false
-      this.filters.price.paid = false
-      this.filters.os = []
-      this.selectedTags = []
-      
-      // Apply the cleared state
-      this.applyFiltersAndSort()
+const emit = defineEmits(['apply-filters-and-sort', 'update:show'])
+
+const initialX = ref(100)
+const modal = ref(null)
+const { supabase } = useSupabase()
+
+// Watch for show prop changes to handle animations
+watch(() => props.show, (newVal, oldVal) => {
+  if (newVal) {
+    // When opening, start from 100% and animate in
+    initialX.value = 100
+    nextTick(() => {
+      animateIn()
+    })
+  } else if (oldVal) {
+    // Only animate out if it was previously shown
+    animateOut()
+  }
+}, { immediate: true })
+
+const animateIn = () => {
+  if (!modal.value) return
+  gsap.to(modal.value, {
+    duration: 0.3,
+    x: 0,
+    ease: 'power2.out'
+  })
+}
+
+const animateOut = () => {
+  if (!modal.value) return
+  gsap.to(modal.value, {
+    duration: 0.3,
+    x: '100%',
+    ease: 'power2.in',
+    onComplete: () => {
+      emit('update:show', false)
     }
+  })
+}
+
+const close = () => {
+  animateOut()
+}
+
+const sortBy = ref('created_at')
+const sortDirection = ref('desc')
+const filters = ref({
+  price: {
+    free: false,
+    paid: false
   },
-  mounted() {
-    this.fetchTags()
+  os: [],
+  tags: []
+})
+const tagInput = ref('')
+const selectedTags = ref([])
+const availableTags = ref([])
+const showSuggestions = ref(false)
+const filteredTags = ref([])
+
+const fetchTags = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('tags')
+      .select('name')
+      .order('name')
+
+    if (error) throw error
+    
+    availableTags.value = data.map(tag => tag.name)
+      .sort((a, b) => a.localeCompare(b))
+  } catch (error) {
+    console.error('Error fetching tags:', error)
   }
 }
+
+const searchTags = () => {
+  if (!tagInput.value) {
+    showSuggestions.value = false
+    return
+  }
+  const searchTerm = tagInput.value.toLowerCase()
+  filteredTags.value = availableTags.value
+    .filter(tag => 
+      tag.toLowerCase().includes(searchTerm) && 
+      !selectedTags.value.includes(tag)
+    )
+  showSuggestions.value = true
+}
+
+const selectTag = (tag) => {
+  const normalizedTag = tag.toLowerCase()
+  if (!selectedTags.value.includes(normalizedTag)) {
+    selectedTags.value.push(normalizedTag)
+  }
+  tagInput.value = ''
+  showSuggestions.value = false
+}
+
+const addTag = () => {
+  if (!tagInput.value.trim()) return
+  
+  const newTag = tagInput.value.trim().toLowerCase()
+  if (!selectedTags.value.includes(newTag)) {
+    selectedTags.value.push(newTag)
+  }
+  tagInput.value = ''
+  showSuggestions.value = false
+}
+
+const removeTag = (tag) => {
+  selectedTags.value = selectedTags.value.filter(t => t !== tag)
+}
+
+const applyFiltersAndSort = () => {
+  emit('apply-filters-and-sort', {
+    sort: {
+      sortBy: sortBy.value,
+      sortDirection: sortDirection.value
+    },
+    filters: {
+      price: filters.value.price,
+      os: filters.value.os,
+      tags: selectedTags.value
+    }
+  })
+  animateOut()
+}
+
+const clearAll = () => {
+  // Reset all filters but keep sort as created_at/desc
+  sortBy.value = 'created_at'
+  sortDirection.value = 'desc'
+  filters.value.price.free = false
+  filters.value.price.paid = false
+  filters.value.os = []
+  selectedTags.value = []
+  
+  // Apply the cleared state
+  applyFiltersAndSort()
+}
+
+onMounted(() => {
+  fetchTags()
+})
 </script>
 
 <style scoped>

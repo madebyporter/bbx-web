@@ -15,7 +15,6 @@ const createAuth = () => {
 
   // Computed property for user state
   const currentUser = computed(() => {
-    console.log('useAuth: currentUser computed, user:', user.value)
     return user.value
   })
 
@@ -27,33 +26,27 @@ const createAuth = () => {
     }
 
     if (isReady.value) {
-      console.log('Auth already initialized')
       return
     }
 
     try {
       // Get initial session
       const { data: { session } } = await supabase.auth.getSession()
-      console.log('Initial session:', session)
       
       if (session?.user) {
         user.value = session.user as AuthUser
         isAdmin.value = session.user.app_metadata.roles?.includes('admin') || false
-        console.log('User initialized:', user.value)
       }
 
       // Set up auth state change listener
       const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((event, session) => {
-        console.log('Auth state changed:', event, session)
         
         if (session?.user) {
           user.value = session.user as AuthUser
           isAdmin.value = session.user.app_metadata.roles?.includes('admin') || false
-          console.log('User state updated:', user.value)
         } else if (event === 'SIGNED_OUT') {
           user.value = null
           isAdmin.value = false
-          console.log('User state cleared (sign out)')
         }
       })
       subscription = sub

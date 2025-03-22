@@ -25,17 +25,9 @@ export default defineNuxtPlugin(async (nuxtApp) => {
       throw new Error('Supabase configuration missing')
     }
     
-    console.log('Waiting for Supabase configuration...', {
-      url: !!config.public.supabaseUrl,
-      key: !!config.public.supabaseKey,
-      retry: retries + 1
-    })
-    
     await new Promise(resolve => setTimeout(resolve, 1000))
     retries++
   }
-
-  console.log('Initializing Supabase with URL:', config.public.supabaseUrl)
 
   try {
     supabaseInstance = createClient(
@@ -68,7 +60,6 @@ export default defineNuxtPlugin(async (nuxtApp) => {
     // Test the connection
     const { data, error } = await supabaseInstance.from('resources').select('count').limit(1)
     if (error) throw error
-    console.log('Supabase connection successful')
 
     return {
       provide: {

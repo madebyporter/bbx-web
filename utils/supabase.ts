@@ -13,7 +13,6 @@ export const useSupabase = () => {
 
   if (!supabaseInstance) {
     try {
-      console.log('Initializing Supabase with URL:', config.public.supabaseUrl)
       supabaseInstance = createClient(
         config.public.supabaseUrl,
         config.public.supabaseKey,
@@ -25,7 +24,6 @@ export const useSupabase = () => {
           }
         }
       )
-      console.log('Supabase connection successful')
     } catch (error) {
       console.error('Failed to initialize Supabase:', error)
       return { supabase: null }

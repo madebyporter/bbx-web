@@ -186,7 +186,7 @@
     <!-- Resource Modal -->
     <SubmitResource 
       :key="modalKey"
-      :show="showModal" 
+      v-model:show="showModal"
       :edit-mode="!!editingResource"
       :resource-to-edit="editingResource"
       @close="closeModal"
@@ -196,8 +196,7 @@
 
     <!-- Filter Modal -->
     <FilterSort
-      :show="showFilterModal"
-      @close="showFilterModal = false"
+      v-model:show="showFilterModal"
       @apply-filters-and-sort="handleFiltersAndSort"
     />
   </div>
@@ -335,7 +334,6 @@ onMounted(async () => {
   ('App: Starting auth initialization...')
   await auth.init()
   isInitialized.value = true
-  console.log('App: Auth initialized successfully, user:', user.value)
 })
 
 // Cleanup on unmount
