@@ -247,7 +247,7 @@
                 <span class="text-red-500">*</span>
               </label>
               <div 
-                class="image-drop-zone relative w-full min-h-[350px] lg:w-full lg:h-full transition-colors duration-200"
+                class="image-drop-zone relative w-full min-h-[522px] lg:w-full lg:h-full transition-colors duration-200"
                 @dragover.prevent="handleDragOver"
                 @dragleave.prevent="handleDragLeave"
                 @drop.prevent="handleDrop"
@@ -264,7 +264,7 @@
                   @change="handleImageSelect"
                 />
                 <div 
-                  class="absolute inset-0 border border-neutral-800 hover:border-neutral-700 rounded-md flex items-center justify-center overflow-hidden z-10"
+                  class="absolute inset-0 border border-neutral-800 hover:border-neutral-700 rounded-md flex items-center justify-center overflow-hidden z-10 aspect-square"
                 >
                   <img 
                     v-if="imagePreview" 
@@ -495,8 +495,7 @@ const animateOut = () => {
     opacity: 0,
     ease: 'power2.in',
     onComplete: () => {
-      // Only reset form and update show after animation completes
-      // Don't reset if showing success message
+      // Only reset form if we're not showing success message
       if (!showSuccessMessage.value) {
         resetForm()
       }
@@ -758,12 +757,15 @@ const submitResource = async () => {
 
     await createResourceWithTags(resourceData, selectedTags.value)
 
-    // Show success message
+    // Show success message and animate out
     showSuccessMessage.value = true
     
     // Emit events
     emit('resource-updated')
     emit('resourceAdded')
+    
+    // Animate out after successful submission
+    animateOut()
 
   } catch (error) {
     console.error('Error submitting resource:', error)
