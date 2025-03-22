@@ -11,9 +11,28 @@
       v-else 
       v-for="resource in resources" 
       :key="resource.id" 
-      class="relative border border-neutral-800 p-4 rounded-lg"
+      class="relative border border-neutral-800 p-4 rounded-lg group"
       :class="{ 'pending-resource': resource.status === 'pending' }"
     >
+      <!-- Edit/Delete Buttons -->
+      <div 
+        v-if="props.canEdit"
+        class="absolute left-8 top-8 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2"
+      >
+        <div 
+          class="bg-neutral-800 hover:bg-neutral-900 p-2 rounded-md cursor-pointer"
+          @click="editResource(resource)"
+        >
+          <img src="/img/db/icon-edit.svg" alt="Edit" class="size-4" />
+        </div>
+        <div 
+          class="bg-red-600 hover:bg-red-700 p-2 rounded-md cursor-pointer"
+          @click="confirmDelete(resource)"
+        >
+          <img src="/img/db/icon-delete.svg" alt="Delete" class="size-4" />
+        </div>
+      </div>
+
       <!-- Resource Image -->
       <div class="w-full aspect-square bg-neutral-200 rounded-md overflow-hidden mb-4">
         <img 
@@ -241,6 +260,24 @@ const getImageUrl = (url: string) => {
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
   img.src = '/img/db/placeholder.png'
+}
+
+const emit = defineEmits(['edit-resource', 'show-signup'])
+
+const editResource = (resource: Resource) => {
+  emit('edit-resource', resource)
+}
+
+const confirmDelete = async (resource: Resource) => {
+  if (confirm('Are you sure you want to delete this resource?')) {
+    try {
+      await deleteResource(resource.id)
+      await fetchResources()
+    } catch (error: unknown) {
+      console.error('Error deleting resource:', error instanceof Error ? error.message : 'Unknown error')
+      alert(`Failed to delete resource: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
 }
 
 // Initialize

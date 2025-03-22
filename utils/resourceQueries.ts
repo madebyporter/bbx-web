@@ -14,14 +14,14 @@ export interface Resource {
   creator: string
   price: string
   link: string
-  image_url: string
+  image_url?: string
   os: string[]
   type_id: number
   type?: ResourceType
   tags: string[]
   created_at: string
-  owner_id: string
-  is_public: boolean
+  owner_id?: string
+  submitted_by?: string
   status?: 'pending' | 'approved' | 'rejected'
 }
 
