@@ -722,32 +722,65 @@ const submitResource = async () => {
   try {
     isSubmitting.value = true
     
+    // Validate creator input
+    if (!creatorInput.value || !creatorInput.value.trim()) {
+      throw new Error('Creator name cannot be empty')
+    }
+
+    const creatorName = creatorInput.value.trim()
+    
     // Upload image first if one is selected
     let imageUrl: string | null = null
     if (imageFile.value) {
       imageUrl = await uploadImage()
     }
 
-    // Get creator_id from creator name
-    const { data: creatorData, error: creatorError } = await supabase
+    // Get creator_id from creator name, or create if doesn't exist
+    let creatorId: number;
+    
+    interface CreatorResponse {
+      id: number;
+      name: string;
+    }
+    
+    // First try to find existing creator
+    const { data: existingCreator, error: findError } = await supabase
       .from('creators')
       .select('id')
-      .eq('name', creatorInput.value)
-      .single()
-
-    if (creatorError) {
-      console.error('Error finding creator:', creatorError)
-      throw new Error('Could not find creator')
+      .eq('name', creatorName)
+      .single<CreatorResponse>()
+    
+    if (findError && findError.code !== 'PGRST116') { // PGRST116 is "not found" error
+      console.error('Error finding creator:', findError)
+      throw new Error('Error checking for existing creator')
     }
 
-    if (!creatorData) {
-      throw new Error('Creator not found')
+    if (existingCreator) {
+      creatorId = existingCreator.id
+    } else {
+      // Creator not found, create new one
+      const { data: newCreator, error: createError } = await supabase
+        .from('creators')
+        .insert([{ name: creatorName }])  // Wrap in array and remove any extra options
+        .select('id')
+        .single<CreatorResponse>()
+
+      if (createError) {
+        console.error('Error creating creator:', createError)
+        throw new Error(`Could not create new creator: ${createError.message}`)
+      }
+
+      if (!newCreator) {
+        throw new Error('Failed to create creator - no data returned')
+      }
+
+      creatorId = newCreator.id
     }
 
     // Use the createResourceWithTags function instead of direct submission
     const resourceData: Partial<Resource> = {
       name: formData.value.name,
-      creator_id: creatorData.id as number,
+      creator_id: creatorId,
       price: formData.value.price,
       link: formData.value.link,
       image_url: imageUrl || undefined,

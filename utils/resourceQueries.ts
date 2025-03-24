@@ -12,6 +12,7 @@ export interface Resource {
   id: number
   name: string
   creator: string
+  creator_id?: number
   price: string
   link: string
   image_url?: string
@@ -158,20 +159,10 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
     
     if (!currentUser?.id) throw new Error('Must be logged in to create a resource')
 
-    // First, create or get the creator
-    const { data: creatorData, error: creatorError } = await supabase
-      .from('creators')
-      .upsert([{ name: resource.creator }], { onConflict: 'name' })
-      .select()
-      .single() as { data: Creator | null, error: any }
-
-    if (creatorError) throw creatorError
-    if (!creatorData) throw new Error('Failed to create/get creator')
-
-    // 1. Insert the resource with creator_id
+    // 1. Insert the resource
     const resourceData = {
       name: resource.name,
-      creator_id: creatorData.id,
+      creator_id: resource.creator_id,
       price: resource.price,
       link: resource.link,
       image_url: resource.image_url,
