@@ -176,10 +176,9 @@
       </div>
     </div>
 
-    <!-- Admin Modal -->
-    <AdminModal 
-      v-if="showAdminModal" 
-      @close="showAdminModal = false"
+    <!-- Manage Submissions Drawer -->
+    <ManageSubmissions 
+      v-model:show="showAdminModal"
       :canEdit="isAdmin"
     />
 
