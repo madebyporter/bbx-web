@@ -1,202 +1,188 @@
 <template>
-  <Teleport to="body">
-    <aside 
-      v-show="show" 
-      ref="modal"
-      class="modal"
-      :style="{ transform: `translateX(${initialX}%)` }"
-    >
-      <div 
-        @click="close" 
-        class="flex justify-center items-center border border-neutral-800 hover:border-neutral-700 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
+  <MasterDrawer :show="show" @update:show="(val) => emit('update:show', val)">
+    <template #header>
+      <h2 class="text-2xl font-bold mb-8">Filter & Sort</h2>
+    </template>
+
+    <div class="grid lg:grid-cols-2 gap-4 mb-8">
+      <!-- Column 1: Sort By -->
+      <div>
+        <label class="block nav-header mb-2">Sort By</label>
+        <select 
+          v-model="sortBy" 
+          class="w-full p-2 border border-neutral-800 rounded-md"
+        >
+          <option value="created_at">Date Added</option>
+          <option value="name">Name</option>
+          <option value="creator">Creator</option>
+          <option value="price">Price</option>
+        </select>
+      </div>
+
+      <!-- Column 2: Direction -->
+      <div>
+        <label class="block nav-header mb-2">Direction</label>
+        <select 
+          v-model="sortDirection" 
+          class="w-full p-2 border border-neutral-800 rounded-md"
+        >
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Filtering Section -->
+    <div class="flex flex-col gap-6">
+      <!-- Price Filter -->
+      <div>
+        <label class="block nav-header mb-2">Price</label>
+        <div class="flex gap-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="checkbox" 
+              v-model="filters.price.free" 
+              class="hidden"
+            />
+            <div class="px-3 py-2 rounded-md" :class="[
+              filters.price.free ? 'tag-active' : 'tag'
+            ]">
+              Free
+            </div>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="checkbox" 
+              v-model="filters.price.paid" 
+              class="hidden"
+            />
+            <div class="px-3 py-2 rounded-md" :class="[
+              filters.price.paid ? 'tag-active' : 'tag'
+            ]">
+              Paid
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- OS Filter -->
+      <div>
+        <label class="block nav-header mb-2">Operating System</label>
+        <div class="flex gap-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="checkbox" 
+              value="mac" 
+              v-model="filters.os"
+              class="hidden"
+            />
+            <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
+              filters.os.includes('mac') ? 'tag-active' : 'tag'
+            ]">
+              <IconApple />
+              <span>macOS</span>
+            </div>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="checkbox" 
+              value="windows" 
+              v-model="filters.os"
+              class="hidden"
+            />
+            <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
+              filters.os.includes('windows') ? 'tag-active' : 'tag'
+            ]">
+              <IconWindows />
+              <span>Windows</span>
+            </div>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="checkbox" 
+              value="linux" 
+              v-model="filters.os"
+              class="hidden"
+            />
+            <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
+              filters.os.includes('linux') ? 'tag-active' : 'tag'
+            ]">
+              <IconLinux />
+              <span>Linux</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Tags Filter -->
+      <div>
+        <label class="block nav-header mb-2">Tags</label>
+        <div class="flex flex-wrap gap-2 p-4 bg-neutral-900 ring-1 ring-neutral-800 rounded-lg min-h-[56px]">
+          <div 
+            v-for="tag in selectedTags" 
+            :key="tag" 
+            class="tag"
+          >
+            {{ tag }}
+            <button 
+              @click="removeTag(tag)" 
+              class="hover:text-neutral-600 cursor-pointer"
+            >
+              ×
+            </button>
+          </div>
+          
+          <input 
+            v-model="tagInput"
+            type="text"
+            class="flex-grow bg-transparent outline-none"
+            placeholder="Type to search or add tags"
+            @input="searchTags"
+            @keydown.enter.prevent="addTag"
+          />
+        </div>
+        <!-- Tag suggestions dropdown -->
+        <div 
+          v-if="showSuggestions && filteredTags.length > 0"
+          class="mt-1 bg-neutral-800 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
+        >
+          <div 
+            v-for="tag in filteredTags" 
+            :key="tag"
+            class="px-4 py-2 hover:bg-neutral-700 cursor-pointer"
+            @click="selectTag(tag)"
+          >
+            {{ tag }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Apply and Clear Buttons -->
+    <div class="flex flex-col items-center gap-4 mt-8">
+      <button 
+        @click="applyFiltersAndSort"
+        class="btn w-full"
       >
-        <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-neutral-700" />
-      </div>
-
-      <div @click.stop>
-        <h2 class="text-2xl font-bold mb-8">Filter & Sort</h2>
-        
-        <div class="grid lg:grid-cols-2 gap-4 mb-8">
-          <!-- Column 1: Sort By -->
-          <div>
-            <label class="block nav-header mb-2">Sort By</label>
-            <select 
-              v-model="sortBy" 
-              class="w-full p-2 border border-neutral-800 rounded-md"
-            >
-              <option value="created_at">Date Added</option>
-              <option value="name">Name</option>
-              <option value="creator">Creator</option>
-              <option value="price">Price</option>
-            </select>
-          </div>
-
-          <!-- Column 2: Direction -->
-          <div>
-            <label class="block nav-header mb-2">Direction</label>
-            <select 
-              v-model="sortDirection" 
-              class="w-full p-2 border border-neutral-800 rounded-md"
-            >
-              <option value="asc">Ascending</option>
-              <option value="desc">Descending</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Filtering Section -->
-        <div class="flex flex-col gap-6">
-          <!-- Price Filter -->
-          <div>
-            <label class="block nav-header mb-2">Price</label>
-            <div class="flex gap-2">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  v-model="filters.price.free" 
-                  class="hidden"
-                />
-                <div class="px-3 py-2 rounded-md" :class="[
-                  filters.price.free ? 'tag-active' : 'tag'
-                ]">
-                  Free
-                </div>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  v-model="filters.price.paid" 
-                  class="hidden"
-                />
-                <div class="px-3 py-2 rounded-md" :class="[
-                  filters.price.paid ? 'tag-active' : 'tag'
-                ]">
-                  Paid
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <!-- OS Filter -->
-          <div>
-            <label class="block nav-header mb-2">Operating System</label>
-            <div class="flex gap-2">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  value="mac" 
-                  v-model="filters.os"
-                  class="hidden"
-                />
-                <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
-                  filters.os.includes('mac') ? 'tag-active' : 'tag'
-                ]">
-                  <IconApple />
-                  <span>macOS</span>
-                </div>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  value="windows" 
-                  v-model="filters.os"
-                  class="hidden"
-                />
-                <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
-                  filters.os.includes('windows') ? 'tag-active' : 'tag'
-                ]">
-                  <IconWindows />
-                  <span>Windows</span>
-                </div>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  value="linux" 
-                  v-model="filters.os"
-                  class="hidden"
-                />
-                <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
-                  filters.os.includes('linux') ? 'tag-active' : 'tag'
-                ]">
-                  <IconLinux />
-                  <span>Linux</span>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <!-- Tags Filter -->
-          <div>
-            <label class="block nav-header mb-2">Tags</label>
-            <div class="flex flex-wrap gap-2 p-4 bg-neutral-900 ring-1 ring-neutral-800 rounded-lg min-h-[56px]">
-              <div 
-                v-for="tag in selectedTags" 
-                :key="tag" 
-                class="tag"
-              >
-                {{ tag }}
-                <button 
-                  @click="removeTag(tag)" 
-                  class="hover:text-neutral-600 cursor-pointer"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <input 
-                v-model="tagInput"
-                type="text"
-                class="flex-grow bg-transparent outline-none"
-                placeholder="Type to search or add tags"
-                @input="searchTags"
-                @keydown.enter.prevent="addTag"
-              />
-            </div>
-            <!-- Tag suggestions dropdown -->
-            <div 
-              v-if="showSuggestions && filteredTags.length > 0"
-              class="mt-1 bg-neutral-800 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
-            >
-              <div 
-                v-for="tag in filteredTags" 
-                :key="tag"
-                class="px-4 py-2 hover:bg-neutral-700 cursor-pointer"
-                @click="selectTag(tag)"
-              >
-                {{ tag }}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Apply and Clear Buttons -->
-        <div class="flex flex-col items-center gap-4 mt-8">
-          <button 
-            @click="applyFiltersAndSort"
-            class="btn w-full"
-          >
-            Apply Filters & Sort
-          </button>
-          <button 
-            @click="clearAll"
-            class="text-neutral-500 hover:text-neutral-700 cursor-pointer"
-          >
-            Clear All
-          </button>
-        </div>
-      </div>
-    </aside>
-  </Teleport>
+        Apply Filters & Sort
+      </button>
+      <button 
+        @click="clearAll"
+        class="text-neutral-500 hover:text-neutral-700 cursor-pointer"
+      >
+        Clear All
+      </button>
+    </div>
+  </MasterDrawer>
 </template>
 
 <script setup>
-import gsap from 'gsap'
 import IconApple from './IconApple.vue'
 import IconWindows from './IconWindows.vue'
 import IconLinux from './IconLinux.vue'
 import { useSupabase } from '~/utils/supabase'
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
+import MasterDrawer from './MasterDrawer.vue'
 
 const props = defineProps({
   show: {
@@ -206,49 +192,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['apply-filters-and-sort', 'update:show'])
-
-const initialX = ref(100)
-const modal = ref(null)
 const { supabase } = useSupabase()
-
-// Watch for show prop changes to handle animations
-watch(() => props.show, (newVal, oldVal) => {
-  if (newVal) {
-    // When opening, start from 100% and animate in
-    initialX.value = 100
-    nextTick(() => {
-      animateIn()
-    })
-  } else if (oldVal) {
-    // Only animate out if it was previously shown
-    animateOut()
-  }
-}, { immediate: true })
-
-const animateIn = () => {
-  if (!modal.value) return
-  gsap.to(modal.value, {
-    duration: 0.3,
-    x: 0,
-    ease: 'power2.out'
-  })
-}
-
-const animateOut = () => {
-  if (!modal.value) return
-  gsap.to(modal.value, {
-    duration: 0.3,
-    x: '100%',
-    ease: 'power2.in',
-    onComplete: () => {
-      emit('update:show', false)
-    }
-  })
-}
-
-const close = () => {
-  animateOut()
-}
 
 const sortBy = ref('created_at')
 const sortDirection = ref('desc')
@@ -332,7 +276,7 @@ const applyFiltersAndSort = () => {
       tags: selectedTags.value
     }
   })
-  animateOut()
+  emit('update:show', false)
 }
 
 const clearAll = () => {

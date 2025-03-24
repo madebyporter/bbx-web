@@ -1,307 +1,290 @@
 <template>
-  <Teleport to="body">
-    <aside 
-      v-if="props.show" 
-      ref="modal"
-      class="modal"
-      :style="{ transform: `translateX(${initialX}%)`, opacity: modalOpacity }"
-      @click="handleModalBackdropClick"
-    >
-      <div 
-        class="modal-content"
-        @click.stop
+  <MasterDrawer :show="props.show" @update:show="(val) => emit('update:show', val)">
+    <template #header>
+      <h2 class="text-2xl font-bold">Submit Resource</h2>
+    </template>
+
+    <!-- Success Message -->
+    <div v-if="showSuccessMessage" class="h-full flex flex-col items-center justify-center text-center gap-4">
+      <h2 class="text-xl">Thanks for your submission.</h2>
+      <p class="text-neutral-600">We will review and add this submission if it fits our criteria.</p>
+      <button 
+        @click="resetAndShowForm" 
+        class="text-amber-300 hover:text-amber-400 underline mt-4 cursor-pointer"
       >
-        <div 
-          @click="handleClose" 
-          class="flex justify-center items-center border border-neutral-800 hover:border-neutral-700 hover:border-neutral-700 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
-        >
-          <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-neutral-700" />
-        </div>
-        
-        <!-- Success Message -->
-        <div v-if="showSuccessMessage" class="h-full flex flex-col items-center justify-center text-center gap-4">
-          <h2 class="text-xl">Thanks for your submission.</h2>
-          <p class="text-neutral-600">We will review and add this submission if it fits our criteria.</p>
-          <button 
-            @click="resetAndShowForm" 
-            class="text-amber-300 hover:text-amber-400 underline mt-4 cursor-pointer"
-          >
-            Submit another resource
-          </button>
-        </div>
+        Submit another resource
+      </button>
+    </div>
 
-        <!-- Submit Form -->
-        <template v-else>
-          <h2 class="text-2xl font-bold">Submit Resource</h2>
-          <form class="pt-8 flex flex-col gap-8" @submit.prevent="onSubmit">
-            <fieldset class="flex flex-col gap-2">
-              <label class="flex items-center gap-1">
-                Type
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="flex flex-wrap gap-2">
-                <label 
-                  v-for="type in resourceTypes" 
-                  :key="type.id"
-                  class="flex items-center gap-2 cursor-pointer"
-                >
-                  <input 
-                    type="radio" 
-                    :value="type.id" 
-                    v-model="formData.type_id"
-                    class="hidden" 
-                  />
-                  <div 
-                    class="px-3 py-2 rounded-md flex items-center gap-2"
-                    :class="[
-                      formData.type_id === type.id 
-                        ? 'tag-active' 
-                        : 'tag'
-                    ]"
-                  >
-                    <span>{{ type.display_name }}</span>
-                  </div>
-                </label>
-              </div>
-              <span v-if="errors.type" class="text-red-500 text-sm">{{ errors.type }}</span>
-            </fieldset>
-            <fieldset class="flex flex-col gap-2">
-              <label class="flex items-center gap-1">
-                Name
-                <span class="text-red-500">*</span>
-              </label>
-              <input 
-                v-model="formData.name" 
-                name="softwareName" 
-                type="text" 
-                class="p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg" 
-                :class="{ 'border border-red-500': errors.name }"
-                required
-              />
-              <span v-if="errors.name" class="text-red-500 text-sm">{{ errors.name }}</span>
-            </fieldset>
-            <fieldset class="flex flex-col gap-2">
-              <label class="flex items-center gap-1">
-                Creator
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="relative">
-                <input 
-                  v-model="creatorInput" 
-                  name="softwareCreator" 
-                  type="text" 
-                  class="p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg w-full"
-                  :class="{ 'border border-red-500': errors.creator }"
-                  @input="searchCreators"
-                  required
-                />
-                <!-- Creator suggestions dropdown -->
-                <div 
-                  v-if="showCreatorSuggestions && filteredCreators.length > 0"
-                  class="absolute left-0 right-0 mt-1 bg-white rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
-                >
-                  <div 
-                    v-for="creator in filteredCreators" 
-                    :key="creator"
-                    class="px-4 py-2 hover:bg-neutral-100 cursor-pointer"
-                    @click="selectCreator(creator)"
-                  >
-                    {{ creator }}
-                  </div>
-                </div>
-              </div>
-              <span v-if="errors.creator" class="text-red-500 text-sm">{{ errors.creator }}</span>
-            </fieldset>
-            <fieldset class="flex flex-col gap-2">
-              <label class="flex items-center gap-1">
-                Tags
-                <span class="text-red-500">*</span>
-                <span class="text-xs text-neutral-400">(type and enter to add)</span>
-              </label>
-              <div class="relative">
-                <div class="flex flex-wrap gap-2 p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg min-h-[56px]">
-                  <!-- Selected tags -->
-                  <div 
-                    v-for="tag in selectedTags" 
-                    :key="tag" 
-                    class="tag"
-                  >
-                    {{ tag }}
-                    <button 
-                      @click="removeTag(tag)" 
-                      class="hover:text-neutral-600 cursor-pointer"
-                    >
-                      ×
-                    </button>
-                  </div>
-                  
-                  <!-- Tag input - hide when max tags reached -->
-                  <input 
-                    v-if="selectedTags.length < 3"
-                    v-model="tagInput"
-                    type="text"
-                    class="flex-grow bg-transparent outline-none"
-                    placeholder="Type to search or add tags (max 3)"
-                    @input="searchTags"
-                    @keydown.enter.prevent="addTag"
-                  />
-                  
-                  <!-- Message when max tags reached -->
-                  <span v-else class="text-sm text-neutral-500">
-                    Maximum 3 tags reached
-                  </span>
-                </div>
-
-                <!-- Tag suggestions dropdown -->
-                <div 
-                  v-if="showSuggestions && filteredTags.length > 0"
-                  class="absolute left-0 right-0 mt-1 bg-white rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
-                >
-                  <div 
-                    v-for="tag in filteredTags" 
-                    :key="tag"
-                    class="px-4 py-2 hover:bg-neutral-100 cursor-pointer"
-                    @click="selectTag(tag)"
-                  >
-                    {{ tag }}
-                  </div>
-                </div>
-              </div>
-              <span v-if="errors.tags" class="text-red-500 text-sm">{{ errors.tags }}</span>
-            </fieldset>
-            <fieldset class="flex flex-col gap-2">
-              <label class="flex items-center gap-1">
-                Price
-                <span class="text-red-500">*</span>
-              </label>
-              <input 
-                v-model="formData.price" 
-                name="softwarePrice" 
-                type="text" 
-                class="p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg"
-                :class="{ 'border border-red-500': errors.price }"
-                required
-              />
-              <span v-if="errors.price" class="text-red-500 text-sm">{{ errors.price }}</span>
-            </fieldset>
-            <fieldset class="flex flex-col gap-2">
-              <label class="flex items-center gap-1">
-                Operating Systems
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="flex flex-wrap gap-4 p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg">
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    value="mac" 
-                    v-model="selectedOS"
-                    class="hidden"
-                  />
-                  <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
-                    selectedOS.includes('mac') 
-                      ? 'tag-active' 
-                      : 'tag'
-                  ]">
-                    <IconApple />
-                    <span>macOS</span>
-                  </div>
-                </label>
-                
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    value="windows" 
-                    v-model="selectedOS"
-                    class="hidden"
-                  />
-                  <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
-                    selectedOS.includes('windows') 
-                      ? 'tag-active' 
-                      : 'tag'
-                  ]">
-                    <IconWindows />
-                    <span>Windows</span>
-                  </div>
-                </label>
-              </div>
-              <span v-if="errors.os" class="text-red-500 text-sm">{{ errors.os }}</span>
-            </fieldset>
-            <fieldset class="flex flex-col gap-2">
-              <label class="flex items-center gap-1">
-                Link
-                <span class="text-red-500">*</span>
-              </label>
-              <input 
-                v-model="formData.link" 
-                name="softwareLink" 
-                type="text" 
-                class="p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg"
-                :class="{ 'border border-red-500': errors.link }"
-                required
-              />
-              <span v-if="errors.link" class="text-red-500 text-sm">{{ errors.link }}</span>
-            </fieldset>
-            <fieldset class="flex flex-col gap-2">
-              <label class="flex items-center gap-1">
-                Image
-                <span class="text-red-500">*</span>
-              </label>
-              <div 
-                class="image-drop-zone relative w-full min-h-[522px] lg:w-full lg:h-full transition-colors duration-200"
-                @dragover.prevent="handleDragOver"
-                @dragleave.prevent="handleDragLeave"
-                @drop.prevent="handleDrop"
-                :class="{ 
-                  'image-drop-zone-active': isDragging,
-                  'drag-over': !imagePreview 
-                }"
-              >
-                <input 
-                  ref="fileInput"
-                  type="file" 
-                  accept="image/*"
-                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-                  @change="handleImageSelect"
-                />
-                <div 
-                  class="absolute inset-0 border border-neutral-800 hover:border-neutral-700 rounded-md flex items-center justify-center overflow-hidden z-10 aspect-square"
-                >
-                  <img 
-                    v-if="imagePreview" 
-                    :src="imagePreview" 
-                    class="w-full h-full object-cover"
-                    alt="Preview"
-                  />
-                  <div v-else class="flex flex-col items-center gap-2 p-4 text-center">
-                    <span class="text-sm text-neutral-400">
-                      Drag and drop an image here<br>or click to browse
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <p v-if="imageError" class="text-red-500 text-sm mt-1">{{ imageError }}</p>
-              <span v-if="errors.image" class="text-red-500 text-sm">{{ errors.image }}</span>
-            </fieldset>
-            <button 
-              type="submit" 
-              class="btn"
-              :disabled="isSubmitting"
-              @click="onSubmit"
+    <!-- Submit Form -->
+    <template v-else>
+      <form class="pt-8 flex flex-col gap-8" @submit.prevent="onSubmit">
+        <fieldset class="flex flex-col gap-2">
+          <label class="flex items-center gap-1">
+            Type
+            <span class="text-red-500">*</span>
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <label 
+              v-for="type in resourceTypes" 
+              :key="type.id"
+              class="flex items-center gap-2 cursor-pointer"
             >
-              {{ submitButtonText }}
-            </button>
-          </form>
-        </template>
-      </div>
-    </aside>
-  </Teleport>
+              <input 
+                type="radio" 
+                :value="type.id" 
+                v-model="formData.type_id"
+                class="hidden" 
+              />
+              <div 
+                class="px-3 py-2 rounded-md flex items-center gap-2"
+                :class="[
+                  formData.type_id === type.id 
+                    ? 'tag-active' 
+                    : 'tag'
+                ]"
+              >
+                <span>{{ type.display_name }}</span>
+              </div>
+            </label>
+          </div>
+          <span v-if="errors.type" class="text-red-500 text-sm">{{ errors.type }}</span>
+        </fieldset>
+        <fieldset class="flex flex-col gap-2">
+          <label class="flex items-center gap-1">
+            Name
+            <span class="text-red-500">*</span>
+          </label>
+          <input 
+            v-model="formData.name" 
+            name="softwareName" 
+            type="text" 
+            class="p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg" 
+            :class="{ 'border border-red-500': errors.name }"
+            required
+          />
+          <span v-if="errors.name" class="text-red-500 text-sm">{{ errors.name }}</span>
+        </fieldset>
+        <fieldset class="flex flex-col gap-2">
+          <label class="flex items-center gap-1">
+            Creator
+            <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <input 
+              v-model="creatorInput" 
+              name="softwareCreator" 
+              type="text" 
+              class="p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg w-full"
+              :class="{ 'border border-red-500': errors.creator }"
+              @input="searchCreators"
+              required
+            />
+            <!-- Creator suggestions dropdown -->
+            <div 
+              v-if="showCreatorSuggestions && filteredCreators.length > 0"
+              class="absolute left-0 right-0 mt-1 bg-white rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
+            >
+              <div 
+                v-for="creator in filteredCreators" 
+                :key="creator"
+                class="px-4 py-2 hover:bg-neutral-100 cursor-pointer"
+                @click="selectCreator(creator)"
+              >
+                {{ creator }}
+              </div>
+            </div>
+          </div>
+          <span v-if="errors.creator" class="text-red-500 text-sm">{{ errors.creator }}</span>
+        </fieldset>
+        <fieldset class="flex flex-col gap-2">
+          <label class="flex items-center gap-1">
+            Tags
+            <span class="text-red-500">*</span>
+            <span class="text-xs text-neutral-400">(type and enter to add)</span>
+          </label>
+          <div class="relative">
+            <div class="flex flex-wrap gap-2 p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg min-h-[56px]">
+              <!-- Selected tags -->
+              <div 
+                v-for="tag in selectedTags" 
+                :key="tag" 
+                class="tag"
+              >
+                {{ tag }}
+                <button 
+                  @click="removeTag(tag)" 
+                  class="hover:text-neutral-600 cursor-pointer"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <!-- Tag input - hide when max tags reached -->
+              <input 
+                v-if="selectedTags.length < 3"
+                v-model="tagInput"
+                type="text"
+                class="flex-grow bg-transparent outline-none"
+                placeholder="Type to search or add tags (max 3)"
+                @input="searchTags"
+                @keydown.enter.prevent="addTag"
+              />
+              
+              <!-- Message when max tags reached -->
+              <span v-else class="text-sm text-neutral-500">
+                Maximum 3 tags reached
+              </span>
+            </div>
+
+            <!-- Tag suggestions dropdown -->
+            <div 
+              v-if="showSuggestions && filteredTags.length > 0"
+              class="absolute left-0 right-0 mt-1 bg-white rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
+            >
+              <div 
+                v-for="tag in filteredTags" 
+                :key="tag"
+                class="px-4 py-2 hover:bg-neutral-100 cursor-pointer"
+                @click="selectTag(tag)"
+              >
+                {{ tag }}
+              </div>
+            </div>
+          </div>
+          <span v-if="errors.tags" class="text-red-500 text-sm">{{ errors.tags }}</span>
+        </fieldset>
+        <fieldset class="flex flex-col gap-2">
+          <label class="flex items-center gap-1">
+            Price
+            <span class="text-red-500">*</span>
+          </label>
+          <input 
+            v-model="formData.price" 
+            name="softwarePrice" 
+            type="text" 
+            class="p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg"
+            :class="{ 'border border-red-500': errors.price }"
+            required
+          />
+          <span v-if="errors.price" class="text-red-500 text-sm">{{ errors.price }}</span>
+        </fieldset>
+        <fieldset class="flex flex-col gap-2">
+          <label class="flex items-center gap-1">
+            Operating Systems
+            <span class="text-red-500">*</span>
+          </label>
+          <div class="flex flex-wrap gap-4 p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                value="mac" 
+                v-model="selectedOS"
+                class="hidden"
+              />
+              <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
+                selectedOS.includes('mac') 
+                  ? 'tag-active' 
+                  : 'tag'
+              ]">
+                <IconApple />
+                <span>macOS</span>
+              </div>
+            </label>
+            
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                value="windows" 
+                v-model="selectedOS"
+                class="hidden"
+              />
+              <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
+                selectedOS.includes('windows') 
+                  ? 'tag-active' 
+                  : 'tag'
+              ]">
+                <IconWindows />
+                <span>Windows</span>
+              </div>
+            </label>
+          </div>
+          <span v-if="errors.os" class="text-red-500 text-sm">{{ errors.os }}</span>
+        </fieldset>
+        <fieldset class="flex flex-col gap-2">
+          <label class="flex items-center gap-1">
+            Link
+            <span class="text-red-500">*</span>
+          </label>
+          <input 
+            v-model="formData.link" 
+            name="softwareLink" 
+            type="text" 
+            class="p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg"
+            :class="{ 'border border-red-500': errors.link }"
+            required
+          />
+          <span v-if="errors.link" class="text-red-500 text-sm">{{ errors.link }}</span>
+        </fieldset>
+        <fieldset class="flex flex-col gap-2">
+          <label class="flex items-center gap-1">
+            Image
+            <span class="text-red-500">*</span>
+          </label>
+          <div 
+            class="image-drop-zone relative w-full min-h-[522px] lg:w-full lg:h-full transition-colors duration-200"
+            @dragover.prevent="handleDragOver"
+            @dragleave.prevent="handleDragLeave"
+            @drop.prevent="handleDrop"
+            :class="{ 
+              'image-drop-zone-active': isDragging,
+              'drag-over': !imagePreview 
+            }"
+          >
+            <input 
+              ref="fileInput"
+              type="file" 
+              accept="image/*"
+              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+              @change="handleImageSelect"
+            />
+            <div 
+              class="absolute inset-0 border border-neutral-800 hover:border-neutral-700 rounded-md flex items-center justify-center overflow-hidden z-10 aspect-square"
+            >
+              <img 
+                v-if="imagePreview" 
+                :src="imagePreview" 
+                class="w-full h-full object-cover"
+                alt="Preview"
+              />
+              <div v-else class="flex flex-col items-center gap-2 p-4 text-center">
+                <span class="text-sm text-neutral-400">
+                  Drag and drop an image here<br>or click to browse
+                </span>
+              </div>
+            </div>
+          </div>
+          <p v-if="imageError" class="text-red-500 text-sm mt-1">{{ imageError }}</p>
+          <span v-if="errors.image" class="text-red-500 text-sm">{{ errors.image }}</span>
+        </fieldset>
+        <button 
+          type="submit" 
+          class="btn"
+          :disabled="isSubmitting"
+          @click="onSubmit"
+        >
+          {{ submitButtonText }}
+        </button>
+      </form>
+    </template>
+  </MasterDrawer>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, nextTick } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { createResourceWithTags, fetchResourceTypes, type ResourceType } from '../utils/resourceQueries'
-import gsap from 'gsap'
+import MasterDrawer from './MasterDrawer.vue'
 
 interface Props {
   show: boolean
@@ -350,9 +333,6 @@ interface Tag {
 
 const { supabase } = useSupabase()
 
-const initialX = ref(100)
-const modalOpacity = ref(0)
-const modal = ref<HTMLElement | null>(null)
 const showSuccessMessage = ref(false)
 const isSubmitting = ref(false)
 const imageFile = ref<File | null>(null)
@@ -369,6 +349,7 @@ const showSuggestions = ref(false)
 const filteredTags = ref<string[]>([])
 const selectedOS = ref<string[]>([])
 const resourceTypes = ref<ResourceType[]>([])
+const isDragging = ref(false)
 
 const errors = ref({
   name: '',
@@ -380,8 +361,6 @@ const errors = ref({
   image: '',
   type: ''
 })
-
-const isDragging = ref(false)
 
 const submitButtonText = computed(() => {
   if (isSubmitting.value) return 'Submitting...'
@@ -429,20 +408,6 @@ watch(() => props.resourceToEdit, (newResource) => {
   }
 }, { immediate: true })
 
-// Update the watch to handle both opening and closing
-watch(() => props.show, (newVal, oldVal) => {
-  if (newVal) {
-    // When opening, start from 100% and animate in
-    initialX.value = 100
-    nextTick(() => {
-      animateIn()
-    })
-  } else if (oldVal) {
-    // Only animate out if it was previously shown
-    animateOut()
-  }
-}, { immediate: true })
-
 const resetForm = () => {
   // Only reset if we're not showing success message
   if (!showSuccessMessage.value) {
@@ -470,47 +435,6 @@ const resetForm = () => {
       type: ''
     }
   }
-}
-
-const animateIn = () => {
-  if (!modal.value) return
-  modalOpacity.value = 1
-  gsap.to(modal.value, {
-    duration: 0.3,
-    x: 0,
-    ease: 'power2.out',
-    onComplete: () => {
-      initialX.value = 0
-    }
-  })
-}
-
-const animateOut = () => {
-  if (!modal.value) return
-  
-  // First animate out
-  gsap.to(modal.value, {
-    duration: 0.3,
-    x: '100%',
-    opacity: 0,
-    ease: 'power2.in',
-    onComplete: () => {
-      // Only reset form if we're not showing success message
-      if (!showSuccessMessage.value) {
-        resetForm()
-      }
-      emit('update:show', false)
-      // Reset position for next open
-      initialX.value = 100
-      modalOpacity.value = 0
-    }
-  })
-}
-
-const handleClose = (e: Event) => {
-  e.preventDefault()
-  e.stopPropagation()
-  animateOut()
 }
 
 const handleDragOver = (event: DragEvent) => {
@@ -797,8 +721,8 @@ const submitResource = async () => {
     emit('resource-updated')
     emit('resourceAdded')
     
-    // Animate out after successful submission
-    animateOut()
+    // Close drawer
+    emit('update:show', false)
 
   } catch (error) {
     console.error('Error submitting resource:', error)
@@ -917,8 +841,8 @@ const updateResource = async () => {
     // Emit event to refresh Database.vue
     emit('resource-updated')
     
-    // Close modal with animation
-    animateOut()
+    // Close drawer
+    emit('update:show', false)
 
   } catch (error) {
     console.error('Error updating resource:', error)
@@ -1028,19 +952,9 @@ const onSubmit = async (e: Event) => {
   }
 }
 
-const handleModalBackdropClick = (e: Event) => {
-  // Only close if clicking the backdrop (modal wrapper), not the content
-  if (e.target === modal.value) {
-    handleClose(e)
-  }
-}
-
 onMounted(() => {
   fetchTags()
   fetchCreators()
-  if (props.show) {
-    animateIn()
-  }
 })
 </script>
 
