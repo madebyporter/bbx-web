@@ -76,12 +76,34 @@ const fetchResources = async () => {
   try {
     const { data, error } = await $supabase
       .from('resources')
-      .select('*')
+      .select(`
+        *,
+        creators (
+          name
+        ),
+        resource_tags (
+          tags (
+            name
+          )
+        ),
+        resource_types (
+          id,
+          slug,
+          display_name
+        )
+      `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    resources.value = data || []
+    
+    // Transform the data to include tags array, creator name, and type
+    resources.value = (data || []).map(resource => ({
+      ...resource,
+      creator: resource.creators?.name || 'Unknown',
+      tags: resource.resource_tags?.map(rt => rt.tags.name) || [],
+      type: resource.resource_types?.display_name || 'Unknown'
+    }))
   } catch (error) {
     console.error('Error fetching resources:', error)
   } finally {
