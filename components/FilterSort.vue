@@ -1,10 +1,10 @@
 <template>
   <MasterDrawer :show="show" @update:show="(val) => emit('update:show', val)">
     <template #header>
-      <h2 class="text-2xl font-bold mb-8">Filter & Sort</h2>
+      <h2 class="text-2xl">Filter & Sort</h2>
     </template>
 
-    <div class="grid lg:grid-cols-2 gap-4 mb-8">
+    <div class="grid lg:grid-cols-2 gap-4">
       <!-- Column 1: Sort By -->
       <div>
         <label class="block nav-header mb-2">Sort By</label>
@@ -159,7 +159,7 @@
     </div>
 
     <!-- Apply and Clear Buttons -->
-    <div class="flex flex-col items-center gap-4 mt-8">
+    <div class="flex flex-col items-center gap-4">
       <button 
         @click="applyFiltersAndSort"
         class="btn w-full"

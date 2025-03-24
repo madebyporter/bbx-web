@@ -8,21 +8,25 @@
       @click="handleModalBackdropClick"
     >
       <div 
-        class="modal-content"
+        class="modal-content flex flex-col gap-8"
         @click.stop
       >
         <div 
           @click="handleClose" 
-          class="flex justify-center items-center border border-neutral-800 hover:border-neutral-700 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-9"
+          class="flex justify-center items-center border border-neutral-800 hover:border-neutral-700 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-8"
         >
           <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-neutral-700" />
         </div>
         
         <!-- Header slot -->
-        <slot name="header"></slot>
+        <div class="h-[50px] flex items-center text-white font-semibold">
+          <slot name="header"></slot>
+        </div>
         
         <!-- Main content slot -->
-        <slot></slot>
+        <div class="flex flex-col gap-4">
+          <slot></slot>
+        </div>
       </div>
     </aside>
   </Teleport>

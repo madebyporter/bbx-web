@@ -1,7 +1,7 @@
 <template>
   <MasterDrawer :show="props.show" @update:show="(val) => emit('update:show', val)">
     <template #header>
-      <h2 class="text-2xl font-bold">Manage Submissions</h2>
+      <h2 class="text-2xl">Manage Submissions</h2>
     </template>
     
     <div class="pt-8">
@@ -13,34 +13,81 @@
         <p class="text-neutral-400">No pending submissions</p>
       </div>
       
-      <div v-else class="space-y-4">
-        <div v-for="resource in resources" :key="resource.id" class="p-4 ring-1 ring-neutral-800 rounded-lg">
-          <div class="flex justify-between items-start">
-            <div>
-              <h3 class="font-semibold">{{ resource.name }}</h3>
-              <p class="text-sm text-neutral-400">by {{ resource.creator }}</p>
+      <div v-else class="space-y-6">
+        <!-- Submission Card -->
+        <div 
+          v-for="resource in resources" 
+          :key="resource.id" 
+          class="flex flex-col ring-1 ring-neutral-800 rounded-lg overflow-hidden"
+        >
+          <!-- Submission Content -->
+          <div class="flex flex-col lg:flex-row gap-6 p-6">
+            <!-- Image -->
+            <div class="w-full lg:w-1/3 aspect-square rounded-md overflow-hidden bg-neutral-900">
+              <img 
+                v-if="resource.image_url"
+                :src="resource.image_url" 
+                :alt="resource.name"
+                class="w-full h-full object-cover"
+              />
+              <div 
+                v-else 
+                class="w-full h-full flex items-center justify-center text-neutral-600"
+              >
+                No image
+              </div>
             </div>
-            <div class="flex gap-2">
-              <button 
-                @click="approveResource(resource.id)"
-                class="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
-              >
-                Approve
-              </button>
-              <button 
-                @click="rejectResource(resource.id)"
-                class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Reject
-              </button>
+
+            <!-- Meta Information -->
+            <div class="flex-1">
+              <h3 class="text-xl font-semibold">{{ resource.name }}</h3>
+              <p class="text-neutral-400 mt-1">by {{ resource.creator }}</p>
+              
+              <div class="mt-4 space-y-2 text-sm">
+                <p>
+                  <span class="text-neutral-400">Type:</span> 
+                  <span class="text-white">{{ resource.type }}</span>
+                </p>
+                <p>
+                  <span class="text-neutral-400">Price:</span> 
+                  <span class="text-white">{{ resource.price }}</span>
+                </p>
+                <p>
+                  <span class="text-neutral-400">OS:</span> 
+                  <span class="text-white">{{ resource.os?.join(', ') }}</span>
+                </p>
+                <p>
+                  <span class="text-neutral-400">Tags:</span> 
+                  <span class="text-white">{{ resource.tags?.join(', ') }}</span>
+                </p>
+                <p>
+                  <span class="text-neutral-400">Link:</span> 
+                  <a 
+                    :href="resource.link" 
+                    target="_blank" 
+                    class="text-amber-500 hover:text-amber-400"
+                  >
+                    {{ resource.link }}
+                  </a>
+                </p>
+              </div>
             </div>
           </div>
-          <div class="mt-2 text-sm">
-            <p><span class="text-neutral-400">Type:</span> {{ resource.type }}</p>
-            <p><span class="text-neutral-400">Price:</span> {{ resource.price }}</p>
-            <p><span class="text-neutral-400">OS:</span> {{ resource.os?.join(', ') }}</p>
-            <p><span class="text-neutral-400">Tags:</span> {{ resource.tags?.join(', ') }}</p>
-            <p><span class="text-neutral-400">Link:</span> <a :href="resource.link" target="_blank" class="text-amber-500 hover:text-amber-400">{{ resource.link }}</a></p>
+
+          <!-- Submission Actions -->
+          <div class="flex gap-3 p-4 bg-neutral-900 border-t border-neutral-800">
+            <button 
+              @click="approveResource(resource.id)"
+              class="flex-1 py-2 px-4 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+            >
+              Approve
+            </button>
+            <button 
+              @click="rejectResource(resource.id)"
+              class="flex-1 py-2 px-4 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+            >
+              Reject
+            </button>
           </div>
         </div>
       </div>

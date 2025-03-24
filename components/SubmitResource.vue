@@ -1,7 +1,7 @@
 <template>
   <MasterDrawer :show="props.show" @update:show="(val) => emit('update:show', val)">
     <template #header>
-      <h2 class="text-2xl font-bold">Submit Resource</h2>
+      <h2 class="text-2xl">Submit Resource</h2>
     </template>
 
     <!-- Success Message -->
@@ -18,7 +18,7 @@
 
     <!-- Submit Form -->
     <template v-else>
-      <form class="pt-8 flex flex-col gap-8" @submit.prevent="onSubmit">
+      <form class="flex flex-col gap-8" @submit.prevent="onSubmit">
         <fieldset class="flex flex-col gap-2">
           <label class="flex items-center gap-1">
             Type
