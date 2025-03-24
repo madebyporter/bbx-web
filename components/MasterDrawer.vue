@@ -66,7 +66,6 @@ const animateOut = () => {
   gsap.to(modal.value, {
     duration: 0.3,
     x: '100%',
-    opacity: 0,
     ease: 'power2.in',
     onComplete: () => {
       emit('update:show', false)
