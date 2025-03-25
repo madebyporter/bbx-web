@@ -560,18 +560,32 @@ const fetchTags = async () => {
 }
 
 const searchTags = () => {
+  // When the input is empty, close the dropdown
   if (!tagInput.value) {
     showSuggestions.value = false
     return
   }
 
   const searchTerm = tagInput.value.toLowerCase()
-  filteredTags.value = availableTags.value
-    .filter((tag: string) => 
-      tag.toLowerCase().includes(searchTerm) && 
-      !selectedTags.value.includes(tag)
-    )
-  showSuggestions.value = true
+  
+  // First, try to match by start of word (higher priority)
+  let startMatches = availableTags.value.filter((tag: string) => 
+    tag.toLowerCase().startsWith(searchTerm) && 
+    !selectedTags.value.includes(tag)
+  )
+  
+  // Then, add any other matches (contains but doesn't start with)
+  let containsMatches = availableTags.value.filter((tag: string) => 
+    !tag.toLowerCase().startsWith(searchTerm) &&
+    tag.toLowerCase().includes(searchTerm) && 
+    !selectedTags.value.includes(tag)
+  )
+  
+  // Combine both lists (start matches first)
+  filteredTags.value = [...startMatches, ...containsMatches]
+  
+  // Show suggestions only if we have results or input text
+  showSuggestions.value = filteredTags.value.length > 0
 }
 
 const selectTag = (tag: string) => {
@@ -619,17 +633,30 @@ const fetchCreators = async () => {
 }
 
 const searchCreators = () => {
+  // When the input is empty, close the dropdown
   if (!creatorInput.value) {
     showCreatorSuggestions.value = false
     return
   }
 
   const searchTerm = creatorInput.value.toLowerCase()
-  filteredCreators.value = availableCreators.value
-    .filter(creator => 
-      creator.toLowerCase().includes(searchTerm)
-    )
-  showCreatorSuggestions.value = true
+  
+  // First, try to match by start of word (higher priority)
+  let startMatches = availableCreators.value.filter(creator => 
+    creator.toLowerCase().startsWith(searchTerm)
+  )
+  
+  // Then, add any other matches (contains but doesn't start with)
+  let containsMatches = availableCreators.value.filter(creator => 
+    !creator.toLowerCase().startsWith(searchTerm) &&
+    creator.toLowerCase().includes(searchTerm)
+  )
+  
+  // Combine both lists (start matches first)
+  filteredCreators.value = [...startMatches, ...containsMatches]
+  
+  // Show suggestions only if we have results
+  showCreatorSuggestions.value = filteredCreators.value.length > 0
 }
 
 const selectCreator = (creator: string) => {
