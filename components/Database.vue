@@ -320,6 +320,12 @@ const fetchResources = async () => {
         case 'type':
           query = query.order('resource_types.display_name', direction)
           break
+        case 'price':
+          // For price sorting, we need to handle it in the JS layer after fetching
+          // because Supabase doesn't allow complex string parsing in the query
+          console.log('Database: Will sort by price after fetching data')
+          query = query.order('id', direction) // Default order for now
+          break
         default:
           query = query.order(currentSort.value.sortBy, direction)
       }
@@ -367,6 +373,24 @@ const fetchResources = async () => {
         status: typedItem.status
       } as Resource
     })
+
+    // Apply custom sorting for price if needed
+    if (currentSort.value.sortBy === 'price') {
+      console.log('Database: Applying custom price sorting')
+      
+      // Sort the processed data by extracted numeric price
+      processedData.sort((a, b) => {
+        const priceA = extractNumericPrice(a.price);
+        const priceB = extractNumericPrice(b.price);
+        
+        // Apply sorting direction
+        return currentSort.value.sortDirection === 'asc' 
+          ? priceA - priceB 
+          : priceB - priceA;
+      });
+      
+      console.log('Database: Price sorting applied')
+    }
 
     console.log('Database: Processed results:', processedData)
     resources.value = processedData
@@ -553,6 +577,24 @@ const updateFiltersAndSort = async (params: FilterSortParams) => {
   
   // Fetch new results with updated filters
   await fetchResources()
+}
+
+// Helper function to extract numeric price from various price formats
+const extractNumericPrice = (priceStr: string): number => {
+  if (!priceStr) return 0;
+  
+  // Handle "Free" or empty string case
+  if (priceStr.toLowerCase().includes('free') || priceStr.trim() === '') {
+    return 0;
+  }
+  
+  // Extract the first number from the string (with decimals)
+  const matches = priceStr.match(/\$?(\d+(?:\.\d+)?)/);
+  if (matches && matches[1]) {
+    return parseFloat(matches[1]);
+  }
+  
+  return 0;
 }
 
 // Expose methods for parent components
