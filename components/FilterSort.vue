@@ -228,6 +228,9 @@ const filteredTags = ref([])
 const showSuggestions = ref(false)
 const selectedTags = computed(() => filters.tags)
 
+// TODO: Consider extracting tag search functionality into a reusable composable
+// that both FilterSort and SubmitResource components can use
+
 // Fetch all available tags from the database
 const fetchTags = async () => {
   if (!supabase) return
@@ -255,17 +258,31 @@ onMounted(async () => {
 
 // Filter tags based on input
 const searchTags = () => {
+  // When the input is empty, close the dropdown
   if (!tagInput.value) {
     showSuggestions.value = false
     return
   }
 
   const searchTerm = tagInput.value.toLowerCase()
-  filteredTags.value = availableTags.value
-    .filter(tag => 
-      tag.toLowerCase().includes(searchTerm) && 
-      !selectedTags.value.includes(tag)
-    )
+  
+  // First, try to match by start of word (higher priority)
+  let startMatches = availableTags.value.filter(tag => 
+    tag.toLowerCase().startsWith(searchTerm) && 
+    !selectedTags.value.includes(tag)
+  )
+  
+  // Then, add any other matches (contains but doesn't start with)
+  let containsMatches = availableTags.value.filter(tag => 
+    !tag.toLowerCase().startsWith(searchTerm) &&
+    tag.toLowerCase().includes(searchTerm) && 
+    !selectedTags.value.includes(tag)
+  )
+  
+  // Combine both lists (start matches first)
+  filteredTags.value = [...startMatches, ...containsMatches]
+  
+  // Show suggestions only if we have results
   showSuggestions.value = filteredTags.value.length > 0
 }
 
