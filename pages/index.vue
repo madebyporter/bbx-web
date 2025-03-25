@@ -6,6 +6,7 @@
     <div class="overflow-x-scroll xl:overflow-auto">
       <Database 
         ref="database" 
+        type="software"
         @edit-resource="$emit('edit-resource', $event)"
         @show-signup="$emit('show-signup')"
         :can-edit="isAdmin"

@@ -169,6 +169,7 @@ interface Resource {
 
 const props = defineProps<{
   canEdit: boolean
+  type?: string
 }>()
 
 const { supabase } = useSupabase()
@@ -195,7 +196,8 @@ const fetchResources = async () => {
     console.log('Database: Fetching resources with:', {
       filters: currentFilters.value,
       sort: currentSort.value,
-      search: searchQuery.value
+      search: searchQuery.value,
+      type: props.type
     })
 
     // Start building the query
@@ -217,6 +219,34 @@ const fetchResources = async () => {
           tags(name)
         )
       `)
+
+    // Filter by type if specified
+    if (props.type) {
+      console.log('Database: Filtering by type slug:', props.type)
+      try {
+        // First approach: Get the type_id for the given slug
+        const { data: typeData, error: typeError } = await supabase
+          .from('resource_types')
+          .select('id')
+          .eq('slug', props.type)
+          .single() as { data: { id: number } | null, error: any }
+          
+        if (typeError) {
+          console.error('Database: Error finding resource type:', typeError)
+          // Fallback approach: Try direct filtering
+          console.log('Database: Trying direct filtering approach')
+          query = query.filter('resource_types.slug', 'eq', props.type)
+        } else if (typeData) {
+          console.log('Database: Found type ID:', typeData.id)
+          // Filter resources by the type_id
+          query = query.eq('type_id', typeData.id)
+        } else {
+          console.error('Database: Resource type not found for slug:', props.type)
+        }
+      } catch (err) {
+        console.error('Database: Exception during type filtering:', err)
+      }
+    }
 
     // Apply price filter
     if (currentFilters.value.price?.free || currentFilters.value.price?.paid) {
