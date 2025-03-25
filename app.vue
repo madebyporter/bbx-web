@@ -1,6 +1,6 @@
 <template>
   <div v-if="isInitialized">
-    <main class="grid grid-cols-12 gap-0 min-h-svh transition-all duration-300" :class="{ 'blur-sm': showAuthModal || showAdminModal }">
+    <main class="grid grid-cols-12 gap-0 min-h-svh transition-all duration-300">
       <nav 
         ref="mobileNav"
         id="navbar" 
@@ -299,8 +299,10 @@ const closeModal = () => {
 }
 
 const refreshDatabase = () => {
-  // Emit event to refresh database
-  closeModal()
+  // Just refresh the database, don't close the modal
+  if (databaseRef.value) {
+    databaseRef.value.fetchResources()
+  }
 }
 
 const handleFiltersAndSort = (params) => {

@@ -685,7 +685,7 @@ const submitResource = async () => {
       // Creator not found, create new one
       const { data: newCreator, error: createError } = await supabase
         .from('creators')
-        .insert([{ name: creatorName }])  // Wrap in array and remove any extra options
+        .insert([{ name: creatorName }])
         .select('id')
         .single<CreatorResponse>()
 
@@ -714,15 +714,12 @@ const submitResource = async () => {
 
     await createResourceWithTags(resourceData, selectedTags.value)
 
-    // Show success message and animate out
+    // Show success message
     showSuccessMessage.value = true
     
-    // Emit events
+    // Emit events but don't close
     emit('resource-updated')
     emit('resourceAdded')
-    
-    // Close drawer
-    emit('update:show', false)
 
   } catch (error) {
     console.error('Error submitting resource:', error)
