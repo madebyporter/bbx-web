@@ -97,4 +97,6 @@ watch(() => props.show, (newVal, oldVal) => {
     animateOut()
   }
 }, { immediate: true })
+
+defineExpose({ animateOut })
 </script> 

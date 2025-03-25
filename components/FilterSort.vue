@@ -1,5 +1,5 @@
 <template>
-  <MasterDrawer :show="show" @update:show="(val) => emit('update:show', val)">
+  <MasterDrawer :show="show" @update:show="(val) => emit('update:show', val)" ref="drawerRef">
     <template #header>
       <h2 class="text-2xl">Filter & Sort</h2>
     </template>
@@ -184,6 +184,9 @@ import { useSupabase } from '~/utils/supabase'
 import { ref, onMounted, reactive, computed } from 'vue'
 import MasterDrawer from './MasterDrawer.vue'
 
+// Reference to the MasterDrawer component
+const drawerRef = ref(null)
+
 const props = defineProps({
   show: {
     type: Boolean,
@@ -327,8 +330,26 @@ const applyFiltersAndSort = () => {
   }
   
   console.log('FilterSort: Applying filters and sort:', filterSortParams)
+  
+  // First emit the filters
   emit('apply-filters', filterSortParams)
-  emit('update:show', false)
+  
+  // Then trigger the close animation
+  // We need a fake event since MasterDrawer's handleClose expects one
+  const fakeEvent = { preventDefault: () => {}, stopPropagation: () => {} }
+  
+  if (drawerRef.value?.$el) {
+    // If we have access to the internal animateOut method, use it
+    if (typeof drawerRef.value.animateOut === 'function') {
+      drawerRef.value.animateOut()
+    } else {
+      // Otherwise, fallback to emitting update:show
+      emit('update:show', false)
+    }
+  } else {
+    // Fallback
+    emit('update:show', false)
+  }
 }
 
 // Clear all filters and reset to defaults
