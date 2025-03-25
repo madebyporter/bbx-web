@@ -202,7 +202,30 @@ const fetchResources = async () => {
 
     // Filter by type if specified
     if (props.type) {
-      query = query.filter('resource_types.slug', 'eq', props.type)
+      console.log('DatabaseGrid: Filtering by type slug:', props.type)
+      try {
+        // First approach: Get the type_id for the given slug
+        const { data: typeData, error: typeError } = await supabase
+          .from('resource_types')
+          .select('id')
+          .eq('slug', props.type)
+          .single() as { data: { id: number } | null, error: any }
+          
+        if (typeError) {
+          console.error('DatabaseGrid: Error finding resource type:', typeError)
+          // Fallback approach: Try direct filtering
+          console.log('DatabaseGrid: Trying direct filtering approach')
+          query = query.filter('resource_types.slug', 'eq', props.type)
+        } else if (typeData) {
+          console.log('DatabaseGrid: Found type ID:', typeData.id)
+          // Filter resources by the type_id
+          query = query.eq('type_id', typeData.id)
+        } else {
+          console.error('DatabaseGrid: Resource type not found for slug:', props.type)
+        }
+      } catch (err) {
+        console.error('DatabaseGrid: Exception during type filtering:', err)
+      }
     }
 
     // Apply price filter
