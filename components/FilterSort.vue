@@ -162,7 +162,7 @@
     <div class="flex flex-col items-center gap-4">
       <button 
         @click="applyFiltersAndSort"
-        class="btn w-full"
+        class="btn w-full apply-filters-btn"
       >
         Apply Filters & Sort
       </button>
@@ -188,6 +188,21 @@ const props = defineProps({
   show: {
     type: Boolean,
     default: false
+  },
+  initialSort: {
+    type: Object,
+    default: () => ({
+      sortBy: 'created_at',
+      sortDirection: 'desc'
+    })
+  },
+  initialFilters: {
+    type: Object,
+    default: () => ({
+      price: { free: false, paid: false },
+      os: [],
+      tags: []
+    })
   }
 })
 
@@ -265,7 +280,7 @@ const removeTag = (tag) => {
 }
 
 const applyFiltersAndSort = () => {
-  emit('apply-filters-and-sort', {
+  const filterData = {
     sort: {
       sortBy: sortBy.value,
       sortDirection: sortDirection.value
@@ -275,8 +290,22 @@ const applyFiltersAndSort = () => {
       os: filters.value.os,
       tags: selectedTags.value
     }
-  })
-  emit('update:show', false)
+  }
+  
+  console.log('FilterSort: Applying filters with data:', filterData)
+  console.log('FilterSort: Price filters:', filters.value.price)
+  
+  emit('apply-filters-and-sort', filterData)
+  
+  // Add visual feedback that filters were applied
+  const btn = document.querySelector('.apply-filters-btn')
+  if (btn) {
+    const originalText = btn.textContent
+    btn.textContent = 'Filters Applied!'
+    setTimeout(() => {
+      btn.textContent = originalText
+    }, 2000)
+  }
 }
 
 const clearAll = () => {
@@ -294,6 +323,11 @@ const clearAll = () => {
 
 onMounted(() => {
   fetchTags()
+  // Set initial values from props
+  sortBy.value = props.initialSort.sortBy
+  sortDirection.value = props.initialSort.sortDirection
+  filters.value = { ...props.initialFilters }
+  selectedTags.value = [...props.initialFilters.tags]
 })
 </script>
 

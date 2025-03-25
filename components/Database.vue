@@ -118,15 +118,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useSupabase } from '~/utils/supabase'
-import { fetchResourcesWithTags, deleteResource, type Resource, type ResourceType } from '~/utils/resourceQueries'
+import { fetchResourcesWithTags, deleteResource, type ResourceType } from '~/utils/resourceQueries'
 import { useAuth } from '~/composables/useAuth'
 
 interface ResourceFilters {
-  price?: { free: boolean; paid: boolean }
-  os?: string[]
-  tags?: string[]
+  price: {
+    free: boolean
+    paid: boolean
+  }
+  os: string[]
+  tags: string[]
 }
 
 interface ResourceUseCount {
@@ -138,6 +141,32 @@ interface ResourceUserUse {
   resource_id: number
 }
 
+interface SortParams {
+  sortBy: string
+  sortDirection: 'asc' | 'desc'
+}
+
+interface FilterSortParams {
+  sort: SortParams
+  filters: ResourceFilters
+}
+
+interface Resource {
+  id: number
+  name: string
+  creator: string
+  creator_id?: number
+  price: string
+  link: string
+  image_url: string | null
+  os: string[]
+  type_id: number
+  type: ResourceType
+  tags: string[]
+  created_at: string
+  status?: 'pending' | 'approved' | 'rejected'
+}
+
 const props = defineProps<{
   canEdit: boolean
 }>()
@@ -145,8 +174,12 @@ const props = defineProps<{
 const { supabase } = useSupabase()
 const auth = useAuth()
 const resources = ref<Resource[]>([])
-const currentSort = ref({ sortBy: 'created_at', sortDirection: 'desc' })
-const currentFilters = ref<ResourceFilters>({})
+const currentSort = ref<SortParams>({ sortBy: 'created_at', sortDirection: 'desc' })
+const currentFilters = ref<ResourceFilters>({
+  price: { free: false, paid: false },
+  os: [],
+  tags: []
+})
 const searchQuery = ref('')
 const useCounts = ref<{[key: number]: number}>({})
 const userUsedResources = ref<{[key: number]: boolean}>({})
@@ -159,79 +192,145 @@ const fetchResources = async () => {
   }
 
   try {
-    const data = await fetchResourcesWithTags()
-    
-    // Filter for software resources first
-    let filteredData = data.filter(resource => {
-      const resourceType = resource.type as ResourceType
-      return resourceType?.slug === 'software'
+    console.log('Database: Fetching resources with:', {
+      filters: currentFilters.value,
+      sort: currentSort.value,
+      search: searchQuery.value
     })
 
-    // Apply search filter
+    // Start building the query
+    let query = supabase
+      .from('resources')
+      .select(`
+        id,
+        name,
+        price,
+        link,
+        image_url,
+        os,
+        status,
+        created_at,
+        type_id,
+        creator:creators(id, name),
+        type:resource_types(id, slug, display_name),
+        resource_tags!inner(
+          tags(name)
+        )
+      `)
+
+    // Apply price filter
+    if (currentFilters.value.price?.free || currentFilters.value.price?.paid) {
+      console.log('Database: Applying price filter:', currentFilters.value.price);
+      
+      if (currentFilters.value.price.free && !currentFilters.value.price.paid) {
+        // Free items: Match any of these conditions
+        console.log('Database: Filtering for FREE items');
+        
+        // Use a more reliable approach with OR conditions for free items
+        query = query.or('price.is.null, price.eq.$0, price.eq.0, price.eq.free, price.eq.$0.00, price.ilike.%free%');
+      } else if (!currentFilters.value.price.free && currentFilters.value.price.paid) {
+        // Paid items: Exclude all free variations and nulls
+        console.log('Database: Filtering for PAID items');
+        query = query.not('price', 'is', null)
+          .not('price', 'in', ['$0', '0', 'free', '$0.00'])
+          .not('price', 'ilike', '%free%');
+      } else {
+        console.log('Database: Both price filters or no price filters selected, not applying price filter');
+      }
+    }
+
+    // Apply OS filter
+    if (currentFilters.value.os?.length > 0) {
+      console.log('Database: Filtering by OS:', currentFilters.value.os);
+      // Check if any of the specified OS is in the resource's OS array
+      query = query.contains('os', currentFilters.value.os);
+    }
+
+    // Apply tag filter
+    if (currentFilters.value.tags?.length > 0) {
+      console.log('Database: Filtering by tags:', currentFilters.value.tags);
+      
+      // For each tag, we need to filter by resource_tags and tags tables
+      for (const tag of currentFilters.value.tags) {
+        // Find resources that have this tag
+        query = query.filter('resource_tags.tags.name', 'eq', tag);
+      }
+    }
+
+    // Apply search
     if (searchQuery.value) {
-      const query = searchQuery.value.trim().toLowerCase()
-      filteredData = filteredData.filter(resource => {
-        const name = resource.name?.toLowerCase() || ''
-
-        return name.includes(query)
-      })
+      query = query.ilike('name', `%${searchQuery.value}%`)
     }
 
-    // Then apply filters
-    filteredData = filteredData.filter(resource => {
-      // Price filter
-      if (currentFilters.value.price?.free || currentFilters.value.price?.paid) {
-        const price = parseFloat(resource.price.replace('$', ''))
-        const isFree = price === 0
-        if (currentFilters.value.price?.free && !isFree) return false
-        if (currentFilters.value.price?.paid && isFree) return false
+    // Apply sorting
+    if (currentSort.value.sortBy) {
+      const direction = { ascending: currentSort.value.sortDirection === 'asc' }
+      
+      // Special handling for different sort fields
+      switch (currentSort.value.sortBy) {
+        case 'creator':
+          query = query.order('creators.name', direction)
+          break
+        case 'type':
+          query = query.order('resource_types.display_name', direction)
+          break
+        default:
+          query = query.order(currentSort.value.sortBy, direction)
       }
+    }
 
-      // OS filter
-      if (currentFilters.value.os && currentFilters.value.os.length > 0) {
-        const hasMatchingOS = currentFilters.value.os.some(osType => 
-          resource.os.includes(osType)
-        )
-        if (!hasMatchingOS) return false
-      }
+    // Execute query
+    console.log('Database: Executing Supabase query with filters applied');
+    const { data, error } = await query;
 
-      // Tags filter
-      if (currentFilters.value.tags && currentFilters.value.tags.length > 0) {
-        const hasAllTags = currentFilters.value.tags.every(tag =>
-          resource.tags.includes(tag.toLowerCase())
-        )
-        if (!hasAllTags) return false
-      }
+    if (error) {
+      console.error('Database: Query error:', error);
+      throw error;
+    }
 
-      return true
+    if (!data) {
+      console.log('Database: No results found');
+      resources.value = [];
+      return;
+    }
+
+    console.log('Database: Raw query results:', data);
+    
+    // Process results
+    const processedData = data.map(item => {
+      const typedItem = item as any
+      
+      // Extract tags from the nested structure
+      const tags = typedItem.resource_tags
+        ?.map((rt: any) => rt.tags?.name)
+        .filter(Boolean) || []
+
+      return {
+        id: typedItem.id,
+        name: typedItem.name,
+        creator: typedItem.creator?.name || '',
+        creator_id: typedItem.creator?.id,
+        price: typedItem.price,
+        link: typedItem.link,
+        image_url: typedItem.image_url,
+        os: typedItem.os || [],
+        tags,
+        type: typedItem.type?.[0],
+        type_id: typedItem.type_id,
+        created_at: typedItem.created_at,
+        status: typedItem.status
+      } as Resource
     })
 
-    // Finally apply sorting
-    if (currentSort.value.sortBy === 'price') {
-      filteredData.sort((a, b) => {
-        const priceA = parseFloat(a.price.replace('$', ''))
-        const priceB = parseFloat(b.price.replace('$', ''))
-        return currentSort.value.sortDirection === 'asc' 
-          ? priceA - priceB 
-          : priceB - priceA
-      })
-    } else {
-      filteredData.sort((a, b) => {
-        const valueA = a[currentSort.value.sortBy as keyof Resource]
-        const valueB = b[currentSort.value.sortBy as keyof Resource]
-        if (valueA === undefined || valueB === undefined) return 0
-        const comparison = valueA < valueB ? -1 : valueA > valueB ? 1 : 0
-        return currentSort.value.sortDirection === 'asc' 
-          ? comparison 
-          : -comparison
-      })
-    }
+    console.log('Database: Processed results:', processedData)
+    resources.value = processedData
 
-    resources.value = filteredData
+    // Update use counts
     await fetchUseCounts()
 
   } catch (error) {
-    console.error('Error fetching resources:', error)
+    console.error('Database: Error fetching resources:', error)
+    resources.value = []
   }
 }
 
@@ -365,15 +464,29 @@ const toggleUse = async (resource: Resource) => {
   }
 }
 
-const handleSearch = (query: string) => {
+const handleSearch = async (query: string) => {
   searchQuery.value = query
-  fetchResources()
+  await fetchResources()
+}
+
+const updateFiltersAndSort = async (params: FilterSortParams) => {
+  console.log('Database: Updating filters and sort:', params)
+  
+  if (!params) return
+  
+  // Update the values
+  currentSort.value = params.sort
+  currentFilters.value = params.filters
+  
+  // Fetch new results with updated filters
+  await fetchResources()
 }
 
 // Expose methods for parent components
 defineExpose({
   fetchResources,
-  handleSearch
+  handleSearch,
+  updateFiltersAndSort
 })
 </script>
 

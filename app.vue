@@ -113,10 +113,14 @@
           @show-signup="handleShowSignup"
         >
           <template #default="{ Component }">
-            <component 
-              :is="Component"
-              ref="databaseRef"
-            />
+            <Suspense>
+              <component 
+                :is="Component"
+                ref="databaseRef"
+                :can-edit="isAdmin"
+                @update-filters="handleFiltersAndSort"
+              />
+            </Suspense>
           </template>
         </NuxtPage>
       </section>
@@ -195,7 +199,9 @@
 
     <!-- Filter Modal -->
     <FilterSort
-      v-model:show="showFilterModal"
+      v-model:show="showFilterSort"
+      :initial-sort="currentSort"
+      :initial-filters="currentFilters"
       @apply-filters-and-sort="handleFiltersAndSort"
     />
   </div>
@@ -204,10 +210,48 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
+
+// Define interfaces
+interface DatabaseRef {
+  fetchResources: () => Promise<void>
+  handleSearch: (query: string) => void
+  updateFiltersAndSort: (params: FilterSortParams) => void
+}
+
+interface FilterSortParams {
+  sort: {
+    sortBy: string
+    sortDirection: 'asc' | 'desc'
+  }
+  filters: {
+    price: { free: boolean; paid: boolean }
+    os: string[]
+    tags: string[]
+  }
+}
+
+interface ResourceType {
+  id: number
+  slug: string
+  display_name: string
+  created_at: string
+}
+
+interface Resource {
+  id: number
+  name: string
+  creator: string
+  price: string
+  link: string
+  image_url: string | null
+  os: string[]
+  tags: string[]
+  type: ResourceType
+}
 
 const auth = useAuth()
 const { user, isAdmin } = auth
@@ -222,15 +266,28 @@ const password = ref('')
 
 // Resource management state
 const showModal = ref(false)
-const showFilterModal = ref(false)
-const editingResource = ref(null)
+const showFilterSort = ref(false)
+const editingResource = ref<Resource | null>(null)
 const modalKey = ref(0)
 const showMobileNav = ref(false)
 const pageRef = ref(null)
-const databaseRef = ref(null)
+const databaseRef = ref<DatabaseRef | null>(null)
 
 // Navigation
 const mobileNav = ref(null)
+
+type SortDirection = 'asc' | 'desc'
+
+const currentSort = ref<{ sortBy: string; sortDirection: SortDirection }>({ 
+  sortBy: 'created_at', 
+  sortDirection: 'desc' 
+})
+
+const currentFilters = ref({
+  price: { free: false, paid: false },
+  os: [] as string[],
+  tags: [] as string[]
+})
 
 const toggleMobileNav = () => {
   showMobileNav.value = !showMobileNav.value
@@ -268,9 +325,9 @@ const handleSubmit = async () => {
     showAuthModal.value = false
     email.value = ''
     password.value = ''
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Auth error:', error)
-    alert(error.message)
+    alert(error instanceof Error ? error.message : 'Unknown error')
   }
 }
 
@@ -284,10 +341,10 @@ const handleAuth = async () => {
 
 // Resource management handlers
 const openFilterModal = () => {
-  showFilterModal.value = true
+  showFilterSort.value = true
 }
 
-const handleEdit = (resource) => {
+const handleEdit = (resource: Resource) => {
   editingResource.value = resource
   showModal.value = true
   modalKey.value++
@@ -305,25 +362,39 @@ const refreshDatabase = () => {
   }
 }
 
-const handleFiltersAndSort = (params) => {
-  // Handle filter and sort updates
+const handleFiltersAndSort = (params: FilterSortParams) => {
+  console.log('App: Received filter params:', params)
+  
+  // Update local state
+  currentSort.value = params.sort
+  currentFilters.value = params.filters
+  
+  console.log('App: Updated current filters:', currentFilters.value)
+  
+  // Emit event to Database component
+  if (databaseRef.value) {
+    console.log('App: Database component found, updating filters')
+    databaseRef.value.updateFiltersAndSort?.(params)
+  } else {
+    console.error('App: Database component not found!')
+  }
 }
 
-const handleSearch = (query) => {
-  ('App: handleSearch called with query:', query)
+const handleSearch = (query: string) => {
+  console.log('App: handleSearch called with query:', query)
   
   // Access the database component directly through the ref
   if (databaseRef.value) {
-    ('App: Found database component')
+    console.log('App: Found database component')
     databaseRef.value.handleSearch(query)
   } else {
-    ('App: Could not find database component')
+    console.log('App: Could not find database component')
   }
 }
 
 // Handle "I Use This" signup flow
 const handleShowSignup = () => {
-  ('Show signup called, current user:', user.value)
+  console.log('Show signup called, current user:', user.value)
   if (!user.value) {
     showAuthModal.value = true
     isSignUp.value = true
@@ -332,7 +403,7 @@ const handleShowSignup = () => {
 
 // Initialize auth state
 onMounted(async () => {
-  ('App: Starting auth initialization...')
+  console.log('App: Starting auth initialization...')
   await auth.init()
   isInitialized.value = true
 })
