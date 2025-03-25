@@ -20,6 +20,19 @@ import { ref } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import DatabaseGrid from '~/components/DatabaseGrid.vue'
 
+// Define interfaces for type safety
+interface FilterSortParams {
+  sort: {
+    sortBy: string
+    sortDirection: 'asc' | 'desc'
+  }
+  filters: {
+    price: { free: boolean; paid: boolean }
+    os: string[]
+    tags: string[]
+  }
+}
+
 definePageMeta({
   name: 'sounds'
 })
@@ -31,6 +44,15 @@ defineEmits(['edit-resource', 'show-signup'])
 
 // Expose the database ref to parent
 defineExpose({
-  databaseGrid
+  databaseGrid,
+  handleSearch: (query: string) => databaseGrid.value?.handleSearch(query),
+  updateFiltersAndSort: (params: FilterSortParams) => {
+    console.log('Sounds page: Forwarding updateFiltersAndSort to databaseGrid component')
+    if (databaseGrid.value && typeof databaseGrid.value.updateFiltersAndSort === 'function') {
+      databaseGrid.value.updateFiltersAndSort(params)
+    } else {
+      console.error('Sounds page: DatabaseGrid component not found or updateFiltersAndSort method not available')
+    }
+  }
 })
 </script> 

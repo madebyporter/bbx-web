@@ -124,6 +124,18 @@ interface Props {
   canEdit?: boolean
 }
 
+interface FilterSortParams {
+  sort: {
+    sortBy: string
+    sortDirection: 'asc' | 'desc'
+  }
+  filters: {
+    price: { free: boolean; paid: boolean }
+    os: string[]
+    tags: string[]
+  }
+}
+
 const props = withDefaults(defineProps<Props>(), {
   type: undefined,
   canEdit: false
@@ -134,6 +146,16 @@ const auth = useAuth()
 const resources = ref<Resource[]>([])
 const useCounts = ref<{[key: number]: number}>({})
 const userUsedResources = ref<{[key: number]: boolean}>({})
+const currentSort = ref<{sortBy: string, sortDirection: 'asc' | 'desc'}>({ 
+  sortBy: 'created_at', 
+  sortDirection: 'desc' 
+})
+const currentFilters = ref({
+  price: { free: false, paid: false },
+  os: [] as string[],
+  tags: [] as string[]
+})
+const searchQuery = ref('')
 
 interface ResourceUseCount {
   resource_id: number
@@ -151,21 +173,190 @@ const fetchResources = async () => {
   }
 
   try {
-    const data = await fetchResourcesWithTags()
-    
+    console.log('DatabaseGrid: Fetching resources with:', {
+      filters: currentFilters.value,
+      sort: currentSort.value,
+      search: searchQuery.value,
+      type: props.type
+    })
+
+    // Start building the query
+    let query = supabase
+      .from('resources')
+      .select(`
+        id,
+        name,
+        price,
+        link,
+        image_url,
+        os,
+        created_at,
+        type_id,
+        creator:creators(id, name),
+        type:resource_types(id, slug, display_name),
+        resource_tags!inner(
+          tags(name)
+        )
+      `)
+      .eq('status', 'approved')
+
     // Filter by type if specified
-    let filteredData = data
     if (props.type) {
-      filteredData = data.filter(resource => {
-        const resourceType = resource.type as ResourceType
-        return resourceType?.slug === props.type
-      })
+      query = query.filter('resource_types.slug', 'eq', props.type)
     }
 
-    resources.value = filteredData
+    // Apply price filter
+    if (currentFilters.value.price?.free || currentFilters.value.price?.paid) {
+      console.log('DatabaseGrid: Applying price filter:', currentFilters.value.price);
+      
+      if (currentFilters.value.price.free && !currentFilters.value.price.paid) {
+        // Free items: Match any of these conditions
+        console.log('DatabaseGrid: Filtering for FREE items');
+        
+        // Alternative approach for free items using multiple OR conditions
+        query = query.or(
+          'price.is.null,' +
+          'price.eq.$0,' +
+          'price.eq.0,' + 
+          'price.eq.free,' +
+          'price.eq.$0.00,' +
+          'price.ilike.%free%'
+        );
+        
+        console.log('DatabaseGrid: Free query:', query);
+      } else if (!currentFilters.value.price.free && currentFilters.value.price.paid) {
+        // Paid items: Exclude all free variations and nulls
+        console.log('DatabaseGrid: Filtering for PAID items');
+        
+        // First, create a base query excluding nulls
+        let paidQuery = query.not('price', 'is', null);
+        
+        // Then add additional conditions to exclude various forms of "free"
+        paidQuery = paidQuery.not('price', 'eq', '$0');
+        paidQuery = paidQuery.not('price', 'eq', '0');
+        paidQuery = paidQuery.not('price', 'eq', 'free');
+        paidQuery = paidQuery.not('price', 'eq', '$0.00');
+        paidQuery = paidQuery.not('price', 'ilike', '%free%');
+        
+        query = paidQuery;
+        console.log('DatabaseGrid: Paid query:', query);
+      } else if (currentFilters.value.price.free && currentFilters.value.price.paid) {
+        // Both selected - this effectively means "show all", so no filtering needed
+        console.log('DatabaseGrid: Both price filters selected, showing all resources');
+      } else {
+        console.log('DatabaseGrid: No price filters selected, not applying price filter');
+      }
+    }
+
+    // Apply OS filter
+    if (currentFilters.value.os?.length > 0) {
+      console.log('DatabaseGrid: Filtering by OS:', currentFilters.value.os);
+      
+      // We want resources that contain ANY of the selected OS values
+      const osValues = currentFilters.value.os;
+      
+      if (osValues.length === 1) {
+        // If only one OS is selected, use a simpler contains query
+        query = query.contains('os', [osValues[0]]);
+        console.log(`DatabaseGrid: Filtering for OS: ${osValues[0]}`);
+      } else {
+        // If multiple OS values are selected, we use OR to match any of them
+        let orConditions = '';
+        osValues.forEach((os, index) => {
+          if (index > 0) orConditions += ',';
+          orConditions += `os.cs.{${os}}`;
+        });
+        
+        query = query.or(orConditions);
+        console.log('DatabaseGrid: Filtering for multiple OS with query:', orConditions);
+      }
+    }
+
+    // Apply tag filter
+    if (currentFilters.value.tags?.length > 0) {
+      console.log('DatabaseGrid: Filtering by tags:', currentFilters.value.tags);
+      
+      // To match resources with ALL selected tags, we use multiple filters
+      const tags = currentFilters.value.tags;
+      
+      // By using the nested resource_tags.tags.name field and filtering
+      // multiple times, we ensure resources must have ALL selected tags
+      for (const tag of tags) {
+        const tagName = tag.toLowerCase();
+        query = query.filter('resource_tags.tags.name', 'eq', tagName);
+        console.log(`DatabaseGrid: Added filter for tag: ${tagName}`);
+      }
+      
+      console.log('DatabaseGrid: Final tag filter query:', query);
+    }
+
+    // Apply search
+    if (searchQuery.value) {
+      query = query.ilike('name', `%${searchQuery.value}%`)
+    }
+
+    // Apply sorting
+    if (currentSort.value.sortBy) {
+      const direction = { ascending: currentSort.value.sortDirection === 'asc' }
+      
+      // Special handling for different sort fields
+      switch (currentSort.value.sortBy) {
+        case 'creator':
+          query = query.order('creators.name', direction)
+          break
+        case 'type':
+          query = query.order('resource_types.display_name', direction)
+          break
+        default:
+          query = query.order(currentSort.value.sortBy, direction)
+      }
+    }
+
+    // Execute query
+    console.log('DatabaseGrid: Executing Supabase query');
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('DatabaseGrid: Query error:', error);
+      throw error;
+    }
+
+    if (!data) {
+      console.log('DatabaseGrid: No results found');
+      resources.value = [];
+      return;
+    }
+
+    // Process results
+    const processedData = data.map(item => {
+      const typedItem = item as any
+      
+      // Extract tags from the nested structure
+      const tags = typedItem.resource_tags
+        ?.map((rt: any) => rt.tags?.name)
+        .filter(Boolean) || []
+
+      return {
+        id: typedItem.id,
+        name: typedItem.name,
+        creator: typedItem.creator?.name || '',
+        creator_id: typedItem.creator?.id,
+        price: typedItem.price,
+        link: typedItem.link,
+        image_url: typedItem.image_url,
+        os: typedItem.os || [],
+        tags,
+        type: typedItem.type,
+        type_id: typedItem.type_id,
+        created_at: typedItem.created_at
+      } as Resource
+    })
+
+    resources.value = processedData
     await fetchUseCounts()
   } catch (error) {
-    console.error('Error fetching resources:', error)
+    console.error('DatabaseGrid: Error fetching resources:', error)
+    resources.value = []
   }
 }
 
@@ -280,6 +471,51 @@ const confirmDelete = async (resource: Resource) => {
   }
 }
 
+const handleSearch = async (query: string) => {
+  searchQuery.value = query
+  await fetchResources()
+}
+
+const updateFiltersAndSort = async (params: FilterSortParams) => {
+  console.log('DatabaseGrid: Updating filters and sort:', params)
+  
+  if (!params) {
+    console.error('DatabaseGrid: Invalid filter params received')
+    return
+  }
+  
+  // Validate and update the values
+  if (params.sort && typeof params.sort.sortBy === 'string' && 
+      (params.sort.sortDirection === 'asc' || params.sort.sortDirection === 'desc')) {
+    currentSort.value = params.sort
+  } else {
+    console.error('DatabaseGrid: Invalid sort parameters', params.sort)
+  }
+  
+  if (params.filters) {
+    // Validate price filter
+    if (params.filters.price && typeof params.filters.price.free === 'boolean' && 
+        typeof params.filters.price.paid === 'boolean') {
+      currentFilters.value.price = params.filters.price
+    }
+    
+    // Validate OS filter
+    if (Array.isArray(params.filters.os)) {
+      currentFilters.value.os = params.filters.os
+    }
+    
+    // Validate tags filter
+    if (Array.isArray(params.filters.tags)) {
+      currentFilters.value.tags = params.filters.tags
+    }
+  } else {
+    console.error('DatabaseGrid: Invalid filter parameters')
+  }
+  
+  // Fetch new results with updated filters
+  await fetchResources()
+}
+
 // Initialize
 onMounted(async () => {
   if (supabase) {
@@ -291,5 +527,12 @@ onMounted(async () => {
 // Watch for auth changes
 watch(() => auth.user, async () => {
   await fetchUseCounts()
+})
+
+// Expose methods for parent component
+defineExpose({
+  fetchResources,
+  handleSearch,
+  updateFiltersAndSort
 })
 </script> 

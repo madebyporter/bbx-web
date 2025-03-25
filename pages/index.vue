@@ -14,22 +14,44 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { useAuth } from '~/composables/useAuth'
+import Database from '~/components/Database.vue'
+
+// Define interfaces for type safety
+interface FilterSortParams {
+  sort: {
+    sortBy: string
+    sortDirection: 'asc' | 'desc'
+  }
+  filters: {
+    price: { free: boolean; paid: boolean }
+    os: string[]
+    tags: string[]
+  }
+}
 
 definePageMeta({
   name: 'index'
 })
 
 const { isAdmin } = useAuth()
-const database = ref(null)
+const database = ref<InstanceType<typeof Database> | null>(null)
 
 defineEmits(['edit-resource', 'show-signup'])
 
 // Expose the database ref to parent
 defineExpose({
   database,
-  handleSearch: (query) => database.value?.handleSearch(query)
+  handleSearch: (query: string) => database.value?.handleSearch(query),
+  updateFiltersAndSort: (params: FilterSortParams) => {
+    console.log('Index page: Forwarding updateFiltersAndSort to database component')
+    if (database.value && typeof database.value.updateFiltersAndSort === 'function') {
+      database.value.updateFiltersAndSort(params)
+    } else {
+      console.error('Index page: Database component not found or updateFiltersAndSort method not available')
+    }
+  }
 })
 </script> 

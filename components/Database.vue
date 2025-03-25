@@ -226,35 +226,81 @@ const fetchResources = async () => {
         // Free items: Match any of these conditions
         console.log('Database: Filtering for FREE items');
         
-        // Use a more reliable approach with OR conditions for free items
-        query = query.or('price.is.null, price.eq.$0, price.eq.0, price.eq.free, price.eq.$0.00, price.ilike.%free%');
+        // Alternative approach for free items using multiple OR conditions
+        query = query.or(
+          'price.is.null,' +
+          'price.eq.$0,' +
+          'price.eq.0,' + 
+          'price.eq.free,' +
+          'price.eq.$0.00,' +
+          'price.ilike.%free%'
+        );
+        
+        console.log('Database: Free query:', query);
       } else if (!currentFilters.value.price.free && currentFilters.value.price.paid) {
         // Paid items: Exclude all free variations and nulls
         console.log('Database: Filtering for PAID items');
-        query = query.not('price', 'is', null)
-          .not('price', 'in', ['$0', '0', 'free', '$0.00'])
-          .not('price', 'ilike', '%free%');
+        
+        // First, create a base query excluding nulls
+        let paidQuery = query.not('price', 'is', null);
+        
+        // Then add additional conditions to exclude various forms of "free"
+        paidQuery = paidQuery.not('price', 'eq', '$0');
+        paidQuery = paidQuery.not('price', 'eq', '0');
+        paidQuery = paidQuery.not('price', 'eq', 'free');
+        paidQuery = paidQuery.not('price', 'eq', '$0.00');
+        paidQuery = paidQuery.not('price', 'ilike', '%free%');
+        
+        query = paidQuery;
+        console.log('Database: Paid query:', query);
+      } else if (currentFilters.value.price.free && currentFilters.value.price.paid) {
+        // Both selected - this effectively means "show all", so no filtering needed
+        console.log('Database: Both price filters selected, showing all resources');
       } else {
-        console.log('Database: Both price filters or no price filters selected, not applying price filter');
+        console.log('Database: No price filters selected, not applying price filter');
       }
     }
 
     // Apply OS filter
     if (currentFilters.value.os?.length > 0) {
       console.log('Database: Filtering by OS:', currentFilters.value.os);
-      // Check if any of the specified OS is in the resource's OS array
-      query = query.contains('os', currentFilters.value.os);
+      
+      // We want resources that contain ANY of the selected OS values
+      const osValues = currentFilters.value.os;
+      
+      if (osValues.length === 1) {
+        // If only one OS is selected, use a simpler contains query
+        query = query.contains('os', [osValues[0]]);
+        console.log(`Database: Filtering for OS: ${osValues[0]}`);
+      } else {
+        // If multiple OS values are selected, we use OR to match any of them
+        let orConditions = '';
+        osValues.forEach((os, index) => {
+          if (index > 0) orConditions += ',';
+          orConditions += `os.cs.{${os}}`;
+        });
+        
+        query = query.or(orConditions);
+        console.log('Database: Filtering for multiple OS with query:', orConditions);
+      }
     }
 
     // Apply tag filter
     if (currentFilters.value.tags?.length > 0) {
       console.log('Database: Filtering by tags:', currentFilters.value.tags);
       
-      // For each tag, we need to filter by resource_tags and tags tables
-      for (const tag of currentFilters.value.tags) {
-        // Find resources that have this tag
-        query = query.filter('resource_tags.tags.name', 'eq', tag);
+      // To match resources with ALL selected tags, we use multiple filters
+      const tags = currentFilters.value.tags;
+      
+      // By using the nested resource_tags.tags.name field and filtering
+      // multiple times, we ensure resources must have ALL selected tags
+      for (const tag of tags) {
+        const tagName = tag.toLowerCase();
+        query = query.filter('resource_tags.tags.name', 'eq', tagName);
+        console.log(`Database: Added filter for tag: ${tagName}`);
       }
+      
+      console.log('Database: Final tag filter query:', query);
     }
 
     // Apply search
@@ -472,11 +518,38 @@ const handleSearch = async (query: string) => {
 const updateFiltersAndSort = async (params: FilterSortParams) => {
   console.log('Database: Updating filters and sort:', params)
   
-  if (!params) return
+  if (!params) {
+    console.error('Database: Invalid filter params received')
+    return
+  }
   
-  // Update the values
-  currentSort.value = params.sort
-  currentFilters.value = params.filters
+  // Validate and update the values
+  if (params.sort && typeof params.sort.sortBy === 'string' && 
+      (params.sort.sortDirection === 'asc' || params.sort.sortDirection === 'desc')) {
+    currentSort.value = params.sort
+  } else {
+    console.error('Database: Invalid sort parameters', params.sort)
+  }
+  
+  if (params.filters) {
+    // Validate price filter
+    if (params.filters.price && typeof params.filters.price.free === 'boolean' && 
+        typeof params.filters.price.paid === 'boolean') {
+      currentFilters.value.price = params.filters.price
+    }
+    
+    // Validate OS filter
+    if (Array.isArray(params.filters.os)) {
+      currentFilters.value.os = params.filters.os
+    }
+    
+    // Validate tags filter
+    if (Array.isArray(params.filters.tags)) {
+      currentFilters.value.tags = params.filters.tags
+    }
+  } else {
+    console.error('Database: Invalid filter parameters')
+  }
   
   // Fetch new results with updated filters
   await fetchResources()

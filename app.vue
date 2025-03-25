@@ -202,7 +202,7 @@
       v-model:show="showFilterSort"
       :initial-sort="currentSort"
       :initial-filters="currentFilters"
-      @apply-filters-and-sort="handleFiltersAndSort"
+      @apply-filters="handleFiltersAndSort"
     />
   </div>
   <div v-else class="flex items-center justify-center min-h-screen">
@@ -220,6 +220,17 @@ interface DatabaseRef {
   fetchResources: () => Promise<void>
   handleSearch: (query: string) => void
   updateFiltersAndSort: (params: FilterSortParams) => void
+}
+
+interface PageRef {
+  database?: {
+    value?: DatabaseRef
+  }
+  databaseGrid?: {
+    value?: DatabaseRef
+  }
+  updateFiltersAndSort?: (params: FilterSortParams) => void
+  [key: string]: any
 }
 
 interface FilterSortParams {
@@ -270,7 +281,7 @@ const showFilterSort = ref(false)
 const editingResource = ref<Resource | null>(null)
 const modalKey = ref(0)
 const showMobileNav = ref(false)
-const pageRef = ref(null)
+const pageRef = ref<PageRef | null>(null)
 const databaseRef = ref<DatabaseRef | null>(null)
 
 // Navigation
@@ -365,18 +376,97 @@ const refreshDatabase = () => {
 const handleFiltersAndSort = (params: FilterSortParams) => {
   console.log('App: Received filter params:', params)
   
+  if (!params) {
+    console.error('App: Invalid filter parameters received')
+    return
+  }
+  
   // Update local state
-  currentSort.value = params.sort
-  currentFilters.value = params.filters
+  if (params.sort) {
+    currentSort.value = {
+      sortBy: params.sort.sortBy,
+      sortDirection: params.sort.sortDirection
+    }
+  }
   
-  console.log('App: Updated current filters:', currentFilters.value)
+  if (params.filters) {
+    // Make deep copies to ensure reactivity
+    currentFilters.value = {
+      price: { ...params.filters.price },
+      os: [...params.filters.os],
+      tags: [...params.filters.tags]
+    }
+  }
   
-  // Emit event to Database component
-  if (databaseRef.value) {
+  console.log('App: Updated filters to:', {
+    price: currentFilters.value.price,
+    os: currentFilters.value.os,
+    tags: currentFilters.value.tags
+  })
+  
+  // Get database component reference - try different approaches to find it
+  // First try direct reference
+  let dbComponent = databaseRef.value
+  
+  // If direct ref doesn't work, try to get it through the page ref
+  if (!dbComponent && pageRef.value) {
+    console.log('App: Trying to find database component through page ref')
+    
+    try {
+      // Check if page has exposed database property
+      if (pageRef.value.database && pageRef.value.database.value) {
+        dbComponent = pageRef.value.database.value
+        console.log('App: Found database component through page database property')
+      } 
+      // If no database property, check if page has databaseGrid property
+      else if (pageRef.value.databaseGrid && pageRef.value.databaseGrid.value) {
+        dbComponent = pageRef.value.databaseGrid.value
+        console.log('App: Found database component through page databaseGrid property')
+      }
+      // Check if page is directly exposing component methods
+      else if (typeof pageRef.value.updateFiltersAndSort === 'function') {
+        console.log('App: Using page component methods directly')
+        pageRef.value.updateFiltersAndSort(params)
+        return
+      }
+    } catch (e) {
+      console.error('App: Error accessing page component:', e)
+    }
+  }
+  
+  // Attempt to update filters
+  if (dbComponent && typeof dbComponent.updateFiltersAndSort === 'function') {
     console.log('App: Database component found, updating filters')
-    databaseRef.value.updateFiltersAndSort?.(params)
+    try {
+      dbComponent.updateFiltersAndSort({
+        sort: currentSort.value,
+        filters: currentFilters.value
+      })
+    } catch (error) {
+      console.error('App: Error applying filters:', error)
+    }
   } else {
-    console.error('App: Database component not found!')
+    console.error('App: Database component not found or updateFiltersAndSort method not available!')
+    
+    // Last resort - try to find any component with updateFiltersAndSort method
+    if (pageRef.value) {
+      console.log('App: Attempting to find updateFiltersAndSort on page component')
+      try {
+        const keys = Object.keys(pageRef.value)
+        console.log('App: Available page properties:', keys)
+        
+        for (const key of keys) {
+          const prop = pageRef.value[key]
+          if (prop && typeof prop.updateFiltersAndSort === 'function') {
+            console.log(`App: Found updateFiltersAndSort method on page.${key}`)
+            prop.updateFiltersAndSort(params)
+            return
+          }
+        }
+      } catch (e) {
+        console.error('App: Error searching for component method:', e)
+      }
+    }
   }
 }
 

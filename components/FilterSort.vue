@@ -181,20 +181,13 @@ import IconApple from './IconApple.vue'
 import IconWindows from './IconWindows.vue'
 import IconLinux from './IconLinux.vue'
 import { useSupabase } from '~/utils/supabase'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
 import MasterDrawer from './MasterDrawer.vue'
 
 const props = defineProps({
   show: {
     type: Boolean,
     default: false
-  },
-  initialSort: {
-    type: Object,
-    default: () => ({
-      sortBy: 'created_at',
-      sortDirection: 'desc'
-    })
   },
   initialFilters: {
     type: Object,
@@ -203,29 +196,42 @@ const props = defineProps({
       os: [],
       tags: []
     })
+  },
+  initialSort: {
+    type: Object,
+    default: () => ({
+      sortBy: 'created_at',
+      sortDirection: 'desc'
+    })
   }
 })
 
-const emit = defineEmits(['apply-filters-and-sort', 'update:show'])
-const { supabase } = useSupabase()
+const emit = defineEmits(['update:show', 'apply-filters'])
 
-const sortBy = ref('created_at')
-const sortDirection = ref('desc')
-const filters = ref({
+// Filter and sort state
+const sortBy = ref(props.initialSort.sortBy)
+const sortDirection = ref(props.initialSort.sortDirection)
+const filters = reactive({
   price: {
-    free: false,
-    paid: false
+    free: props.initialFilters.price?.free || false,
+    paid: props.initialFilters.price?.paid || false
   },
-  os: [],
-  tags: []
+  os: [...(props.initialFilters.os || [])],
+  tags: [...(props.initialFilters.tags || [])]
 })
-const tagInput = ref('')
-const selectedTags = ref([])
-const availableTags = ref([])
-const showSuggestions = ref(false)
-const filteredTags = ref([])
 
+// Tags state
+const { supabase } = useSupabase()
+const tagInput = ref('')
+const availableTags = ref([])
+const filteredTags = ref([])
+const showSuggestions = ref(false)
+const selectedTags = computed(() => filters.tags)
+
+// Fetch all available tags from the database
 const fetchTags = async () => {
+  if (!supabase) return
+
   try {
     const { data, error } = await supabase
       .from('tags')
@@ -234,104 +240,87 @@ const fetchTags = async () => {
 
     if (error) throw error
     
-    availableTags.value = data.map(tag => tag.name)
+    availableTags.value = data
+      .map(tag => tag.name)
       .sort((a, b) => a.localeCompare(b))
   } catch (error) {
-    console.error('Error fetching tags:', error)
+    console.error('FilterSort: Error fetching tags:', error)
   }
 }
 
+// Initialize component
+onMounted(async () => {
+  await fetchTags()
+})
+
+// Filter tags based on input
 const searchTags = () => {
   if (!tagInput.value) {
     showSuggestions.value = false
     return
   }
+
   const searchTerm = tagInput.value.toLowerCase()
   filteredTags.value = availableTags.value
     .filter(tag => 
       tag.toLowerCase().includes(searchTerm) && 
       !selectedTags.value.includes(tag)
     )
-  showSuggestions.value = true
+  showSuggestions.value = filteredTags.value.length > 0
 }
 
+// Select a tag from the dropdown
 const selectTag = (tag) => {
-  const normalizedTag = tag.toLowerCase()
-  if (!selectedTags.value.includes(normalizedTag)) {
-    selectedTags.value.push(normalizedTag)
+  if (!selectedTags.value.includes(tag)) {
+    filters.tags.push(tag)
   }
   tagInput.value = ''
   showSuggestions.value = false
 }
 
+// Add a new tag when user presses enter
 const addTag = () => {
   if (!tagInput.value.trim()) return
   
   const newTag = tagInput.value.trim().toLowerCase()
   if (!selectedTags.value.includes(newTag)) {
-    selectedTags.value.push(newTag)
+    filters.tags.push(newTag)
   }
   tagInput.value = ''
   showSuggestions.value = false
 }
 
+// Remove a tag
 const removeTag = (tag) => {
-  selectedTags.value = selectedTags.value.filter(t => t !== tag)
+  filters.tags = filters.tags.filter(t => t !== tag)
 }
 
+// Apply filters and sort
 const applyFiltersAndSort = () => {
-  const filterData = {
+  const filterSortParams = {
     sort: {
       sortBy: sortBy.value,
       sortDirection: sortDirection.value
     },
     filters: {
-      price: filters.value.price,
-      os: filters.value.os,
-      tags: selectedTags.value
+      price: { ...filters.price },
+      os: [...filters.os],
+      tags: [...filters.tags]
     }
   }
   
-  console.log('FilterSort: Applying filters with data:', filterData)
-  console.log('FilterSort: Price filters:', filters.value.price)
-  
-  emit('apply-filters-and-sort', filterData)
-  
-  // Add visual feedback that filters were applied
-  const btn = document.querySelector('.apply-filters-btn')
-  if (btn) {
-    const originalText = btn.textContent
-    btn.textContent = 'Filters Applied!'
-    setTimeout(() => {
-      btn.textContent = originalText
-    }, 2000)
-  }
+  console.log('FilterSort: Applying filters and sort:', filterSortParams)
+  emit('apply-filters', filterSortParams)
+  emit('update:show', false)
 }
 
+// Clear all filters and reset to defaults
 const clearAll = () => {
-  // Reset all filters but keep sort as created_at/desc
   sortBy.value = 'created_at'
   sortDirection.value = 'desc'
-  filters.value.price.free = false
-  filters.value.price.paid = false
-  filters.value.os = []
-  selectedTags.value = []
-  
-  // Apply the cleared state
-  applyFiltersAndSort()
+  filters.price.free = false
+  filters.price.paid = false
+  filters.os = []
+  filters.tags = []
 }
-
-onMounted(() => {
-  fetchTags()
-  // Set initial values from props
-  sortBy.value = props.initialSort.sortBy
-  sortDirection.value = props.initialSort.sortDirection
-  filters.value = { ...props.initialFilters }
-  selectedTags.value = [...props.initialFilters.tags]
-})
 </script>
-
-<style scoped>
-/* Add your modal styles here, similar to SubmitResource.vue */
-</style>
-
