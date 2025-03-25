@@ -83,12 +83,12 @@
             <!-- Creator suggestions dropdown -->
             <div 
               v-if="showCreatorSuggestions && filteredCreators.length > 0"
-              class="absolute left-0 right-0 mt-1 bg-white rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
+              class="absolute left-0 right-0 mt-1 bg-neutral-800 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
             >
               <div 
                 v-for="creator in filteredCreators" 
                 :key="creator"
-                class="px-4 py-2 hover:bg-neutral-100 cursor-pointer"
+                class="px-4 py-2 hover:bg-neutral-700 cursor-pointer"
                 @click="selectCreator(creator)"
               >
                 {{ creator }}
@@ -140,12 +140,12 @@
             <!-- Tag suggestions dropdown -->
             <div 
               v-if="showSuggestions && filteredTags.length > 0"
-              class="absolute left-0 right-0 mt-1 bg-white rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
+              class="mt-1 bg-neutral-800 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
             >
               <div 
                 v-for="tag in filteredTags" 
                 :key="tag"
-                class="px-4 py-2 hover:bg-neutral-100 cursor-pointer"
+                class="px-4 py-2 hover:bg-neutral-700 cursor-pointer"
                 @click="selectTag(tag)"
               >
                 {{ tag }}
