@@ -47,10 +47,10 @@
               Sync Libraries <span class="tag">Later</span>
             </NuxtLink>
             <NuxtLink to="#" class="nav-link-later">
-              Tutorials <span class="tag">Later</span>
+              Events <span class="tag">Later</span>
             </NuxtLink>
           </div>
-          <div class="flex flex-col gap-4">
+          <!-- <div class="flex flex-col gap-4">
             <span class="nav-header">People</span>
             <NuxtLink to="#" class="nav-link-later">
               Producers <span class="tag">Later</span>
@@ -70,7 +70,7 @@
             <NuxtLink to="#" class="nav-link-later">
               Display <span class="tag">Later</span>
             </NuxtLink>
-          </div>
+          </div> -->
         </div>
 
         <!-- Account UI -->
