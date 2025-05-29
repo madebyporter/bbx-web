@@ -11,7 +11,7 @@
         type="text" 
         v-model="searchQuery"
         @input="onSearch"
-        class="rounded-full bg-neutral-900 ring-1 ring-neutral-800 hover:ring-neutral-700 text-left p-4 px-12 grow z-0 relative w-full lg:w-auto text-neutral-200 placeholder:text-neutral-500" 
+        class="font-semibold text-lg rounded-full bg-neutral-800 ring-1 ring-neutral-800 hover:ring-neutral-700 text-left p-4 px-12 grow z-0 relative w-full lg:w-auto text-neutral-200 placeholder:text-neutral-500" 
         placeholder="Search (CMD/CTRL+K)" 
       />
     </div>
