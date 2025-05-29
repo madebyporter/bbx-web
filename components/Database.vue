@@ -3,12 +3,12 @@
     <div class="table-header-group">
       <div class="table-row">
         <div class="table-cell db-head db-col-lg">Name</div>
+        <div class="table-cell db-head db-col-sm">Download</div>
+        <div class="table-cell db-head db-col-sm">I Use This</div>
         <div class="table-cell db-head db-col-sm">Creator</div>
         <div class="table-cell db-head db-col-sm">Tags</div>
         <div class="table-cell db-head db-col-sm">Price</div>
         <div class="table-cell db-head db-col-sm">OS</div>
-        <div class="table-cell db-head db-col-sm">I Use This</div>
-        <div class="table-cell db-head db-col-sm">Download</div>
       </div>
     </div>
 
@@ -25,6 +25,7 @@
         :class="{ 'pending-resource': resource.status === 'pending' }"
       >
        
+        <!-- Name -->
         <div class="table-cell db-cell relative group">
           <div 
             v-if="canEdit"
@@ -56,33 +57,14 @@
             <h2>{{ resource.name }}</h2>
           </div>
         </div>
+        
+        <!-- Download -->
         <div class="table-cell db-cell">
-          {{ resource.creator }}
+          <a :href="resource.link" target="_blank" class="btn">
+            Download
+          </a>
         </div>
-        <div class="table-cell db-cell">
-          <div class="flex flex-row gap-2 items-center">
-            <div v-for="tag in resource.tags" :key="tag" class="tag">
-              {{ tag }}
-            </div>
-          </div>
-        </div>
-        <div class="table-cell db-cell whitespace-nowrap">
-          {{ resource.price }}
-        </div>
-        <div class="table-cell db-cell">
-          <div class="flex flex-row gap-4 items-center">
-            <div v-if="resource.os.includes('mac')">
-              <svg width="12" height="15" viewBox="0 0 12 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path class="fill-neutral-700" d="M9.9375 7.40984C9.9375 7.47234 9.84375 9.31609 11.875 10.2848C11.5 11.4411 10.1875 14.0036 8.65625 14.0036C7.78125 14.0036 7.28125 13.4411 6.28125 13.4411C5.25 13.4411 4.6875 14.0036 3.90625 14.0036C2.40625 14.0661 0.96875 11.2536 0.5625 10.0973C0.25 9.22234 0.125 8.37859 0.125 7.56609C0.125 4.78484 1.96875 3.44109 3.71875 3.40984C4.5625 3.40984 5.625 4.00359 6.09375 4.00359C6.53125 4.00359 7.75 3.28484 8.875 3.37859C10.0312 3.47234 10.9062 3.90984 11.5 4.75359C10.4688 5.40984 9.9375 6.25359 9.9375 7.40984ZM8.1875 2.28484C7.5625 3.00359 6.8125 3.40984 6 3.34734C5.9375 2.50359 6.25 1.72234 6.8125 1.09734C7.3125 0.534843 8.1875 0.0660934 8.9375 0.00359344C8.9375 0.347343 9.03125 1.28484 8.1875 2.28484Z" />
-              </svg>
-            </div>
-            <div v-if="resource.os.includes('windows')">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path class="fill-neutral-700" d="M0 1.94109V6.69109H5.71875V1.15984L0 1.94109ZM0 12.0973V7.40984H5.71875V12.8786L0 12.0973ZM6.34375 12.9723V7.40984H14V14.0036L6.34375 12.9723ZM6.34375 1.06609L14 0.00359344V6.69109H6.34375V1.06609Z" />
-              </svg>
-            </div>
-          </div>
-        </div>
+        
         <!-- I Use This -->
         <div class="table-cell db-cell">
           <div class="group flex flex-row gap-0 items-stretch rounded-sm overflow-hidden w-fit border border-neutral-800 hover:border-neutral-700">
@@ -107,10 +89,40 @@
             </div>
           </div>
         </div>
+        
+        <!-- Creator -->
         <div class="table-cell db-cell">
-          <a :href="resource.link" target="_blank" class="btn">
-            Download
-          </a>
+          {{ resource.creator }}
+        </div>
+        
+        <!-- Tags -->
+        <div class="table-cell db-cell">
+          <div class="flex flex-row gap-2 items-center">
+            <div v-for="tag in resource.tags" :key="tag" class="tag">
+              {{ tag }}
+            </div>
+          </div>
+        </div>
+        
+        <!-- Price -->
+        <div class="table-cell db-cell whitespace-nowrap">
+          {{ resource.price }}
+        </div>
+        
+        <!-- OS -->
+        <div class="table-cell db-cell">
+          <div class="flex flex-row gap-4 items-center">
+            <div v-if="resource.os.includes('mac')">
+              <svg width="12" height="15" viewBox="0 0 12 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path class="fill-neutral-700" d="M9.9375 7.40984C9.9375 7.47234 9.84375 9.31609 11.875 10.2848C11.5 11.4411 10.1875 14.0036 8.65625 14.0036C7.78125 14.0036 7.28125 13.4411 6.28125 13.4411C5.25 13.4411 4.6875 14.0036 3.90625 14.0036C2.40625 14.0661 0.96875 11.2536 0.5625 10.0973C0.25 9.22234 0.125 8.37859 0.125 7.56609C0.125 4.78484 1.96875 3.44109 3.71875 3.40984C4.5625 3.40984 5.625 4.00359 6.09375 4.00359C6.53125 4.00359 7.75 3.28484 8.875 3.37859C10.0312 3.47234 10.9062 3.90984 11.5 4.75359C10.4688 5.40984 9.9375 6.25359 9.9375 7.40984ZM8.1875 2.28484C7.5625 3.00359 6.8125 3.40984 6 3.34734C5.9375 2.50359 6.25 1.72234 6.8125 1.09734C7.3125 0.534843 8.1875 0.0660934 8.9375 0.00359344C8.9375 0.347343 9.03125 1.28484 8.1875 2.28484Z" />
+              </svg>
+            </div>
+            <div v-if="resource.os.includes('windows')">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path class="fill-neutral-700" d="M0 1.94109V6.69109H5.71875V1.15984L0 1.94109ZM0 12.0973V7.40984H5.71875V12.8786L0 12.0973ZM6.34375 12.9723V7.40984H14V14.0036L6.34375 12.9723ZM6.34375 1.06609L14 0.00359344V6.69109H6.34375V1.06609Z" />
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
     </div>

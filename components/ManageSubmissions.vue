@@ -23,12 +23,12 @@
           <!-- Submission Content -->
           <div class="flex flex-col lg:flex-row gap-6 p-6">
             <!-- Image -->
-            <div class="w-full lg:w-1/3 aspect-square rounded-md overflow-hidden bg-neutral-900">
+            <div class="w-[160px] h-[160px] aspect-square rounded-md overflow-hidden bg-neutral-900">
               <img 
                 v-if="resource.image_url"
                 :src="resource.image_url" 
                 :alt="resource.name"
-                class="w-full h-full object-cover"
+                class="w-full h-full aspect-square object-cover"
               />
               <div 
                 v-else 

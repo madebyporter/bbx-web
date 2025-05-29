@@ -53,6 +53,14 @@ defineExpose({
     } else {
       console.error('Index page: Database component not found or updateFiltersAndSort method not available')
     }
+  },
+  fetchResources: () => {
+    console.log('Index page: Forwarding fetchResources to database component')
+    if (database.value && typeof database.value.fetchResources === 'function') {
+      return database.value.fetchResources()
+    } else {
+      console.error('Index page: Database component not found or fetchResources method not available')
+    }
   }
 })
 </script> 

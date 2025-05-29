@@ -216,10 +216,18 @@ import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
 
 // Define interfaces
-interface DatabaseRef {
+interface DatabaseComponent {
   fetchResources: () => Promise<void>
   handleSearch: (query: string) => void
   updateFiltersAndSort: (params: FilterSortParams) => void
+}
+
+interface DatabaseRef {
+  database?: any
+  fetchResources?: () => Promise<void>
+  handleSearch?: (query: string) => void
+  updateFiltersAndSort?: (params: FilterSortParams) => void
+  [key: string]: any
 }
 
 interface PageRef {
@@ -368,8 +376,11 @@ const closeModal = () => {
 
 const refreshDatabase = () => {
   // Just refresh the database, don't close the modal
-  if (databaseRef.value) {
+  if (databaseRef.value?.fetchResources) {
+    console.log('App: Found database component, calling fetchResources')
     databaseRef.value.fetchResources()
+  } else {
+    console.error('App: Database component not found or fetchResources method not available')
   }
 }
 

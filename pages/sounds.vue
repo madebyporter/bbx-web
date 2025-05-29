@@ -53,6 +53,14 @@ defineExpose({
     } else {
       console.error('Sounds page: DatabaseGrid component not found or updateFiltersAndSort method not available')
     }
+  },
+  fetchResources: () => {
+    console.log('Sounds page: Forwarding fetchResources to databaseGrid component')
+    if (databaseGrid.value && typeof databaseGrid.value.fetchResources === 'function') {
+      return databaseGrid.value.fetchResources()
+    } else {
+      console.error('Sounds page: DatabaseGrid component not found or fetchResources method not available')
+    }
   }
 })
 </script> 
