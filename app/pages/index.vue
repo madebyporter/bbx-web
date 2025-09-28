@@ -34,7 +34,8 @@ interface FilterSortParams {
 }
 
 definePageMeta({
-  name: 'index'
+  name: 'index',
+  layout: 'resources'
 })
 
 const { isAdmin } = useAuth()

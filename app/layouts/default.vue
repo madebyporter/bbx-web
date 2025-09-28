@@ -1,105 +1,14 @@
 <template>
   <div v-if="isInitialized">
     <main class="grid grid-cols-12 gap-0 min-h-svh transition-all duration-300">
-      <nav ref="mobileNav" id="navbar" class="
-          flex 
-          flex-col
-          gap-4
-          border 
-          border-neutral-800
-          bg-neutral-900
-          *:p-4
-          min-w-[235px]
-          max-lg:fixed 
-          max-lg:bottom-2 
-          max-lg:left-2 
-          max-lg:right-2 
-          max-lg:top-[144px] 
-          max-lg:z-50 
-          max-lg:rounded-md 
-          max-lg:[transform:translateX(-105%)]
-          lg:col-start-1 
-          lg:col-span-3 
-          lg:fixed 
-          lg:top-2
-          lg:left-2
-          lg:bottom-2
-          lg:rounded-md
-          xl:col-start-1 
-          xl:col-span-2 
-          ">
-        <div class="sticky top-0">
-          <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-12" />
-        </div>
-        <div class="flex flex-col gap-16 grow overflow-auto lg:pb-[130px]">
-          <div class="flex flex-col gap-4">
-            <span class="nav-header">Resources</span>
-            <NuxtLink to="/" class="nav-link" active-class="!font-bold !text-white">Software</NuxtLink>
-            <NuxtLink to="/sounds" class="nav-link" active-class="!font-bold !text-white">Sounds & Kits</NuxtLink>
-            <NuxtLink to="#" class="nav-link-later">
-              Hardware <span class="tag">Later</span>
-            </NuxtLink>
-            <NuxtLink to="#" class="nav-link-later">
-              Sync Libraries <span class="tag">Later</span>
-            </NuxtLink>
-            <NuxtLink to="#" class="nav-link-later">
-              Events <span class="tag">Later</span>
-            </NuxtLink>
-          </div>
-          <!-- <div class="flex flex-col gap-4">
-            <span class="nav-header">People</span>
-            <NuxtLink to="#" class="nav-link-later">
-              Producers <span class="tag">Later</span>
-            </NuxtLink>
-            <NuxtLink to="#" class="nav-link-later">
-              Engineers <span class="tag">Later</span>
-            </NuxtLink>
-            <NuxtLink to="#" class="nav-link-later">
-              Musicians <span class="tag">Later</span>
-            </NuxtLink>
-          </div>
-          <div class="flex flex-col gap-4">
-            <span class="nav-header">Products</span>
-            <NuxtLink to="#" class="nav-link-later">
-              Studio <span class="tag">Later</span>
-            </NuxtLink>
-            <NuxtLink to="#" class="nav-link-later">
-              Display <span class="tag">Later</span>
-            </NuxtLink>
-          </div> -->
-        </div>
+      <Nav 
+        ref="navRef"
+        @show-auth-modal="showAuthModal = true"
+        @show-admin-modal="showAdminModal = true"
+        @toggle-mobile-nav="handleMobileNavToggle"
+      />
 
-        <!-- Account UI -->
-        <div
-          class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit absolute bottom-4 left-4 right-4 rounded-md !p-4 hidden lg:flex flex-row items-center overflow-hidden">
-          <div class="flex flex-row gap-2 items-center w-full">
-            <template v-if="user">
-              <div class="flex flex-col gap-0 justify-start items-start w-full overflow-hidden text-ellipsis">
-                <span class="block text-sm font-semibold w-full">{{ user.email }}</span>
-                <div class="flex flex-col justify-start items-start gap-1">
-                  <button @click="handleAuth" class="cursor-pointer text-xs hover:text-neutral-600">Logout</button>
-                  <button v-if="isAdmin" @click="showAdminModal = true"
-                    class="cursor-pointer text-xs text-amber-300 hover:text-amber-400">
-                    Manage Submissions
-                  </button>
-                </div>
-              </div>
-            </template>
-            <template v-else>
-              <button @click="showAuthModal = true" class="cursor-pointer text-sm">Login</button>
-            </template>
-          </div>
-        </div>
-      </nav>
-
-      <section id="content"
-        class="col-start-1 col-span-12 lg:col-start-4 lg:col-span-9 xl:col-start-3 xl:col-span-10 grid grid-cols-subgrid gap-0 content-start lg:pl-4">
-        <div class="col-span-full sticky top-0 z-50">
-          <SearchFilter @open-filter-modal="openFilterModal" @open-modal="showModal = true" @search="handleSearch"
-            @toggle-nav="toggleMobileNav" />
-        </div>
-        <slot @edit-resource="handleEdit" @show-signup="handleShowSignup" />
-      </section>
+      <slot @edit-resource="handleEdit" @show-signup="handleShowSignup" />
     </main>
 
     <!-- Auth Modal -->
@@ -155,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, provide } from 'vue'
 import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
 
@@ -172,6 +81,11 @@ interface DatabaseRef {
   handleSearch?: (query: string) => void
   updateFiltersAndSort?: (params: FilterSortParams) => void
   [key: string]: any
+}
+
+interface NavRef {
+  mobileNav?: any
+  toggleMobileNav?: () => void
 }
 
 interface PageRef {
@@ -232,12 +146,11 @@ const showModal = ref(false)
 const showFilterSort = ref(false)
 const editingResource = ref<Resource | null>(null)
 const modalKey = ref(0)
-const showMobileNav = ref(false)
 const pageRef = ref<PageRef | null>(null)
 const databaseRef = ref<DatabaseRef | null>(null)
 
 // Navigation
-const mobileNav = ref(null)
+const navRef = ref<NavRef | null>(null)
 
 type SortDirection = 'asc' | 'desc'
 
@@ -252,25 +165,15 @@ const currentFilters = ref({
   tags: [] as string[]
 })
 
-const toggleMobileNav = () => {
-  showMobileNav.value = !showMobileNav.value
-  
-  gsap.to(mobileNav.value, {
-    duration: 0.3,
-    x: showMobileNav.value ? 0 : '-105%',
-    ease: 'power2.out'
-  })
+const handleToggleNav = () => {
+  if (navRef.value && navRef.value.toggleMobileNav) {
+    navRef.value.toggleMobileNav()
+  }
 }
 
-const handleResize = () => {
-  if (window.innerWidth >= 1024) {
-    // Reset nav position on desktop
-    gsap.set(mobileNav.value, { x: 0 })
-  } else {
-    // Reset nav position on mobile
-    gsap.set(mobileNav.value, { x: '-105%' })
-  }
-  showMobileNav.value = false
+const handleMobileNavToggle = (isOpen: boolean) => {
+  // Handle mobile nav toggle if needed
+  console.log('Mobile nav toggled:', isOpen)
 }
 
 // Auth handlers
@@ -294,13 +197,7 @@ const handleSubmit = async () => {
   }
 }
 
-const handleAuth = async () => {
-  if (user.value) {
-    await auth.signOut()
-  } else {
-    showAuthModal.value = true
-  }
-}
+// Auth handlers moved to Nav component
 
 // Resource management handlers
 const openFilterModal = () => {
@@ -446,17 +343,23 @@ const handleShowSignup = () => {
   }
 }
 
+// Provide functions for child layouts
+provide('openFilterModal', openFilterModal)
+provide('handleSearch', handleSearch)
+provide('handleToggleNav', handleToggleNav)
+provide('handleEdit', handleEdit)
+provide('handleShowSignup', handleShowSignup)
+provide('showModal', { value: showModal })
+
 // Initialize auth state
 onMounted(async () => {
   console.log('Layout: Starting auth initialization...')
   await auth.init()
   isInitialized.value = true
-  window.addEventListener('resize', handleResize)
 })
 
 // Cleanup on unmount
 onUnmounted(() => {
   auth.cleanup()
-  window.removeEventListener('resize', handleResize)
 })
 </script>
