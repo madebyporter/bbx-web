@@ -36,7 +36,7 @@
       </div>
       <div class="flex flex-col gap-4">
         <span class="nav-header">Resources</span>
-        <NuxtLink to="/" class="nav-link" active-class="!font-bold !text-white">Software</NuxtLink>
+        <NuxtLink to="/software" class="nav-link" active-class="!font-bold !text-white">Software</NuxtLink>
         <NuxtLink to="/sounds" class="nav-link" active-class="!font-bold !text-white">Sounds & Kits</NuxtLink>
         <NuxtLink to="#" class="nav-link-later">
           Hardware <span class="tag">Later</span>
