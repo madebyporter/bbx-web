@@ -12,6 +12,5 @@
 
   definePageMeta({
     name: 'index',
-    layout: 'users'
   })
 </script>

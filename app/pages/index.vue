@@ -34,7 +34,7 @@ interface FilterSortParams {
 }
 
 definePageMeta({
-  name: 'index',
+  name: 'sounds',
   layout: 'resources'
 })
 
