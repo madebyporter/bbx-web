@@ -8,7 +8,7 @@
           border 
           border-neutral-800
           bg-neutral-900
-          *:p-8
+          *:p-4
           min-w-[235px]
           max-lg:fixed 
           max-lg:bottom-2 
