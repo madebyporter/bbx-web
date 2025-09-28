@@ -33,10 +33,6 @@ interface FilterSortParams {
   }
 }
 
-definePageMeta({
-  name: 'sounds',
-  layout: 'resources'
-})
 
 const { isAdmin } = useAuth()
 const databaseGrid = ref<InstanceType<typeof DatabaseGrid> | null>(null)
