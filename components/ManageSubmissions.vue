@@ -9,6 +9,10 @@
         <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500"></div>
       </div>
       
+      <div v-else-if="!canEdit" class="text-center py-8">
+        <p class="text-neutral-400">You don't have permission to manage submissions</p>
+      </div>
+      
       <div v-else-if="resources.length === 0" class="text-center py-8">
         <p class="text-neutral-400">No pending submissions</p>
       </div>
@@ -188,6 +192,8 @@ const rejectResource = async (id) => {
 onMounted(() => {
   if (props.canEdit) {
     fetchResources()
+  } else {
+    loading.value = false
   }
 })
 </script> 
