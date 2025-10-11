@@ -1,6 +1,6 @@
 <template>
-  <div v-if="isInitialized">
-    <main class="grid grid-cols-12 gap-0 min-h-svh transition-all duration-300">
+  <div v-if="isInitialized" class="flex flex-col max-h-dvh min-h-dvh">
+    <main class="grid grid-cols-12 gap-0 transition-all duration-300 grow">
       <Nav ref="navRef" @show-auth-modal="showAuthModal = true" @show-admin-modal="showAdminModal = true"
         @toggle-mobile-nav="handleMobileNavToggle" />
       <section id="content"
@@ -12,6 +12,9 @@
         <slot @edit-resource="handleEdit" @show-signup="handleShowSignup" />
       </section>
     </main>
+
+    <!-- Music Player -->
+    <Player />
 
     <!-- Auth Modal -->
     <div v-if="showAuthModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -90,6 +93,7 @@ import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
 import { useRoute } from 'vue-router'
 import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
+import Player from '~/components/Player.vue'
 
 // Define interfaces
 interface DatabaseComponent {

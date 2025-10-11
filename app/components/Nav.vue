@@ -1,30 +1,17 @@
 <template>
   <nav ref="mobileNav" id="navbar" class="
-        flex 
-        flex-col
-        gap-4
-        border 
-        border-neutral-800
-        bg-neutral-900
-        min-w-[235px]
-        max-lg:fixed 
-        max-lg:bottom-2 
-        max-lg:left-2 
-        max-lg:right-2 
-        max-lg:top-[144px] 
-        max-lg:z-50 
-        max-lg:rounded-md 
-        max-lg:[transform:translateX(-105%)]
-        lg:col-start-1 
-        lg:col-span-3 
-        lg:fixed 
-        lg:top-2
-        lg:left-2
-        lg:bottom-2
-        lg:rounded-md
-        xl:col-start-1 
-        xl:col-span-2 
-        ">
+    hidden
+    lg:flex 
+    flex-col
+    gap-4
+    border-r
+    border-neutral-800
+    bg-neutral-900
+    lg:col-start-1 
+    lg:col-span-3 
+    xl:col-start-1 
+    xl:col-span-2 
+    ">
     <div class="sticky top-0 p-4">
       <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-12" />
     </div>
@@ -78,7 +65,7 @@
 
     <!-- Account UI -->
     <div
-      class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit absolute bottom-2 left-2 right-2 rounded-sm p-2 hidden lg:flex flex-row items-center overflow-hidden">
+      class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit rounded-sm p-2 hidden lg:flex flex-row items-center overflow-hidden m-2">
       <div class="flex flex-row gap-0 items-center w-full">
         <template v-if="user">
           <div class="flex flex-col gap-0 justify-start items-start w-full">

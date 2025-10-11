@@ -248,6 +248,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
+import { usePlayer } from '~/composables/usePlayer'
 import MasterDrawer from './MasterDrawer.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
 
@@ -286,6 +287,7 @@ interface Collection {
 
 const { supabase } = useSupabase()
 const { user } = useAuth()
+const { addTrackToQueue, queueSourceId } = usePlayer()
 
 const isDragging = ref(false)
 const selectedFiles = ref<SelectedFile[]>([])
@@ -535,6 +537,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
     if (dbError) throw dbError
     
     // Add to collections if any are selected
+    let collectionNames = ''
     if (fileData.selectedCollectionIds && fileData.selectedCollectionIds.length > 0) {
       const collectionsToInsert = fileData.selectedCollectionIds.map(collectionId => ({
         collection_id: collectionId,
@@ -548,7 +551,31 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       if (junctionError) {
         console.error('Error adding to collections:', junctionError)
         // Don't fail the upload if collection assignment fails
+      } else {
+        // Get collection names for display
+        const collectionNamesData = collections.value
+          .filter(c => fileData.selectedCollectionIds.includes(c.id))
+          .map(c => c.name)
+          .join(', ')
+        collectionNames = collectionNamesData
       }
+    }
+    
+    // Add to player queue if current queue is from this user's profile
+    if (queueSourceId.value === `profile-${user.value.id}`) {
+      const newTrack = {
+        id: soundData.id,
+        user_id: user.value.id,
+        title: fileData.metadata.title || 'Untitled',
+        artist: fileData.metadata.artist || 'Unknown',
+        storage_path: filePath,
+        duration: fileData.duration || 0,
+        version: fileData.metadata.version || 'v1.0',
+        genre: fileData.metadata.genre || null,
+        bpm: fileData.metadata.bpm,
+        collection_names: collectionNames || '-'
+      }
+      addTrackToQueue(newTrack)
     }
     
     fileData.progress = 100

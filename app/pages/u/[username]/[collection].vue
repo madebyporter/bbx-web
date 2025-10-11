@@ -23,6 +23,7 @@
         <h2 class="text-xl font-semibold mb-4">Tracks</h2>
         <TracksTable 
           :tracks="filteredTracks"
+          :source-id="`collection-${collection?.id}`"
           :is-own-profile="isOwnProfile"
           :loading="tracksLoading"
           @edit-track="handleEdit"

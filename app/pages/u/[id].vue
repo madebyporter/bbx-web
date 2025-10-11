@@ -10,7 +10,13 @@
     <!-- Tracks Section -->
     <div>
       <h2 class="text-xl font-semibold mb-4">Tracks</h2>
-      <TracksTable :tracks="filteredTracks" :is-own-profile="isOwnProfile" :loading="loading" @edit-track="handleEdit" />
+      <TracksTable 
+        :tracks="filteredTracks" 
+        :source-id="`profile-${profileUserId}`"
+        :is-own-profile="isOwnProfile" 
+        :loading="loading" 
+        @edit-track="handleEdit" 
+      />
     </div>
   </div>
 </template>
