@@ -34,6 +34,10 @@
         <NuxtLink v-if="user && username" :to="`/u/${username}`" class="nav-link" active-class="!font-bold !text-white">All Music</NuxtLink>
         <NuxtLink v-else-if="user && !username" :to="`/u/${user.id}`" class="nav-link" active-class="!font-bold !text-white">All Music</NuxtLink>
         <NuxtLink v-else to="#" class="nav-link-later">All Music <span class="tag">Login</span></NuxtLink>
+        
+        <NuxtLink v-if="user && username" :to="`/u/${username}/collections`" class="nav-link" active-class="!font-bold !text-white">Collections</NuxtLink>
+        <NuxtLink v-else-if="user && !username" :to="`/u/${user.id}/collections`" class="nav-link" active-class="!font-bold !text-white">Collections</NuxtLink>
+        <NuxtLink v-else to="#" class="nav-link-later">Collections <span class="tag">Login</span></NuxtLink>
       </div>
       <div class="flex flex-col gap-4">
         <span class="nav-header">Resources</span>

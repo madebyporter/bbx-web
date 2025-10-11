@@ -1,62 +1,26 @@
 <template>
   <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
-    <!-- Track List -->
-    <div class="py-2">
-      <div v-if="loading" class="text-neutral-500">Loading tracks...</div>
-      
-      <div v-else-if="tracks.length === 0" class="text-neutral-500">
-        {{ isOwnProfile ? 'No tracks uploaded yet. Drag and drop MP3 files above to get started.' : 'No tracks available.' }}
-      </div>
-
-      <div v-else class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="border-b border-neutral-800">
-            <tr class="text-left text-neutral-500">
-              <th class="pb-2 pr-4">Title</th>
-              <th class="pb-2 pr-4">Artist</th>
-              <th class="pb-2 pr-4">Version</th>
-              <th class="pb-2 pr-4">Collection</th>
-              <th class="pb-2 pr-4">Genre</th>
-              <th class="pb-2 pr-4">BPM</th>
-              <th class="pb-2 pr-4">Duration</th>
-              <th v-if="isOwnProfile" class="pb-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr 
-              v-for="track in tracks" 
-              :key="track.id"
-              class="border-b border-neutral-800/50 hover:bg-neutral-800/30"
-            >
-              <td class="py-3 pr-4">{{ track.title || 'Untitled' }}</td>
-              <td class="py-3 pr-4 text-neutral-400">{{ track.artist || 'Unknown' }}</td>
-              <td class="py-3 pr-4 text-neutral-400">{{ track.version || 'v1.0' }}</td>
-              <td class="py-3 pr-4 text-neutral-400">{{ track.collection_id || '-' }}</td>
-              <td class="py-3 pr-4 text-neutral-400">{{ track.genre || '-' }}</td>
-              <td class="py-3 pr-4 text-neutral-400">{{ track.bpm || '-' }}</td>
-              <td class="py-3 pr-4 text-neutral-400">{{ formatDuration(track.duration) }}</td>
-              <td v-if="isOwnProfile" class="py-3">
-                <button
-                  @click="handleEdit(track)"
-                  class="text-amber-400 hover:text-amber-300 text-xs"
-                  title="Edit track"
-                >
-                  Edit
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <!-- Profile Header -->
+    <div class="py-4">
+      <h1 class="text-3xl font-bold mb-2">{{ profileName }}</h1>
+      <p class="text-sm text-neutral-500">
+        {{ tracks.length }} {{ tracks.length === 1 ? 'track' : 'tracks' }}
+      </p>
+    </div>
+    <!-- Tracks Section -->
+    <div>
+      <h2 class="text-xl font-semibold mb-4">Tracks</h2>
+      <TracksTable :tracks="tracks" :is-own-profile="isOwnProfile" :loading="loading" @edit-track="handleEdit" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
+import TracksTable from '~/components/TracksTable.vue'
 
 const route = useRoute()
 const { user, isReady } = useAuth()
@@ -64,13 +28,14 @@ const { supabase } = useSupabase()
 
 // State
 const profileName = ref('')
+const username = ref('')
 const profileUserId = ref<string | null>(null)
 const tracks = ref<any[]>([])
 const loading = ref(true)
 
 // Computed
 const isOwnProfile = computed(() => {
-  return user.value && profileUserId.value && user.value.id === profileUserId.value
+  return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
 })
 
 // Methods
@@ -91,15 +56,18 @@ const fetchProfile = async () => {
       // Fallback: try as UUID if username lookup fails
       profileUserId.value = usernameOrId
       profileName.value = usernameOrId
+      username.value = usernameOrId
     } else {
       profileUserId.value = data.id as string
       profileName.value = (data.display_name || data.username || usernameOrId) as string
+      username.value = data.username as string
     }
   } catch (error) {
     console.error('Error fetching profile:', error)
     // Fallback
     profileUserId.value = usernameOrId
     profileName.value = usernameOrId
+    username.value = usernameOrId
   }
 }
 
@@ -122,7 +90,41 @@ const fetchTracks = async () => {
     console.log('fetchTracks: Query result', { data, error, count: data?.length })
     
     if (error) throw error
-    tracks.value = data || []
+    
+    // Fetch collection names for each track
+    const tracksWithCollections = await Promise.all((data || []).map(async (track: any) => {
+      // Get collection IDs for this track
+      const { data: junctionData } = await supabase
+        .from('collections_sounds')
+        .select('collection_id')
+        .eq('sound_id', track.id)
+      
+      const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
+      
+      if (collectionIds.length === 0) {
+        return {
+          ...track,
+          collection_names: '-'
+        }
+      }
+      
+      // Get collection names
+      const { data: collectionData } = await supabase
+        .from('collections')
+        .select('name')
+        .in('id', collectionIds)
+      
+      const collectionNames = (collectionData || [])
+        .map((item: any) => item.name)
+        .join(', ')
+      
+      return {
+        ...track,
+        collection_names: collectionNames || '-'
+      }
+    }))
+    
+    tracks.value = tracksWithCollections
   } catch (error) {
     console.error('Error fetching tracks:', error)
     alert('Failed to load tracks: ' + (error as any).message)
@@ -139,13 +141,6 @@ const handleEdit = (track: any) => {
     composed: true
   })
   window.dispatchEvent(event)
-}
-
-const formatDuration = (seconds: number | null | undefined): string => {
-  if (!seconds || seconds === 0) return '-'
-  const minutes = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${minutes}:${secs.toString().padStart(2, '0')}`
 }
 
 // Expose fetchTracks for parent to call

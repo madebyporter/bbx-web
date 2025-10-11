@@ -122,15 +122,55 @@
                       :disabled="isUploading"
                     />
                   </div>
-                <div>
-                  <label class="text-xs text-neutral-400">Collection (optional)</label>
-                  <input 
-                    v-model="file.metadata.collection_name"
-                    type="text"
-                    placeholder="e.g. My Beats 2024"
-                    class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                <div class="col-span-2">
+                  <label class="text-xs text-neutral-400">Collections (optional)</label>
+                  <select 
+                    multiple
+                    v-model="file.selectedCollectionIds"
+                    class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 min-h-[80px]"
                     :disabled="isUploading"
-                  />
+                  >
+                    <option v-for="c in collections" :key="c.id" :value="c.id">
+                      {{ c.name }}
+                    </option>
+                  </select>
+                  <p class="text-xs text-neutral-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
+                  
+                  <button 
+                    type="button"
+                    @click="showCreateCollection = !showCreateCollection"
+                    class="text-xs text-amber-400 hover:text-amber-300 mt-2"
+                    :disabled="isUploading"
+                  >
+                    {{ showCreateCollection ? '- Cancel' : '+ Create New Collection' }}
+                  </button>
+                  
+                  <div v-if="showCreateCollection" class="mt-3 p-3 border border-neutral-700 rounded bg-neutral-900/50">
+                    <div class="flex flex-col gap-2">
+                      <input 
+                        v-model="newCollection.name"
+                        type="text"
+                        placeholder="Collection name (required)"
+                        class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                        :disabled="isUploading"
+                      />
+                      <textarea 
+                        v-model="newCollection.description"
+                        placeholder="Description (optional)"
+                        rows="2"
+                        class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                        :disabled="isUploading"
+                      />
+                      <button 
+                        type="button"
+                        @click="createCollection"
+                        class="btn-sm self-start"
+                        :disabled="isUploading || !newCollection.name.trim()"
+                      >
+                        Create & Select
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label class="text-xs text-neutral-400">Genre</label>
@@ -209,6 +249,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import MasterDrawer from './MasterDrawer.vue'
+import { generateSlug, generateUniqueSlug } from '~/utils/collections'
 
 interface Props {
   show: boolean
@@ -231,6 +272,7 @@ interface FileMetadata {
 interface SelectedFile {
   file: File
   metadata: FileMetadata
+  selectedCollectionIds: number[]
   duration: number | null
   progress: number
   error: string | null
@@ -239,6 +281,7 @@ interface SelectedFile {
 interface Collection {
   id: number
   name: string
+  slug: string
 }
 
 const { supabase } = useSupabase()
@@ -252,6 +295,11 @@ const uploadedCount = ref(0)
 const collections = ref<Collection[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const globalError = ref<string | null>(null)
+const showCreateCollection = ref(false)
+const newCollection = ref({
+  name: '',
+  description: ''
+})
 
 const errors = ref({
   files: ''
@@ -265,19 +313,71 @@ const uploadButtonText = computed(() => {
   return `Upload ${selectedFiles.value.length} track${selectedFiles.value.length !== 1 ? 's' : ''}`
 })
 
+const createCollection = async () => {
+  if (!supabase || !user.value || !newCollection.value.name.trim()) return
+  
+  try {
+    // Get existing slugs to ensure uniqueness
+    const { data: existing } = await supabase
+      .from('collections')
+      .select('slug')
+      .eq('user_id', user.value.id)
+    
+    const existingSlugs = (existing || []).map(c => c.slug)
+    const slug = generateUniqueSlug(newCollection.value.name, existingSlugs)
+    
+    // Create the collection
+    const { data, error } = await supabase
+      .from('collections')
+      .insert({
+        user_id: user.value.id,
+        name: newCollection.value.name.trim(),
+        description: newCollection.value.description.trim() || null,
+        slug
+      })
+      .select()
+      .single()
+    
+    if (error) throw error
+    
+    // Add to collections list
+    collections.value.push({
+      id: data.id,
+      name: data.name,
+      slug: data.slug
+    })
+    
+    // Auto-select the new collection for all files
+    selectedFiles.value.forEach(file => {
+      if (!file.selectedCollectionIds.includes(data.id)) {
+        file.selectedCollectionIds.push(data.id)
+      }
+    })
+    
+    // Reset form
+    newCollection.value.name = ''
+    newCollection.value.description = ''
+    showCreateCollection.value = false
+    
+  } catch (error: any) {
+    console.error('Error creating collection:', error)
+    globalError.value = 'Failed to create collection: ' + error.message
+  }
+}
+
 // Fetch collections on mount
 onMounted(async () => {
-  if (!supabase) return
+  if (!supabase || !user.value) return
   
   try {
     const { data, error } = await supabase
       .from('collections')
-      .select('id')
-      .order('id')
+      .select('id, name, slug')
+      .eq('user_id', user.value.id)
+      .order('name')
     
     if (error) throw error
-    // Map collections to have id and name (using id as name for now)
-    collections.value = (data || []).map(c => ({ id: c.id, name: `Collection ${c.id}` }))
+    collections.value = data || []
   } catch (error) {
     console.error('Error fetching collections:', error)
     // Don't block upload if collections fail to load
@@ -349,12 +449,13 @@ const processFiles = async (files: File[]) => {
         title,
         artist: '',
         version: 'v1.0',
-        collection_name: '',
+        collection_name: '', // Keep for backwards compatibility but not used
         genre: '',
         mood: '',
         bpm: null,
         year: null
       },
+      selectedCollectionIds: [],
       duration,
       progress: 0,
       error: null
@@ -412,9 +513,8 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       ? fileData.metadata.mood.split(',').map(m => m.trim()).filter(m => m)
       : null
     
-    // For now, don't use collection_id since collections table needs name column
-    // Save to database
-    const { error: dbError } = await supabase
+    // Save to sounds table and get the sound_id
+    const { data: soundData, error: dbError } = await supabase
       .from('sounds')
       .insert({
         user_id: user.value.id,
@@ -429,8 +529,27 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         bpm: fileData.metadata.bpm,
         year: fileData.metadata.year
       })
+      .select('id')
+      .single()
     
     if (dbError) throw dbError
+    
+    // Add to collections if any are selected
+    if (fileData.selectedCollectionIds && fileData.selectedCollectionIds.length > 0) {
+      const collectionsToInsert = fileData.selectedCollectionIds.map(collectionId => ({
+        collection_id: collectionId,
+        sound_id: soundData.id
+      }))
+      
+      const { error: junctionError } = await supabase
+        .from('collections_sounds')
+        .insert(collectionsToInsert)
+      
+      if (junctionError) {
+        console.error('Error adding to collections:', junctionError)
+        // Don't fail the upload if collection assignment fails
+      }
+    }
     
     fileData.progress = 100
     return true

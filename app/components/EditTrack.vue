@@ -63,14 +63,51 @@
                 class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
               />
             </div>
-            <div>
-              <label class="text-sm text-neutral-400">Collection (optional)</label>
-              <input 
-                v-model="metadata.collection_name"
-                type="text"
-                placeholder="e.g. My Beats 2024"
-                class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-              />
+            <div class="col-span-2">
+              <label class="text-sm text-neutral-400">Collections (optional)</label>
+              <select 
+                multiple
+                v-model="selectedCollectionIds"
+                class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 min-h-[100px]"
+              >
+                <option v-for="c in collections" :key="c.id" :value="c.id">
+                  {{ c.name }}
+                </option>
+              </select>
+              <p class="text-xs text-neutral-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
+              
+              <button 
+                type="button"
+                @click="showCreateCollection = !showCreateCollection"
+                class="text-xs text-amber-400 hover:text-amber-300 mt-2"
+              >
+                {{ showCreateCollection ? '- Cancel' : '+ Create New Collection' }}
+              </button>
+              
+              <div v-if="showCreateCollection" class="mt-3 p-3 border border-neutral-700 rounded bg-neutral-900/50">
+                <div class="flex flex-col gap-2">
+                  <input 
+                    v-model="newCollection.name"
+                    type="text"
+                    placeholder="Collection name (required)"
+                    class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                  />
+                  <textarea 
+                    v-model="newCollection.description"
+                    placeholder="Description (optional)"
+                    rows="2"
+                    class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                  />
+                  <button 
+                    type="button"
+                    @click="createCollection"
+                    class="btn-sm self-start"
+                    :disabled="!newCollection.name.trim()"
+                  >
+                    Create & Select
+                  </button>
+                </div>
+              </div>
             </div>
             <div>
               <label class="text-sm text-neutral-400">Genre</label>
@@ -138,10 +175,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import MasterDrawer from './MasterDrawer.vue'
+import { generateSlug, generateUniqueSlug } from '~/utils/collections'
 
 interface Props {
   show: boolean
@@ -160,6 +198,12 @@ interface TrackMetadata {
   mood: string
   bpm: number | null
   year: number | null
+}
+
+interface Collection {
+  id: number
+  name: string
+  slug: string
 }
 
 const { supabase } = useSupabase()
@@ -181,8 +225,153 @@ const metadata = ref<TrackMetadata>({
   year: null
 })
 
-// Watch for trackToEdit changes to populate form
-watch(() => props.trackToEdit, (newTrack) => {
+const collections = ref<Collection[]>([])
+const selectedCollectionIds = ref<number[]>([])
+const showCreateCollection = ref(false)
+const newCollection = ref({
+  name: '',
+  description: ''
+})
+
+// Define functions before watch to avoid hoisting issues
+const loadTrackCollections = async (trackId: number) => {
+  if (!supabase) return
+  
+  try {
+    const { data, error } = await supabase
+      .from('collections_sounds')
+      .select('collection_id')
+      .eq('sound_id', trackId)
+    
+    if (error) throw error
+    selectedCollectionIds.value = (data || []).map(item => item.collection_id)
+  } catch (error) {
+    console.error('Error loading track collections:', error)
+    selectedCollectionIds.value = []
+  }
+}
+
+const fetchCollections = async () => {
+  if (!supabase || !user.value) return
+  
+  try {
+    const { data, error } = await supabase
+      .from('collections')
+      .select('id, name, slug')
+      .eq('user_id', user.value.id)
+      .order('name')
+    
+    if (error) throw error
+    collections.value = data || []
+  } catch (error) {
+    console.error('Error fetching collections:', error)
+    collections.value = []
+  }
+}
+
+const createCollection = async () => {
+  if (!supabase || !user.value || !newCollection.value.name.trim()) return
+  
+  try {
+    // Get existing slugs to ensure uniqueness
+    const { data: existing } = await supabase
+      .from('collections')
+      .select('slug')
+      .eq('user_id', user.value.id)
+    
+    const existingSlugs = (existing || []).map(c => c.slug)
+    const slug = generateUniqueSlug(newCollection.value.name, existingSlugs)
+    
+    // Create the collection
+    const { data, error } = await supabase
+      .from('collections')
+      .insert({
+        user_id: user.value.id,
+        name: newCollection.value.name.trim(),
+        description: newCollection.value.description.trim() || null,
+        slug
+      })
+      .select()
+      .single()
+    
+    if (error) throw error
+    
+    // Add to collections list
+    collections.value.push({
+      id: data.id,
+      name: data.name,
+      slug: data.slug
+    })
+    
+    // Auto-select the new collection
+    if (!selectedCollectionIds.value.includes(data.id)) {
+      selectedCollectionIds.value.push(data.id)
+    }
+    
+    // Reset form
+    newCollection.value.name = ''
+    newCollection.value.description = ''
+    showCreateCollection.value = false
+    
+  } catch (err: any) {
+    console.error('Error creating collection:', err)
+    error.value = 'Failed to create collection: ' + err.message
+  }
+}
+
+const syncCollections = async (trackId: number) => {
+  if (!supabase) return
+  
+  try {
+    // Get current collection IDs for this track
+    const { data: current, error: fetchError } = await supabase
+      .from('collections_sounds')
+      .select('collection_id')
+      .eq('sound_id', trackId)
+    
+    if (fetchError) throw fetchError
+    
+    const currentIds = (current || []).map(c => c.collection_id)
+    const toAdd = selectedCollectionIds.value.filter(id => !currentIds.includes(id))
+    const toRemove = currentIds.filter(id => !selectedCollectionIds.value.includes(id))
+    
+    // Remove from deselected collections
+    if (toRemove.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('collections_sounds')
+        .delete()
+        .eq('sound_id', trackId)
+        .in('collection_id', toRemove)
+      
+      if (deleteError) throw deleteError
+    }
+    
+    // Add to new collections
+    if (toAdd.length > 0) {
+      const collectionsToInsert = toAdd.map(collectionId => ({
+        collection_id: collectionId,
+        sound_id: trackId
+      }))
+      
+      const { error: insertError } = await supabase
+        .from('collections_sounds')
+        .insert(collectionsToInsert)
+      
+      if (insertError) throw insertError
+    }
+  } catch (err) {
+    console.error('Error syncing collections:', err)
+    // Don't fail the whole update if collection sync fails
+  }
+}
+
+// Fetch collections on mount
+onMounted(async () => {
+  await fetchCollections()
+})
+
+// Watch for trackToEdit changes to populate form and load collections
+watch(() => props.trackToEdit, async (newTrack) => {
   if (newTrack) {
     const moodString = Array.isArray(newTrack.mood) 
       ? newTrack.mood.join(', ') 
@@ -192,12 +381,15 @@ watch(() => props.trackToEdit, (newTrack) => {
       title: newTrack.title || '',
       artist: newTrack.artist || '',
       version: newTrack.version || 'v1.0',
-      collection_name: '', // TODO: Get from collection_id
+      collection_name: '', // Not used anymore, kept for backwards compatibility
       genre: newTrack.genre || '',
       mood: moodString,
       bpm: newTrack.bpm || null,
       year: newTrack.year || null
     }
+    
+    // Load track's current collections
+    await loadTrackCollections(newTrack.id)
   }
 }, { immediate: true })
 
@@ -242,6 +434,9 @@ const onSubmit = async () => {
       console.error('EditTrack: Update error:', updateError)
       throw updateError
     }
+    
+    // Sync collections
+    await syncCollections(props.trackToEdit.id)
     
     console.log('EditTrack: Update successful', data)
     showSuccessMessage.value = true
