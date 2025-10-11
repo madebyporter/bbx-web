@@ -1,29 +1,21 @@
 <template>
-  <nav ref="mobileNav" id="navbar" class="
-    hidden
-    lg:flex 
-    flex-col
-    gap-4
-    border-r
-    border-neutral-800
-    bg-neutral-900
-    lg:col-start-1 
-    lg:col-span-3 
-    xl:col-start-1 
-    xl:col-span-2 
-    ">
+  <nav ref="mobileNav" id="navbar" class="border-r border-neutral-800 bg-neutral-900 hidden lg:flex flex-col justify-between overflow-auto shrink-0 min-w-[250px]">
     <div class="sticky top-0 p-4">
       <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-12" />
     </div>
-    <div class="flex flex-col gap-16 grow overflow-auto lg:pb-[130px] p-4">
+    <div class="grow flex flex-col gap-16 p-4">
       <div class="flex flex-col gap-4">
         <span class="nav-header">Library</span>
-        <NuxtLink v-if="user && username" :to="`/u/${username}`" class="nav-link" active-class="!font-bold !text-white">All Music</NuxtLink>
-        <NuxtLink v-else-if="user && !username" :to="`/u/${user.id}`" class="nav-link" active-class="!font-bold !text-white">All Music</NuxtLink>
+        <NuxtLink v-if="user && username" :to="`/u/${username}`" class="nav-link" active-class="!font-bold !text-white">
+          All Music</NuxtLink>
+        <NuxtLink v-else-if="user && !username" :to="`/u/${user.id}`" class="nav-link"
+          active-class="!font-bold !text-white">All Music</NuxtLink>
         <NuxtLink v-else to="#" class="nav-link-later">All Music <span class="tag">Login</span></NuxtLink>
-        
-        <NuxtLink v-if="user && username" :to="`/u/${username}/collections`" class="nav-link" active-class="!font-bold !text-white">Collections</NuxtLink>
-        <NuxtLink v-else-if="user && !username" :to="`/u/${user.id}/collections`" class="nav-link" active-class="!font-bold !text-white">Collections</NuxtLink>
+
+        <NuxtLink v-if="user && username" :to="`/u/${username}/collections`" class="nav-link"
+          active-class="!font-bold !text-white">Collections</NuxtLink>
+        <NuxtLink v-else-if="user && !username" :to="`/u/${user.id}/collections`" class="nav-link"
+          active-class="!font-bold !text-white">Collections</NuxtLink>
         <NuxtLink v-else to="#" class="nav-link-later">Collections <span class="tag">Login</span></NuxtLink>
       </div>
       <div class="flex flex-col gap-4">

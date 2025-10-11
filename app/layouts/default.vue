@@ -1,10 +1,9 @@
 <template>
   <div v-if="isInitialized" class="flex flex-col max-h-dvh min-h-dvh">
-    <main class="grid grid-cols-12 gap-0 transition-all duration-300 grow">
+    <main class="flex flex-row justify-stretch items-stretch gap-0 transition-all duration-300 grow overflow-hidden">
       <Nav ref="navRef" @show-auth-modal="showAuthModal = true" @show-admin-modal="showAdminModal = true"
         @toggle-mobile-nav="handleMobileNavToggle" />
-      <section id="content"
-        class="col-start-1 col-span-12 lg:col-start-4 lg:col-span-9 xl:col-start-3 xl:col-span-10 grid grid-cols-subgrid gap-0 content-start lg:pl-4">
+      <section id="content" class="gap-0 grow w-full flex flex-col overflow-y-auto">
         <div class="col-span-full sticky top-0 z-50">
           <SearchFilter @open-filter-modal="openFilterModal" @open-modal="openModal" @search="handleSearch"
             @toggle-nav="handleToggleNav" />

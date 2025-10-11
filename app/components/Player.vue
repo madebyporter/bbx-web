@@ -4,7 +4,7 @@
     class="w-full bg-neutral-900 border-t border-neutral-800 z-50 h-24"
     style="transform: translateY(100%)"
   >
-    <div class="max-w-screen-2xl mx-auto px-4 py-3">
+    <div class="w-full p-4">
       <div class="flex items-center gap-6">
         <!-- Left: Track Info -->
         <div class="flex-shrink-0 w-64">
