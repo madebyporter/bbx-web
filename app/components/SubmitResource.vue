@@ -18,7 +18,7 @@
 
     <!-- Submit Form -->
     <template v-else>
-      <form class="flex flex-col gap-8" @submit.prevent="onSubmit">
+      <form class="flex flex-col gap-8" @submit.prevent="onSubmit" @click.stop>
         <fieldset class="flex flex-col gap-2">
           <label class="flex items-center gap-1">
             Type

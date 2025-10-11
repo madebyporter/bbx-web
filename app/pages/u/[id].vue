@@ -14,6 +14,7 @@
             <tr class="text-left text-neutral-500">
               <th class="pb-2 pr-4">Title</th>
               <th class="pb-2 pr-4">Artist</th>
+              <th class="pb-2 pr-4">Version</th>
               <th class="pb-2 pr-4">Collection</th>
               <th class="pb-2 pr-4">Genre</th>
               <th class="pb-2 pr-4">BPM</th>
@@ -27,19 +28,20 @@
               :key="track.id"
               class="border-b border-neutral-800/50 hover:bg-neutral-800/30"
             >
-              <td class="py-3 pr-4">{{ track.storage_path?.split('/').pop()?.replace(/^\d+-/, '') || 'Untitled' }}</td>
+              <td class="py-3 pr-4">{{ track.title || 'Untitled' }}</td>
               <td class="py-3 pr-4 text-neutral-400">{{ track.artist || 'Unknown' }}</td>
+              <td class="py-3 pr-4 text-neutral-400">{{ track.version || 'v1.0' }}</td>
               <td class="py-3 pr-4 text-neutral-400">{{ track.collection_id || '-' }}</td>
               <td class="py-3 pr-4 text-neutral-400">{{ track.genre || '-' }}</td>
               <td class="py-3 pr-4 text-neutral-400">{{ track.bpm || '-' }}</td>
               <td class="py-3 pr-4 text-neutral-400">{{ formatDuration(track.duration) }}</td>
               <td v-if="isOwnProfile" class="py-3">
                 <button
-                  @click="deleteTrack(track.id, track.storage_path)"
-                  class="text-red-500 hover:text-red-400 text-xs"
-                  title="Delete track"
+                  @click="handleEdit(track)"
+                  class="text-amber-400 hover:text-amber-300 text-xs"
+                  title="Edit track"
                 >
-                  Delete
+                  Edit
                 </button>
               </td>
             </tr>
@@ -129,33 +131,14 @@ const fetchTracks = async () => {
   }
 }
 
-const deleteTrack = async (trackId: number, storagePath: string) => {
-  if (!supabase || !confirm('Are you sure you want to delete this track?')) return
-
-  try {
-    // Delete from storage
-    if (storagePath) {
-      const { error: storageError } = await supabase.storage
-        .from('sounds')
-        .remove([storagePath])
-
-      if (storageError) throw storageError
-    }
-
-    // Delete from database
-    const { error: dbError } = await supabase
-      .from('sounds')
-      .delete()
-      .eq('id', trackId)
-
-    if (dbError) throw dbError
-
-    // Refresh tracks list
-    await fetchTracks()
-  } catch (error: any) {
-    console.error('Delete error:', error)
-    alert(`Failed to delete track: ${error.message}`)
-  }
+const handleEdit = (track: any) => {
+  // Emit event to parent layout to open modal in edit mode
+  const event = new CustomEvent('edit-track', { 
+    detail: track,
+    bubbles: true,
+    composed: true
+  })
+  window.dispatchEvent(event)
 }
 
 const formatDuration = (seconds: number | null | undefined): string => {
@@ -170,10 +153,23 @@ defineExpose({
   fetchTracks
 })
 
+// Listen for track update events
+const handleTrackUpdate = () => {
+  console.log('[id].vue: Received track update event, refetching tracks')
+  fetchTracks()
+}
+
 // Lifecycle
 onMounted(async () => {
   await fetchProfile()
   await fetchTracks()
+  
+  // Listen for track updates
+  window.addEventListener('track-updated', handleTrackUpdate)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('track-updated', handleTrackUpdate)
 })
 </script>
 

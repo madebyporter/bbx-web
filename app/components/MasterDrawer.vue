@@ -19,12 +19,12 @@
         </div>
         
         <!-- Header slot -->
-        <div class="h-[50px] flex items-center text-white font-semibold">
+        <div class="h-[50px] flex items-center text-white font-semibold" @click.stop>
           <slot name="header"></slot>
         </div>
         
         <!-- Main content slot -->
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4" @click.stop>
           <slot></slot>
         </div>
       </div>

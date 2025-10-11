@@ -18,7 +18,7 @@
 
     <!-- Upload Form -->
     <template v-else>
-      <form class="flex flex-col gap-8" @submit.prevent="onSubmit">
+      <form class="flex flex-col gap-8" @submit.prevent="onSubmit" @click.stop>
         <!-- Drag & Drop Zone -->
         <fieldset class="flex flex-col gap-2">
           <label class="flex items-center gap-1">
@@ -88,16 +88,40 @@
               </div>
 
               <!-- Metadata Fields -->
-              <div class="grid grid-cols-2 gap-3 mt-3">
+              <div class="flex flex-col gap-3 mt-3">
+                <!-- Title (full width) -->
                 <div>
-                  <label class="text-xs text-neutral-400">Artist</label>
+                  <label class="text-xs text-neutral-400">Title <span class="text-red-500">*</span></label>
                   <input 
-                    v-model="file.metadata.artist"
+                    v-model="file.metadata.title"
                     type="text"
+                    required
                     class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
                     :disabled="isUploading"
                   />
                 </div>
+                
+                <!-- Other fields in grid -->
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="text-xs text-neutral-400">Artist</label>
+                    <input 
+                      v-model="file.metadata.artist"
+                      type="text"
+                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                      :disabled="isUploading"
+                    />
+                  </div>
+                  <div>
+                    <label class="text-xs text-neutral-400">Version</label>
+                    <input 
+                      v-model="file.metadata.version"
+                      type="text"
+                      placeholder="e.g. v1.0, v2.5"
+                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                      :disabled="isUploading"
+                    />
+                  </div>
                 <div>
                   <label class="text-xs text-neutral-400">Collection (optional)</label>
                   <input 
@@ -135,15 +159,16 @@
                     :disabled="isUploading"
                   />
                 </div>
-                <div>
-                  <label class="text-xs text-neutral-400">Mood</label>
-                  <input 
-                    v-model="file.metadata.mood"
-                    type="text"
-                    placeholder="e.g. Dark, Happy"
-                    class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                    :disabled="isUploading"
-                  />
+                  <div>
+                    <label class="text-xs text-neutral-400">Mood</label>
+                    <input 
+                      v-model="file.metadata.mood"
+                      type="text"
+                      placeholder="e.g. Dark, Happy"
+                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                      :disabled="isUploading"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -189,11 +214,13 @@ interface Props {
   show: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {})
+const props = defineProps<Props>()
 const emit = defineEmits(['update:show', 'music-uploaded'])
 
 interface FileMetadata {
+  title: string
   artist: string
+  version: string
   collection_name: string
   genre: string
   mood: string
@@ -313,10 +340,15 @@ const processFiles = async (files: File[]) => {
     const duration = await getDuration(audio)
     URL.revokeObjectURL(audio.src)
     
+    // Extract title from filename (remove extension)
+    const title = file.name.replace(/\.[^/.]+$/, '')
+    
     selectedFiles.value.push({
       file,
       metadata: {
+        title,
         artist: '',
+        version: 'v1.0',
         collection_name: '',
         genre: '',
         mood: '',
@@ -387,9 +419,11 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       .insert({
         user_id: user.value.id,
         storage_path: filePath,
+        title: fileData.metadata.title || null,
+        artist: fileData.metadata.artist || null,
+        version: fileData.metadata.version || 'v1.0',
         file_size: fileData.file.size,
         duration: fileData.duration,
-        artist: fileData.metadata.artist || null,
         genre: fileData.metadata.genre || null,
         mood: moodArray,
         bpm: fileData.metadata.bpm,

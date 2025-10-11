@@ -6,7 +6,7 @@
       <section id="content"
         class="col-start-1 col-span-12 lg:col-start-4 lg:col-span-9 xl:col-start-3 xl:col-span-10 grid grid-cols-subgrid gap-0 content-start lg:pl-4">
         <div class="col-span-full sticky top-0 z-50">
-          <SearchFilter @open-filter-modal="openFilterModal" @open-modal="showModal = true" @search="handleSearch"
+          <SearchFilter @open-filter-modal="openFilterModal" @open-modal="openModal" @search="handleSearch"
             @toggle-nav="handleToggleNav" />
         </div>
         <slot @edit-resource="handleEdit" @show-signup="handleShowSignup" />
@@ -51,7 +51,7 @@
     <!-- Manage Submissions Drawer -->
     <ManageSubmissions v-model:show="showAdminModal" :canEdit="isAdmin" />
 
-    <!-- Conditional Modal: SubmitResource or UploadMusic -->
+    <!-- Conditional Modal: SubmitResource, EditTrack, or UploadMusic -->
     <SubmitResource 
       v-if="!isUserProfilePage"
       :key="modalKey" 
@@ -62,8 +62,16 @@
       @resource-added="refreshDatabase"
       @resource-updated="refreshDatabase" 
     />
+    <EditTrack 
+      v-else-if="editingTrack"
+      :key="modalKey"
+      v-model:show="showModal"
+      :track-to-edit="editingTrack"
+      @track-updated="refreshDatabase"
+    />
     <UploadMusic 
       v-else
+      :key="modalKey"
       v-model:show="showModal"
       @music-uploaded="refreshDatabase"
     />
@@ -166,6 +174,7 @@ const password = ref('')
 const showModal = ref(false)
 const showFilterSort = ref(false)
 const editingResource = ref<Resource | null>(null)
+const editingTrack = ref<any | null>(null)
 const modalKey = ref(0)
 const pageRef = ref<PageRef | null>(null)
 const databaseRef = ref<DatabaseRef | null>(null)
@@ -225,8 +234,24 @@ const openFilterModal = () => {
   showFilterSort.value = true
 }
 
+const openModal = () => {
+  // Clear any editing states when opening modal for new submission/upload
+  editingResource.value = null
+  editingTrack.value = null
+  showModal.value = true
+  modalKey.value++
+}
+
 const handleEdit = (resource: Resource) => {
   editingResource.value = resource
+  editingTrack.value = null
+  showModal.value = true
+  modalKey.value++
+}
+
+const handleEditTrack = (track: any) => {
+  editingTrack.value = track
+  editingResource.value = null
   showModal.value = true
   modalKey.value++
 }
@@ -234,13 +259,15 @@ const handleEdit = (resource: Resource) => {
 const closeModal = () => {
   showModal.value = false
   editingResource.value = null
+  editingTrack.value = null
 }
 
 const refreshDatabase = () => {
-  // For user profile pages, reload the page to refresh tracks
+  // For user profile pages, dispatch window event to trigger refresh
   if (isUserProfilePage.value) {
-    console.log('Layout: Reloading page to refresh tracks')
-    window.location.reload()
+    console.log('Layout: Dispatching track-updated event')
+    const event = new CustomEvent('track-updated')
+    window.dispatchEvent(event)
   }
   // For resource pages, refresh database grid
   else if (databaseRef.value?.fetchResources) {
@@ -377,15 +404,21 @@ provide('handleEdit', handleEdit)
 provide('handleShowSignup', handleShowSignup)
 provide('showModal', { value: showModal })
 
-// Initialize auth state
+// Listen for edit-track events from profile page
 onMounted(async () => {
   console.log('Layout: Starting auth initialization...')
   await auth.init()
   isInitialized.value = true
+  
+  // Listen for track edit events
+  window.addEventListener('edit-track', ((event: CustomEvent) => {
+    handleEditTrack(event.detail)
+  }) as EventListener)
 })
 
 // Cleanup on unmount
 onUnmounted(() => {
   auth.cleanup()
+  window.removeEventListener('edit-track', handleEditTrack as EventListener)
 })
 </script>
