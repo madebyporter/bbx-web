@@ -1,7 +1,7 @@
 <template>
   <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
     <header class="px-2 pt-8 pb-4 border-b border-neutral-800">
-      <h1 class="text-xl lg:text-3xl font-bold indent-1">Music production sounds</h1>
+      <h1 class="text-xl lg:text-3xl font-bold indent-1">Music production kits</h1>
     </header>
     <div class="overflow-x-scroll xl:overflow-auto">
       <DatabaseGrid 
@@ -44,20 +44,21 @@ defineExpose({
   databaseGrid,
   handleSearch: (query: string) => databaseGrid.value?.handleSearch(query),
   updateFiltersAndSort: (params: FilterSortParams) => {
-    console.log('Sounds page: Forwarding updateFiltersAndSort to databaseGrid component')
+    console.log('Kits page: Forwarding updateFiltersAndSort to databaseGrid component')
     if (databaseGrid.value && typeof databaseGrid.value.updateFiltersAndSort === 'function') {
       databaseGrid.value.updateFiltersAndSort(params)
     } else {
-      console.error('Sounds page: DatabaseGrid component not found or updateFiltersAndSort method not available')
+      console.error('Kits page: DatabaseGrid component not found or updateFiltersAndSort method not available')
     }
   },
   fetchResources: () => {
-    console.log('Sounds page: Forwarding fetchResources to databaseGrid component')
+    console.log('Kits page: Forwarding fetchResources to databaseGrid component')
     if (databaseGrid.value && typeof databaseGrid.value.fetchResources === 'function') {
       return databaseGrid.value.fetchResources()
     } else {
-      console.error('Sounds page: DatabaseGrid component not found or fetchResources method not available')
+      console.error('Kits page: DatabaseGrid component not found or fetchResources method not available')
     }
   }
 })
-</script> 
+</script>
+

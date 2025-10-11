@@ -31,12 +31,14 @@
     <div class="flex flex-col gap-16 grow overflow-auto lg:pb-[130px] p-4">
       <div class="flex flex-col gap-4">
         <span class="nav-header">Library</span>
-        <NuxtLink to="/u/madebyporter" class="nav-link" active-class="!font-bold !text-white">All Music</NuxtLink>
+        <NuxtLink v-if="user && username" :to="`/u/${username}`" class="nav-link" active-class="!font-bold !text-white">All Music</NuxtLink>
+        <NuxtLink v-else-if="user && !username" :to="`/u/${user.id}`" class="nav-link" active-class="!font-bold !text-white">All Music</NuxtLink>
+        <NuxtLink v-else to="#" class="nav-link-later">All Music <span class="tag">Login</span></NuxtLink>
       </div>
       <div class="flex flex-col gap-4">
         <span class="nav-header">Resources</span>
         <NuxtLink to="/software" class="nav-link" active-class="!font-bold !text-white">Software</NuxtLink>
-        <NuxtLink to="/sounds" class="nav-link" active-class="!font-bold !text-white">Sounds & Kits</NuxtLink>
+        <NuxtLink to="/kits" class="nav-link" active-class="!font-bold !text-white">Sounds & Kits</NuxtLink>
         <NuxtLink to="#" class="nav-link-later">
           Hardware <span class="tag">Later</span>
         </NuxtLink>
@@ -101,15 +103,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
+import { useSupabase } from '~/utils/supabase'
 
 const auth = useAuth()
 const { user, isAdmin } = auth
+const { supabase } = useSupabase()
 
 const mobileNav = ref(null)
 const showMobileNav = ref(false)
+const username = ref<string | null>(null)
 
 // Emit events to parent layout
 const emit = defineEmits(['show-auth-modal', 'show-admin-modal', 'toggle-mobile-nav'])
@@ -142,6 +147,27 @@ const toggleMobileNav = () => {
   emit('toggle-mobile-nav', showMobileNav.value)
 }
 
+const fetchUsername = async () => {
+  if (!user.value || !supabase) {
+    username.value = null
+    return
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('username')
+      .eq('id', user.value.id)
+      .single()
+    
+    if (data && !error) {
+      username.value = data.username as string
+    }
+  } catch (error) {
+    console.error('Error fetching username:', error)
+  }
+}
+
 const handleResize = () => {
   if (window.innerWidth >= 1024) {
     // Reset nav position on desktop
@@ -152,6 +178,11 @@ const handleResize = () => {
   }
   showMobileNav.value = false
 }
+
+// Watch for user changes and fetch username
+watch(user, () => {
+  fetchUsername()
+}, { immediate: true })
 
 // Expose mobile nav ref and toggle function for parent to control
 defineExpose({

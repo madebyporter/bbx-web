@@ -12,4 +12,17 @@ export interface Resource {
   updated_at: string
   submitted_by?: string
   status?: 'pending' | 'approved' | 'rejected'
+  // Audio metadata fields
+  user_id?: string
+  storage_path?: string
+  artist?: string
+  collection?: string
+  genre?: string
+  mood?: string[]
+  bpm?: number
+  year?: number
+  track_number?: number
+  disc_number?: number
+  file_size?: number
+  duration?: number
 } 
