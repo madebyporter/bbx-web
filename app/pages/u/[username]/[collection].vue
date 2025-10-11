@@ -14,7 +14,7 @@
           {{ collection.description }}
         </p>
         <p class="text-sm text-neutral-500">
-          {{ tracks.length }} {{ tracks.length === 1 ? 'track' : 'tracks' }}
+          {{ filteredTracks.length }} {{ filteredTracks.length === 1 ? 'track' : 'tracks' }}
         </p>
       </div>
 
@@ -22,7 +22,7 @@
       <div>
         <h2 class="text-xl font-semibold mb-4">Tracks</h2>
         <TracksTable 
-          :tracks="tracks"
+          :tracks="filteredTracks"
           :is-own-profile="isOwnProfile"
           :loading="tracksLoading"
           @edit-track="handleEdit"
@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -44,16 +44,32 @@ const router = useRouter()
 const { user } = useAuth()
 const { supabase } = useSupabase()
 
+// Inject search handler registration functions
+const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
+const unregisterSearchHandler = inject<() => void>('unregisterSearchHandler')
+
 // State
 const collection = ref<any>(null)
 const tracks = ref<any[]>([])
 const loading = ref(true)
 const tracksLoading = ref(false)
 const profileUserId = ref<string | null>(null)
+const searchQuery = ref('')
 
 // Computed
 const isOwnProfile = computed(() => {
   return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
+})
+
+const filteredTracks = computed(() => {
+  if (!searchQuery.value) return tracks.value
+  
+  const query = searchQuery.value.trim().toLowerCase()
+  return tracks.value.filter(track => {
+    const title = track.title?.toLowerCase() || ''
+    const artist = track.artist?.toLowerCase() || ''
+    return title.includes(query) || artist.includes(query)
+  })
 })
 
 // Methods
@@ -80,14 +96,14 @@ const fetchCollection = async () => {
       return
     }
     
-    profileUserId.value = profileData.id
+    profileUserId.value = profileData.id as string
     
     // Now fetch the collection by slug and user_id
     const { data: collectionData, error: collectionError } = await supabase
       .from('collections')
       .select('*')
       .eq('slug', collectionSlug)
-      .eq('user_id', profileData.id)
+      .eq('user_id', profileData.id as string)
       .single()
     
     if (collectionError || !collectionData) {
@@ -182,6 +198,15 @@ const handleEdit = (track: any) => {
   window.dispatchEvent(event)
 }
 
+const handleSearch = (query: string) => {
+  searchQuery.value = query
+}
+
+// Expose handleSearch for parent to call
+defineExpose({
+  handleSearch
+})
+
 // Listen for track update events
 const handleTrackUpdate = () => {
   console.log('[collection].vue: Received track update event, refetching tracks')
@@ -192,11 +217,21 @@ const handleTrackUpdate = () => {
 onMounted(async () => {
   await fetchCollection()
   
+  // Register search handler
+  if (registerSearchHandler) {
+    registerSearchHandler(handleSearch)
+  }
+  
   // Listen for track updates
   window.addEventListener('track-updated', handleTrackUpdate)
 })
 
 onUnmounted(() => {
+  // Unregister search handler
+  if (unregisterSearchHandler) {
+    unregisterSearchHandler()
+  }
+  
   window.removeEventListener('track-updated', handleTrackUpdate)
 })
 </script>

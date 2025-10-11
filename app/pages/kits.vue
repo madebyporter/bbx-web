@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, inject, onMounted, onUnmounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import DatabaseGrid from '~/components/DatabaseGrid.vue'
 
@@ -33,16 +33,49 @@ interface FilterSortParams {
   }
 }
 
-
 const { isAdmin } = useAuth()
 const databaseGrid = ref<InstanceType<typeof DatabaseGrid> | null>(null)
 
+// Inject search handler registration functions from layout
+const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
+const unregisterSearchHandler = inject<() => void>('unregisterSearchHandler')
+
 defineEmits(['edit-resource', 'show-signup'])
+
+// Search handler that forwards to databaseGrid component
+const handleSearch = (query: string) => {
+  console.log('Kits page: handleSearch called with:', query, 'databaseGrid ref:', databaseGrid.value)
+  if (databaseGrid.value?.handleSearch) {
+    console.log('Kits page: Calling databaseGrid.handleSearch')
+    databaseGrid.value.handleSearch(query)
+  } else {
+    console.log('Kits page: databaseGrid.handleSearch not available')
+  }
+}
+
+// Register search handler on mount
+onMounted(() => {
+  console.log('Kits page: onMounted, databaseGrid ref:', databaseGrid.value)
+  if (registerSearchHandler) {
+    console.log('Kits page: Registering search handler')
+    registerSearchHandler(handleSearch)
+  } else {
+    console.log('Kits page: registerSearchHandler not available')
+  }
+})
+
+// Unregister on unmount
+onUnmounted(() => {
+  console.log('Kits page: onUnmounted, unregistering handler')
+  if (unregisterSearchHandler) {
+    unregisterSearchHandler()
+  }
+})
 
 // Expose the database ref to parent
 defineExpose({
   databaseGrid,
-  handleSearch: (query: string) => databaseGrid.value?.handleSearch(query),
+  handleSearch,
   updateFiltersAndSort: (params: FilterSortParams) => {
     console.log('Kits page: Forwarding updateFiltersAndSort to databaseGrid component')
     if (databaseGrid.value && typeof databaseGrid.value.updateFiltersAndSort === 'function') {

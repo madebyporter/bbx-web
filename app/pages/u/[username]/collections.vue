@@ -11,13 +11,17 @@
       <div class="py-4">
         <h1 class="text-3xl font-bold mb-2">Collections</h1>
         <p class="text-neutral-400">
-          {{ collections.length }} {{ collections.length === 1 ? 'collection' : 'collections' }}
+          {{ filteredCollections.length }} {{ filteredCollections.length === 1 ? 'collection' : 'collections' }}
         </p>
       </div>
 
       <!-- Collections Table -->
-      <div v-if="collections.length === 0" class="text-neutral-500">
+      <div v-if="filteredCollections.length === 0 && !searchQuery" class="text-neutral-500">
         {{ isOwnProfile ? 'No collections yet. Create one when uploading or editing a track.' : 'No collections available.' }}
+      </div>
+      
+      <div v-else-if="filteredCollections.length === 0 && searchQuery" class="text-neutral-500">
+        No collections match your search.
       </div>
 
       <div v-else class="overflow-x-auto">
@@ -31,7 +35,7 @@
           </thead>
           <tbody>
             <tr 
-              v-for="collection in collections" 
+              v-for="collection in filteredCollections" 
               :key="collection.id"
               class="border-b border-neutral-800/50 hover:bg-neutral-800/30"
             >
@@ -58,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -67,15 +71,31 @@ const route = useRoute()
 const { user } = useAuth()
 const { supabase } = useSupabase()
 
+// Inject search handler registration functions
+const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
+const unregisterSearchHandler = inject<() => void>('unregisterSearchHandler')
+
 // State
 const collections = ref<any[]>([])
 const loading = ref(true)
 const profileUserId = ref<string | null>(null)
 const username = ref('')
+const searchQuery = ref('')
 
 // Computed
 const isOwnProfile = computed(() => {
   return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
+})
+
+const filteredCollections = computed(() => {
+  if (!searchQuery.value) return collections.value
+  
+  const query = searchQuery.value.trim().toLowerCase()
+  return collections.value.filter(collection => {
+    const name = collection.name?.toLowerCase() || ''
+    const description = collection.description?.toLowerCase() || ''
+    return name.includes(query) || description.includes(query)
+  })
 })
 
 // Methods
@@ -147,10 +167,31 @@ const fetchCollections = async () => {
   }
 }
 
+const handleSearch = (query: string) => {
+  searchQuery.value = query
+}
+
+// Expose handleSearch for parent to call
+defineExpose({
+  handleSearch
+})
+
 // Lifecycle
 onMounted(async () => {
   await fetchProfile()
   await fetchCollections()
+  
+  // Register search handler
+  if (registerSearchHandler) {
+    registerSearchHandler(handleSearch)
+  }
+})
+
+onUnmounted(() => {
+  // Unregister search handler
+  if (unregisterSearchHandler) {
+    unregisterSearchHandler()
+  }
 })
 </script>
 

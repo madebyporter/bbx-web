@@ -4,19 +4,19 @@
     <div class="py-4">
       <h1 class="text-3xl font-bold mb-2">{{ profileName }}</h1>
       <p class="text-sm text-neutral-500">
-        {{ tracks.length }} {{ tracks.length === 1 ? 'track' : 'tracks' }}
+        {{ filteredTracks.length }} {{ filteredTracks.length === 1 ? 'track' : 'tracks' }}
       </p>
     </div>
     <!-- Tracks Section -->
     <div>
       <h2 class="text-xl font-semibold mb-4">Tracks</h2>
-      <TracksTable :tracks="tracks" :is-own-profile="isOwnProfile" :loading="loading" @edit-track="handleEdit" />
+      <TracksTable :tracks="filteredTracks" :is-own-profile="isOwnProfile" :loading="loading" @edit-track="handleEdit" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -26,16 +26,32 @@ const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
 
+// Inject search handler registration functions
+const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
+const unregisterSearchHandler = inject<() => void>('unregisterSearchHandler')
+
 // State
 const profileName = ref('')
 const username = ref('')
 const profileUserId = ref<string | null>(null)
 const tracks = ref<any[]>([])
 const loading = ref(true)
+const searchQuery = ref('')
 
 // Computed
 const isOwnProfile = computed(() => {
   return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
+})
+
+const filteredTracks = computed(() => {
+  if (!searchQuery.value) return tracks.value
+  
+  const query = searchQuery.value.trim().toLowerCase()
+  return tracks.value.filter(track => {
+    const title = track.title?.toLowerCase() || ''
+    const artist = track.artist?.toLowerCase() || ''
+    return title.includes(query) || artist.includes(query)
+  })
 })
 
 // Methods
@@ -143,9 +159,14 @@ const handleEdit = (track: any) => {
   window.dispatchEvent(event)
 }
 
-// Expose fetchTracks for parent to call
+const handleSearch = (query: string) => {
+  searchQuery.value = query
+}
+
+// Expose fetchTracks and handleSearch for parent to call
 defineExpose({
-  fetchTracks
+  fetchTracks,
+  handleSearch
 })
 
 // Listen for track update events
@@ -159,11 +180,21 @@ onMounted(async () => {
   await fetchProfile()
   await fetchTracks()
   
+  // Register search handler
+  if (registerSearchHandler) {
+    registerSearchHandler(handleSearch)
+  }
+  
   // Listen for track updates
   window.addEventListener('track-updated', handleTrackUpdate)
 })
 
 onUnmounted(() => {
+  // Unregister search handler
+  if (unregisterSearchHandler) {
+    unregisterSearchHandler()
+  }
+  
   window.removeEventListener('track-updated', handleTrackUpdate)
 })
 </script>

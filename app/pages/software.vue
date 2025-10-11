@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, inject, onMounted, onUnmounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import Database from '~/components/Database.vue'
 
@@ -36,12 +36,35 @@ interface FilterSortParams {
 const { isAdmin } = useAuth()
 const database = ref<InstanceType<typeof Database> | null>(null)
 
+// Inject search handler registration functions from layout
+const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
+const unregisterSearchHandler = inject<() => void>('unregisterSearchHandler')
+
 defineEmits(['edit-resource', 'show-signup'])
+
+// Search handler that forwards to database component
+const handleSearch = (query: string) => {
+  database.value?.handleSearch(query)
+}
+
+// Register search handler on mount
+onMounted(() => {
+  if (registerSearchHandler) {
+    registerSearchHandler(handleSearch)
+  }
+})
+
+// Unregister on unmount
+onUnmounted(() => {
+  if (unregisterSearchHandler) {
+    unregisterSearchHandler()
+  }
+})
 
 // Expose the database ref to parent
 defineExpose({
   database,
-  handleSearch: (query: string) => database.value?.handleSearch(query),
+  handleSearch,
   updateFiltersAndSort: (params: FilterSortParams) => {
     console.log('Software page: Forwarding updateFiltersAndSort to database component')
     if (database.value && typeof database.value.updateFiltersAndSort === 'function') {

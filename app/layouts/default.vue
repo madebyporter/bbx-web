@@ -64,14 +64,14 @@
     />
     <EditTrack 
       v-else-if="editingTrack"
-      :key="modalKey"
+      :key="`edit-track-${modalKey}`"
       v-model:show="showModal"
       :track-to-edit="editingTrack"
       @track-updated="refreshDatabase"
     />
     <UploadMusic 
       v-else
-      :key="modalKey"
+      :key="`upload-music-${modalKey}`"
       v-model:show="showModal"
       @music-uploaded="refreshDatabase"
     />
@@ -178,6 +178,7 @@ const editingTrack = ref<any | null>(null)
 const modalKey = ref(0)
 const pageRef = ref<PageRef | null>(null)
 const databaseRef = ref<DatabaseRef | null>(null)
+const currentSearchHandler = ref<((query: string) => void) | null>(null)
 
 // Navigation
 const navRef = ref<NavRef | null>(null)
@@ -375,15 +376,42 @@ const handleFiltersAndSort = (params: FilterSortParams) => {
   }
 }
 
+// Function for pages to register their search handler
+const registerSearchHandler = (handler: (query: string) => void) => {
+  console.log('Layout: Search handler registered')
+  currentSearchHandler.value = handler
+}
+
+// Function for pages to unregister their search handler
+const unregisterSearchHandler = () => {
+  console.log('Layout: Search handler unregistered')
+  currentSearchHandler.value = null
+}
+
 const handleSearch = (query: string) => {
   console.log('Layout: handleSearch called with query:', query)
   
-  // Access the database component directly through the ref
-  if (databaseRef.value && databaseRef.value.handleSearch) {
-    console.log('Layout: Found database component')
+  // Use registered search handler if available
+  if (currentSearchHandler.value) {
+    console.log('Layout: Using registered search handler')
+    currentSearchHandler.value(query)
+  }
+  // Fallback: Try pageRef for resource pages
+  else if (pageRef.value && typeof pageRef.value.handleSearch === 'function') {
+    console.log('Layout: Found page handleSearch method')
+    pageRef.value.handleSearch(query)
+  }
+  // Fallback: Try pageRef.database for resource pages
+  else if (pageRef.value?.database && typeof (pageRef.value.database as any)?.handleSearch === 'function') {
+    console.log('Layout: Found database handleSearch method via pageRef')
+    ;(pageRef.value.database as any).handleSearch(query)
+  }
+  // Fallback: Try databaseRef
+  else if (databaseRef.value?.handleSearch) {
+    console.log('Layout: Found databaseRef handleSearch method')
     databaseRef.value.handleSearch(query)
   } else {
-    console.log('Layout: Could not find database component')
+    console.log('Layout: No search handler found for current page')
   }
 }
 
@@ -399,6 +427,8 @@ const handleShowSignup = () => {
 // Provide functions for child layouts
 provide('openFilterModal', openFilterModal)
 provide('handleSearch', handleSearch)
+provide('registerSearchHandler', registerSearchHandler)
+provide('unregisterSearchHandler', unregisterSearchHandler)
 provide('handleToggleNav', handleToggleNav)
 provide('handleEdit', handleEdit)
 provide('handleShowSignup', handleShowSignup)

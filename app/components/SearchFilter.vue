@@ -68,6 +68,11 @@ const buttonText = computed(() => {
   return isUserProfilePage.value ? 'Upload' : 'Submit'
 })
 
+// Clear search when route changes
+watch(() => route.path, () => {
+  searchQuery.value = ''
+})
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
 })
