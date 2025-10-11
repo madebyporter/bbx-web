@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-neutral-900 flex flex-col lg:flex-row gap-4 p-4 lg:pl-0 border-b border-neutral-800">
+  <div class="h-20 bg-neutral-900 flex flex-col lg:flex-row gap-4 p-4 border-b border-neutral-800">
     <div class="grow flex relative">
       <div class="absolute z-10 top-[50%] translate-y-[-50%] px-4">
         <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -1,22 +1,21 @@
 <template>
-  <nav ref="mobileNav" id="navbar" class="border-r border-neutral-800 bg-neutral-900 hidden lg:flex flex-col justify-between overflow-auto shrink-0 min-w-[250px]">
+  <nav ref="mobileNav" id="navbar"
+    class="border-r border-neutral-800 bg-neutral-900 hidden lg:flex flex-col justify-between overflow-auto shrink-0 min-w-[250px]">
     <div class="sticky top-0 p-4">
       <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-12" />
     </div>
     <div class="grow flex flex-col gap-16 p-4">
-      <div class="flex flex-col gap-4">
+      <div v-if="user" class="flex flex-col gap-4">
         <span class="nav-header">Library</span>
-        <NuxtLink v-if="user && username" :to="`/u/${username}`" class="nav-link" active-class="!font-bold !text-white">
+        <NuxtLink v-if="username" :to="`/u/${username}`" class="nav-link" active-class="!font-bold !text-white">
           All Music</NuxtLink>
-        <NuxtLink v-else-if="user && !username" :to="`/u/${user.id}`" class="nav-link"
-          active-class="!font-bold !text-white">All Music</NuxtLink>
-        <NuxtLink v-else to="#" class="nav-link-later">All Music <span class="tag">Login</span></NuxtLink>
+        <NuxtLink v-else :to="`/u/${user.id}`" class="nav-link" active-class="!font-bold !text-white">All Music
+        </NuxtLink>
 
-        <NuxtLink v-if="user && username" :to="`/u/${username}/collections`" class="nav-link"
+        <NuxtLink v-if="username" :to="`/u/${username}/collections`" class="nav-link"
           active-class="!font-bold !text-white">Collections</NuxtLink>
-        <NuxtLink v-else-if="user && !username" :to="`/u/${user.id}/collections`" class="nav-link"
-          active-class="!font-bold !text-white">Collections</NuxtLink>
-        <NuxtLink v-else to="#" class="nav-link-later">Collections <span class="tag">Login</span></NuxtLink>
+        <NuxtLink v-else :to="`/u/${user.id}/collections`" class="nav-link" active-class="!font-bold !text-white">
+          Collections</NuxtLink>
       </div>
       <div class="flex flex-col gap-4">
         <span class="nav-header">Resources</span>
@@ -57,7 +56,7 @@
 
     <!-- Account UI -->
     <div
-      class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit rounded-sm p-2 hidden lg:flex flex-row items-center overflow-hidden m-2">
+      class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit rounded-sm flex flex-row items-center overflow-hidden m-2 p-2">
       <div class="flex flex-row gap-0 items-center w-full">
         <template v-if="user">
           <div class="flex flex-col gap-0 justify-start items-start w-full">
@@ -78,7 +77,7 @@
           </div>
         </template>
         <template v-else>
-          <button @click="handleShowAuthModal" class="cursor-pointer text-sm">Login</button>
+          <button @click="handleShowAuthModal" class="cursor-pointer text-sm p-2 w-full hover:bg-neutral-800/50 rounded-xs text-left">Login</button>
         </template>
       </div>
     </div>

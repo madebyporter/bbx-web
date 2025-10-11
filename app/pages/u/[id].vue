@@ -1,15 +1,14 @@
 <template>
-  <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
+  <div class="col-span-full max-w-full lg:max-w-none flex flex-col gap-0 text-neutral-300">
     <!-- Profile Header -->
-    <div class="py-4">
-      <h1 class="text-3xl font-bold mb-2">{{ profileName }}</h1>
+    <div class="flex flex-row justify-between items-center gap-4 p-4 border-b border-neutral-800">
+      <h1 class="text-3xl font-bold">{{ profileName }}</h1>
       <p class="text-sm text-neutral-500">
         {{ filteredTracks.length }} {{ filteredTracks.length === 1 ? 'track' : 'tracks' }}
       </p>
     </div>
     <!-- Tracks Section -->
     <div>
-      <h2 class="text-xl font-semibold mb-4">Tracks</h2>
       <TracksTable 
         :tracks="filteredTracks" 
         :source-id="`profile-${profileUserId}`"

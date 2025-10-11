@@ -6,60 +6,65 @@
       {{ isOwnProfile ? 'No tracks uploaded yet.' : 'No tracks available.' }}
     </div>
 
-    <div v-else class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="border-b border-neutral-800">
-          <tr class="text-left text-neutral-500">
-            <th class="pb-2 pr-4 w-10"></th>
-            <th class="pb-2 pr-4">Title</th>
-            <th class="pb-2 pr-4">Artist</th>
-            <th class="pb-2 pr-4">Version</th>
-            <th class="pb-2 pr-4">Collection</th>
-            <th class="pb-2 pr-4">Genre</th>
-            <th class="pb-2 pr-4">BPM</th>
-            <th class="pb-2 pr-4">Duration</th>
-            <th v-if="isOwnProfile" class="pb-2"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr 
-            v-for="(track, index) in tracks" 
-            :key="track.id"
-            class="border-b border-neutral-800/50 hover:bg-neutral-800/30"
+    <div v-else class="">
+      <!-- Header -->
+      <div 
+        :class="[
+          'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 sticky top-20 bg-neutral-900 z-40',
+          isOwnProfile ? 'trackGrid-edit' : 'trackGrid'
+        ]"
+      >
+        <div></div>
+        <div>Title</div>
+        <div>Artist</div>
+        <div>Version</div>
+        <div>Collection</div>
+        <div>Genre</div>
+        <div>BPM</div>
+        <div>Duration</div>
+        <div v-if="isOwnProfile"></div>
+      </div>
+
+      <!-- Tracks -->
+      <div 
+        v-for="(track, index) in tracks" 
+        :key="track.id"
+        :class="[
+          'text-sm border-b border-neutral-800/50 hover:bg-neutral-800/30 py-3',
+          isOwnProfile ? 'trackGrid-edit' : 'trackGrid'
+        ]"
+      >
+        <div class="px-2 flex items-center justify-center">
+          <button
+            @click="handlePlayClick(track, index)"
+            class="text-neutral-400 hover:text-white transition-colors cursor-pointer"
+            :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'"
           >
-            <td class="py-3 pr-4">
-              <button
-                @click="handlePlayClick(track, index)"
-                class="text-neutral-400 hover:text-white transition-colors"
-                :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'"
-              >
-                <svg v-if="isCurrentlyPlaying(track)" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                </svg>
-                <svg v-else class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-              </button>
-            </td>
-            <td class="py-3 pr-4">{{ track.title || 'Untitled' }}</td>
-            <td class="py-3 pr-4 text-neutral-400">{{ track.artist || 'Unknown' }}</td>
-            <td class="py-3 pr-4 text-neutral-400">{{ track.version || 'v1.0' }}</td>
-            <td class="py-3 pr-4 text-neutral-400">{{ track.collection_names || '-' }}</td>
-            <td class="py-3 pr-4 text-neutral-400">{{ track.genre || '-' }}</td>
-            <td class="py-3 pr-4 text-neutral-400">{{ track.bpm || '-' }}</td>
-            <td class="py-3 pr-4 text-neutral-400">{{ formatDuration(track.duration) }}</td>
-            <td v-if="isOwnProfile" class="py-3">
-              <button
-                @click="$emit('edit-track', track)"
-                class="text-amber-400 hover:text-amber-300 text-xs"
-                title="Edit track"
-              >
-                Edit
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            <svg v-if="isCurrentlyPlaying(track)" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+            </svg>
+            <svg v-else class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </button>
+        </div>
+        <div>{{ track.title || 'Untitled' }}</div>
+        <div class="text-neutral-400">{{ track.artist || 'Unknown' }}</div>
+        <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
+        <div class="text-neutral-400">{{ track.collection_names || '-' }}</div>
+        <div class="text-neutral-400">{{ track.genre || '-' }}</div>
+        <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
+        <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>
+        <div v-if="isOwnProfile">
+          <button
+            @click="$emit('edit-track', track)"
+            class="text-amber-400 hover:text-amber-300 text-xs"
+            title="Edit track"
+          >
+            Edit
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

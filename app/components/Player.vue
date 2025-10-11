@@ -1,5 +1,6 @@
 <template>
   <div 
+    v-if="hasEverHadTrack"
     ref="playerRef" 
     class="w-full bg-neutral-900 border-t border-neutral-800 z-50 h-24"
     style="transform: translateY(100%)"
@@ -174,12 +175,25 @@ const {
 
 const playerRef = ref<HTMLDivElement | null>(null)
 const audioEl = ref<HTMLAudioElement | null>(null)
+const hasEverHadTrack = ref(false)
 
 // Set audio element reference
 onMounted(async () => {
   if (audioEl.value) {
     audioElement.value = audioEl.value
     await loadState()
+  }
+  
+  // Check if there's a track from localStorage
+  if (currentTrack.value) {
+    hasEverHadTrack.value = true
+  }
+})
+
+// Track when a track is first loaded
+watch(currentTrack, (newTrack) => {
+  if (newTrack && !hasEverHadTrack.value) {
+    hasEverHadTrack.value = true
   }
 })
 

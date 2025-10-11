@@ -65,4 +65,12 @@
   .pending-resource .btn {
     @apply bg-amber-600 text-amber-900;
   }
+  .trackGrid {
+    @apply grid gap-4;
+    grid-template-columns: 40px 2fr 1.5fr 1fr 1.5fr 1fr 80px 100px;
+  }
+  .trackGrid-edit {
+    @apply grid gap-4;
+    grid-template-columns: 40px 2fr 1.5fr 1fr 1.5fr 1fr 80px 100px 80px;
+  }
 }
