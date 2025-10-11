@@ -7,10 +7,5 @@
 </template>
 
 <script setup lang="ts">
-  import { ref } from 'vue'
-  import { useAuth } from '~/composables/useAuth'
 
-  definePageMeta({
-    name: 'index',
-  })
 </script>

@@ -3,6 +3,7 @@
     <header class="px-2 pt-8 pb-4 border-b border-neutral-800">
       <h1 class="text-xl lg:text-3xl font-bold indent-1">Index</h1>
     </header>
+    <div class="overflow-x-scroll xl:overflow-auto">
 
     </div>
   </div>

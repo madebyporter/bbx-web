@@ -6,7 +6,6 @@
         border 
         border-neutral-800
         bg-neutral-900
-        *:p-4
         min-w-[235px]
         max-lg:fixed 
         max-lg:bottom-2 
@@ -26,10 +25,10 @@
         xl:col-start-1 
         xl:col-span-2 
         ">
-    <div class="sticky top-0">
+    <div class="sticky top-0 p-4">
       <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-12" />
     </div>
-    <div class="flex flex-col gap-16 grow overflow-auto lg:pb-[130px]">
+    <div class="flex flex-col gap-16 grow overflow-auto lg:pb-[130px] p-4">
       <div class="flex flex-col gap-4">
         <span class="nav-header">Library</span>
         <NuxtLink to="/u/madebyporter" class="nav-link" active-class="!font-bold !text-white">All Music</NuxtLink>
@@ -73,7 +72,7 @@
 
     <!-- Account UI -->
     <div
-      class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit absolute bottom-2 left-2 right-2 rounded-sm !p-0 hidden lg:flex flex-row items-center overflow-hidden">
+      class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit absolute bottom-2 left-2 right-2 rounded-sm p-2 hidden lg:flex flex-row items-center overflow-hidden">
       <div class="flex flex-row gap-0 items-center w-full">
         <template v-if="user">
           <div class="flex flex-col gap-0 justify-start items-start w-full">
