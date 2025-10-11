@@ -1,73 +1,7 @@
 <template>
   <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
-    <header class="px-2 pt-8 pb-4 border-b border-neutral-800">
-      <h1 class="text-xl lg:text-3xl font-bold indent-1">{{ profileName }}</h1>
-    </header>
-
-    <!-- Drag & Drop Upload Zone (only for own profile) -->
-    <div 
-      v-if="isOwnProfile && user"
-      class="px-2"
-    >
-      <div
-        @drop.prevent="handleDrop"
-        @dragover.prevent="isDragging = true"
-        @dragleave.prevent="isDragging = false"
-        :class="[
-          'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
-          isDragging ? 'border-blue-500 bg-blue-500/10' : 'border-neutral-700 hover:border-neutral-600'
-        ]"
-      >
-        <div class="flex flex-col items-center gap-4">
-          <svg class="w-12 h-12 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-          </svg>
-          <div>
-            <p class="text-lg font-medium">{{ isDragging ? 'Drop files here' : 'Drag & drop MP3 files here' }}</p>
-            <p class="text-sm text-neutral-500 mt-1">Maximum file size: 50MB per file</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Upload Progress -->
-      <div v-if="uploading.length > 0" class="mt-4 space-y-2">
-        <div 
-          v-for="upload in uploading" 
-          :key="upload.filename"
-          class="flex items-center gap-3 p-3 bg-neutral-800 rounded"
-        >
-          <div class="flex-1">
-            <p class="text-sm font-medium">{{ upload.filename }}</p>
-            <div class="w-full bg-neutral-700 rounded-full h-2 mt-2">
-              <div 
-                class="bg-blue-500 h-2 rounded-full transition-all"
-                :style="{ width: `${upload.progress}%` }"
-              ></div>
-            </div>
-          </div>
-          <span class="text-xs text-neutral-500">{{ upload.progress }}%</span>
-        </div>
-      </div>
-
-      <!-- Upload Errors -->
-      <div v-if="errors.length > 0" class="mt-4 space-y-2">
-        <div 
-          v-for="(error, idx) in errors" 
-          :key="idx"
-          class="flex items-center gap-2 p-3 bg-red-900/20 border border-red-800 rounded text-red-400 text-sm"
-        >
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{{ error }}</span>
-        </div>
-      </div>
-    </div>
-
     <!-- Track List -->
-    <div class="px-2">
-      <h2 class="text-lg font-semibold mb-4">Tracks</h2>
-      
+    <div class="py-2">
       <div v-if="loading" class="text-neutral-500">Loading tracks...</div>
       
       <div v-else-if="tracks.length === 0" class="text-neutral-500">
@@ -131,9 +65,6 @@ const profileName = ref('')
 const profileUserId = ref<string | null>(null)
 const tracks = ref<any[]>([])
 const loading = ref(true)
-const isDragging = ref(false)
-const uploading = ref<Array<{ filename: string; progress: number }>>([])
-const errors = ref<string[]>([])
 
 // Computed
 const isOwnProfile = computed(() => {
@@ -171,9 +102,14 @@ const fetchProfile = async () => {
 }
 
 const fetchTracks = async () => {
-  if (!supabase || !profileUserId.value) return
+  if (!supabase || !profileUserId.value) {
+    console.log('fetchTracks: Missing supabase or profileUserId', { supabase: !!supabase, profileUserId: profileUserId.value })
+    return
+  }
   
   loading.value = true
+  console.log('fetchTracks: Querying sounds for user:', profileUserId.value)
+  
   try {
     const { data, error } = await supabase
       .from('sounds')
@@ -181,109 +117,15 @@ const fetchTracks = async () => {
       .eq('user_id', profileUserId.value)
       .order('created_at', { ascending: false })
 
+    console.log('fetchTracks: Query result', { data, error, count: data?.length })
+    
     if (error) throw error
     tracks.value = data || []
   } catch (error) {
     console.error('Error fetching tracks:', error)
-    errors.value.push('Failed to load tracks')
+    alert('Failed to load tracks: ' + (error as any).message)
   } finally {
     loading.value = false
-  }
-}
-
-const getDuration = (audio: HTMLAudioElement): Promise<number> => {
-  return new Promise((resolve) => {
-    audio.addEventListener('loadedmetadata', () => {
-      resolve(audio.duration)
-    })
-    audio.addEventListener('error', () => {
-      resolve(0)
-    })
-  })
-}
-
-const handleDrop = async (event: DragEvent) => {
-  isDragging.value = false
-  errors.value = []
-
-  const files = Array.from(event.dataTransfer?.files || [])
-  const mp3Files = files.filter(file => 
-    file.type === 'audio/mpeg' || 
-    file.type === 'audio/mp3' ||
-    file.name.toLowerCase().endsWith('.mp3')
-  )
-
-  if (mp3Files.length === 0) {
-    errors.value.push('No valid MP3 files found')
-    return
-  }
-
-  if (!supabase || !user.value) {
-    errors.value.push('You must be logged in to upload files')
-    return
-  }
-
-  for (const file of mp3Files) {
-    // Check file size (50MB limit)
-    if (file.size > 50 * 1024 * 1024) {
-      errors.value.push(`${file.name}: File too large (max 50MB)`)
-      continue
-    }
-
-    const uploadItem = { filename: file.name, progress: 0 }
-    uploading.value.push(uploadItem)
-
-    try {
-      // Generate file path
-      const timestamp = Date.now()
-      const filePath = `${user.value.id}/${timestamp}-${file.name}`
-
-      // Upload to storage
-      uploadItem.progress = 25
-      const { error: uploadError } = await supabase.storage
-        .from('sounds')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        })
-
-      if (uploadError) throw uploadError
-
-      uploadItem.progress = 50
-
-      // Extract metadata
-      const audio = new Audio(URL.createObjectURL(file))
-      const duration = await getDuration(audio)
-      URL.revokeObjectURL(audio.src)
-
-      uploadItem.progress = 75
-
-      // Save to database
-      const { error: dbError } = await supabase
-        .from('sounds')
-        .insert({
-          user_id: user.value.id,
-          storage_path: filePath,
-          file_size: file.size,
-          duration: duration
-        })
-
-      if (dbError) throw dbError
-
-      uploadItem.progress = 100
-
-      // Remove from uploading list after a brief delay
-      setTimeout(() => {
-        uploading.value = uploading.value.filter(u => u !== uploadItem)
-      }, 1000)
-
-      // Refresh tracks list
-      await fetchTracks()
-    } catch (error: any) {
-      console.error('Upload error:', error)
-      errors.value.push(`${file.name}: ${error.message}`)
-      uploading.value = uploading.value.filter(u => u !== uploadItem)
-    }
   }
 }
 
@@ -312,7 +154,7 @@ const deleteTrack = async (trackId: number, storagePath: string) => {
     await fetchTracks()
   } catch (error: any) {
     console.error('Delete error:', error)
-    errors.value.push(`Failed to delete track: ${error.message}`)
+    alert(`Failed to delete track: ${error.message}`)
   }
 }
 
@@ -322,6 +164,11 @@ const formatDuration = (seconds: number | null | undefined): string => {
   const secs = Math.floor(seconds % 60)
   return `${minutes}:${secs.toString().padStart(2, '0')}`
 }
+
+// Expose fetchTracks for parent to call
+defineExpose({
+  fetchTracks
+})
 
 // Lifecycle
 onMounted(async () => {

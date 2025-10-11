@@ -158,10 +158,12 @@ const fetchUsername = async () => {
       .from('user_profiles')
       .select('username')
       .eq('id', user.value.id)
-      .single()
+      .maybeSingle()
     
     if (data && !error) {
       username.value = data.username as string
+    } else if (error) {
+      console.error('Error fetching username:', error)
     }
   } catch (error) {
     console.error('Error fetching username:', error)

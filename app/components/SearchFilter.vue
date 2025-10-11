@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-neutral-900 flex flex-col lg:flex-row gap-4 p-4 lg:pl-0">
+  <div class="bg-neutral-900 flex flex-col lg:flex-row gap-4 p-4 lg:pl-0 border-b border-neutral-800">
     <div class="grow flex relative">
       <div class="absolute z-10 top-[50%] translate-y-[-50%] px-4">
         <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -30,7 +30,7 @@
         @click="$emit('open-modal')" 
         class="btn w-full lg:w-fit"
       >
-        Submit
+        {{ buttonText }}
       </button>
     </div>
   </div>
@@ -39,6 +39,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useAuth } from '~/composables/useAuth'
+import { useRoute } from 'vue-router'
 
 const searchQuery = ref('')
 const searchInput = ref(null)
@@ -49,10 +50,22 @@ const auth = useAuth()
 const user = computed(() => auth.user.value)
 const isReady = computed(() => auth.isReady.value)
 
+// Get current route
+const route = useRoute()
+
 // Add a computed property for user state
 const hasUser = computed(() => {
   if (!isReady.value) return false
   return !!user.value
+})
+
+// Determine button text based on route
+const isUserProfilePage = computed(() => {
+  return route.path.startsWith('/u/')
+})
+
+const buttonText = computed(() => {
+  return isUserProfilePage.value ? 'Upload' : 'Submit'
 })
 
 onMounted(() => {

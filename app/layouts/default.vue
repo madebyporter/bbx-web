@@ -51,10 +51,22 @@
     <!-- Manage Submissions Drawer -->
     <ManageSubmissions v-model:show="showAdminModal" :canEdit="isAdmin" />
 
-    <!-- Resource Modal -->
-    <SubmitResource :key="modalKey" v-model:show="showModal" :edit-mode="!!editingResource"
-      :resource-to-edit="editingResource" @close="closeModal" @resource-added="refreshDatabase"
-      @resource-updated="refreshDatabase" />
+    <!-- Conditional Modal: SubmitResource or UploadMusic -->
+    <SubmitResource 
+      v-if="!isUserProfilePage"
+      :key="modalKey" 
+      v-model:show="showModal" 
+      :edit-mode="!!editingResource"
+      :resource-to-edit="editingResource" 
+      @close="closeModal" 
+      @resource-added="refreshDatabase"
+      @resource-updated="refreshDatabase" 
+    />
+    <UploadMusic 
+      v-else
+      v-model:show="showModal"
+      @music-uploaded="refreshDatabase"
+    />
 
     <!-- Filter Modal -->
     <FilterSort v-model:show="showFilterSort" :initial-sort="currentSort" :initial-filters="currentFilters"
@@ -66,7 +78,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, provide } from 'vue'
+import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
+import { useRoute } from 'vue-router'
 import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
 
@@ -135,6 +148,12 @@ interface Resource {
 const auth = useAuth()
 const { user, isAdmin } = auth
 const isInitialized = ref(false)
+const route = useRoute()
+
+// Determine which modal to show based on route
+const isUserProfilePage = computed(() => {
+  return route.path.startsWith('/u/')
+})
 
 // Auth state
 const showAuthModal = ref(false)
@@ -218,8 +237,13 @@ const closeModal = () => {
 }
 
 const refreshDatabase = () => {
-  // Just refresh the database, don't close the modal
-  if (databaseRef.value?.fetchResources) {
+  // For user profile pages, reload the page to refresh tracks
+  if (isUserProfilePage.value) {
+    console.log('Layout: Reloading page to refresh tracks')
+    window.location.reload()
+  }
+  // For resource pages, refresh database grid
+  else if (databaseRef.value?.fetchResources) {
     console.log('Layout: Found database component, calling fetchResources')
     databaseRef.value.fetchResources()
   } else {
