@@ -16,7 +16,7 @@
           <span v-if="track.track_group_name" class="ml-2">
             | Group: 
             <NuxtLink 
-              :to="`/u/${username}/track/${track.track_group_name}`"
+              :to="`/u/${username}/g/${track.track_group_name}`"
               class="text-blue-400 hover:underline"
             >
               {{ track.track_group_name }}
@@ -65,7 +65,7 @@
           <NuxtLink 
             v-for="otherTrack in groupTracks.filter(t => t.id !== track.id)" 
             :key="otherTrack.id"
-            :to="`/u/${username}/${generateTrackSlug(otherTrack)}`"
+            :to="`/u/${username}/t/${generateTrackSlug(otherTrack)}`"
             class="block p-3 bg-neutral-800/30 hover:bg-neutral-800/50 rounded transition-colors"
           >
             <div class="font-medium">{{ otherTrack.title }}</div>
@@ -107,9 +107,13 @@ const fetchTrack = async () => {
   username.value = usernameParam
   
   // Extract track ID from slug (format: "slug-123")
-  const trackId = parseInt(trackSlugParam.split('-').pop() || '0')
+  const trackIdMatch = trackSlugParam.match(/-(\d+)$/)
+  const trackId = trackIdMatch ? parseInt(trackIdMatch[1]) : null
   
-  if (!supabase || !trackId) return
+  if (!supabase || !trackId) {
+    loading.value = false
+    return
+  }
   
   loading.value = true
   

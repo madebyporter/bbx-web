@@ -49,12 +49,12 @@
           </button>
         </div>
         <div>
-          <NuxtLink 
-            :to="`/u/${username}/${generateTrackSlug(track)}`"
-            class="hover:text-white transition-colors hover:underline"
-          >
-            {{ track.title || 'Untitled' }}
-          </NuxtLink>
+            <NuxtLink 
+              :to="`/u/${username}/t/${generateTrackSlug(track)}`"
+              class="hover:text-white transition-colors hover:underline"
+            >
+              {{ track.title || 'Untitled' }}
+            </NuxtLink>
         </div>
         <div class="text-neutral-400">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>

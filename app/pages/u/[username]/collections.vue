@@ -41,7 +41,7 @@
             >
               <td class="py-3 pr-4">
                 <NuxtLink 
-                  :to="`/u/${username}/${collection.slug}`"
+                  :to="`/u/${username}/c/${collection.slug}`"
                   class="text-amber-400 hover:text-amber-300"
                 >
                   {{ collection.name }}

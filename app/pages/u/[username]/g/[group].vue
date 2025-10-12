@@ -171,7 +171,7 @@ const saveGroupName = async () => {
     if (error) throw error
     
     // Navigate to new group URL
-    router.push(`/u/${username.value}/track/${newGroupName.value}`)
+    router.push(`/u/${username.value}/g/${newGroupName.value}`)
     
   } catch (error) {
     console.error('Error renaming group:', error)

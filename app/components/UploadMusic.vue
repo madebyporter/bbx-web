@@ -296,6 +296,7 @@ const { addTrackToQueue, queueSourceId } = usePlayer()
 const isDragging = ref(false)
 const selectedFiles = ref<SelectedFile[]>([])
 const isUploading = ref(false)
+const userDisplayName = ref<string>('')
 const showSuccessMessage = ref(false)
 const uploadedCount = ref(0)
 const collections = ref<Collection[]>([])
@@ -376,6 +377,18 @@ onMounted(async () => {
   if (!supabase || !user.value) return
   
   try {
+    // Fetch user's display name for default artist
+    const { data: profileData } = await supabase
+      .from('user_profiles')
+      .select('display_name')
+      .eq('id', user.value.id)
+      .single()
+    
+    if (profileData?.display_name) {
+      userDisplayName.value = profileData.display_name
+    }
+    
+    // Fetch collections
     const { data, error } = await supabase
       .from('collections')
       .select('id, name, slug')
@@ -385,8 +398,8 @@ onMounted(async () => {
     if (error) throw error
     collections.value = data || []
   } catch (error) {
-    console.error('Error fetching collections:', error)
-    // Don't block upload if collections fail to load
+    console.error('Error fetching data:', error)
+    // Don't block upload if fetch fails
     collections.value = []
   }
 })
@@ -557,6 +570,12 @@ const processFiles = async (files: File[]) => {
     
     console.log(`📝 Parsed filename "${file.name}":`, parsedData)
     
+    // Extract MP3 metadata (ID3 tags)
+    const { extractMP3Metadata } = await import('~/utils/mp3Metadata')
+    const mp3Meta = await extractMP3Metadata(file)
+    
+    console.log(`🎵 Extracted MP3 metadata:`, mp3Meta)
+    
     // Try to find similar track and copy metadata (includes duplicate detection)
     const prefillData = await findSimilarTrackMetadata(parsedData.title, duration)
     
@@ -566,19 +585,33 @@ const processFiles = async (files: File[]) => {
       warningMessage = `⚠️ Possible duplicate of existing track "${prefillData.duplicateTrack.title}"`
     }
     
-    // Merge parsed filename data with prefill data from similar tracks
-    // Priority: Similar track metadata > Parsed filename metadata > Defaults
+    // Merge all metadata sources
+    // Priority: Similar track > MP3 ID3 tags > Filename parsing > User's display name > Empty
     selectedFiles.value.push({
       file,
       metadata: {
-        title: parsedData.title, // Always use cleaned title from filename
-        artist: prefillData?.artist || parsedData.artist || '',
+        // Title: Always use cleaned filename (most descriptive)
+        title: parsedData.title,
+        
+        // Artist: Similar track > MP3 tags > Filename > User's display name > Empty
+        artist: prefillData?.artist || mp3Meta?.artist || parsedData.artist || userDisplayName.value || '',
+        
+        // Version: Similar track > Filename > Default
         version: prefillData?.version || parsedData.version || 'v1.0',
+        
         collection_name: '', // Keep for backwards compatibility but not used
-        genre: prefillData?.genre || '',
+        
+        // Genre: Similar track > MP3 tags > Empty
+        genre: prefillData?.genre || mp3Meta?.genre || '',
+        
+        // Mood: Similar track only
         mood: prefillData?.mood || '',
+        
+        // BPM: Similar track > Filename > Null
         bpm: prefillData?.bpm || parsedData.bpm || null,
-        year: prefillData?.year || null
+        
+        // Year: Similar track > MP3 tags > Null
+        year: prefillData?.year || mp3Meta?.year || null
       },
       selectedCollectionIds: prefillData?.collectionIds || [],
       duration,

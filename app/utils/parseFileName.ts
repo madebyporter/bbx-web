@@ -129,10 +129,17 @@ export function extractArtist(filename: string): string | null {
     return part1
   }
   
-  // If second part has no numbers and first has numbers, second might be artist
-  // Example: "Track 01 - Madeon" → "Madeon"
-  // But only if first part looks like a track number
-  if (part1HasNumbers && !part2HasNumbers && /^(track|song|demo)?\s*\d+$/i.test(part1) && part2.length < 40) {
+  // If first part looks like a track number and second part has no numbers, second is artist
+  // Example: "01 - Madeon" → "Madeon"
+  // Track numbers: 01, 001, 1, Track 01, etc. (always < 60, since BPM doesn't go that low)
+  const isTrackNumber = (str: string) => {
+    const trackMatch = str.match(/^(track|song|demo)?\s*(\d+)$/i)
+    if (!trackMatch) return false
+    const num = parseInt(trackMatch[2])
+    return num < 60 // Track numbers are typically 1-50, BPM is typically 60-200
+  }
+  
+  if (isTrackNumber(part1) && !part2HasNumbers && part2.length < 40) {
     return part2
   }
   
