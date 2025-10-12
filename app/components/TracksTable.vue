@@ -48,7 +48,7 @@
             </svg>
           </button>
         </div>
-        <div>
+        <div class="overflow-hidden truncate">
             <NuxtLink 
               :to="`/u/${username}/t/${generateTrackSlug(track)}`"
               class="hover:text-white transition-colors hover:underline"
