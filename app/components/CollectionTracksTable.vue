@@ -60,7 +60,17 @@
         </div>
         <div class="text-neutral-400">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
-        <div class="text-neutral-400">{{ track.collection_names || '-' }}</div>
+        <div class="text-neutral-400 overflow-hidden truncate">
+          <template v-if="track.collections && track.collections.length > 0">
+            <NuxtLink
+              v-for="(collection, idx) in track.collections"
+              :key="collection.slug"
+              :to="`/u/${username}/c/${collection.slug}`"
+              class="hover:text-white hover:underline transition-colors"
+            >{{ collection.name }}<span v-if="idx < track.collections.length - 1">, </span></NuxtLink>
+          </template>
+          <template v-else>-</template>
+        </div>
         <div class="text-neutral-400">{{ track.genre || '-' }}</div>
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
         <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>

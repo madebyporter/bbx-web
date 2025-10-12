@@ -214,7 +214,7 @@ const fetchTracks = async () => {
         junction_sound_id: item.sound_id
       }))
     
-    // Fetch collection names for each track
+    // Fetch collection names and slugs for each track
     const tracksWithCollections = await Promise.all(soundsListWithHidden.map(async (track: any) => {
       // Get collection IDs for this track
       const { data: junctionData } = await supabase
@@ -227,23 +227,19 @@ const fetchTracks = async () => {
       if (collectionIds.length === 0) {
         return {
           ...track,
-          collection_names: '-'
+          collections: []
         }
       }
       
-      // Get collection names
+      // Get collection names and slugs
       const { data: collectionData } = await supabase
         .from('collections')
-        .select('name')
+        .select('name, slug')
         .in('id', collectionIds)
-      
-      const collectionNames = (collectionData || [])
-        .map((item: any) => item.name)
-        .join(', ')
       
       return {
         ...track,
-        collection_names: collectionNames || '-'
+        collections: collectionData || []
       }
     }))
     
