@@ -64,6 +64,18 @@
               />
             </div>
             <div class="col-span-2">
+              <label class="text-sm text-neutral-400">Track Group</label>
+              <input
+                v-model="metadata.track_group_name"
+                type="text"
+                class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                placeholder="e.g., art-dealer-dark"
+              />
+              <p class="text-xs text-neutral-500 mt-1">
+                Groups related tracks/versions together. Changes affect this track only.
+              </p>
+            </div>
+            <div class="col-span-2">
               <label class="text-sm text-neutral-400">Collections (optional)</label>
               <select 
                 multiple
@@ -193,6 +205,7 @@ interface TrackMetadata {
   title: string
   artist: string
   version: string
+  track_group_name: string
   collection_name: string
   genre: string
   mood: string
@@ -381,6 +394,7 @@ watch(() => props.trackToEdit, async (newTrack) => {
       title: newTrack.title || '',
       artist: newTrack.artist || '',
       version: newTrack.version || 'v1.0',
+      track_group_name: newTrack.track_group_name || '',
       collection_name: '', // Not used anymore, kept for backwards compatibility
       genre: newTrack.genre || '',
       mood: moodString,
@@ -422,6 +436,7 @@ const onSubmit = async () => {
         title: metadata.value.title || null,
         artist: metadata.value.artist || null,
         version: metadata.value.version || 'v1.0',
+        track_group_name: metadata.value.track_group_name || null,
         genre: metadata.value.genre || null,
         mood: moodArray,
         bpm: metadata.value.bpm,

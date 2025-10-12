@@ -218,8 +218,11 @@
                 <span v-if="file.duration">{{ formatDuration(file.duration) }}</span>
               </div>
 
-              <!-- Error Message -->
-              <div v-if="file.error" class="mt-2 text-xs text-red-500">
+              <!-- Error/Warning Message -->
+              <div v-if="file.error" :class="[
+                'mt-2 text-xs',
+                file.error.startsWith('⚠️') ? 'text-amber-500' : 'text-red-500'
+              ]">
                 {{ file.error }}
               </div>
             </div>
@@ -251,6 +254,7 @@ import { useAuth } from '~/composables/useAuth'
 import { usePlayer } from '~/composables/usePlayer'
 import MasterDrawer from './MasterDrawer.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
+import { findOrCreateTrackGroup } from '~/utils/trackGroups'
 
 interface Props {
   show: boolean
@@ -387,6 +391,111 @@ onMounted(async () => {
   }
 })
 
+const findSimilarTrackMetadata = async (title: string, duration: number | null) => {
+  if (!supabase || !user.value) return null
+  
+  try {
+    // Normalize the title (strip BPM/version)
+    const { normalizeTitle, similarityRatio } = await import('~/utils/trackGroups')
+    const normalized = normalizeTitle(title)
+    
+    // Get all user's tracks
+    const { data: userTracks } = await supabase
+      .from('sounds')
+      .select('*')
+      .eq('user_id', user.value.id)
+      .order('created_at', { ascending: false }) // Most recent first
+    
+    if (!userTracks || userTracks.length === 0) return null
+    
+    // Check for exact duplicates first (same title)
+    const exactMatch = userTracks.find(track => 
+      track.title && track.title.toLowerCase() === title.toLowerCase()
+    )
+    
+    if (exactMatch) {
+      // Check if duration is also similar (within 2 seconds)
+      const isDurationSimilar = duration && exactMatch.duration && 
+        Math.abs(duration - exactMatch.duration) < 2
+      
+      if (isDurationSimilar) {
+        console.warn(`⚠️  POTENTIAL DUPLICATE: "${title}"`)
+        console.warn(`   Existing track: "${exactMatch.title}" (${exactMatch.duration}s)`)
+        console.warn(`   New upload: "${title}" (${duration}s)`)
+        
+        return {
+          isDuplicate: true,
+          duplicateTrack: exactMatch,
+          artist: exactMatch.artist || '',
+          genre: exactMatch.genre || '',
+          mood: Array.isArray(exactMatch.mood) ? exactMatch.mood.join(', ') : (exactMatch.mood || ''),
+          bpm: exactMatch.bpm || null,
+          year: exactMatch.year || null,
+          version: exactMatch.version || 'v1.0',
+          collectionIds: []
+        }
+      }
+    }
+    
+    // Find similar tracks (85% similarity threshold)
+    let bestMatch: any = null
+    let bestRatio = 0
+    
+    for (const track of userTracks) {
+      if (!track.title) continue
+      
+      const trackNormalized = normalizeTitle(track.title)
+      const ratio = similarityRatio(normalized, trackNormalized)
+      
+      if (ratio >= 0.85 && ratio > bestRatio) {
+        bestMatch = track
+        bestRatio = ratio
+      }
+    }
+    
+    if (!bestMatch) return null
+    
+    console.log(`📋 Found similar track: "${bestMatch.title}" (${Math.round(bestRatio * 100)}% match)`)
+    console.log(`   Copying metadata: artist, genre, BPM, year, mood, collections`)
+    
+    // Get collections for this track
+    const { data: junctionData } = await supabase
+      .from('collections_sounds')
+      .select('collection_id')
+      .eq('sound_id', bestMatch.id)
+    
+    const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
+    
+    // Format mood (array to comma-separated string)
+    const moodString = Array.isArray(bestMatch.mood) 
+      ? bestMatch.mood.join(', ') 
+      : (bestMatch.mood || '')
+    
+    // Suggest next version number
+    let nextVersion = 'v1.0'
+    if (bestMatch.version) {
+      const versionNum = parseFloat(bestMatch.version.replace('v', ''))
+      if (!isNaN(versionNum)) {
+        nextVersion = `v${Math.floor(versionNum) + 1}.0`
+      }
+    }
+    
+    return {
+      isDuplicate: false,
+      artist: bestMatch.artist || '',
+      genre: bestMatch.genre || '',
+      mood: moodString,
+      bpm: bestMatch.bpm || null,
+      year: bestMatch.year || null,
+      version: nextVersion,
+      collectionIds
+    }
+  } catch (error) {
+    console.error('Error finding similar track:', error)
+    return null
+  }
+}
+
 const getDuration = (audio: HTMLAudioElement): Promise<number> => {
   return new Promise((resolve) => {
     audio.addEventListener('loadedmetadata', () => {
@@ -445,22 +554,31 @@ const processFiles = async (files: File[]) => {
     // Extract title from filename (remove extension)
     const title = file.name.replace(/\.[^/.]+$/, '')
     
+    // Try to find similar track and copy metadata (includes duplicate detection)
+    const prefillData = await findSimilarTrackMetadata(title, duration)
+    
+    // If potential duplicate detected, add warning
+    let warningMessage = null
+    if (prefillData?.isDuplicate) {
+      warningMessage = `⚠️ Possible duplicate of existing track "${prefillData.duplicateTrack.title}"`
+    }
+    
     selectedFiles.value.push({
       file,
       metadata: {
         title,
-        artist: '',
-        version: 'v1.0',
+        artist: prefillData?.artist || '',
+        version: prefillData?.version || 'v1.0',
         collection_name: '', // Keep for backwards compatibility but not used
-        genre: '',
-        mood: '',
-        bpm: null,
-        year: null
+        genre: prefillData?.genre || '',
+        mood: prefillData?.mood || '',
+        bpm: prefillData?.bpm || null,
+        year: prefillData?.year || null
       },
-      selectedCollectionIds: [],
+      selectedCollectionIds: prefillData?.collectionIds || [],
       duration,
       progress: 0,
-      error: null
+      error: warningMessage // Will show as warning in yellow
     })
   }
 }
@@ -515,6 +633,13 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       ? fileData.metadata.mood.split(',').map(m => m.trim()).filter(m => m)
       : null
     
+    // Generate track group name using auto-detection
+    const trackGroupName = await findOrCreateTrackGroup(
+      supabase,
+      user.value.id,
+      fileData.metadata.title || fileData.file.name
+    )
+    
     // Save to sounds table and get the sound_id
     const { data: soundData, error: dbError } = await supabase
       .from('sounds')
@@ -524,6 +649,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         title: fileData.metadata.title || null,
         artist: fileData.metadata.artist || null,
         version: fileData.metadata.version || 'v1.0',
+        track_group_name: trackGroupName,
         file_size: fileData.file.size,
         duration: fileData.duration,
         genre: fileData.metadata.genre || null,

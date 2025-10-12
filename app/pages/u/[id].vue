@@ -12,7 +12,8 @@
         :tracks="filteredTracks" 
         :source-id="`profile-${profileUserId}`"
         :is-own-profile="isOwnProfile" 
-        :loading="loading" 
+        :loading="loading"
+        :username="username"
         @edit-track="handleEdit" 
       />
     </div>

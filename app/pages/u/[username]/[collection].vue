@@ -16,8 +16,14 @@
 
       <!-- Tracks in Collection -->
       <div class="grow">
-        <TracksTable :tracks="filteredTracks" :source-id="`collection-${collection?.id}`" :is-own-profile="isOwnProfile"
-          :loading="tracksLoading" @edit-track="handleEdit" />
+        <TracksTable 
+          :tracks="filteredTracks" 
+          :source-id="`collection-${collection?.id}`" 
+          :is-own-profile="isOwnProfile"
+          :loading="tracksLoading"
+          :username="route.params.username as string"
+          @edit-track="handleEdit" 
+        />
       </div>
     </template>
   </div>

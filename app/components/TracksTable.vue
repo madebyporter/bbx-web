@@ -48,7 +48,14 @@
             </svg>
           </button>
         </div>
-        <div>{{ track.title || 'Untitled' }}</div>
+        <div>
+          <NuxtLink 
+            :to="`/u/${username}/${generateTrackSlug(track)}`"
+            class="hover:text-white transition-colors hover:underline"
+          >
+            {{ track.title || 'Untitled' }}
+          </NuxtLink>
+        </div>
         <div class="text-neutral-400">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
         <div class="text-neutral-400">{{ track.collection_names || '-' }}</div>
@@ -77,6 +84,7 @@ interface Props {
   sourceId: string
   isOwnProfile: boolean
   loading: boolean
+  username: string
 }
 
 const props = defineProps<Props>()
@@ -85,6 +93,18 @@ defineEmits<{
 }>()
 
 const { currentTrack, isPlaying, loadQueue, togglePlayPause } = usePlayer()
+
+const generateTrackSlug = (track: any): string => {
+  // Use title + ID as slug, fallback to just ID
+  if (track.title) {
+    const slug = track.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+    return `${slug}-${track.id}`
+  }
+  return `track-${track.id}`
+}
 
 const formatDuration = (seconds: number | null | undefined): string => {
   if (!seconds || seconds === 0) return '-'
