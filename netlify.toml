@@ -15,9 +15,4 @@
 [[redirects]]
   from = "/*"
   to = "/index.html"
-  status = 200
-
-[functions]
-  directory = "functions"
-  node_bundler = "esbuild"
-  included_files = ["package.json", "package-lock.json"] 
+  status = 200 

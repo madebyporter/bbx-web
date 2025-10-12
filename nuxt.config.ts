@@ -98,8 +98,9 @@ export default defineNuxtConfig({
     '~/plugins/google-analytics.client.ts'
   ],
 
-  // Set compatibility date
+  // Set compatibility date and Netlify preset
   nitro: {
-    compatibilityDate: '2024-04-03'
+    compatibilityDate: '2024-04-03',
+    preset: 'netlify'
   }
 })
