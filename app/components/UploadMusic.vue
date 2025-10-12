@@ -551,11 +551,14 @@ const processFiles = async (files: File[]) => {
     const duration = await getDuration(audio)
     URL.revokeObjectURL(audio.src)
     
-    // Extract title from filename (remove extension)
-    const title = file.name.replace(/\.[^/.]+$/, '')
+    // Parse metadata from filename
+    const { parseFileName } = await import('~/utils/parseFileName')
+    const parsedData = parseFileName(file.name)
+    
+    console.log(`📝 Parsed filename "${file.name}":`, parsedData)
     
     // Try to find similar track and copy metadata (includes duplicate detection)
-    const prefillData = await findSimilarTrackMetadata(title, duration)
+    const prefillData = await findSimilarTrackMetadata(parsedData.title, duration)
     
     // If potential duplicate detected, add warning
     let warningMessage = null
@@ -563,16 +566,18 @@ const processFiles = async (files: File[]) => {
       warningMessage = `⚠️ Possible duplicate of existing track "${prefillData.duplicateTrack.title}"`
     }
     
+    // Merge parsed filename data with prefill data from similar tracks
+    // Priority: Similar track metadata > Parsed filename metadata > Defaults
     selectedFiles.value.push({
       file,
       metadata: {
-        title,
-        artist: prefillData?.artist || '',
-        version: prefillData?.version || 'v1.0',
+        title: parsedData.title, // Always use cleaned title from filename
+        artist: prefillData?.artist || parsedData.artist || '',
+        version: prefillData?.version || parsedData.version || 'v1.0',
         collection_name: '', // Keep for backwards compatibility but not used
         genre: prefillData?.genre || '',
         mood: prefillData?.mood || '',
-        bpm: prefillData?.bpm || null,
+        bpm: prefillData?.bpm || parsedData.bpm || null,
         year: prefillData?.year || null
       },
       selectedCollectionIds: prefillData?.collectionIds || [],
