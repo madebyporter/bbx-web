@@ -100,7 +100,11 @@ export function usePlayer() {
 
   // Load queue and optionally start playing
   const loadQueue = async (tracks: Track[], sourceId: string, autoPlayIndex: number = 0) => {
-    if (!tracks || tracks.length === 0) return
+    console.log('loadQueue: Starting', { tracksCount: tracks?.length, sourceId, autoPlayIndex })
+    if (!tracks || tracks.length === 0) {
+      console.log('loadQueue: No tracks provided')
+      return
+    }
 
     // Store original queue
     originalQueue.value = [...tracks]
@@ -120,14 +124,21 @@ export function usePlayer() {
     }
 
     currentTrack.value = queue.value[currentIndex.value]
+    console.log('loadQueue: Current track set', { title: currentTrack.value?.title, storage_path: currentTrack.value?.storage_path })
     
     // Load the track
     if (currentTrack.value) {
+      console.log('loadQueue: Getting signed URL for', currentTrack.value.storage_path)
       const url = await getSignedUrl(currentTrack.value.storage_path)
+      console.log('loadQueue: Got signed URL', { url: url ? 'success' : 'null' })
       if (url && audioElement.value) {
+        console.log('loadQueue: Setting audio src and loading')
         audioElement.value.src = url
         audioElement.value.load()
+        console.log('loadQueue: Calling play()')
         await play()
+      } else {
+        console.error('loadQueue: Failed - url or audioElement missing', { url: !!url, audioElement: !!audioElement.value })
       }
     }
 
@@ -383,6 +394,18 @@ export function usePlayer() {
     }
   }
 
+  // Set audio element (called by Player component)
+  const setAudioElement = (el: HTMLAudioElement | null) => {
+    console.log('setAudioElement: Setting audio element', { el: !!el })
+    audioElement.value = el
+    if (el) {
+      el.volume = volume.value
+      if (isMuted.value) {
+        el.muted = true
+      }
+    }
+  }
+
   // Computed values
   const formattedCurrentTime = computed(() => formatTime(currentTime.value))
   const formattedDuration = computed(() => formatTime(duration.value))
@@ -428,6 +451,7 @@ export function usePlayer() {
     handleTrackEnd,
     updateTime,
     updateDuration,
+    setAudioElement,
     loadState,
     saveState,
     clearPlayer

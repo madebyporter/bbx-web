@@ -131,20 +131,20 @@
         </div>
       </div>
     </div>
-
-    <!-- Hidden Audio Element -->
-    <audio 
-      ref="audioEl"
-      @timeupdate="updateTime"
-      @ended="handleTrackEnd"
-      @loadedmetadata="updateDuration"
-      @error="handleAudioError"
-    />
   </div>
+
+  <!-- Hidden Audio Element - always rendered -->
+  <audio 
+    ref="audioEl"
+    @timeupdate="updateTime"
+    @ended="handleTrackEnd"
+    @loadedmetadata="updateDuration"
+    @error="handleAudioError"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
 import gsap from 'gsap'
 
@@ -156,7 +156,6 @@ const {
   isMuted,
   isShuffled,
   loopOne,
-  audioElement,
   formattedCurrentTime,
   formattedDuration,
   progress,
@@ -170,6 +169,7 @@ const {
   updateTime,
   updateDuration,
   handleTrackEnd,
+  setAudioElement,
   loadState
 } = usePlayer()
 
@@ -179,26 +179,31 @@ const hasEverHadTrack = ref(false)
 
 // Set audio element reference
 onMounted(async () => {
+  console.log('Player.vue: onMounted, audioEl.value:', !!audioEl.value)
   if (audioEl.value) {
-    audioElement.value = audioEl.value
+    setAudioElement(audioEl.value)
     await loadState()
   }
   
-  // Check if there's a track from localStorage
-  if (currentTrack.value) {
-    hasEverHadTrack.value = true
-  }
+  // Don't auto-show player just because there's state in localStorage
+  // Only show when user actively plays something in this session
 })
 
-// Track when a track is first loaded
-watch(currentTrack, (newTrack) => {
+// Clean up audio element on unmount
+onUnmounted(() => {
+  console.log('Player.vue: onUnmounted, cleaning up')
+  setAudioElement(null)
+})
+
+// Track when a track is first loaded and animate player in/out
+watch(currentTrack, async (newTrack) => {
   if (newTrack && !hasEverHadTrack.value) {
     hasEverHadTrack.value = true
+    // Wait for DOM to update with the player element
+    await nextTick()
   }
-})
 
-// Animate player in/out based on current track
-watch(currentTrack, (newTrack) => {
+  // Now animate if playerRef is available
   if (!playerRef.value) return
 
   if (newTrack) {
@@ -216,7 +221,7 @@ watch(currentTrack, (newTrack) => {
       ease: 'power2.in' 
     })
   }
-}, { immediate: true })
+})
 
 // Handle seek
 const handleSeek = (event: Event) => {

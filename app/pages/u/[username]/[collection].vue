@@ -1,33 +1,23 @@
 <template>
-  <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
-    <div v-if="loading" class="text-neutral-500">Loading collection...</div>
-    
-    <div v-else-if="!collection" class="text-neutral-500">
+  <div class="flex flex-col gap-0 text-neutral-300 grow">
+    <div v-if="loading" class="text-neutral-500 p-4">Loading collection...</div>
+
+    <div v-else-if="!collection" class="text-neutral-500 p-4">
       Collection not found.
     </div>
 
     <template v-else>
       <!-- Collection Header -->
-      <div class="py-4">
-        <h1 class="text-3xl font-bold mb-2">{{ collection.name }}</h1>
-        <p v-if="collection.description" class="text-neutral-400 mb-4">
-          {{ collection.description }}
-        </p>
-        <p class="text-sm text-neutral-500">
-          {{ filteredTracks.length }} {{ filteredTracks.length === 1 ? 'track' : 'tracks' }}
-        </p>
-      </div>
+      <LibraryHeader 
+        :title="collection.name" 
+        :description="collection.description"
+        :count="filteredTracks.length" 
+      />
 
       <!-- Tracks in Collection -->
-      <div>
-        <h2 class="text-xl font-semibold mb-4">Tracks</h2>
-        <TracksTable 
-          :tracks="filteredTracks"
-          :source-id="`collection-${collection?.id}`"
-          :is-own-profile="isOwnProfile"
-          :loading="tracksLoading"
-          @edit-track="handleEdit"
-        />
+      <div class="grow">
+        <TracksTable :tracks="filteredTracks" :source-id="`collection-${collection?.id}`" :is-own-profile="isOwnProfile"
+          :loading="tracksLoading" @edit-track="handleEdit" />
       </div>
     </template>
   </div>
@@ -38,6 +28,7 @@ import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
+import LibraryHeader from '~/components/LibraryHeader.vue'
 import TracksTable from '~/components/TracksTable.vue'
 
 const route = useRoute()

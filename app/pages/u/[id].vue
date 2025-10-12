@@ -1,14 +1,13 @@
 <template>
-  <div class="col-span-full max-w-full lg:max-w-none flex flex-col gap-0 text-neutral-300">
+  <div class="flex flex-col gap-0 text-neutral-300 grow">
     <!-- Profile Header -->
-    <div class="flex flex-row justify-between items-center gap-4 p-4 border-b border-neutral-800">
-      <h1 class="text-3xl font-bold">{{ profileName }}</h1>
-      <p class="text-sm text-neutral-500">
-        {{ filteredTracks.length }} {{ filteredTracks.length === 1 ? 'track' : 'tracks' }}
-      </p>
-    </div>
+    <LibraryHeader 
+      :title="profileName" 
+      :count="filteredTracks.length" 
+    />
+    
     <!-- Tracks Section -->
-    <div>
+    <div class="grow">
       <TracksTable 
         :tracks="filteredTracks" 
         :source-id="`profile-${profileUserId}`"
@@ -25,6 +24,7 @@ import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
+import LibraryHeader from '~/components/LibraryHeader.vue'
 import TracksTable from '~/components/TracksTable.vue'
 
 const route = useRoute()
