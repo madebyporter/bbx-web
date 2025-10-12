@@ -122,7 +122,7 @@ const fetchGroupTracks = async () => {
     
     if (tracksError) throw tracksError
     
-    // Fetch collection names for each track
+    // Fetch collection names and slugs for each track
     const tracksWithCollections = await Promise.all((tracksData || []).map(async (track: any) => {
       const { data: junctionData } = await supabase
         .from('collections_sounds')
@@ -132,17 +132,15 @@ const fetchGroupTracks = async () => {
       const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
       
       if (collectionIds.length === 0) {
-        return { ...track, collection_names: '-' }
+        return { ...track, collections: [] }
       }
       
       const { data: collectionData } = await supabase
         .from('collections')
-        .select('name')
+        .select('name, slug')
         .in('id', collectionIds)
       
-      const collectionNames = (collectionData || []).map((item: any) => item.name).join(', ')
-      
-      return { ...track, collection_names: collectionNames || '-' }
+      return { ...track, collections: collectionData || [] }
     }))
     
     tracks.value = tracksWithCollections
