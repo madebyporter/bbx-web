@@ -46,7 +46,18 @@
             <div><span class="text-neutral-500">BPM:</span> {{ track.bpm || '-' }}</div>
             <div><span class="text-neutral-500">Year:</span> {{ track.year || '-' }}</div>
             <div><span class="text-neutral-500">Mood:</span> {{ track.mood?.join(', ') || '-' }}</div>
-            <div><span class="text-neutral-500">Collections:</span> {{ collectionNames }}</div>
+            <div>
+              <span class="text-neutral-500">Collections:</span> 
+              <span v-if="collections.length === 0">-</span>
+              <span v-else>
+                <NuxtLink
+                  v-for="(collection, index) in collections"
+                  :key="collection.id"
+                  :to="`/u/${username}/c/${collection.slug}`"
+                  class="text-amber-400 hover:text-amber-300 hover:underline"
+                >{{ collection.name }}<span v-if="index < collections.length - 1">, </span></NuxtLink>
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -91,10 +102,10 @@ const { loadQueue, currentTrack, isPlaying } = usePlayer()
 
 const track = ref<any>(null)
 const groupTracks = ref<any[]>([])
+const collections = ref<any[]>([])
 const loading = ref(true)
 const profileUserId = ref<string | null>(null)
 const username = ref('')
-const collectionNames = ref('')
 
 const isOwnProfile = computed(() => {
   return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
@@ -147,7 +158,7 @@ const fetchTrack = async () => {
     
     track.value = trackData
     
-    // Fetch collection names
+    // Fetch collections
     const { data: junctionData } = await supabase
       .from('collections_sounds')
       .select('collection_id')
@@ -157,12 +168,13 @@ const fetchTrack = async () => {
       const collectionIds = junctionData.map((item: any) => item.collection_id)
       const { data: colData } = await supabase
         .from('collections')
-        .select('name')
+        .select('id, name, slug')
         .in('id', collectionIds)
+        .order('name')
       
-      collectionNames.value = colData?.map((c: any) => c.name).join(', ') || '-'
+      collections.value = colData || []
     } else {
-      collectionNames.value = '-'
+      collections.value = []
     }
     
     // Fetch other tracks in the same group
