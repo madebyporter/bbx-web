@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -210,8 +210,21 @@ function formatDuration(seconds: number | null | undefined): string {
   return `${minutes}:${secs.toString().padStart(2, '0')}`
 }
 
+// Listen for track update events
+const handleTrackUpdate = () => {
+  console.log('[track].vue: Received track update event, refetching track')
+  fetchTrack()
+}
+
 onMounted(async () => {
   await fetchTrack()
+  
+  // Listen for track updates
+  window.addEventListener('track-updated', handleTrackUpdate)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('track-updated', handleTrackUpdate)
 })
 </script>
 

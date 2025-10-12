@@ -75,6 +75,25 @@
                 Groups related tracks/versions together. Changes affect this track only.
               </p>
             </div>
+
+            <!-- Copy Metadata Button -->
+            <div v-if="metadata.track_group_name" class="col-span-2 border-t border-neutral-800 pt-4">
+              <button 
+                type="button"
+                @click="copyMetadataFromGroup"
+                :disabled="isCopyingMetadata"
+                class="w-full p-3 border border-amber-600 hover:bg-amber-600/10 rounded text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+                {{ isCopyingMetadata ? 'Copying...' : 'Copy Metadata from Group Versions' }}
+              </button>
+              <p class="text-xs text-neutral-500 mt-2">
+                {{ copyMetadataMessage || 'Auto-fills empty fields from the most complete version in this group' }}
+              </p>
+            </div>
+
             <div class="col-span-2">
               <label class="text-sm text-neutral-400">Collections (optional)</label>
               <select 
@@ -226,6 +245,8 @@ const drawerRef = ref<any>(null)
 const isUpdating = ref(false)
 const showSuccessMessage = ref(false)
 const error = ref<string | null>(null)
+const isCopyingMetadata = ref(false)
+const copyMetadataMessage = ref<string | null>(null)
 
 const metadata = ref<TrackMetadata>({
   title: '',
@@ -406,6 +427,112 @@ watch(() => props.trackToEdit, async (newTrack) => {
     await loadTrackCollections(newTrack.id)
   }
 }, { immediate: true })
+
+const copyMetadataFromGroup = async () => {
+  if (!supabase || !props.trackToEdit || !metadata.value.track_group_name) return
+  
+  isCopyingMetadata.value = true
+  copyMetadataMessage.value = 'Searching for versions with complete metadata...'
+  
+  try {
+    // Fetch all tracks in the same group
+    const { data: groupTracks, error: groupError } = await supabase
+      .from('sounds')
+      .select('*')
+      .eq('user_id', props.trackToEdit.user_id)
+      .eq('track_group_name', metadata.value.track_group_name)
+      .neq('id', props.trackToEdit.id) // Exclude current track
+      .order('created_at', { ascending: false }) // Latest first
+    
+    if (groupError) throw groupError
+    
+    if (!groupTracks || groupTracks.length === 0) {
+      copyMetadataMessage.value = '⚠️ No other versions found in this group'
+      setTimeout(() => { copyMetadataMessage.value = null }, 3000)
+      return
+    }
+    
+    // Find track with most complete metadata
+    let bestTrack: any = null
+    let bestScore = 0
+    
+    for (const track of groupTracks) {
+      let score = 0
+      if (track.artist) score++
+      if (track.genre) score++
+      if (track.mood && track.mood.length > 0) score++
+      if (track.bpm) score++
+      if (track.year) score++
+      
+      if (score > bestScore) {
+        bestScore = score
+        bestTrack = track
+      }
+    }
+    
+    if (!bestTrack || bestScore === 0) {
+      copyMetadataMessage.value = '⚠️ No versions with complete metadata found'
+      setTimeout(() => { copyMetadataMessage.value = null }, 3000)
+      return
+    }
+    
+    // Copy metadata from best track (only fill empty fields)
+    let copiedFields: string[] = []
+    
+    if (!metadata.value.artist && bestTrack.artist) {
+      metadata.value.artist = bestTrack.artist
+      copiedFields.push('artist')
+    }
+    if (!metadata.value.genre && bestTrack.genre) {
+      metadata.value.genre = bestTrack.genre
+      copiedFields.push('genre')
+    }
+    if (!metadata.value.mood && bestTrack.mood) {
+      const moodString = Array.isArray(bestTrack.mood) 
+        ? bestTrack.mood.join(', ') 
+        : bestTrack.mood
+      metadata.value.mood = moodString
+      copiedFields.push('mood')
+    }
+    if (!metadata.value.bpm && bestTrack.bpm) {
+      metadata.value.bpm = bestTrack.bpm
+      copiedFields.push('BPM')
+    }
+    if (!metadata.value.year && bestTrack.year) {
+      metadata.value.year = bestTrack.year
+      copiedFields.push('year')
+    }
+    
+    // Copy collections if current track has none
+    if (selectedCollectionIds.value.length === 0) {
+      const { data: junctionData } = await supabase
+        .from('collections_sounds')
+        .select('collection_id')
+        .eq('sound_id', bestTrack.id)
+      
+      if (junctionData && junctionData.length > 0) {
+        selectedCollectionIds.value = junctionData.map((item: any) => item.collection_id)
+        copiedFields.push('collections')
+      }
+    }
+    
+    if (copiedFields.length === 0) {
+      copyMetadataMessage.value = '✓ All fields already filled - nothing to copy'
+    } else {
+      copyMetadataMessage.value = `✓ Copied ${copiedFields.join(', ')} from "${bestTrack.title}" (v${bestTrack.version})`
+      console.log(`📋 Copied metadata from "${bestTrack.title}":`, copiedFields)
+    }
+    
+    setTimeout(() => { copyMetadataMessage.value = null }, 5000)
+    
+  } catch (err: any) {
+    console.error('Error copying metadata:', err)
+    copyMetadataMessage.value = '❌ Error copying metadata'
+    setTimeout(() => { copyMetadataMessage.value = null }, 3000)
+  } finally {
+    isCopyingMetadata.value = false
+  }
+}
 
 const onSubmit = async () => {
   if (!supabase || !user.value || !props.trackToEdit) {

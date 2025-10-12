@@ -62,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -189,8 +189,21 @@ const handleEdit = (track: any) => {
   window.dispatchEvent(event)
 }
 
+// Listen for track update events
+const handleTrackUpdate = () => {
+  console.log('[group].vue: Received track update event, refetching tracks')
+  fetchGroupTracks()
+}
+
 onMounted(async () => {
   await fetchGroupTracks()
+  
+  // Listen for track updates
+  window.addEventListener('track-updated', handleTrackUpdate)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('track-updated', handleTrackUpdate)
 })
 </script>
 
