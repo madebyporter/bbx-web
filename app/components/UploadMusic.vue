@@ -640,6 +640,54 @@ const formatDuration = (seconds: number | null | undefined): string => {
   return `${minutes}:${secs.toString().padStart(2, '0')}`
 }
 
+const autoHideOlderVersions = async (
+  newSoundId: number,
+  trackGroupName: string,
+  collectionIds: number[]
+) => {
+  if (!supabase || !user.value || !trackGroupName) return
+  
+  try {
+    // Find other tracks in the same group by this user
+    const { data: groupTracks } = await supabase
+      .from('sounds')
+      .select('id, version')
+      .eq('user_id', user.value.id)
+      .eq('track_group_name', trackGroupName)
+      .neq('id', newSoundId) // Exclude the newly uploaded track
+    
+    if (!groupTracks || groupTracks.length === 0) return
+    
+    // For each collection, hide older versions
+    for (const collectionId of collectionIds) {
+      // Get all tracks from this group that are in this collection
+      const { data: tracksInCollection } = await supabase
+        .from('collections_sounds')
+        .select('sound_id')
+        .eq('collection_id', collectionId)
+        .in('sound_id', groupTracks.map(t => t.id))
+      
+      if (!tracksInCollection || tracksInCollection.length === 0) continue
+      
+      // Hide all older versions in this collection
+      const soundIdsToHide = tracksInCollection.map(t => t.sound_id)
+      
+      if (soundIdsToHide.length > 0) {
+        await supabase
+          .from('collections_sounds')
+          .update({ hidden: true })
+          .eq('collection_id', collectionId)
+          .in('sound_id', soundIdsToHide)
+        
+        console.log(`✓ Auto-hid ${soundIdsToHide.length} older version(s) in collection ${collectionId}`)
+      }
+    }
+  } catch (error) {
+    console.error('Error auto-hiding older versions:', error)
+    // Don't throw - this is a nice-to-have feature
+  }
+}
+
 const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
   if (!supabase || !user.value) {
     fileData.error = 'Not authenticated'
@@ -705,7 +753,8 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
     if (fileData.selectedCollectionIds && fileData.selectedCollectionIds.length > 0) {
       const collectionsToInsert = fileData.selectedCollectionIds.map(collectionId => ({
         collection_id: collectionId,
-        sound_id: soundData.id
+        sound_id: soundData.id,
+        hidden: false // New track is visible by default
       }))
       
       const { error: junctionError } = await supabase
@@ -716,6 +765,9 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         console.error('Error adding to collections:', junctionError)
         // Don't fail the upload if collection assignment fails
       } else {
+        // Auto-hide older versions in these collections
+        await autoHideOlderVersions(soundData.id, trackGroupName, fileData.selectedCollectionIds)
+        
         // Get collection names for display
         const collectionNamesData = collections.value
           .filter(c => fileData.selectedCollectionIds.includes(c.id))

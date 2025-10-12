@@ -98,6 +98,53 @@ export function usePlayer() {
     return shuffled
   }
 
+  // Update queue without playing (for silent queue updates)
+  const updateQueue = (tracks: Track[], sourceId: string) => {
+    console.log('updateQueue: Updating queue silently', { tracksCount: tracks?.length, sourceId })
+    if (!tracks || tracks.length === 0) {
+      console.log('updateQueue: No tracks provided')
+      return
+    }
+
+    // Store original queue
+    originalQueue.value = [...tracks]
+    queueSourceId.value = sourceId
+
+    // Find the current track in the new queue
+    const currentTrackId = currentTrack.value?.id
+    let newIndex = 0
+    
+    if (currentTrackId) {
+      const foundIndex = tracks.findIndex(t => t.id === currentTrackId)
+      if (foundIndex !== -1) {
+        newIndex = foundIndex
+      } else {
+        // Current track is no longer in the queue, reset to first track but don't play
+        console.log('updateQueue: Current track not in new queue')
+        currentIndex.value = 0
+        currentTrack.value = tracks[0] || null
+        queue.value = [...tracks]
+        saveState()
+        return
+      }
+    }
+
+    // Apply shuffle if enabled
+    if (isShuffled.value) {
+      const trackToKeep = tracks[newIndex]
+      const otherTracks = tracks.filter((_, i) => i !== newIndex)
+      const shuffledOthers = shuffleArray(otherTracks)
+      queue.value = [trackToKeep, ...shuffledOthers]
+      currentIndex.value = 0
+    } else {
+      queue.value = [...tracks]
+      currentIndex.value = newIndex
+    }
+
+    console.log('updateQueue: Queue updated', { newQueueLength: queue.value.length, currentIndex: currentIndex.value })
+    saveState()
+  }
+
   // Load queue and optionally start playing
   const loadQueue = async (tracks: Track[], sourceId: string, autoPlayIndex: number = 0) => {
     console.log('loadQueue: Starting', { tracksCount: tracks?.length, sourceId, autoPlayIndex })
@@ -436,6 +483,7 @@ export function usePlayer() {
     
     // Methods
     loadQueue,
+    updateQueue,
     play,
     pause,
     togglePlayPause,

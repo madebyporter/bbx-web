@@ -353,6 +353,54 @@ const createCollection = async () => {
   }
 }
 
+const autoHideOlderVersions = async (
+  trackId: number,
+  trackGroupName: string,
+  collectionIds: number[]
+) => {
+  if (!supabase || !user.value || !trackGroupName) return
+  
+  try {
+    // Find other tracks in the same group by this user
+    const { data: groupTracks } = await supabase
+      .from('sounds')
+      .select('id, version')
+      .eq('user_id', user.value.id)
+      .eq('track_group_name', trackGroupName)
+      .neq('id', trackId) // Exclude the current track
+    
+    if (!groupTracks || groupTracks.length === 0) return
+    
+    // For each collection, hide older versions
+    for (const collectionId of collectionIds) {
+      // Get all tracks from this group that are in this collection
+      const { data: tracksInCollection } = await supabase
+        .from('collections_sounds')
+        .select('sound_id')
+        .eq('collection_id', collectionId)
+        .in('sound_id', groupTracks.map(t => t.id))
+      
+      if (!tracksInCollection || tracksInCollection.length === 0) continue
+      
+      // Hide all older versions in this collection
+      const soundIdsToHide = tracksInCollection.map(t => t.sound_id)
+      
+      if (soundIdsToHide.length > 0) {
+        await supabase
+          .from('collections_sounds')
+          .update({ hidden: true })
+          .eq('collection_id', collectionId)
+          .in('sound_id', soundIdsToHide)
+        
+        console.log(`✓ Auto-hid ${soundIdsToHide.length} older version(s) in collection ${collectionId}`)
+      }
+    }
+  } catch (error) {
+    console.error('Error auto-hiding older versions:', error)
+    // Don't throw - this is a nice-to-have feature
+  }
+}
+
 const syncCollections = async (trackId: number) => {
   if (!supabase) return
   
@@ -384,7 +432,8 @@ const syncCollections = async (trackId: number) => {
     if (toAdd.length > 0) {
       const collectionsToInsert = toAdd.map(collectionId => ({
         collection_id: collectionId,
-        sound_id: trackId
+        sound_id: trackId,
+        hidden: false // New addition is visible by default
       }))
       
       const { error: insertError } = await supabase
@@ -392,6 +441,11 @@ const syncCollections = async (trackId: number) => {
         .insert(collectionsToInsert)
       
       if (insertError) throw insertError
+      
+      // Auto-hide older versions in the newly added collections
+      if (props.trackToEdit?.track_group_name) {
+        await autoHideOlderVersions(trackId, props.trackToEdit.track_group_name, toAdd)
+      }
     }
   } catch (err) {
     console.error('Error syncing collections:', err)
