@@ -6,7 +6,7 @@
       {{ isOwnProfile ? 'No tracks uploaded yet.' : 'No tracks available.' }}
     </div>
 
-    <div v-else class="w-fit">
+    <div v-else class="w-fit lg:w-full">
       <!-- Header -->
       <div 
         :class="[
