@@ -16,7 +16,7 @@
           <!-- Playback Controls -->
           <div class="flex items-center justify-center gap-4">
             <button @click="playPrevious" :disabled="!currentTrack"
-              class="text-neutral-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              class="text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="Previous">
               <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
@@ -24,7 +24,7 @@
             </button>
 
             <button @click="togglePlayPause" :disabled="!currentTrack"
-              class="w-10 h-10 flex items-center justify-center bg-white rounded-full text-black hover:scale-105 disabled:opacity-30 disabled:cursor-not-allowed transition-transform"
+              class="w-10 h-10 flex items-center justify-center bg-white hover:bg-neutral-100 rounded-full text-black hover:scale-105 disabled:opacity-30 disabled:cursor-not-allowed transition-transform cursor-pointer"
               title="Play/Pause">
               <svg v-if="isPlaying" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
@@ -35,7 +35,7 @@
             </button>
 
             <button @click="playNext" :disabled="!currentTrack"
-              class="text-neutral-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              class="text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="Next">
               <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M16 18h2V6h-2zm-11 0l8.5-6L5 6z" />
