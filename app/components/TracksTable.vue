@@ -1,12 +1,12 @@
 <template>
-  <div class="py-2">
+  <div class="py-2 overflow-x-auto w-full">
     <div v-if="loading" class="text-neutral-500 p-4">Loading tracks...</div>
     
     <div v-else-if="tracks.length === 0" class="text-neutral-500 p-4">
       {{ isOwnProfile ? 'No tracks uploaded yet.' : 'No tracks available.' }}
     </div>
 
-    <div v-else>
+    <div v-else class="w-fit">
       <!-- Header -->
       <div 
         :class="[
