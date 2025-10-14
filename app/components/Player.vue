@@ -57,10 +57,10 @@
               <input type="range" :value="currentTime" :max="duration || 100" @input="handleSeek"
                 :disabled="!currentTrack" class="absolute inset-0 w-full appearance-none bg-transparent cursor-pointer disabled:cursor-not-allowed z-10 transition-transform [&::-webkit-slider-thumb]:ring-2 [&::-webkit-slider-thumb]:ring-neutral-800
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-2 
-                [&::-webkit-slider-thumb]:rounded-sm [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-115
+                [&::-webkit-slider-thumb]:rounded-sm [&::-webkit-slider-thumb]:bg-yellow-400 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-115
                 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-20
                 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-2 [&::-moz-range-thumb]:rounded-full 
-                [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer
+                [&::-moz-range-thumb]:bg-yellow-400 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer
                 [&::-moz-range-thumb]:shadow-lg" />
             </div>
             <span class="text-xs text-neutral-400 w-10">{{ formattedDuration }}</span>
