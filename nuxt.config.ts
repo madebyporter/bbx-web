@@ -12,7 +12,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/tailwind.css'],
   
   // Development
-  devtools: { enabled: true },
+  devtools: { enabled: false },
   
   // Pages configuration
   pages: true,

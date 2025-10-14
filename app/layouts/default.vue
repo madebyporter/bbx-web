@@ -1,5 +1,12 @@
 <template>
   <div v-if="isInitialized" class="flex flex-col max-h-dvh min-h-dvh">
+    <!-- Mobile Nav Backdrop -->
+    <div 
+      v-if="isMobileNavOpen" 
+      @click="handleToggleNav"
+      class="fixed inset-0 bg-black/50 z-30 lg:hidden"
+    ></div>
+
     <main class="flex flex-row justify-stretch items-stretch gap-0 transition-all duration-300 grow overflow-hidden">
       <Nav ref="navRef" @show-auth-modal="showAuthModal = true" @show-admin-modal="showAdminModal = true"
         @toggle-mobile-nav="handleMobileNavToggle" />
@@ -185,6 +192,7 @@ const currentSearchHandler = ref<((query: string) => void) | null>(null)
 
 // Navigation
 const navRef = ref<NavRef | null>(null)
+const isMobileNavOpen = ref(false)
 
 type SortDirection = 'asc' | 'desc'
 
@@ -206,7 +214,7 @@ const handleToggleNav = () => {
 }
 
 const handleMobileNavToggle = (isOpen: boolean) => {
-  // Handle mobile nav toggle if needed
+  isMobileNavOpen.value = isOpen
   console.log('Mobile nav toggled:', isOpen)
 }
 

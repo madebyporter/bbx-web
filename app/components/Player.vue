@@ -1,22 +1,23 @@
 <template>
-  <div v-if="hasEverHadTrack" ref="playerRef" class="w-full bg-neutral-900 border-t border-neutral-800 z-50 h-24"
+  <div v-if="hasEverHadTrack" ref="playerRef"
+    class="w-full bg-neutral-900 border-t border-neutral-800 z-50 h-[57px] lg:h-fit"
     style="transform: translateY(100%)">
-    <div class="w-full p-4">
-      <div class="flex items-center gap-6">
+    <div class="w-full p-2 lg:p-4">
+      <div class="flex flex-row items-center gap-6 justify-between lg:justify-start">
         <!-- Left: Track Info -->
-        <div class="flex-shrink-0 w-64">
-          <div v-if="currentTrack" class="text-sm">
+        <div class="flex-shrink-0 lg:w-64">
+          <div v-if="currentTrack" class="text-xs lg:text-sm">
             <div class="font-medium text-white truncate">{{ currentTrack.title || 'Untitled' }}</div>
             <div class="text-neutral-400 text-xs truncate">{{ currentTrack.artist || 'Unknown Artist' }}</div>
           </div>
         </div>
 
         <!-- Center: Controls + Seek Bar -->
-        <div class="flex-1 flex flex-col gap-2">
+        <div class="w-fit flex flex-col gap-2">
           <!-- Playback Controls -->
-          <div class="flex items-center justify-center gap-4">
+          <div class="flex items-center justify-center gap-1">
             <button @click="playPrevious" :disabled="!currentTrack"
-              class="text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              class="h-10 bg-neutral-800 rounded-sm p-2 px-1 text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="Previous">
               <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
@@ -24,7 +25,7 @@
             </button>
 
             <button @click="togglePlayPause" :disabled="!currentTrack"
-              class="w-10 h-10 flex items-center justify-center bg-white hover:bg-neutral-100 rounded-full text-black hover:scale-105 disabled:opacity-30 disabled:cursor-not-allowed transition-transform cursor-pointer"
+              class="w-10 h-10 flex items-center justify-center bg-white hover:bg-neutral-100 rounded-sm text-black disabled:opacity-30 disabled:cursor-not-allowed transition-transform cursor-pointer"
               title="Play/Pause">
               <svg v-if="isPlaying" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
@@ -35,7 +36,7 @@
             </button>
 
             <button @click="playNext" :disabled="!currentTrack"
-              class="text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              class="h-10 bg-neutral-800 rounded-sm p-2 px-1 text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="Next">
               <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M16 18h2V6h-2zm-11 0l8.5-6L5 6z" />
@@ -44,7 +45,7 @@
           </div>
 
           <!-- Seek Bar + Time -->
-          <div class="flex items-center gap-2">
+          <div class="hidden lg:flex items-center gap-2">
             <span class="text-xs text-neutral-400 w-10 text-right">{{ formattedCurrentTime }}</span>
             <div class="flex-1 relative h-1">
               <!-- Background track -->
@@ -67,7 +68,7 @@
         </div>
 
         <!-- Right: Loop, Shuffle, Volume -->
-        <div class="flex-shrink-0 flex items-center gap-4">
+        <div class="flex-shrink-0 items-center gap-4 hidden lg:flex">
           <button @click="toggleLoop" :class="[
               'text-neutral-400 hover:text-white transition-colors cursor-pointer',
               loopOne ? 'text-orange-400 hover:!text-orange-300' : ''
@@ -91,8 +92,7 @@
           <button @click="toggleMute" :class="[
               'text-neutral-400 hover:text-white transition-colors cursor-pointer',
               isMuted ? 'text-orange-400 hover:!text-orange-300' : ''
-            ]"
-            title=" Mute/Unmute">
+            ]" title=" Mute/Unmute">
             <svg v-if="isMuted" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path
                 d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
@@ -124,6 +124,7 @@ const {
   isMuted,
   isShuffled,
   loopOne,
+  hasEverHadTrack,
   formattedCurrentTime,
   formattedDuration,
   progress,
@@ -143,7 +144,6 @@ const {
 
 const playerRef = ref<HTMLDivElement | null>(null)
 const audioEl = ref<HTMLAudioElement | null>(null)
-const hasEverHadTrack = ref(false)
 
 // Set audio element reference
 onMounted(async () => {
@@ -165,9 +165,8 @@ onUnmounted(() => {
 
 // Track when a track is first loaded and animate player in/out
 watch(currentTrack, async (newTrack) => {
-  if (newTrack && !hasEverHadTrack.value) {
-    hasEverHadTrack.value = true
-    // Wait for DOM to update with the player element
+  // Wait for DOM to update if this is the first track
+  if (newTrack && !playerRef.value) {
     await nextTick()
   }
 

@@ -8,51 +8,14 @@
 
     <template v-else>
       <!-- Collection Header with View Toggle -->
-      <div class="flex flex-row justify-between items-center gap-4 p-4 border-b border-neutral-800">
-        <div class="flex flex-col">
-          <h1 class="text-3xl font-bold">{{ collection.name }}</h1>
-          <p v-if="collection.description" class="text-neutral-400 text-sm mt-1">
-            {{ collection.description }}
-          </p>
-        </div>
-        <div class="flex items-center gap-4">
-          <p class="text-sm text-neutral-500">
-            {{ displayedTracksCount }} {{ displayedTracksCount === 1 ? 'track' : 'tracks' }}
-          </p>
-          <div v-if="isOwnProfile" class="relative">
-            <button
-              @click="showViewMenu = !showViewMenu"
-              class="px-3 py-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded flex items-center gap-2 cursor-pointer"
-            >
-              {{ viewMode === 'final' ? 'Show Final' : 'Show All Versions' }}
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-              </svg>
-            </button>
-            <div
-              v-if="showViewMenu"
-              class="absolute right-0 mt-2 w-56 bg-neutral-800 border border-neutral-700 rounded shadow-lg z-50"
-            >
-              <button
-                @click="setViewMode('final')"
-                class="w-full px-4 py-2 text-left text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
-                :class="{ 'bg-neutral-700': viewMode === 'final' }"
-              >
-                Show Final
-                <p class="text-xs text-neutral-500 mt-1">Curated selection only</p>
-              </button>
-              <button
-                @click="setViewMode('all')"
-                class="w-full px-4 py-2 text-left text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
-                :class="{ 'bg-neutral-700': viewMode === 'all' }"
-              >
-                Show All Versions
-                <p class="text-xs text-neutral-500 mt-1">Include hidden tracks</p>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <LibraryHeader
+        :title="collection.name"
+        :description="collection.description"
+        :count="displayedTracksCount"
+        :is-own-profile="isOwnProfile"
+        v-model:show-view-menu="showViewMenu"
+        v-model:view-mode="viewMode"
+      />
 
       <!-- Tracks in Collection -->
       <div class="grow">
@@ -250,11 +213,6 @@ const fetchTracks = async () => {
   } finally {
     tracksLoading.value = false
   }
-}
-
-const setViewMode = (mode: 'final' | 'all') => {
-  viewMode.value = mode
-  showViewMenu.value = false
 }
 
 const toggleHidden = async (trackId: number, currentHiddenState: boolean) => {

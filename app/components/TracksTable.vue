@@ -1,5 +1,5 @@
 <template>
-  <div class="py-2 overflow-x-auto w-full">
+  <div class="overflow-x-auto lg:overflow-x-visible w-full">
     <div v-if="loading" class="text-neutral-500 p-4">Loading tracks...</div>
     
     <div v-else-if="tracks.length === 0" class="text-neutral-500 p-4">
@@ -10,7 +10,7 @@
       <!-- Header -->
       <div 
         :class="[
-          'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 sticky top-20 bg-neutral-900 z-40',
+          'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 lg:sticky lg:top-20 bg-neutral-900 z-40',
           isOwnProfile ? 'trackGrid-edit' : 'trackGrid'
         ]"
       >

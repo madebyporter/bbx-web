@@ -66,16 +66,15 @@
     @apply bg-amber-600 text-amber-900;
   }
   .trackGrid {
-    @apply grid gap-4 grid-cols-[40px_2fr_1.5fr_1fr_1.5fr_1fr_80px_100px];
+    @apply grid gap-4 grid-cols-[40px_150px_150px_100px_150px_150px_100px_100px] lg:grid-cols-[40px_2fr_1.5fr_1fr_1.5fr_1fr_80px_100px];
   }
   .trackGrid-edit {
-    @apply grid gap-4;
-    grid-template-columns: 40px 2fr 1.5fr 1fr 1.5fr 1fr 80px 100px 80px;
+    @apply grid gap-4 grid-cols-[40px_150px_150px_100px_150px_150px_100px_100px_50px] lg:grid-cols-[40px_2fr_1.5fr_1fr_1.5fr_1fr_80px_100px_80px];
   }
   .collectionTrackGrid {
-    @apply grid gap-4 grid-cols-[40px_2fr_1.5fr_1fr_1.5fr_1fr_80px_100px];
+    @apply grid gap-4 grid-cols-[40px_150px_150px_100px_150px_150px_100px_100px] lg:grid-cols-[40px_2fr_1.5fr_1fr_1.5fr_1fr_80px_100px];
   }
   .collectionTrackGrid-edit {
-    @apply grid gap-4 grid-cols-[40px_2fr_1.5fr_1fr_1.5fr_1fr_80px_100px_60px_80px];
+    @apply grid gap-4 grid-cols-[40px_150px_150px_100px_150px_150px_100px_100px_50px] lg:grid-cols-[40px_2fr_1.5fr_1fr_1.5fr_1fr_80px_100px_80px];
   }
 }
