@@ -1,6 +1,6 @@
 <template>
-  <div class="lg:h-20 bg-neutral-900 flex flex-col lg:flex-row gap-4 p-4 border-b border-neutral-800">
-    <div class="flex flex-row gap-4 w-full justify-between lg:w-full">
+  <div class="lg:h-20 bg-neutral-900 flex flex-col lg:flex-row gap-2 lg:gap-4 p-4 border-b border-neutral-800">
+    <div class="flex flex-row gap-2 lg:gap-4 w-full justify-between lg:w-full">
       <div class="grow flex relative">
         <div class="absolute z-10 top-[50%] translate-y-[-50%] px-4">
           <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -19,7 +19,7 @@
         </svg>
       </button>
     </div>
-    <div class="flex flex-row gap-4 w-full justify-between lg:w-auto">
+    <div class="flex flex-row gap-2 lg:gap-4 w-full justify-between lg:w-auto">
       <button @click="$emit('open-filter-modal')" class="btn w-full lg:w-fit">Filter & Sort</button>
       <button v-if="hasUser" @click="$emit('open-modal')" class="btn w-full lg:w-fit">
         {{ buttonText }}

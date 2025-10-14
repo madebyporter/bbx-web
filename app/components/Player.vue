@@ -2,22 +2,22 @@
   <div v-if="hasEverHadTrack" ref="playerRef"
     class="w-full bg-neutral-900 border-t border-neutral-800 z-50 h-[57px] lg:h-fit"
     style="transform: translateY(100%)">
-    <div class="w-full p-2 lg:p-4">
-      <div class="flex flex-row items-center gap-6 justify-between lg:justify-start">
+    <div class="w-full p-1 h-full">
+      <div class="flex flex-row items-stretch gap-1 justify-between h-full">
         <!-- Left: Track Info -->
-        <div class="flex-shrink-0 lg:w-64">
-          <div v-if="currentTrack" class="text-xs lg:text-sm">
+        <div class="flex items-center justify-start lg:bg-neutral-800/10 rounded-sm p-1 lg:min-w-48 grow lg:grow-0">
+          <div v-if="currentTrack" class="text-xs lg:text-sm p-2">
             <div class="font-medium text-white truncate">{{ currentTrack.title || 'Untitled' }}</div>
             <div class="text-neutral-400 text-xs truncate">{{ currentTrack.artist || 'Unknown Artist' }}</div>
           </div>
         </div>
 
         <!-- Center: Controls + Seek Bar -->
-        <div class="w-fit flex flex-col gap-2">
+        <div class="lg:bg-neutral-800/20 rounded-sm p-1 w-fit lg:w-full grow-0 lg:grow flex flex-col gap-1">
           <!-- Playback Controls -->
           <div class="flex items-center justify-center gap-1">
             <button @click="playPrevious" :disabled="!currentTrack"
-              class="h-10 bg-neutral-800 rounded-sm p-2 px-1 text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              class="flex justify-center items-center h-10 lg:h-8 bg-neutral-800 rounded-sm p-2 px-1 text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="Previous">
               <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
@@ -25,7 +25,7 @@
             </button>
 
             <button @click="togglePlayPause" :disabled="!currentTrack"
-              class="w-10 h-10 flex items-center justify-center bg-white hover:bg-neutral-100 rounded-sm text-black disabled:opacity-30 disabled:cursor-not-allowed transition-transform cursor-pointer"
+              class="flex justify-center items-center w-10 h-10 lg:h-8 bg-white hover:bg-neutral-100 rounded-sm text-black disabled:opacity-30 disabled:cursor-not-allowed transition-transform cursor-pointer"
               title="Play/Pause">
               <svg v-if="isPlaying" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
@@ -36,7 +36,7 @@
             </button>
 
             <button @click="playNext" :disabled="!currentTrack"
-              class="h-10 bg-neutral-800 rounded-sm p-2 px-1 text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              class="flex justify-center items-center h-10 lg:h-8 bg-neutral-800 rounded-sm p-2 px-1 text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="Next">
               <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M16 18h2V6h-2zm-11 0l8.5-6L5 6z" />
@@ -51,24 +51,24 @@
               <!-- Background track -->
               <div class="absolute inset-0 bg-neutral-700 rounded-full"></div>
               <!-- Progress bar -->
-              <div class="absolute top-0 left-0 h-full bg-white rounded-full pointer-events-none"
+              <div class="absolute top-0 left-0 h-full bg-neutral-200 rounded-full pointer-events-none"
                 :style="{ width: `${progress}%` }"></div>
               <!-- Interactive range input -->
               <input type="range" :value="currentTime" :max="duration || 100" @input="handleSeek"
-                :disabled="!currentTrack" class="absolute inset-0 w-full appearance-none bg-transparent cursor-pointer disabled:cursor-not-allowed z-10
-                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 
-                       [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer
-                       [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-20
-                       [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full 
-                       [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer
-                       [&::-moz-range-thumb]:shadow-lg" />
+                :disabled="!currentTrack" class="absolute inset-0 w-full appearance-none bg-transparent cursor-pointer disabled:cursor-not-allowed z-10 transition-transform [&::-webkit-slider-thumb]:ring-2 [&::-webkit-slider-thumb]:ring-neutral-800
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-2 
+                [&::-webkit-slider-thumb]:rounded-sm [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-115
+                [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-20
+                [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-2 [&::-moz-range-thumb]:rounded-full 
+                [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer
+                [&::-moz-range-thumb]:shadow-lg" />
             </div>
             <span class="text-xs text-neutral-400 w-10">{{ formattedDuration }}</span>
           </div>
         </div>
 
         <!-- Right: Loop, Shuffle, Volume -->
-        <div class="flex-shrink-0 items-center gap-4 hidden lg:flex">
+        <div class="hidden lg:flex justify-end lg:bg-neutral-800/10 rounded-sm p-1 lg:min-w-48 items-center gap-4">
           <button @click="toggleLoop" :class="[
               'text-neutral-400 hover:text-white transition-colors cursor-pointer',
               loopOne ? 'text-orange-400 hover:!text-orange-300' : ''
