@@ -1,14 +1,14 @@
 <template>
   <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
-    <div v-if="loading" class="text-neutral-500">Loading collections...</div>
+    <div v-if="loading" class="text-neutral-500 p-4">Loading collections...</div>
     
-    <div v-else-if="!profileUserId" class="text-neutral-500">
+    <div v-else-if="!profileUserId" class="text-neutral-500 p-4">
       User not found.
     </div>
 
     <template v-else>
       <!-- Header -->
-      <div class="py-4">
+      <div class="p-4">
         <h1 class="text-3xl font-bold mb-2">Collections</h1>
         <p class="text-neutral-400">
           {{ filteredCollections.length }} {{ filteredCollections.length === 1 ? 'collection' : 'collections' }}
@@ -28,9 +28,9 @@
         <table class="w-full text-sm">
           <thead class="border-b border-neutral-800">
             <tr class="text-left text-neutral-500">
-              <th class="pb-2 pr-4">Name</th>
-              <th class="pb-2 pr-4">Description</th>
-              <th class="pb-2 pr-4">Tracks</th>
+              <th class="p-4">Name</th>
+              <th class="p-4">Description</th>
+              <th class="p-4">Tracks</th>
             </tr>
           </thead>
           <tbody>
@@ -39,7 +39,7 @@
               :key="collection.id"
               class="border-b border-neutral-800/50 hover:bg-neutral-800/30"
             >
-              <td class="py-3 pr-4">
+              <td class="p-4">
                 <NuxtLink 
                   :to="`/u/${username}/c/${collection.slug}`"
                   class="text-amber-400 hover:text-amber-300"
@@ -47,10 +47,10 @@
                   {{ collection.name }}
                 </NuxtLink>
               </td>
-              <td class="py-3 pr-4 text-neutral-400">
+              <td class="p-4 text-neutral-400">
                 {{ collection.description || '-' }}
               </td>
-              <td class="py-3 pr-4 text-neutral-400">
+              <td class="p-4 text-neutral-400">
                 {{ collection.sound_count || 0 }}
               </td>
             </tr>
