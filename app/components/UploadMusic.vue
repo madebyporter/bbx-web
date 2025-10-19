@@ -8,44 +8,30 @@
     <div v-if="showSuccessMessage" class="h-full flex flex-col items-center justify-center text-center gap-4">
       <h2 class="text-xl">Upload successful!</h2>
       <p class="text-neutral-600">{{ uploadedCount }} track(s) uploaded to your library.</p>
-      <button 
-        @click="resetAndShowForm" 
-        class="text-amber-300 hover:text-amber-400 underline mt-4 cursor-pointer"
-      >
+      <button @click="resetAndShowForm" class="text-amber-300 hover:text-amber-400 underline mt-4 cursor-pointer">
         Upload more tracks
       </button>
     </div>
 
     <!-- Upload Form -->
     <template v-else>
-      <form class="flex flex-col gap-8 justify-between h-full" @submit.prevent="onSubmit" @click.stop>
+      <form class="flex flex-col gap-8" @submit.prevent="onSubmit" @click.stop>
         <!-- Drag & Drop Zone -->
         <fieldset class="flex flex-col gap-2">
-          <div
-            @drop.prevent="handleDrop"
-            @dragover.prevent="isDragging = true"
-            @dragleave.prevent="isDragging = false"
+          <div @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false"
             :class="[
-              'border-2 border-dashed rounded-lg p-8 text-center transition-colors min-h-[100px] flex items-center justify-center',
+              'border-2 border-dashed rounded-lg p-2 text-center transition-colors min-h-[100px] flex items-center justify-center',
               isDragging ? 'border-blue-500 bg-blue-500/10' : 'border-neutral-700 hover:border-neutral-600'
-            ]"
-          >
-            <input
-              ref="fileInput"
-              type="file"
-              accept="audio/mpeg,audio/mp3,.mp3"
-              multiple
-              class="hidden"
-              @change="handleFileSelect"
-            />
+            ]">
+            <input ref="fileInput" type="file" accept="audio/mpeg,audio/mp3,.mp3" multiple class="hidden"
+              @change="handleFileSelect" />
             <div class="flex flex-row justify-between items-center gap-4 w-full">
-              <svg class="w-12 h-12 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-              </svg>
-              <div class="grow">
-                <p class="text-lg font-medium">{{ isDragging ? 'Drop files here' : 'Drag & drop MP3 files here' }}</p>
-                <p class="text-sm text-neutral-500 mt-1">or <button type="button" @click="$refs.fileInput.click()" class="text-amber-400 hover:text-amber-300">browse</button></p>
-                <p class="text-xs text-neutral-600 mt-2">Maximum 50MB per file</p>
+
+              <div class="grow flex flex-col gap-1">
+                <p class="text-base font-medium">{{ isDragging ? 'Drop files here' : 'Drag & drop MP3 files here' }}</p>
+                <p class="text-sm text-neutral-500">or <button type="button" @click="$refs.fileInput.click()"
+                    class="text-amber-400 hover:text-amber-300 cursor-pointer">click to browse</button></p>
+                <p class="text-xs text-neutral-600">Maximum 50MB per file</p>
               </div>
             </div>
           </div>
@@ -55,46 +41,31 @@
         <!-- Selected Files List -->
         <div v-if="selectedFiles.length > 0" class="flex flex-col gap-4 h-full">
           <h3 class="font-semibold">Selected Files ({{ selectedFiles.length }})</h3>
-          <div class="space-y-3 max-h-[400px] overflow-y-auto">
-            <div 
-              v-for="(file, index) in selectedFiles" 
-              :key="index"
-              class="p-4 bg-neutral-800 rounded-lg"
-            >
-              <div class="flex items-center justify-between mb-2">
+          <div class="flex flex-col gap-4">
+            <div v-for="(file, index) in selectedFiles" :key="index" class="border border-neutral-800 bg-neutral-800 rounded-lg *:p-4">
+              <div class="flex items-center justify-between bg-neutral-900/30">
                 <span class="font-medium text-sm truncate flex-1">{{ file.file.name }}</span>
-                <button 
-                  type="button"
-                  @click="removeFile(index)"
-                  class="text-red-500 hover:text-red-400 ml-2"
-                  :disabled="isUploading"
-                >
+                <button type="button" @click="removeFile(index)" class="cursor-pointer text-red-500 hover:text-red-400 ml-2"
+                  :disabled="isUploading">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-              
+
               <!-- Upload Progress -->
-              <div v-if="file.progress > 0 && file.progress < 100" class="w-full bg-neutral-700 rounded-full h-2 mb-3">
-                <div 
-                  class="bg-blue-500 h-2 rounded-full transition-all"
-                  :style="{ width: `${file.progress}%` }"
-                ></div>
+              <div v-if="file.progress > 0 && file.progress < 100" class="w-full bg-neutral-700 rounded-full h-2">
+                <div class="bg-blue-500 h-2 rounded-full transition-all" :style="{ width: `${file.progress}%` }"></div>
               </div>
 
               <!-- Metadata Fields -->
-              <div class="flex flex-col gap-3 mt-3">
+              <div class="flex flex-col gap-3">
                 <!-- Title (full width) -->
                 <div>
                   <label class="text-xs text-neutral-400">Title <span class="text-red-500">*</span></label>
-                  <input 
-                    v-model="file.metadata.title"
-                    type="text"
-                    required
+                  <input v-model="file.metadata.title" type="text" required
                     class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                    :disabled="isUploading"
-                  />
+                    :disabled="isUploading" />
                 </div>
 
                 <!-- Group Name (full width) -->
@@ -103,123 +74,54 @@
                     Group Name
                     <span class="text-neutral-500 ml-1">(for grouping versions)</span>
                   </label>
-                  <input 
-                    v-model="file.metadata.group_name"
-                    type="text"
-                    placeholder="Auto-generated if empty"
+                  <input v-model="file.metadata.group_name" type="text" placeholder="Auto-generated if empty"
                     class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                    :disabled="isUploading"
-                  />
+                    :disabled="isUploading" />
                   <p class="text-xs text-neutral-500 mt-1">Used to group different versions of the same track</p>
                 </div>
-                
+
                 <!-- Other fields in grid -->
                 <div class="grid grid-cols-2 gap-3">
                   <div>
                     <label class="text-xs text-neutral-400">Artist</label>
-                    <input 
-                      v-model="file.metadata.artist"
-                      type="text"
+                    <input v-model="file.metadata.artist" type="text"
                       class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                      :disabled="isUploading"
-                    />
+                      :disabled="isUploading" />
                   </div>
                   <div>
                     <label class="text-xs text-neutral-400">Version</label>
-                    <input 
-                      v-model="file.metadata.version"
-                      type="text"
-                      placeholder="e.g. v1.0, v2.5"
+                    <input v-model="file.metadata.version" type="text" placeholder="e.g. v1.0, v2.5"
                       class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                      :disabled="isUploading"
-                    />
+                      :disabled="isUploading" />
                   </div>
-                <div class="col-span-2">
-                  <label class="text-xs text-neutral-400">Collections (optional)</label>
-                  <select 
-                    multiple
-                    v-model="file.selectedCollectionIds"
-                    class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 min-h-[80px]"
-                    :disabled="isUploading"
-                  >
-                    <option v-for="c in collections" :key="c.id" :value="c.id">
-                      {{ c.name }}
-                    </option>
-                  </select>
-                  <p class="text-xs text-neutral-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
-                  
-                  <button 
-                    type="button"
-                    @click="showCreateCollection = !showCreateCollection"
-                    class="text-xs text-amber-400 hover:text-amber-300 mt-2"
-                    :disabled="isUploading"
-                  >
-                    {{ showCreateCollection ? '- Cancel' : '+ Create New Collection' }}
-                  </button>
-                  
-                  <div v-if="showCreateCollection" class="mt-3 p-3 border border-neutral-700 rounded bg-neutral-900/50">
-                    <div class="flex flex-col gap-2">
-                      <input 
-                        v-model="newCollection.name"
-                        type="text"
-                        placeholder="Collection name (required)"
-                        class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                        :disabled="isUploading"
-                      />
-                      <textarea 
-                        v-model="newCollection.description"
-                        placeholder="Description (optional)"
-                        rows="2"
-                        class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                        :disabled="isUploading"
-                      />
-                      <button 
-                        type="button"
-                        @click="createCollection"
-                        class="btn-sm self-start"
-                        :disabled="isUploading || !newCollection.name.trim()"
-                      >
-                        Create & Select
-                      </button>
-                    </div>
+                  <div class="col-span-2">
+                    <label class="text-xs text-neutral-400">Collections (optional)</label>
+                    <CollectionSelect v-model="file.selectedCollectionIds" :collections="collections" size="sm"
+                      :disabled="isUploading" @create-collection="(name) => queueCollectionCreation(name, index)" />
                   </div>
-                </div>
-                <div>
-                  <label class="text-xs text-neutral-400">Genre</label>
-                  <input 
-                    v-model="file.metadata.genre"
-                    type="text"
-                    class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                    :disabled="isUploading"
-                  />
-                </div>
-                <div>
-                  <label class="text-xs text-neutral-400">BPM</label>
-                  <input 
-                    v-model.number="file.metadata.bpm"
-                    type="number"
-                    class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                    :disabled="isUploading"
-                  />
-                </div>
-                <div>
-                  <label class="text-xs text-neutral-400">Year</label>
-                  <input 
-                    v-model.number="file.metadata.year"
-                    type="number"
-                    class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                    :disabled="isUploading"
-                  />
-                </div>
+                  <div>
+                    <label class="text-xs text-neutral-400">Genre</label>
+                    <input v-model="file.metadata.genre" type="text"
+                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                      :disabled="isUploading" />
+                  </div>
+                  <div>
+                    <label class="text-xs text-neutral-400">BPM</label>
+                    <input v-model.number="file.metadata.bpm" type="number"
+                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                      :disabled="isUploading" />
+                  </div>
+                  <div>
+                    <label class="text-xs text-neutral-400">Year</label>
+                    <input v-model.number="file.metadata.year" type="number"
+                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                      :disabled="isUploading" />
+                  </div>
                   <div>
                     <label class="text-xs text-neutral-400">Mood</label>
-                    <input 
-                      v-model="file.metadata.mood"
-                      type="text"
-                      placeholder="e.g. Dark, Happy"
+                    <input v-model="file.metadata.mood" type="text" placeholder="e.g. Dark, Happy"
                       class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                      :disabled="isUploading"
-                    />
+                      :disabled="isUploading" />
                   </div>
                 </div>
               </div>
@@ -242,13 +144,11 @@
         </div>
 
         <!-- Upload Button -->
-        <button 
-          type="submit" 
-          class="btn"
-          :disabled="isUploading || selectedFiles.length === 0"
-        >
-          {{ uploadButtonText }}
-        </button>
+        <div class="sticky bottom-0 flex justify-end bg-neutral-900">
+          <button type="submit" class="btn bg-amber-300 hover:bg-amber-400 text-neutral-900 w-full" :disabled="isUploading || selectedFiles.length === 0">
+            {{ uploadButtonText }}
+          </button>
+        </div>
 
         <!-- Global Errors -->
         <div v-if="globalError" class="text-red-500 text-sm">
@@ -265,6 +165,7 @@ import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { usePlayer } from '~/composables/usePlayer'
 import MasterDrawer from './MasterDrawer.vue'
+import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
 import { findOrCreateTrackGroup } from '~/utils/trackGroups'
 
@@ -315,11 +216,7 @@ const uploadedCount = ref(0)
 const collections = ref<Collection[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const globalError = ref<string | null>(null)
-const showCreateCollection = ref(false)
-const newCollection = ref({
-  name: '',
-  description: ''
-})
+const pendingCollections = ref<Map<number, string[]>>(new Map())
 
 const errors = ref({
   files: ''
@@ -333,55 +230,16 @@ const uploadButtonText = computed(() => {
   return `Upload ${selectedFiles.value.length} track${selectedFiles.value.length !== 1 ? 's' : ''}`
 })
 
-const createCollection = async () => {
-  if (!supabase || !user.value || !newCollection.value.name.trim()) return
+const queueCollectionCreation = (name: string, fileIndex: number) => {
+  if (!name.trim()) return
   
-  try {
-    // Get existing slugs to ensure uniqueness
-    const { data: existing } = await supabase
-      .from('collections')
-      .select('slug')
-      .eq('user_id', user.value.id)
-    
-    const existingSlugs = (existing || []).map(c => c.slug)
-    const slug = generateUniqueSlug(newCollection.value.name, existingSlugs)
-    
-    // Create the collection
-    const { data, error } = await supabase
-      .from('collections')
-      .insert({
-        user_id: user.value.id,
-        name: newCollection.value.name.trim(),
-        description: newCollection.value.description.trim() || null,
-        slug
-      })
-      .select()
-      .single()
-    
-    if (error) throw error
-    
-    // Add to collections list
-    collections.value.push({
-      id: data.id,
-      name: data.name,
-      slug: data.slug
-    })
-    
-    // Auto-select the new collection for all files
-    selectedFiles.value.forEach(file => {
-      if (!file.selectedCollectionIds.includes(data.id)) {
-        file.selectedCollectionIds.push(data.id)
-      }
-    })
-    
-    // Reset form
-    newCollection.value.name = ''
-    newCollection.value.description = ''
-    showCreateCollection.value = false
-    
-  } catch (error: any) {
-    console.error('Error creating collection:', error)
-    globalError.value = 'Failed to create collection: ' + error.message
+  // Get existing pending collections for this file
+  const existing = pendingCollections.value.get(fileIndex) || []
+  
+  // Add to pending collections if not already queued
+  if (!existing.includes(name.trim())) {
+    existing.push(name.trim())
+    pendingCollections.value.set(fileIndex, existing)
   }
 }
 
@@ -837,6 +695,49 @@ const onSubmit = async () => {
   let successCount = 0
   
   try {
+    // Create pending collections first
+    for (const [fileIndex, collectionNames] of pendingCollections.value) {
+      for (const collectionName of collectionNames) {
+        // Get existing slugs to ensure uniqueness
+        const { data: existing } = await supabase
+          .from('collections')
+          .select('slug')
+          .eq('user_id', user.value.id)
+        
+        const existingSlugs = (existing || []).map(c => c.slug)
+        const slug = generateUniqueSlug(collectionName, existingSlugs)
+        
+        // Create the collection
+        const { data, error: createError } = await supabase
+          .from('collections')
+          .insert({
+            user_id: user.value.id,
+            name: collectionName,
+            description: null,
+            slug
+          })
+          .select()
+          .single()
+        
+        if (createError) throw createError
+        
+        // Add to collections list
+        collections.value.push({
+          id: data.id,
+          name: data.name,
+          slug: data.slug
+        })
+        
+        // Auto-select the new collection for this file
+        if (!selectedFiles.value[fileIndex].selectedCollectionIds.includes(data.id)) {
+          selectedFiles.value[fileIndex].selectedCollectionIds.push(data.id)
+        }
+      }
+    }
+    
+    // Clear pending collections
+    pendingCollections.value.clear()
+    
     // Upload files sequentially
     for (const fileData of selectedFiles.value) {
       const success = await uploadFile(fileData)

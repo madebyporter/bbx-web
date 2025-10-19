@@ -24,9 +24,9 @@
 
     <!-- Edit Form -->
     <template v-else>
-      <div class="flex flex-col h-full -m-8 p-8">
+      <div class="flex flex-col gap-4 justify-between grow h-full">
         <!-- Track Metadata -->
-        <div class="flex flex-col grow overflow-y-auto no-scrollbar">
+        <div class="grow h-fit">
           <div class="flex flex-col gap-4">
             <h3 class="font-semibold">Track Information</h3>
 
@@ -60,31 +60,8 @@
 
               <div class="col-span-2">
                 <label class="text-sm text-neutral-400">Collections (optional)</label>
-                <select multiple v-model="selectedCollectionIds"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 min-h-[100px]">
-                  <option v-for="c in collections" :key="c.id" :value="c.id">
-                    {{ c.name }}
-                  </option>
-                </select>
-                <p class="text-xs text-neutral-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
-
-                <button type="button" @click="showCreateCollection = !showCreateCollection"
-                  class="text-xs text-amber-400 hover:text-amber-300 mt-2">
-                  {{ showCreateCollection ? '- Cancel' : '+ Create New Collection' }}
-                </button>
-
-                <div v-if="showCreateCollection" class="mt-3 p-3 border border-neutral-700 rounded bg-neutral-900/50">
-                  <div class="flex flex-col gap-2">
-                    <input v-model="newCollection.name" type="text" placeholder="Collection name (required)"
-                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
-                    <textarea v-model="newCollection.description" placeholder="Description (optional)" rows="2"
-                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
-                    <button type="button" @click="createCollection" class="btn-sm self-start"
-                      :disabled="!newCollection.name.trim()">
-                      Create & Select
-                    </button>
-                  </div>
-                </div>
+                <CollectionSelect v-model="selectedCollectionIds" :collections="collections" size="md"
+                  @create-collection="queueCollectionCreation" />
               </div>
               <div>
                 <label class="text-sm text-neutral-400">Genre</label>
@@ -126,7 +103,8 @@
 
             <!-- Delete Button -->
             <div class="pt-4 border-t border-neutral-800">
-              <button type="button" @click="handleDelete" class="border border-red-500 hover:bg-red-500/10 rounded p-2 text-red-500 hover:text-red-400 text-sm w-full cursor-pointer">
+              <button type="button" @click="handleDelete"
+                class="border border-red-500 hover:bg-red-500/10 rounded p-2 text-red-500 hover:text-red-400 text-sm w-full cursor-pointer">
                 Delete Track
               </button>
             </div>
@@ -134,7 +112,7 @@
         </div>
 
         <!-- Update Button -->
-        <div class="flex justify-end pt-4 bg-neutral-900 flex-shrink-0 mt-4">
+        <div class="sticky bottom-0 flex justify-end bg-neutral-900">
           <button @click="onSubmit" class="btn w-full" :disabled="isUpdating">
             {{ isUpdating ? 'Updating...' : 'Update Track' }}
           </button>
@@ -154,6 +132,7 @@ import { ref, watch, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import MasterDrawer from './MasterDrawer.vue'
+import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
 
 interface Props {
@@ -205,11 +184,7 @@ const metadata = ref<TrackMetadata>({
 
 const collections = ref<Collection[]>([])
 const selectedCollectionIds = ref<number[]>([])
-const showCreateCollection = ref(false)
-const newCollection = ref({
-  name: '',
-  description: ''
-})
+const pendingCollections = ref<string[]>([])
 
 // Define functions before watch to avoid hoisting issues
 const loadTrackCollections = async (trackId: number) => {
@@ -247,53 +222,12 @@ const fetchCollections = async () => {
   }
 }
 
-const createCollection = async () => {
-  if (!supabase || !user.value || !newCollection.value.name.trim()) return
+const queueCollectionCreation = (name: string) => {
+  if (!name.trim()) return
   
-  try {
-    // Get existing slugs to ensure uniqueness
-    const { data: existing } = await supabase
-      .from('collections')
-      .select('slug')
-      .eq('user_id', user.value.id)
-    
-    const existingSlugs = (existing || []).map(c => c.slug)
-    const slug = generateUniqueSlug(newCollection.value.name, existingSlugs)
-    
-    // Create the collection
-    const { data, error } = await supabase
-      .from('collections')
-      .insert({
-        user_id: user.value.id,
-        name: newCollection.value.name.trim(),
-        description: newCollection.value.description.trim() || null,
-        slug
-      })
-      .select()
-      .single()
-    
-    if (error) throw error
-    
-    // Add to collections list
-    collections.value.push({
-      id: data.id,
-      name: data.name,
-      slug: data.slug
-    })
-    
-    // Auto-select the new collection
-    if (!selectedCollectionIds.value.includes(data.id)) {
-      selectedCollectionIds.value.push(data.id)
-    }
-    
-    // Reset form
-    newCollection.value.name = ''
-    newCollection.value.description = ''
-    showCreateCollection.value = false
-    
-  } catch (err: any) {
-    console.error('Error creating collection:', err)
-    error.value = 'Failed to create collection: ' + err.message
+  // Add to pending collections if not already queued
+  if (!pendingCollections.value.includes(name.trim())) {
+    pendingCollections.value.push(name.trim())
   }
 }
 
@@ -542,6 +476,48 @@ const onSubmit = async () => {
   error.value = null
   
   try {
+    // Create pending collections first
+    if (pendingCollections.value.length > 0) {
+      for (const collectionName of pendingCollections.value) {
+        // Get existing slugs to ensure uniqueness
+        const { data: existing } = await supabase
+          .from('collections')
+          .select('slug')
+          .eq('user_id', user.value.id)
+        
+        const existingSlugs = (existing || []).map(c => c.slug)
+        const slug = generateUniqueSlug(collectionName, existingSlugs)
+        
+        // Create the collection
+        const { data, error: createError } = await supabase
+          .from('collections')
+          .insert({
+            user_id: user.value.id,
+            name: collectionName,
+            description: null,
+            slug
+          })
+          .select()
+          .single()
+        
+        if (createError) throw createError
+        
+        // Add to collections list
+        collections.value.push({
+          id: data.id,
+          name: data.name,
+          slug: data.slug
+        })
+        
+        // Auto-select the new collection
+        if (!selectedCollectionIds.value.includes(data.id)) {
+          selectedCollectionIds.value.push(data.id)
+        }
+      }
+      
+      // Clear pending collections
+      pendingCollections.value = []
+    }
     // Parse mood (comma-separated to array)
     const moodArray = metadata.value.mood 
       ? metadata.value.mood.split(',').map(m => m.trim()).filter(m => m)
@@ -595,6 +571,7 @@ const handleClose = () => {
     drawerRef.value.animateOut()
   }
 }
+
 
 const handleDelete = async () => {
   if (!supabase || !props.trackToEdit || !confirm('Are you sure you want to delete this track?')) return

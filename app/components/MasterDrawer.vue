@@ -1,30 +1,22 @@
 <template>
   <Teleport to="body">
-    <aside 
-      v-if="show" 
-      ref="modal"
-      class="modal"
-      :style="{ transform: `translateX(${initialX}%)`, opacity: modalOpacity }"
-      @click="handleModalBackdropClick"
-    >
-      <div 
-        class="modal-content flex flex-col gap-8 justify-between h-full"
-        @click.stop
-      >
-        <div 
-          @click="handleClose" 
-          class="flex justify-center items-center border border-neutral-800 hover:border-neutral-700 p-4 w-fit rounded-md cursor-pointer fixed top-8 right-8"
-        >
-          <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-neutral-700" />
+    <aside v-if="show" ref="modal"
+      class="p-4 fixed right-2 lg:right-2 top-2 lg:top-2 bottom-2 lg:bottom-2 left-2 lg:left-auto lg:w-2/5 bg-neutral-900 ring-1 ring-neutral-800 text-neutral-400 rounded-md overflow-visible z-50"
+      :style="{ transform: `translateX(${initialX}%)`, opacity: modalOpacity }">
+      <div class="flex flex-col gap-4 justify-between h-full">
+        <div class="flex flex-row justify-between items-center">
+
+          <div class="h-[50px] flex items-center text-white font-semibold" @click.stop>
+            <slot name="header"></slot>
+          </div>
+
+          <div @click="handleClose"
+            class="flex justify-center items-center border border-neutral-800 hover:border-neutral-700 p-4 w-fit rounded-md cursor-pointer">
+            <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-neutral-700" />
+          </div>
         </div>
-        
-        <!-- Header slot -->
-        <div class="h-[50px] flex items-center text-white font-semibold" @click.stop>
-          <slot name="header"></slot>
-        </div>
-        
         <!-- Main content slot -->
-        <div class="flex flex-col gap-4 grow h-full" @click.stop>
+        <div class="grow flex flex-col gap-0 overflow-auto no-scrollbar" @click.stop>
           <slot></slot>
         </div>
       </div>
@@ -81,11 +73,6 @@ const handleClose = (e: Event) => {
   animateOut()
 }
 
-const handleModalBackdropClick = (e: Event) => {
-  if (e.target === modal.value) {
-    handleClose(e)
-  }
-}
 
 watch(() => props.show, (newVal, oldVal) => {
   if (newVal) {

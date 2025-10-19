@@ -5,7 +5,7 @@
     @apply bg-neutral-900;
   }
   .btn {
-    @apply bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-md px-4 p-2 cursor-pointer whitespace-nowrap;
+    @apply bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-md px-4 p-2 cursor-pointer whitespace-nowrap font-bold;
   }
   .db-head {
     @apply text-left font-normal text-sm px-2 py-4;
@@ -21,12 +21,6 @@
   }
   .db-cell {
     @apply px-2 py-4 align-middle text-sm truncate;
-  }
-  .modal {
-    @apply fixed right-2 lg:right-2 top-2 lg:top-2 bottom-2 lg:bottom-2 left-2 lg:left-auto lg:w-2/5 bg-neutral-900 ring-1 ring-neutral-800 text-neutral-400 rounded-md overflow-visible z-50;
-  }
-  .modal-content {
-    @apply p-8 h-full;
   }
   .nav-header {
     @apply text-neutral-400 uppercase text-xs tracking-wider;
