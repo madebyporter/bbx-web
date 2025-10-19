@@ -24,126 +24,127 @@
 
     <!-- Edit Form -->
     <template v-else>
-      <form class="flex flex-col gap-8 h-full" @submit.prevent="onSubmit" @click.stop>
+      <div class="flex flex-col h-full -m-8 p-8">
         <!-- Track Metadata -->
-        <div class="flex flex-col flex-1 min-h-0">
-          <div class="overflow-y-auto">
-            <div class="flex flex-col gap-4">
-              <h3 class="font-semibold">Track Information</h3>
+        <div class="flex flex-col grow overflow-y-auto no-scrollbar">
+          <div class="flex flex-col gap-4">
+            <h3 class="font-semibold">Track Information</h3>
 
-              <!-- Title (full width) -->
+            <!-- Title (full width) -->
+            <div class="col-span-2">
+              <label class="text-sm text-neutral-400">Title <span class="text-red-500">*</span></label>
+              <input v-model="metadata.title" type="text" required
+                class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="text-sm text-neutral-400">Artist</label>
+                <input v-model="metadata.artist" type="text"
+                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+              </div>
+              <div>
+                <label class="text-sm text-neutral-400">Version</label>
+                <input v-model="metadata.version" type="text" placeholder="e.g. v1.0, v2.5"
+                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+              </div>
               <div class="col-span-2">
-                <label class="text-sm text-neutral-400">Title <span class="text-red-500">*</span></label>
-                <input v-model="metadata.title" type="text" required
+                <label class="text-sm text-neutral-400">Track Group</label>
+                <input v-model="metadata.track_group_name" type="text"
+                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                  placeholder="e.g., art-dealer-dark" />
+                <p class="text-xs text-neutral-500 mt-1">
+                  Groups related tracks/versions together. Changes affect this track only.
+                </p>
+              </div>
+
+              <div class="col-span-2">
+                <label class="text-sm text-neutral-400">Collections (optional)</label>
+                <select multiple v-model="selectedCollectionIds"
+                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 min-h-[100px]">
+                  <option v-for="c in collections" :key="c.id" :value="c.id">
+                    {{ c.name }}
+                  </option>
+                </select>
+                <p class="text-xs text-neutral-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
+
+                <button type="button" @click="showCreateCollection = !showCreateCollection"
+                  class="text-xs text-amber-400 hover:text-amber-300 mt-2">
+                  {{ showCreateCollection ? '- Cancel' : '+ Create New Collection' }}
+                </button>
+
+                <div v-if="showCreateCollection" class="mt-3 p-3 border border-neutral-700 rounded bg-neutral-900/50">
+                  <div class="flex flex-col gap-2">
+                    <input v-model="newCollection.name" type="text" placeholder="Collection name (required)"
+                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                    <textarea v-model="newCollection.description" placeholder="Description (optional)" rows="2"
+                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                    <button type="button" @click="createCollection" class="btn-sm self-start"
+                      :disabled="!newCollection.name.trim()">
+                      Create & Select
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label class="text-sm text-neutral-400">Genre</label>
+                <input v-model="metadata.genre" type="text"
+                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+              </div>
+              <div>
+                <label class="text-sm text-neutral-400">BPM</label>
+                <input v-model.number="metadata.bpm" type="number"
+                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+              </div>
+              <div>
+                <label class="text-sm text-neutral-400">Year</label>
+                <input v-model.number="metadata.year" type="number"
+                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+              </div>
+              <div>
+                <label class="text-sm text-neutral-400">Mood</label>
+                <input v-model="metadata.mood" type="text" placeholder="e.g. Dark, Happy"
                   class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
               </div>
 
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="text-sm text-neutral-400">Artist</label>
-                  <input v-model="metadata.artist" type="text"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
-                </div>
-                <div>
-                  <label class="text-sm text-neutral-400">Version</label>
-                  <input v-model="metadata.version" type="text" placeholder="e.g. v1.0, v2.5"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
-                </div>
-                <div class="col-span-2">
-                  <label class="text-sm text-neutral-400">Track Group</label>
-                  <input v-model="metadata.track_group_name" type="text"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                    placeholder="e.g., art-dealer-dark" />
-                  <p class="text-xs text-neutral-500 mt-1">
-                    Groups related tracks/versions together. Changes affect this track only.
-                  </p>
-                </div>
 
-                <!-- Copy Metadata Button -->
-                <div v-if="metadata.track_group_name" class="col-span-2 border-t border-neutral-800 pt-4">
-                  <button type="button" @click="copyMetadataFromGroup" :disabled="isCopyingMetadata"
-                    class="w-full p-3 border border-amber-600 hover:bg-amber-600/10 rounded text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    {{ isCopyingMetadata ? 'Copying...' : 'Copy Metadata from Group Versions' }}
-                  </button>
-                  <p class="text-xs text-neutral-500 mt-2">
-                    {{ copyMetadataMessage || 'Auto-fills empty fields from the most complete version in this group' }}
-                  </p>
-                </div>
-
-                <div class="col-span-2">
-                  <label class="text-sm text-neutral-400">Collections (optional)</label>
-                  <select multiple v-model="selectedCollectionIds"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 min-h-[100px]">
-                    <option v-for="c in collections" :key="c.id" :value="c.id">
-                      {{ c.name }}
-                    </option>
-                  </select>
-                  <p class="text-xs text-neutral-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
-
-                  <button type="button" @click="showCreateCollection = !showCreateCollection"
-                    class="text-xs text-amber-400 hover:text-amber-300 mt-2">
-                    {{ showCreateCollection ? '- Cancel' : '+ Create New Collection' }}
-                  </button>
-
-                  <div v-if="showCreateCollection" class="mt-3 p-3 border border-neutral-700 rounded bg-neutral-900/50">
-                    <div class="flex flex-col gap-2">
-                      <input v-model="newCollection.name" type="text" placeholder="Collection name (required)"
-                        class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
-                      <textarea v-model="newCollection.description" placeholder="Description (optional)" rows="2"
-                        class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
-                      <button type="button" @click="createCollection" class="btn-sm self-start"
-                        :disabled="!newCollection.name.trim()">
-                        Create & Select
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label class="text-sm text-neutral-400">Genre</label>
-                  <input v-model="metadata.genre" type="text"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
-                </div>
-                <div>
-                  <label class="text-sm text-neutral-400">BPM</label>
-                  <input v-model.number="metadata.bpm" type="number"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
-                </div>
-                <div>
-                  <label class="text-sm text-neutral-400">Year</label>
-                  <input v-model.number="metadata.year" type="number"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
-                </div>
-                <div>
-                  <label class="text-sm text-neutral-400">Mood</label>
-                  <input v-model="metadata.mood" type="text" placeholder="e.g. Dark, Happy"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
-                </div>
-              </div>
-
-              <!-- Delete Button -->
-              <div class="pt-4 border-t border-neutral-800">
-                <button type="button" @click="handleDelete" class="text-red-500 hover:text-red-400 text-sm">
-                  Delete Track
+              <!-- Copy Metadata Button -->
+              <div v-if="metadata.track_group_name" class="col-span-2 border-t border-neutral-800 pt-4">
+                <button type="button" @click="copyMetadataFromGroup" :disabled="isCopyingMetadata"
+                  class="w-full p-2 border border-amber-600 hover:bg-amber-600/10 rounded text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  {{ isCopyingMetadata ? 'Copying...' : 'Copy Metadata from Group Versions' }}
                 </button>
+                <p class="text-xs text-neutral-500 mt-2">
+                  {{ copyMetadataMessage || 'Auto-fills empty fields from the most complete version in this group' }}
+                </p>
               </div>
+            </div>
+
+            <!-- Delete Button -->
+            <div class="pt-4 border-t border-neutral-800">
+              <button type="button" @click="handleDelete" class="border border-red-500 hover:bg-red-500/10 rounded p-2 text-red-500 hover:text-red-400 text-sm w-full cursor-pointer">
+                Delete Track
+              </button>
             </div>
           </div>
         </div>
 
         <!-- Update Button -->
-        <button type="submit" class="btn" :disabled="isUpdating">
-          {{ isUpdating ? 'Updating...' : 'Update Track' }}
-        </button>
+        <div class="flex justify-end pt-4 bg-neutral-900 flex-shrink-0 mt-4">
+          <button @click="onSubmit" class="btn w-full" :disabled="isUpdating">
+            {{ isUpdating ? 'Updating...' : 'Update Track' }}
+          </button>
+        </div>
 
         <!-- Error Message -->
-        <div v-if="error" class="text-red-500 text-sm">
+        <div v-if="error" class="text-red-500 text-sm mt-4">
           {{ error }}
         </div>
-      </form>
+      </div>
     </template>
   </MasterDrawer>
 </template>
@@ -625,4 +626,5 @@ const handleDelete = async () => {
   }
 }
 </script>
+
 

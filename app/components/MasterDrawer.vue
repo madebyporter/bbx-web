@@ -8,7 +8,7 @@
       @click="handleModalBackdropClick"
     >
       <div 
-        class="modal-content flex flex-col gap-8 justify-between"
+        class="modal-content flex flex-col gap-8 justify-between h-full"
         @click.stop
       >
         <div 

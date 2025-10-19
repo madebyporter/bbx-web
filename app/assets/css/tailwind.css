@@ -23,7 +23,7 @@
     @apply px-2 py-4 align-middle text-sm truncate;
   }
   .modal {
-    @apply fixed right-2 lg:right-2 top-2 lg:top-2 bottom-2 lg:bottom-2 left-2 lg:left-auto lg:w-2/5 bg-neutral-900 ring-1 ring-neutral-800 text-neutral-400 rounded-md overflow-auto z-50;
+    @apply fixed right-2 lg:right-2 top-2 lg:top-2 bottom-2 lg:bottom-2 left-2 lg:left-auto lg:w-2/5 bg-neutral-900 ring-1 ring-neutral-800 text-neutral-400 rounded-md overflow-visible z-50;
   }
   .modal-content {
     @apply p-8 h-full;
@@ -39,6 +39,13 @@
   }
   .nav-link-later .tag {
     @apply text-neutral-700 hover:bg-neutral-800;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    @apply hidden;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;/* IE and Edge */
+    scrollbar-width: none;/* Firefox */
   }
   .tag {
     @apply text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-sm py-0.5 px-2 flex justify-center items-center uppercase gap-2 whitespace-nowrap;

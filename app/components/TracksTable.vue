@@ -75,7 +75,7 @@
         <div v-if="isOwnProfile">
           <button
             @click="$emit('edit-track', track)"
-            class="text-amber-400 hover:text-amber-300 text-xs"
+            class="text-amber-400 hover:text-amber-300 text-xs cursor-pointer"
             title="Edit track"
           >
             Edit
