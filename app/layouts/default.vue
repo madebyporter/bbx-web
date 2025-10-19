@@ -226,7 +226,14 @@ const toggleAuthMode = () => {
 const handleSubmit = async () => {
   try {
     if (isSignUp.value) {
-      await auth.signUp(email.value, password.value)
+      const result = await auth.signUp(email.value, password.value)
+      if (result.user && !result.session) {
+        // User created but needs email confirmation
+        alert('Account created! Please check your email and click the confirmation link to activate your account.')
+      } else {
+        // User created and signed in (email confirmation disabled)
+        alert('Account created successfully!')
+      }
     } else {
       await auth.signIn(email.value, password.value)
     }
