@@ -26,6 +26,7 @@ interface PlayerState {
   isShuffled: boolean
   loopOne: boolean
   queueSourceId: string | null
+  hasEverHadTrack: boolean
 }
 
 // Global state - shared across all instances
@@ -41,6 +42,7 @@ const volume = ref(1)
 const isMuted = ref(false)
 const isShuffled = ref(false)
 const loopOne = ref(false)
+const hasEverHadTrack = ref(false)
 const audioElement = ref<HTMLAudioElement | null>(null)
 const signedUrlCache = ref<Map<string, { url: string; expiry: number }>>(new Map())
 
@@ -152,6 +154,9 @@ export function usePlayer() {
       console.log('loadQueue: No tracks provided')
       return
     }
+
+    // Mark that we've had a track loaded (for UI persistence)
+    hasEverHadTrack.value = true
 
     // Store original queue
     originalQueue.value = [...tracks]
@@ -372,7 +377,8 @@ export function usePlayer() {
         isMuted: isMuted.value,
         isShuffled: isShuffled.value,
         loopOne: loopOne.value,
-        queueSourceId: queueSourceId.value
+        queueSourceId: queueSourceId.value,
+        hasEverHadTrack: hasEverHadTrack.value
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch (err) {
@@ -396,6 +402,7 @@ export function usePlayer() {
         isShuffled.value = state.isShuffled ?? false
         loopOne.value = state.loopOne ?? false
         queueSourceId.value = state.queueSourceId || null
+        hasEverHadTrack.value = state.hasEverHadTrack ?? false
 
         // Don't auto-play on load, but load the track
         if (currentTrack.value && audioElement.value) {
@@ -424,6 +431,7 @@ export function usePlayer() {
     currentIndex.value = 0
     currentTime.value = 0
     duration.value = 0
+    hasEverHadTrack.value = false
     localStorage.removeItem(STORAGE_KEY)
   }
 
@@ -474,6 +482,7 @@ export function usePlayer() {
     isMuted,
     isShuffled,
     loopOne,
+    hasEverHadTrack,
     audioElement,
     
     // Computed

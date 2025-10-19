@@ -5,7 +5,7 @@
     @apply bg-neutral-900;
   }
   .btn {
-    @apply bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-md px-4 p-2 cursor-pointer whitespace-nowrap;
+    @apply bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-md px-4 p-2 cursor-pointer whitespace-nowrap font-bold;
   }
   .db-head {
     @apply text-left font-normal text-sm px-2 py-4;
@@ -22,12 +22,6 @@
   .db-cell {
     @apply px-2 py-4 align-middle text-sm truncate;
   }
-  .modal {
-    @apply fixed right-2 lg:right-2 top-2 lg:top-2 bottom-2 lg:bottom-2 left-2 lg:left-auto lg:w-2/5 bg-neutral-900 ring-1 ring-neutral-800 text-neutral-400 rounded-md overflow-auto z-50;
-  }
-  .modal-content {
-    @apply p-8 h-full;
-  }
   .nav-header {
     @apply text-neutral-400 uppercase text-xs tracking-wider;
   }
@@ -39,6 +33,13 @@
   }
   .nav-link-later .tag {
     @apply text-neutral-700 hover:bg-neutral-800;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    @apply hidden;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;/* IE and Edge */
+    scrollbar-width: none;/* Firefox */
   }
   .tag {
     @apply text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-sm py-0.5 px-2 flex justify-center items-center uppercase gap-2 whitespace-nowrap;
@@ -65,20 +66,16 @@
   .pending-resource .btn {
     @apply bg-amber-600 text-amber-900;
   }
-.trackGrid {
-  @apply grid gap-4;
-  grid-template-columns: 40px 2fr 1.5fr 1fr 1.5fr 1fr 80px 100px;
-}
-.trackGrid-edit {
-  @apply grid gap-4;
-  grid-template-columns: 40px 2fr 1.5fr 1fr 1.5fr 1fr 80px 100px 80px;
-}
-.collectionTrackGrid {
-  @apply grid gap-4;
-  grid-template-columns: 40px 2fr 1.5fr 1fr 1.5fr 1fr 80px 100px;
-}
-.collectionTrackGrid-edit {
-  @apply grid gap-4;
-  grid-template-columns: 40px 2fr 1.5fr 1fr 1.5fr 1fr 80px 100px 60px 80px;
-}
+  .trackGrid {
+    @apply grid gap-4 grid-cols-[40px_150px_150px_100px_150px_150px_100px_100px] lg:grid-cols-[40px_2fr_1.5fr_1fr_1.5fr_1fr_80px_100px];
+  }
+  .trackGrid-edit {
+    @apply grid gap-4 grid-cols-[40px_150px_150px_100px_150px_150px_100px_100px_50px] lg:grid-cols-[40px_2fr_1.5fr_1fr_1.5fr_1fr_80px_100px_80px];
+  }
+  .collectionTrackGrid {
+    @apply grid gap-4 grid-cols-[40px_150px_150px_100px_150px_150px_100px_100px] lg:grid-cols-[40px_2fr_1.5fr_1fr_1.5fr_1fr_80px_100px];
+  }
+  .collectionTrackGrid-edit {
+    @apply grid gap-4 grid-cols-[40px_150px_150px_100px_150px_150px_100px_100px_50px] lg:grid-cols-[40px_2fr_1.5fr_1fr_1.5fr_1fr_80px_100px_80px];
+  }
 }

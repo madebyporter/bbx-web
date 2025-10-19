@@ -1,8 +1,16 @@
 <template>
   <nav ref="mobileNav" id="navbar"
-    class="border-r border-neutral-800 bg-neutral-900 hidden lg:flex flex-col justify-between overflow-auto shrink-0 min-w-[250px]">
-    <div class="sticky top-0 p-4">
-      <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-12" />
+    class="border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between overflow-auto shrink-0 min-w-[250px] lg:relative lg:translate-x-0 fixed inset-y-0 left-0 z-[100] lg:z-40 w-full lg:w-fit lg:max-w-none"
+    style="transform: translateX(-100%)">
+    <div class="sticky top-0 p-4 flex justify-between items-center">
+      <NuxtLink to="/" class="cursor-pointer">
+        <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-[44px] lg:size-12" />
+      </NuxtLink>
+      <button @click="toggleMobileNav" class="text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 rounded-md px-2 w-fit h-full lg:hidden cursor-pointer max-w-8 flex items-center justify-center">
+        <svg class="min-w-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6.75 17.25L12 12L17.25 17.25M17.25 6.75L12 12L6.75 6.75" stroke="currentColor" stroke-width="2" />
+        </svg>
+      </button>
     </div>
     <div class="grow flex flex-col gap-16 p-4">
       <div v-if="user" class="flex flex-col gap-4">
@@ -90,6 +98,7 @@ import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 
+
 const auth = useAuth()
 const { user, isAdmin } = auth
 const { supabase } = useSupabase()
@@ -97,6 +106,7 @@ const { supabase } = useSupabase()
 const mobileNav = ref(null)
 const showMobileNav = ref(false)
 const username = ref<string | null>(null)
+const wasDesktop = ref(false)
 
 // Emit events to parent layout
 const emit = defineEmits(['show-auth-modal', 'show-admin-modal', 'toggle-mobile-nav'])
@@ -122,7 +132,7 @@ const toggleMobileNav = () => {
   
   gsap.to(mobileNav.value, {
     duration: 0.3,
-    x: showMobileNav.value ? 0 : '-105%',
+    x: showMobileNav.value ? '0%' : '-100%',
     ease: 'power2.out'
   })
   
@@ -153,14 +163,21 @@ const fetchUsername = async () => {
 }
 
 const handleResize = () => {
-  if (window.innerWidth >= 1024) {
-    // Reset nav position on desktop
-    gsap.set(mobileNav.value, { x: 0 })
+  const isDesktop = window.innerWidth >= 1024
+  
+  if (isDesktop) {
+    // On desktop, clear transforms and let CSS handle positioning
+    gsap.set(mobileNav.value, { clearProps: 'transform' })
+    wasDesktop.value = true
   } else {
-    // Reset nav position on mobile
-    gsap.set(mobileNav.value, { x: '-105%' })
+    // On mobile - only hide if switching from desktop to mobile
+    if (wasDesktop.value) {
+      gsap.set(mobileNav.value, { x: '-100%' })
+      showMobileNav.value = false
+      emit('toggle-mobile-nav', false)
+    }
+    wasDesktop.value = false
   }
-  showMobileNav.value = false
 }
 
 // Watch for user changes and fetch username
@@ -175,6 +192,10 @@ defineExpose({
 })
 
 onMounted(() => {
+  // Initialize wasDesktop flag based on initial screen size
+  wasDesktop.value = window.innerWidth >= 1024
+  // Set initial position based on screen size
+  handleResize()
   window.addEventListener('resize', handleResize)
 })
 
