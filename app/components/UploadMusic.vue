@@ -18,19 +18,15 @@
 
     <!-- Upload Form -->
     <template v-else>
-      <form class="flex flex-col gap-8" @submit.prevent="onSubmit" @click.stop>
+      <form class="flex flex-col gap-8 justify-between h-full" @submit.prevent="onSubmit" @click.stop>
         <!-- Drag & Drop Zone -->
         <fieldset class="flex flex-col gap-2">
-          <label class="flex items-center gap-1">
-            MP3 Files
-            <span class="text-red-500">*</span>
-          </label>
           <div
             @drop.prevent="handleDrop"
             @dragover.prevent="isDragging = true"
             @dragleave.prevent="isDragging = false"
             :class="[
-              'border-2 border-dashed rounded-lg p-8 text-center transition-colors min-h-[200px] flex items-center justify-center',
+              'border-2 border-dashed rounded-lg p-8 text-center transition-colors min-h-[100px] flex items-center justify-center',
               isDragging ? 'border-blue-500 bg-blue-500/10' : 'border-neutral-700 hover:border-neutral-600'
             ]"
           >
@@ -42,11 +38,11 @@
               class="hidden"
               @change="handleFileSelect"
             />
-            <div class="flex flex-col items-center gap-4">
+            <div class="flex flex-row justify-between items-center gap-4 w-full">
               <svg class="w-12 h-12 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
               </svg>
-              <div>
+              <div class="grow">
                 <p class="text-lg font-medium">{{ isDragging ? 'Drop files here' : 'Drag & drop MP3 files here' }}</p>
                 <p class="text-sm text-neutral-500 mt-1">or <button type="button" @click="$refs.fileInput.click()" class="text-amber-400 hover:text-amber-300">browse</button></p>
                 <p class="text-xs text-neutral-600 mt-2">Maximum 50MB per file</p>
@@ -57,7 +53,7 @@
         </fieldset>
 
         <!-- Selected Files List -->
-        <div v-if="selectedFiles.length > 0" class="flex flex-col gap-4">
+        <div v-if="selectedFiles.length > 0" class="flex flex-col gap-4 h-full">
           <h3 class="font-semibold">Selected Files ({{ selectedFiles.length }})</h3>
           <div class="space-y-3 max-h-[400px] overflow-y-auto">
             <div 
@@ -99,6 +95,22 @@
                     class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
                     :disabled="isUploading"
                   />
+                </div>
+
+                <!-- Group Name (full width) -->
+                <div>
+                  <label class="text-xs text-neutral-400">
+                    Group Name
+                    <span class="text-neutral-500 ml-1">(for grouping versions)</span>
+                  </label>
+                  <input 
+                    v-model="file.metadata.group_name"
+                    type="text"
+                    placeholder="Auto-generated if empty"
+                    class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                    :disabled="isUploading"
+                  />
+                  <p class="text-xs text-neutral-500 mt-1">Used to group different versions of the same track</p>
                 </div>
                 
                 <!-- Other fields in grid -->
@@ -267,6 +279,7 @@ interface FileMetadata {
   title: string
   artist: string
   version: string
+  group_name: string
   collection_name: string
   genre: string
   mood: string
@@ -585,6 +598,13 @@ const processFiles = async (files: File[]) => {
       warningMessage = `⚠️ Possible duplicate of existing track "${prefillData.duplicateTrack.title}"`
     }
     
+    // Auto-generate group name (user can edit it)
+    const autoGroupName = await findOrCreateTrackGroup(
+      supabase!,
+      user.value!.id,
+      parsedData.title
+    )
+    
     // Merge all metadata sources
     // Priority: Similar track > MP3 ID3 tags > Filename parsing > User's display name > Empty
     selectedFiles.value.push({
@@ -598,6 +618,9 @@ const processFiles = async (files: File[]) => {
         
         // Version: Similar track > Filename > Default
         version: prefillData?.version || parsedData.version || 'v1.0',
+        
+        // Group Name: Auto-generated (user can edit)
+        group_name: autoGroupName,
         
         collection_name: '', // Keep for backwards compatibility but not used
         
@@ -719,12 +742,14 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       ? fileData.metadata.mood.split(',').map(m => m.trim()).filter(m => m)
       : null
     
-    // Generate track group name using auto-detection
-    const trackGroupName = await findOrCreateTrackGroup(
-      supabase,
-      user.value.id,
-      fileData.metadata.title || fileData.file.name
-    )
+    // Use user-provided group name, or auto-generate if empty
+    const trackGroupName = fileData.metadata.group_name?.trim()
+      ? fileData.metadata.group_name.trim()
+      : await findOrCreateTrackGroup(
+          supabase,
+          user.value.id,
+          fileData.metadata.title || fileData.file.name
+        )
     
     // Save to sounds table and get the sound_id
     const { data: soundData, error: dbError } = await supabase

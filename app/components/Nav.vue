@@ -3,7 +3,9 @@
     class="border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between overflow-auto shrink-0 min-w-[250px] lg:relative lg:translate-x-0 fixed inset-y-0 left-0 z-[100] lg:z-40 w-full lg:w-fit lg:max-w-none"
     style="transform: translateX(-100%)">
     <div class="sticky top-0 p-4 flex justify-between items-center">
-      <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-[44px] lg:size-12" />
+      <NuxtLink to="/" class="cursor-pointer">
+        <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-[44px] lg:size-12" />
+      </NuxtLink>
       <button @click="toggleMobileNav" class="text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 rounded-md px-2 w-fit h-full lg:hidden cursor-pointer max-w-8 flex items-center justify-center">
         <svg class="min-w-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M6.75 17.25L12 12L17.25 17.25M17.25 6.75L12 12L6.75 6.75" stroke="currentColor" stroke-width="2" />

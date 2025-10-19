@@ -8,7 +8,7 @@
       @click="handleModalBackdropClick"
     >
       <div 
-        class="modal-content flex flex-col gap-8"
+        class="modal-content flex flex-col gap-8 justify-between"
         @click.stop
       >
         <div 
@@ -24,7 +24,7 @@
         </div>
         
         <!-- Main content slot -->
-        <div class="flex flex-col gap-4" @click.stop>
+        <div class="flex flex-col gap-4 grow h-full" @click.stop>
           <slot></slot>
         </div>
       </div>
