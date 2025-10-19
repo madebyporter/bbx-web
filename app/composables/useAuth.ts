@@ -38,17 +38,28 @@ const createAuth = () => {
         isAdmin.value = session.user.app_metadata.roles?.includes('admin') || false
       }
 
-      // Set up auth state change listener
-      const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((event, session) => {
-        
-        if (session?.user) {
-          user.value = session.user as AuthUser
-          isAdmin.value = session.user.app_metadata.roles?.includes('admin') || false
-        } else if (event === 'SIGNED_OUT') {
-          user.value = null
-          isAdmin.value = false
-        }
-      })
+  // Set up auth state change listener
+  const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((event, session) => {
+    console.log('Auth state change:', event, session?.user?.email)
+    
+    if (session?.user) {
+      user.value = session.user as AuthUser
+      isAdmin.value = session.user.app_metadata.roles?.includes('admin') || false
+      
+      // Handle successful email confirmation
+      if (event === 'SIGNED_IN') {
+        console.log('User signed in successfully:', session.user.email)
+      }
+    } else if (event === 'SIGNED_OUT') {
+      user.value = null
+      isAdmin.value = false
+    } else if (event === 'TOKEN_REFRESHED') {
+      if (session?.user) {
+        user.value = session.user as AuthUser
+        isAdmin.value = session.user.app_metadata.roles?.includes('admin') || false
+      }
+    }
+  })
       subscription = sub
       isReady.value = true
     } catch (error) {
@@ -60,13 +71,25 @@ const createAuth = () => {
   const signIn = async (email: string, password: string) => {
     if (!supabase) throw new Error('Supabase not initialized')
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
+    if (error) {
+      // Handle specific email confirmation error
+      if (error.message === 'Email not confirmed') {
+        throw new Error('Please check your email and click the confirmation link before signing in.')
+      }
+      throw error
+    }
     return data
   }
 
   const signUp = async (email: string, password: string) => {
     if (!supabase) throw new Error('Supabase not initialized')
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/confirm`
+      }
+    })
     if (error) throw error
     return data
   }
@@ -75,6 +98,25 @@ const createAuth = () => {
     if (!supabase) throw new Error('Supabase not initialized')
     const { error } = await supabase.auth.signOut()
     if (error) throw error
+  }
+
+  // Handle email confirmation from URL
+  const handleEmailConfirmation = async () => {
+    if (!supabase) return
+    try {
+      const { data, error } = await supabase.auth.getSession()
+      if (error) {
+        console.error('Error getting session after email confirmation:', error)
+        return
+      }
+      if (data.session?.user) {
+        console.log('Email confirmed successfully for:', data.session.user.email)
+        user.value = data.session.user as AuthUser
+        isAdmin.value = data.session.user.app_metadata.roles?.includes('admin') || false
+      }
+    } catch (error) {
+      console.error('Error handling email confirmation:', error)
+    }
   }
 
   // Cleanup
@@ -93,6 +135,7 @@ const createAuth = () => {
     signIn,
     signUp,
     signOut,
+    handleEmailConfirmation,
     cleanup
   }
 }
