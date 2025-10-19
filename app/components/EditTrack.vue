@@ -184,7 +184,7 @@ const metadata = ref<TrackMetadata>({
 
 const collections = ref<Collection[]>([])
 const selectedCollectionIds = ref<number[]>([])
-const pendingCollections = ref<string[]>([])
+const pendingCollections = ref<Array<{ tempId: number, name: string }>>([])
 
 // Define functions before watch to avoid hoisting issues
 const loadTrackCollections = async (trackId: number) => {
@@ -225,10 +225,26 @@ const fetchCollections = async () => {
 const queueCollectionCreation = (name: string) => {
   if (!name.trim()) return
   
-  // Add to pending collections if not already queued
-  if (!pendingCollections.value.includes(name.trim())) {
-    pendingCollections.value.push(name.trim())
+  // Create a temporary collection ID (negative numbers to avoid conflicts)
+  const tempId = -Date.now() - Math.random() * 1000
+  
+  // Create a temporary collection object
+  const tempCollection = {
+    id: tempId,
+    name: name.trim(),
+    slug: name.trim().toLowerCase().replace(/\s+/g, '-')
   }
+  
+  // Add to collections list so it shows up in the UI
+  collections.value.push(tempCollection)
+  
+  // Add to selected collections
+  if (!selectedCollectionIds.value.includes(tempId)) {
+    selectedCollectionIds.value.push(tempId)
+  }
+  
+  // Store the temp collection info for later replacement during update
+  pendingCollections.value.push({ tempId, name: name.trim() })
 }
 
 const autoHideOlderVersions = async (
@@ -478,7 +494,7 @@ const onSubmit = async () => {
   try {
     // Create pending collections first
     if (pendingCollections.value.length > 0) {
-      for (const collectionName of pendingCollections.value) {
+      for (const { tempId, name } of pendingCollections.value) {
         // Get existing slugs to ensure uniqueness
         const { data: existing } = await supabase
           .from('collections')
@@ -486,14 +502,14 @@ const onSubmit = async () => {
           .eq('user_id', user.value.id)
         
         const existingSlugs = (existing || []).map(c => c.slug)
-        const slug = generateUniqueSlug(collectionName, existingSlugs)
+        const slug = generateUniqueSlug(name, existingSlugs)
         
         // Create the collection
         const { data, error: createError } = await supabase
           .from('collections')
           .insert({
             user_id: user.value.id,
-            name: collectionName,
+            name: name,
             description: null,
             slug
           })
@@ -502,16 +518,20 @@ const onSubmit = async () => {
         
         if (createError) throw createError
         
-        // Add to collections list
-        collections.value.push({
-          id: data.id,
-          name: data.name,
-          slug: data.slug
-        })
+        // Replace the temporary collection with the real one
+        const tempCollectionIndex = collections.value.findIndex(c => c.id === tempId)
+        if (tempCollectionIndex !== -1) {
+          collections.value[tempCollectionIndex] = {
+            id: data.id,
+            name: data.name,
+            slug: data.slug
+          }
+        }
         
-        // Auto-select the new collection
-        if (!selectedCollectionIds.value.includes(data.id)) {
-          selectedCollectionIds.value.push(data.id)
+        // Replace the temporary ID in selected collections
+        const selectedIndex = selectedCollectionIds.value.indexOf(tempId)
+        if (selectedIndex !== -1) {
+          selectedCollectionIds.value[selectedIndex] = data.id
         }
       }
       

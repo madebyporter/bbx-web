@@ -190,10 +190,17 @@ const handleCreate = () => {
 const handleEnterKey = () => {
   if (showCreateButton.value) {
     handleCreate()
-  } else if (filteredCollections.value.length === 1) {
+  } else if (filteredCollections.value.length === 1 && filteredCollections.value[0]) {
     toggleCollection(filteredCollections.value[0].id)
   }
 }
+
+
+// Watch for external changes to close dropdown
+watch(() => props.modelValue, () => {
+  // Keep dropdown open for better UX when selections change
+})
+
 
 // Click outside to close
 const handleClickOutside = (event: Event) => {
@@ -206,22 +213,21 @@ const handleClickOutside = (event: Event) => {
     return
   }
   
-  // Only close the dropdown, not the modal
-  closeDropdown()
+  // Use nextTick to ensure the click event is fully processed
+  nextTick(() => {
+    if (isOpen.value) {
+      closeDropdown()
+    }
+  })
 }
-
-// Watch for external changes to close dropdown
-watch(() => props.modelValue, () => {
-  // Keep dropdown open for better UX when selections change
-})
 
 // Lifecycle
 onMounted(() => {
-  // Use standard event bubbling for click outside detection
-  document.addEventListener('click', handleClickOutside)
+  // Use capture phase to ensure we catch the event before it's stopped
+  document.addEventListener('click', handleClickOutside, true)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('click', handleClickOutside, true)
 })
 </script>

@@ -15,7 +15,7 @@
 
     <!-- Upload Form -->
     <template v-else>
-      <form class="flex flex-col gap-8" @submit.prevent="onSubmit" @click.stop>
+        <form class="grow flex flex-col gap-8 justify-between" @submit.prevent="onSubmit">
         <!-- Drag & Drop Zone -->
         <fieldset class="flex flex-col gap-2">
           <div @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false"
@@ -145,7 +145,15 @@
 
         <!-- Upload Button -->
         <div class="sticky bottom-0 flex justify-end bg-neutral-900">
-          <button type="submit" class="btn bg-amber-300 hover:bg-amber-400 text-neutral-900 w-full" :disabled="isUploading || selectedFiles.length === 0">
+          <button 
+            type="submit" 
+            :class="[
+              'btn w-full',
+              selectedFiles.length === 0 
+                ? 'bg-neutral-500 text-neutral-700 cursor-not-allowed' 
+                : 'bg-amber-300 hover:bg-amber-400 text-neutral-900'
+            ]"
+            :disabled="isUploading || selectedFiles.length === 0">
             {{ uploadButtonText }}
           </button>
         </div>
@@ -216,7 +224,7 @@ const uploadedCount = ref(0)
 const collections = ref<Collection[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const globalError = ref<string | null>(null)
-const pendingCollections = ref<Map<number, string[]>>(new Map())
+const pendingCollections = ref<Map<number, Array<{ tempId: number, name: string }>>>(new Map())
 
 const errors = ref({
   files: ''
@@ -233,14 +241,29 @@ const uploadButtonText = computed(() => {
 const queueCollectionCreation = (name: string, fileIndex: number) => {
   if (!name.trim()) return
   
-  // Get existing pending collections for this file
-  const existing = pendingCollections.value.get(fileIndex) || []
+  // Create a temporary collection ID (negative numbers to avoid conflicts)
+  const tempId = -Date.now() - Math.random() * 1000
   
-  // Add to pending collections if not already queued
-  if (!existing.includes(name.trim())) {
-    existing.push(name.trim())
-    pendingCollections.value.set(fileIndex, existing)
+  // Create a temporary collection object
+  const tempCollection = {
+    id: tempId,
+    name: name.trim(),
+    slug: name.trim().toLowerCase().replace(/\s+/g, '-')
   }
+  
+  // Add to collections list so it shows up in the UI
+  collections.value.push(tempCollection)
+  
+  // Add to selected collections for this file
+  if (!selectedFiles.value[fileIndex].selectedCollectionIds.includes(tempId)) {
+    selectedFiles.value[fileIndex].selectedCollectionIds.push(tempId)
+    console.log(`Added temp collection ${tempId} (${name}) to file ${fileIndex}`)
+  }
+  
+  // Store the temp collection info for later replacement during upload
+  const existing = pendingCollections.value.get(fileIndex) || []
+  existing.push({ tempId, name: name.trim() })
+  pendingCollections.value.set(fileIndex, existing)
 }
 
 // Fetch collections on mount
@@ -633,6 +656,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
     
     // Add to collections if any are selected
     let collectionNames = ''
+    console.log('Processing collections for track:', fileData.metadata.title, 'selectedCollectionIds:', fileData.selectedCollectionIds)
     if (fileData.selectedCollectionIds && fileData.selectedCollectionIds.length > 0) {
       const collectionsToInsert = fileData.selectedCollectionIds.map(collectionId => ({
         collection_id: collectionId,
@@ -696,8 +720,8 @@ const onSubmit = async () => {
   
   try {
     // Create pending collections first
-    for (const [fileIndex, collectionNames] of pendingCollections.value) {
-      for (const collectionName of collectionNames) {
+    for (const [fileIndex, pendingCollectionInfos] of pendingCollections.value) {
+      for (const { tempId, name } of pendingCollectionInfos) {
         // Get existing slugs to ensure uniqueness
         const { data: existing } = await supabase
           .from('collections')
@@ -705,14 +729,14 @@ const onSubmit = async () => {
           .eq('user_id', user.value.id)
         
         const existingSlugs = (existing || []).map(c => c.slug)
-        const slug = generateUniqueSlug(collectionName, existingSlugs)
+        const slug = generateUniqueSlug(name, existingSlugs)
         
         // Create the collection
         const { data, error: createError } = await supabase
           .from('collections')
           .insert({
             user_id: user.value.id,
-            name: collectionName,
+            name: name,
             description: null,
             slug
           })
@@ -721,16 +745,21 @@ const onSubmit = async () => {
         
         if (createError) throw createError
         
-        // Add to collections list
-        collections.value.push({
-          id: data.id,
-          name: data.name,
-          slug: data.slug
-        })
+        // Replace the temporary collection with the real one
+        const tempCollectionIndex = collections.value.findIndex(c => c.id === tempId)
+        if (tempCollectionIndex !== -1) {
+          collections.value[tempCollectionIndex] = {
+            id: data.id,
+            name: data.name,
+            slug: data.slug
+          }
+        }
         
-        // Auto-select the new collection for this file
-        if (!selectedFiles.value[fileIndex].selectedCollectionIds.includes(data.id)) {
-          selectedFiles.value[fileIndex].selectedCollectionIds.push(data.id)
+        // Replace the temporary ID in selected collections
+        const selectedIndex = selectedFiles.value[fileIndex].selectedCollectionIds.indexOf(tempId)
+        if (selectedIndex !== -1) {
+          selectedFiles.value[fileIndex].selectedCollectionIds[selectedIndex] = data.id
+          console.log(`Replaced temp ID ${tempId} with real ID ${data.id} for file ${fileIndex}`)
         }
       }
     }
@@ -740,6 +769,7 @@ const onSubmit = async () => {
     
     // Upload files sequentially
     for (const fileData of selectedFiles.value) {
+      console.log('Uploading file:', fileData.metadata.title, 'with collections:', fileData.selectedCollectionIds)
       const success = await uploadFile(fileData)
       if (success) successCount++
     }
@@ -766,5 +796,6 @@ const resetAndShowForm = () => {
   errors.value.files = ''
   globalError.value = null
 }
+
 </script>
 
