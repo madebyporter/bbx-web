@@ -2,8 +2,26 @@
   <div class="overflow-x-auto lg:overflow-x-visible w-full">
     <div v-if="loading" class="text-neutral-500 p-4">Loading tracks...</div>
 
-    <div v-else-if="tracks.length === 0" class="text-neutral-500 p-4">
-      {{ isOwnProfile ? 'No tracks uploaded yet.' : 'No tracks available.' }}
+    <!-- Zero State -->
+    <div v-else-if="tracks.length === 0" class="py-16 w-full text-center">
+      <div class="max-w-md mx-auto">
+        <h3 class="text-lg font-medium mb-2 text-neutral-300">
+          {{ isOwnProfile ? 'No tracks uploaded yet' : 'No tracks available' }}
+        </h3>
+        <p class="text-neutral-500 text-sm mb-6">
+          {{ isOwnProfile 
+            ? 'Start building your music library by uploading your first track.' 
+            : 'This user hasn\'t uploaded any tracks yet.' 
+          }}
+        </p>
+        <button 
+          v-if="isOwnProfile"
+          @click="handleUploadClick"
+          class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-neutral-900 font-medium rounded transition-colors cursor-pointer"
+        >
+          Upload Music
+        </button>
+      </div>
     </div>
 
     <div v-else class="w-fit lg:w-full">
@@ -119,6 +137,12 @@ const handlePlayClick = async (track: any, index: number) => {
     // Load the queue and start playing from this track
     await loadQueue(props.tracks, props.sourceId, index)
   }
+}
+
+const handleUploadClick = () => {
+  // Dispatch event to open upload modal
+  const event = new CustomEvent('open-upload-modal')
+  window.dispatchEvent(event)
 }
 </script>
 
