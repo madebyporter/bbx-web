@@ -1,24 +1,25 @@
 <template>
-  <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
-    <header class="px-2 pt-8 pb-4 border-b border-neutral-800">
-      <h1 class="text-xl lg:text-3xl font-bold indent-1">Music production software</h1>
-    </header>
-    <div class="overflow-x-scroll xl:overflow-auto">
-      <Database 
-        ref="database" 
-        type="software"
-        @edit-resource="$emit('edit-resource', $event)"
-        @show-signup="$emit('show-signup')"
-        :can-edit="isAdmin"
-      />
-    </div>
+  <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-0 text-neutral-300">
+    <LibraryHeader 
+      title="Music production software" 
+      :count="resourceCount"
+      item-label="item"
+    />
+    <Database 
+      ref="database" 
+      type="software"
+      @edit-resource="$emit('edit-resource', $event)"
+      @show-signup="$emit('show-signup')"
+      :can-edit="isAdmin"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, inject, onMounted, onUnmounted } from 'vue'
+import { ref, inject, onMounted, onUnmounted, computed } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import Database from '~/components/Database.vue'
+import LibraryHeader from '~/components/LibraryHeader.vue'
 
 // Define interfaces for type safety
 interface FilterSortParams {
@@ -35,6 +36,11 @@ interface FilterSortParams {
 
 const { isAdmin } = useAuth()
 const database = ref<InstanceType<typeof Database> | null>(null)
+
+// Computed property for resource count
+const resourceCount = computed(() => {
+  return database.value?.resources?.length || 0
+})
 
 // Inject search handler registration functions from layout
 const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')

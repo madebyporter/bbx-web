@@ -8,7 +8,7 @@
     </div>
     <div class="flex items-center gap-4">
       <p class="text-sm text-neutral-500">
-        {{ count }} {{ count === 1 ? 'track' : 'tracks' }}
+        {{ count }} {{ count === 1 ? itemLabel : itemLabel + 's' }}
       </p>
       <div v-if="isOwnProfile" class="relative">
         <button
@@ -47,14 +47,17 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+withDefaults(defineProps<{
   title: string
   description?: string
   count: number
+  itemLabel?: string
   isOwnProfile?: boolean
   showViewMenu?: boolean
   viewMode?: 'final' | 'all'
-}>()
+}>(), {
+  itemLabel: 'track'
+})
 
 const emit = defineEmits<{
   'update:showViewMenu': [value: boolean]

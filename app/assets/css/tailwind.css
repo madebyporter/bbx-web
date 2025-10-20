@@ -8,7 +8,7 @@
     @apply bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-md px-4 p-2 cursor-pointer whitespace-nowrap font-bold;
   }
   .db-head {
-    @apply text-left font-normal text-sm px-2 py-4;
+    @apply text-left font-normal text-sm;
   }
   .db-col-sm {
     @apply min-w-[127px] lg:max-w-[127px];
@@ -77,5 +77,11 @@
   }
   .collectionTrackGrid-edit {
     @apply grid gap-4 grid-cols-[40px_150px_150px_100px_150px_150px_100px_100px_50px] lg:grid-cols-[40px_2fr_1.5fr_1fr_1.5fr_1fr_80px_100px_80px];
+  }
+  .resourceGrid {
+    @apply grid gap-4 items-center *:first:pl-4 grid-cols-[300px_127px_127px_127px_127px_127px_127px] lg:grid-cols-[320px_127px_127px_127px_1fr_127px_127px];
+  }
+  .resourceGrid-edit {
+    @apply grid gap-4 items-center *:first:pl-4 grid-cols-[300px_127px_127px_127px_127px_127px_127px] lg:grid-cols-[320px_127px_127px_127px_1fr_127px_127px];
   }
 }
