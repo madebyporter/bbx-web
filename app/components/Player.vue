@@ -6,7 +6,7 @@
       <div class="flex flex-row items-stretch gap-1 justify-between h-full">
         <!-- Left: Track Info -->
         <div class="flex items-center justify-start lg:bg-neutral-800/10 rounded-sm p-1 lg:min-w-48 grow lg:grow-0">
-          <div v-if="currentTrack" class="text-xs lg:text-sm p-2">
+          <div v-if="currentTrack" class="text-xs lg:text-sm p-2 overflow-auto max-w-3xs">
             <div class="font-medium text-white truncate">{{ currentTrack.title || 'Untitled' }}</div>
             <div class="text-neutral-400 text-xs truncate">{{ currentTrack.artist || 'Unknown Artist' }}</div>
           </div>
@@ -68,7 +68,7 @@
         </div>
 
         <!-- Right: Loop, Shuffle, Volume -->
-        <div class="hidden lg:flex justify-end lg:bg-neutral-800/10 rounded-sm p-1 lg:min-w-48 items-center gap-4">
+        <div class="hidden lg:flex justify-end lg:bg-neutral-800/10 rounded-sm p-1 lg:min-w-48 max-w-3xs items-center gap-4">
           <button @click="toggleLoop" :class="[
               'text-neutral-400 hover:text-white transition-colors cursor-pointer',
               loopOne ? 'text-orange-400 hover:!text-orange-300' : ''

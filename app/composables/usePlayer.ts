@@ -1,5 +1,6 @@
 import { ref, computed, watch } from 'vue'
 import { useSupabase } from '~/utils/supabase'
+import { shuffleUniqueGroups } from '~/utils/uniqueGroupShuffle'
 
 export interface Track {
   id: number
@@ -14,6 +15,8 @@ export interface Track {
   bpm?: number | null
   year?: number | null
   collection_names?: string
+  track_group_name?: string | null
+  created_at?: string
 }
 
 interface PlayerState {
@@ -112,6 +115,9 @@ export function usePlayer() {
     originalQueue.value = [...tracks]
     queueSourceId.value = sourceId
 
+    // Check if this is an "all music" queue (profile page)
+    const isAllMusicQueue = sourceId?.startsWith('profile-')
+
     // Find the current track in the new queue
     const currentTrackId = currentTrack.value?.id
     let newIndex = 0
@@ -133,9 +139,16 @@ export function usePlayer() {
 
     // Apply shuffle if enabled
     if (isShuffled.value) {
+      // For "all music" queues, first deduplicate by group name
+      let tracksToShuffle = tracks
+      if (isAllMusicQueue) {
+        console.log('updateQueue: Applying unique group shuffle for all music queue')
+        tracksToShuffle = shuffleUniqueGroups(tracks)
+      }
+      
       const trackToKeep = tracks[newIndex]
-      const otherTracks = tracks.filter((_, i) => i !== newIndex)
-      const shuffledOthers = shuffleArray(otherTracks)
+      const otherTracks = tracksToShuffle.filter(t => t.id !== trackToKeep.id)
+      const shuffledOthers = isAllMusicQueue ? otherTracks : shuffleArray(otherTracks)
       queue.value = [trackToKeep, ...shuffledOthers]
       currentIndex.value = 0
     } else {
@@ -162,12 +175,22 @@ export function usePlayer() {
     originalQueue.value = [...tracks]
     queueSourceId.value = sourceId
 
+    // Check if this is an "all music" queue (profile page)
+    const isAllMusicQueue = sourceId?.startsWith('profile-')
+
     // Apply shuffle if enabled
     if (isShuffled.value) {
+      // For "all music" queues, first deduplicate by group name
+      let tracksToShuffle = tracks
+      if (isAllMusicQueue) {
+        console.log('loadQueue: Applying unique group shuffle for all music queue')
+        tracksToShuffle = shuffleUniqueGroups(tracks)
+      }
+      
       // Shuffle the queue but ensure the track at autoPlayIndex is first
       const trackToPlay = tracks[autoPlayIndex]
-      const otherTracks = tracks.filter((_, i) => i !== autoPlayIndex)
-      const shuffledOthers = shuffleArray(otherTracks)
+      const otherTracks = tracksToShuffle.filter(t => t.id !== trackToPlay.id)
+      const shuffledOthers = isAllMusicQueue ? otherTracks : shuffleArray(otherTracks)
       queue.value = [trackToPlay, ...shuffledOthers]
       currentIndex.value = 0
     } else {
@@ -291,11 +314,22 @@ export function usePlayer() {
   const toggleShuffle = () => {
     isShuffled.value = !isShuffled.value
 
+    // Check if this is an "all music" queue (profile page)
+    const isAllMusicQueue = queueSourceId.value?.startsWith('profile-')
+
     if (isShuffled.value) {
       // Shuffle the queue, keeping current track at current position
       const currentTrackData = currentTrack.value
-      const otherTracks = queue.value.filter(t => t.id !== currentTrackData?.id)
-      const shuffledOthers = shuffleArray(otherTracks)
+      
+      // For "all music" queues, first deduplicate by group name
+      let tracksToShuffle = originalQueue.value
+      if (isAllMusicQueue) {
+        console.log('toggleShuffle: Applying unique group shuffle for all music queue')
+        tracksToShuffle = shuffleUniqueGroups(originalQueue.value)
+      }
+      
+      const otherTracks = tracksToShuffle.filter(t => t.id !== currentTrackData?.id)
+      const shuffledOthers = isAllMusicQueue ? otherTracks : shuffleArray(otherTracks)
       
       // Rebuild queue with current track at current index
       const newQueue = [...shuffledOthers]
