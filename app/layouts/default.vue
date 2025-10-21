@@ -462,11 +462,17 @@ onMounted(async () => {
   window.addEventListener('edit-track', ((event: CustomEvent) => {
     handleEditTrack(event.detail)
   }) as EventListener)
+  
+  // Listen for upload modal open events
+  window.addEventListener('open-upload-modal', (() => {
+    openModal()
+  }) as EventListener)
 })
 
 // Cleanup on unmount
 onUnmounted(() => {
   auth.cleanup()
   window.removeEventListener('edit-track', handleEditTrack as EventListener)
+  window.removeEventListener('open-upload-modal', openModal as EventListener)
 })
 </script>
