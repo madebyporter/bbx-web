@@ -6,17 +6,17 @@
       {{ isOwnProfile ? 'No tracks in this collection yet.' : 'No tracks available.' }}
     </div>
 
-    <div class="w-fit" v-else>
+    <div class="w-fit md:w-full" v-else>
       <!-- Header -->
       <div :class="[
           'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 xl:sticky xl:top-20 bg-neutral-900 z-40',
-          isOwnProfile ? 'collectionTrackGrid-edit' : 'collectionTrackGrid'
+          isOwnProfile ? 'collectionTrackGrid-edit' : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut')
         ]">
         <div></div>
         <div>Title</div>
         <div>Artist</div>
         <div>Version</div>
-        <div>Collection</div>
+        <div v-if="user">Collection</div>
         <div>Genre</div>
         <div>BPM</div>
         <div>Duration</div>
@@ -27,7 +27,7 @@
       <!-- Tracks -->
       <div v-for="(track, index) in tracks" :key="track.id" :class="[
           'text-sm border-b border-neutral-800/50 hover:bg-neutral-800/30 py-3 transition-opacity',
-          isOwnProfile ? 'collectionTrackGrid-edit' : 'collectionTrackGrid',
+          isOwnProfile ? 'collectionTrackGrid-edit' : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut'),
           { 'opacity-30': track.hidden && viewMode === 'all' }
         ]">
         <div class="px-2 flex items-center justify-center">
@@ -50,7 +50,7 @@
         </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
-        <div class="text-neutral-400 overflow-hidden truncate">
+        <div v-if="user" class="text-neutral-400 overflow-hidden truncate">
           <template v-if="track.collections && track.collections.length > 0">
             <NuxtLink v-for="(collection, idx) in track.collections" :key="collection.slug"
               :to="`/u/${username}/c/${collection.slug}`" class="hover:text-white hover:underline transition-colors">{{
@@ -92,6 +92,7 @@
 
 <script setup lang="ts">
 import { usePlayer } from '~/composables/usePlayer'
+import { useAuth } from '~/composables/useAuth'
 
 const props = defineProps<{
   tracks: any[]
@@ -105,6 +106,7 @@ const props = defineProps<{
 defineEmits(['edit-track', 'toggle-hidden'])
 
 const { loadQueue, currentTrack, isPlaying } = usePlayer()
+const { user } = useAuth()
 
 const isCurrentlyPlaying = (track: any) => {
   return currentTrack.value?.id === track.id && isPlaying.value
