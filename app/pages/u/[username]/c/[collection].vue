@@ -18,7 +18,7 @@
       />
 
       <!-- Tracks in Collection -->
-      <div class="grow overflow-x-scroll xl:overflow-x-visible">
+      <div class="grow overflow-x-scroll xl:overflow-x-visible w-full">
         <CollectionTracksTable 
           :tracks="displayedTracks" 
           :source-id="`collection-${collection?.id}`" 

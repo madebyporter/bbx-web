@@ -1,8 +1,8 @@
 <template>
   <div class="flex flex-row justify-between items-center gap-4 py-2 px-4 lg:py-4 border-b border-neutral-800">
-    <div class="flex flex-col">
-      <h1 class="text-sm lg:text-3xl font-bold">{{ title }}</h1>
-      <p v-if="description" class="text-neutral-400 text-sm mt-1">
+    <div class="flex flex-col overflow-auto">
+      <h1 class="text-xl lg:text-3xl font-bold truncate">{{ title }}</h1>
+      <p v-if="description" class="text-neutral-400 text-sm mt-1 truncate">
         {{ description }}
       </p>
     </div>
