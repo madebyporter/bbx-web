@@ -144,12 +144,22 @@ export function usePlayer() {
       if (isAllMusicQueue) {
         console.log('updateQueue: Applying unique group shuffle for all music queue')
         tracksToShuffle = shuffleUniqueGroups(tracks)
+        console.log(`updateQueue: After deduplication: ${tracks.length} → ${tracksToShuffle.length} tracks`)
       }
       
       const trackToKeep = tracks[newIndex]
-      const otherTracks = tracksToShuffle.filter(t => t.id !== trackToKeep.id)
-      const shuffledOthers = isAllMusicQueue ? otherTracks : shuffleArray(otherTracks)
-      queue.value = [trackToKeep, ...shuffledOthers]
+      
+      // Ensure the track to keep is in the deduplicated list
+      const trackInList = tracksToShuffle.find(t => t.id === trackToKeep.id)
+      
+      if (trackInList) {
+        const otherTracks = tracksToShuffle.filter(t => t.id !== trackToKeep.id)
+        queue.value = [trackInList, ...otherTracks]
+      } else {
+        // Track was deduplicated out, just use the deduplicated list
+        queue.value = [...tracksToShuffle]
+      }
+      
       currentIndex.value = 0
     } else {
       queue.value = [...tracks]
@@ -185,13 +195,24 @@ export function usePlayer() {
       if (isAllMusicQueue) {
         console.log('loadQueue: Applying unique group shuffle for all music queue')
         tracksToShuffle = shuffleUniqueGroups(tracks)
+        console.log(`loadQueue: After deduplication: ${tracks.length} → ${tracksToShuffle.length} tracks`)
       }
       
-      // Shuffle the queue but ensure the track at autoPlayIndex is first
+      // Get the track to play - from deduplicated list if applicable
       const trackToPlay = tracks[autoPlayIndex]
-      const otherTracks = tracksToShuffle.filter(t => t.id !== trackToPlay.id)
-      const shuffledOthers = isAllMusicQueue ? otherTracks : shuffleArray(otherTracks)
-      queue.value = [trackToPlay, ...shuffledOthers]
+      
+      // Ensure the track to play is in the deduplicated list
+      const trackToPlayInList = tracksToShuffle.find(t => t.id === trackToPlay.id)
+      
+      if (trackToPlayInList) {
+        // Remove it from the list and place it first
+        const otherTracks = tracksToShuffle.filter(t => t.id !== trackToPlay.id)
+        queue.value = [trackToPlayInList, ...otherTracks]
+      } else {
+        // Track was deduplicated out, just use the deduplicated list
+        queue.value = [...tracksToShuffle]
+      }
+      
       currentIndex.value = 0
     } else {
       queue.value = [...tracks]
@@ -200,6 +221,14 @@ export function usePlayer() {
 
     currentTrack.value = queue.value[currentIndex.value]
     console.log('loadQueue: Current track set', { title: currentTrack.value?.title, storage_path: currentTrack.value?.storage_path })
+    
+    // Log the queue order for debugging
+    if (isShuffled.value && isAllMusicQueue) {
+      console.log('📋 QUEUE ORDER (Smart Shuffle):')
+      queue.value.forEach((track, idx) => {
+        console.log(`  ${idx + 1}. "${track.title}" [ID: ${track.id}] [Group: ${track.track_group_name || 'none'}]`)
+      })
+    }
     
     // Load the track
     if (currentTrack.value) {
@@ -224,6 +253,7 @@ export function usePlayer() {
   const play = async () => {
     if (audioElement.value && currentTrack.value) {
       try {
+        console.log(`▶️ NOW PLAYING: "${currentTrack.value.title}" by ${currentTrack.value.artist} [ID: ${currentTrack.value.id}] [Group: ${currentTrack.value.track_group_name || 'none'}] [Version: ${currentTrack.value.version || 'N/A'}]`)
         await audioElement.value.play()
         isPlaying.value = true
         saveState()
@@ -276,8 +306,34 @@ export function usePlayer() {
     if (queue.value.length === 0) return
 
     let nextIndex = currentIndex.value + 1
+    
+    // Check if we've reached the end of the queue
     if (nextIndex >= queue.value.length) {
-      nextIndex = 0 // Loop back to start
+      // Check if this is an "all music" queue with shuffle enabled
+      const isAllMusicQueue = queueSourceId.value?.startsWith('profile-')
+      
+      if (isShuffled.value && isAllMusicQueue && originalQueue.value.length > 0) {
+        console.log('🔄 End of queue reached - Re-shuffling!')
+        
+        // Re-shuffle the queue with smart shuffle
+        const newShuffledQueue = shuffleUniqueGroups(originalQueue.value)
+        queue.value = newShuffledQueue
+        
+        console.log('📋 NEW QUEUE ORDER (Re-shuffled):')
+        queue.value.forEach((track, idx) => {
+          if (idx < 10) { // Only show first 10 to avoid spam
+            console.log(`  ${idx + 1}. "${track.title}" [ID: ${track.id}] [Group: ${track.track_group_name || 'none'}]`)
+          }
+        })
+        if (queue.value.length > 10) {
+          console.log(`  ... and ${queue.value.length - 10} more tracks`)
+        }
+        
+        nextIndex = 0
+      } else {
+        // Normal loop behavior for non-shuffle or non-all-music queues
+        nextIndex = 0
+      }
     }
 
     await playTrackAtIndex(nextIndex)
@@ -326,17 +382,27 @@ export function usePlayer() {
       if (isAllMusicQueue) {
         console.log('toggleShuffle: Applying unique group shuffle for all music queue')
         tracksToShuffle = shuffleUniqueGroups(originalQueue.value)
+        console.log(`toggleShuffle: After deduplication: ${originalQueue.value.length} → ${tracksToShuffle.length} tracks`)
       }
       
-      const otherTracks = tracksToShuffle.filter(t => t.id !== currentTrackData?.id)
-      const shuffledOthers = isAllMusicQueue ? otherTracks : shuffleArray(otherTracks)
-      
-      // Rebuild queue with current track at current index
-      const newQueue = [...shuffledOthers]
+      // Check if current track is in the deduplicated list
       if (currentTrackData) {
-        newQueue.splice(currentIndex.value, 0, currentTrackData)
+        const trackInList = tracksToShuffle.find(t => t.id === currentTrackData.id)
+        
+        if (trackInList) {
+          // Current track is in list, keep it at position 0
+          const otherTracks = tracksToShuffle.filter(t => t.id !== currentTrackData.id)
+          queue.value = [trackInList, ...otherTracks]
+          currentIndex.value = 0
+        } else {
+          // Current track was deduplicated out, use the deduplicated list without it
+          queue.value = [...tracksToShuffle]
+          currentIndex.value = 0
+        }
+      } else {
+        queue.value = [...tracksToShuffle]
+        currentIndex.value = 0
       }
-      queue.value = newQueue
     } else {
       // Restore original order, find current track's original position
       const currentTrackData = currentTrack.value
