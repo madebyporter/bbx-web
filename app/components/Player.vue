@@ -1,29 +1,33 @@
 <template>
   <div v-if="hasEverHadTrack" ref="playerRef"
-    class="w-full bg-neutral-900 border-t border-neutral-800 z-50 h-[57px] lg:h-fit"
+    class="w-full bg-neutral-900 border-t border-neutral-800 z-50 h-fit lg:h-fit relative"
     style="transform: translateY(100%)">
     <div class="w-full p-1 h-full">
-      <div class="flex flex-row items-stretch gap-1 justify-between h-full">
+      <div class="flex flex-row items-stretch gap-1 justify-between h-fit lg:h-full pt-6 lg:pt-0">
         <!-- Left: Track Info -->
-        <div class="flex items-center justify-start lg:bg-neutral-800/10 rounded-sm p-1 lg:min-w-48 grow lg:grow-0">
-          <div v-if="currentTrack" class="text-xs lg:text-sm p-2 overflow-auto max-w-3xs">
+        <div class="flex items-center justify-start lg:bg-neutral-800/10 rounded-sm p-1 lg:min-w-48 grow lg:grow-0 order-1 lg:order-none">
+          <div v-if="currentTrack" class="text-xs lg:text-sm p-1 lg:p-2 overflow-auto max-w-3xs">
             <div class="font-medium text-white truncate">{{ currentTrack.title || 'Untitled' }}</div>
             <div class="text-neutral-400 text-xs truncate">{{ currentTrack.artist || 'Unknown Artist' }}</div>
           </div>
         </div>
 
         <!-- Center: Controls + Seek Bar -->
-        <div class="lg:bg-neutral-800/20 rounded-sm p-1 w-fit lg:w-full grow-0 lg:grow flex flex-col gap-1">
+        <div class="lg:bg-neutral-800/20 rounded-sm p-1 w-fit lg:w-full grow-0 lg:grow flex flex-col gap-1 justify-center lg:justify-start order-3 lg:order-none">
+
           <!-- Playback Controls -->
           <div class="flex items-center justify-center gap-1">
+
+            <!-- Previous -->
             <button @click="playPrevious" :disabled="!currentTrack"
-              class="flex justify-center items-center h-10 lg:h-8 bg-neutral-800 rounded-sm p-2 px-1 text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              class="hidden lg:flex justify-center items-center h-10 lg:h-8 bg-neutral-800 rounded-sm p-2 px-1 text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="Previous">
               <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
               </svg>
             </button>
 
+            <!-- Play/Pause -->
             <button @click="togglePlayPause" :disabled="!currentTrack"
               class="flex justify-center items-center w-10 h-10 lg:h-8 bg-white hover:bg-neutral-100 rounded-sm text-black disabled:opacity-30 disabled:cursor-not-allowed transition-transform cursor-pointer"
               title="Play/Pause">
@@ -35,8 +39,9 @@
               </svg>
             </button>
 
+            <!-- Next -->
             <button @click="playNext" :disabled="!currentTrack"
-              class="flex justify-center items-center h-10 lg:h-8 bg-neutral-800 rounded-sm p-2 px-1 text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              class="hidden lg:flex justify-center items-center h-10 lg:h-8 bg-neutral-800 rounded-sm p-2 px-1 text-neutral-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="Next">
               <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M16 18h2V6h-2zm-11 0l8.5-6L5 6z" />
@@ -45,7 +50,7 @@
           </div>
 
           <!-- Seek Bar + Time -->
-          <div class="hidden lg:flex items-center gap-2">
+          <div class="flex items-center gap-2 absolute top-0 left-0 w-full py-2 lg:py-0 lg:relative lg:top-auto lg:left-auto">
             <span class="text-xs text-neutral-400 w-10 text-right">{{ formattedCurrentTime }}</span>
             <div class="flex-1 relative h-1">
               <!-- Background track -->
@@ -68,7 +73,8 @@
         </div>
 
         <!-- Right: Loop, Shuffle, Volume -->
-        <div class="hidden lg:flex justify-end lg:bg-neutral-800/10 rounded-sm p-1 lg:min-w-48 max-w-3xs items-center gap-4">
+        <div class="flex justify-end lg:bg-neutral-800/10 rounded-sm p-1 lg:min-w-48 max-w-3xs items-center gap-4 order-2 lg:order-none">
+          <!-- Loop One -->
           <button @click="toggleLoop" :class="[
               'text-neutral-400 hover:text-white transition-colors cursor-pointer',
               loopOne ? 'text-orange-400 hover:!text-orange-300' : ''
@@ -79,6 +85,7 @@
             </svg>
           </button>
 
+          <!-- Shuffle -->
           <button @click="toggleShuffle" :class="[
               'text-neutral-400 hover:text-white transition-colors cursor-pointer',
               isShuffled ? 'text-orange-400 hover:!text-orange-300' : ''
@@ -89,6 +96,7 @@
             </svg>
           </button>
 
+          <!-- Mute/Unmute -->
           <button @click="toggleMute" :class="[
               'text-neutral-400 hover:text-white transition-colors cursor-pointer',
               isMuted ? 'text-orange-400 hover:!text-orange-300' : ''
@@ -101,6 +109,7 @@
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
             </svg>
           </button>
+
         </div>
       </div>
     </div>
