@@ -70,8 +70,45 @@
               </div>
               <div>
                 <label class="text-sm text-neutral-400">BPM</label>
-                <input v-model.number="metadata.bpm" type="number"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                <div class="flex gap-2">
+                  <input v-model.number="metadata.bpm" type="number"
+                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                  <button 
+                    type="button"
+                    @click="analyzeBPMForTrack"
+                    :disabled="isAnalyzingBpm"
+                    class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 rounded text-neutral-500 hover:text-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                    title="Analyze BPM">
+                    <CircleSpark v-if="!isAnalyzingBpm" width="20" height="20" stroke-width="1.5" />
+                    <svg v-else class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </button>
+                </div>
+                <p v-if="bpmAnalysisError" class="text-xs text-red-500 mt-1">{{ bpmAnalysisError }}</p>
+                <p v-else-if="isAnalyzingBpm" class="text-xs text-amber-400 mt-1">Analyzing BPM...</p>
+              </div>
+              <div>
+                <label class="text-sm text-neutral-400">Key</label>
+                <div class="flex gap-2">
+                  <input v-model="metadata.key" type="text" placeholder="e.g. C Major, A Minor"
+                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                  <button 
+                    type="button"
+                    @click="analyzeKeyForTrack"
+                    :disabled="isAnalyzingKey"
+                    class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 rounded text-neutral-500 hover:text-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                    title="Analyze Key">
+                    <CircleSpark v-if="!isAnalyzingKey" width="20" height="20" stroke-width="1.5" />
+                    <svg v-else class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </button>
+                </div>
+                <p v-if="keyAnalysisError" class="text-xs text-red-500 mt-1">{{ keyAnalysisError }}</p>
+                <p v-else-if="isAnalyzingKey" class="text-xs text-amber-400 mt-1">Analyzing Key...</p>
               </div>
               <div>
                 <label class="text-sm text-neutral-400">Year</label>
@@ -88,7 +125,7 @@
               <!-- Copy Metadata Button -->
               <div v-if="metadata.track_group_name" class="col-span-2 border-t border-neutral-800 pt-4">
                 <button type="button" @click="copyMetadataFromGroup" :disabled="isCopyingMetadata"
-                  class="w-full p-2 border border-amber-600 hover:bg-amber-600/10 rounded text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer">
+                  class="w-full p-2 border border-neutral-700 hover:bg-neutral-800 rounded text-neutral-500 hover:text-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -131,9 +168,11 @@
 import { ref, watch, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
+import { analyzeBPM, analyzeKey } from '~/composables/useAudioAnalyzer'
 import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
+import { CircleSpark } from '@iconoir/vue'
 
 interface Props {
   show: boolean
@@ -152,6 +191,7 @@ interface TrackMetadata {
   genre: string
   mood: string
   bpm: number | null
+  key: string | null
   year: number | null
 }
 
@@ -170,6 +210,10 @@ const showSuccessMessage = ref(false)
 const error = ref<string | null>(null)
 const isCopyingMetadata = ref(false)
 const copyMetadataMessage = ref<string | null>(null)
+const isAnalyzingBpm = ref(false)
+const bpmAnalysisError = ref<string | null>(null)
+const isAnalyzingKey = ref(false)
+const keyAnalysisError = ref<string | null>(null)
 
 const metadata = ref<TrackMetadata>({
   title: '',
@@ -179,6 +223,7 @@ const metadata = ref<TrackMetadata>({
   genre: '',
   mood: '',
   bpm: null,
+  key: null,
   year: null
 })
 
@@ -368,6 +413,7 @@ watch(() => props.trackToEdit, async (newTrack) => {
       genre: newTrack.genre || '',
       mood: moodString,
       bpm: newTrack.bpm || null,
+      key: newTrack.key || null,
       year: newTrack.year || null
     }
     
@@ -375,6 +421,76 @@ watch(() => props.trackToEdit, async (newTrack) => {
     await loadTrackCollections(newTrack.id)
   }
 }, { immediate: true })
+
+const analyzeBPMForTrack = async () => {
+  if (!supabase || !props.trackToEdit || !props.trackToEdit.storage_path) {
+    bpmAnalysisError.value = 'Cannot analyze: track data unavailable'
+    return
+  }
+  
+  isAnalyzingBpm.value = true
+  bpmAnalysisError.value = null
+  
+  try {
+    // Get the audio file from Supabase storage
+    const { data: audioData, error: downloadError } = await supabase.storage
+      .from('sounds')
+      .download(props.trackToEdit.storage_path)
+    
+    if (downloadError) throw downloadError
+    if (!audioData) throw new Error('Failed to download audio file')
+    
+    // Analyze BPM
+    console.log(`🎵 Analyzing BPM for track: ${metadata.value.title}`)
+    const detectedBPM = await analyzeBPM(audioData)
+    
+    // Update the form field
+    metadata.value.bpm = detectedBPM
+    console.log(`✓ BPM detected: ${detectedBPM}`)
+    
+  } catch (err: any) {
+    console.error('BPM analysis failed:', err)
+    bpmAnalysisError.value = err.message || 'Failed to analyze BPM'
+    setTimeout(() => { bpmAnalysisError.value = null }, 5000)
+  } finally {
+    isAnalyzingBpm.value = false
+  }
+}
+
+const analyzeKeyForTrack = async () => {
+  if (!supabase || !props.trackToEdit || !props.trackToEdit.storage_path) {
+    keyAnalysisError.value = 'Cannot analyze: track data unavailable'
+    return
+  }
+  
+  isAnalyzingKey.value = true
+  keyAnalysisError.value = null
+  
+  try {
+    // Get the audio file from Supabase storage
+    const { data: audioData, error: downloadError } = await supabase.storage
+      .from('sounds')
+      .download(props.trackToEdit.storage_path)
+    
+    if (downloadError) throw downloadError
+    if (!audioData) throw new Error('Failed to download audio file')
+    
+    // Analyze Key
+    console.log(`🎹 Analyzing Key for track: ${metadata.value.title}`)
+    const detectedKey = await analyzeKey(audioData)
+    
+    // Update the form field
+    metadata.value.key = detectedKey
+    console.log(`✓ Key detected: ${detectedKey}`)
+    
+  } catch (err: any) {
+    console.error('Key analysis failed:', err)
+    keyAnalysisError.value = err.message || 'Failed to analyze key'
+    setTimeout(() => { keyAnalysisError.value = null }, 5000)
+  } finally {
+    isAnalyzingKey.value = false
+  }
+}
 
 const copyMetadataFromGroup = async () => {
   if (!supabase || !props.trackToEdit || !metadata.value.track_group_name) return
@@ -445,6 +561,10 @@ const copyMetadataFromGroup = async () => {
     if (!metadata.value.bpm && bestTrack.bpm) {
       metadata.value.bpm = bestTrack.bpm
       copiedFields.push('BPM')
+    }
+    if (!metadata.value.key && bestTrack.key) {
+      metadata.value.key = bestTrack.key
+      copiedFields.push('key')
     }
     if (!metadata.value.year && bestTrack.year) {
       metadata.value.year = bestTrack.year
@@ -561,6 +681,7 @@ const onSubmit = async () => {
         genre: metadata.value.genre || null,
         mood: moodArray,
         bpm: metadata.value.bpm,
+        key: metadata.value.key,
         year: metadata.value.year
       })
       .eq('id', props.trackToEdit.id)

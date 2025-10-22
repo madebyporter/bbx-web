@@ -268,9 +268,122 @@ const handleSearch = (query: string) => {
   searchQuery.value = query
 }
 
-// Expose handleSearch for parent to call
+// Apply filters and sort to tracks
+const updateFiltersAndSort = async (params: any) => {
+  console.log('Collection page: Applying filters and sort:', params)
+  
+  if (!supabase || !collection.value) return
+  
+  tracksLoading.value = true
+  
+  try {
+    // Fetch sounds via junction table with hidden status
+    let query = supabase
+      .from('collections_sounds')
+      .select(`
+        sound_id,
+        hidden,
+        sounds(*)
+      `)
+      .eq('collection_id', collection.value.id)
+    
+    const { data, error } = await query
+    
+    if (error) throw error
+    
+    // Extract sounds and include hidden status
+    let soundsList = (data || [])
+      .filter(item => item.sounds !== null)
+      .map(item => ({
+        ...(item.sounds as any),
+        hidden: item.hidden || false,
+        junction_sound_id: item.sound_id
+      }))
+    
+    // Apply filters
+    const { filters, sort } = params
+    
+    // Genre filter
+    if (filters.genre?.length > 0) {
+      soundsList = soundsList.filter(track => filters.genre.includes(track.genre))
+    }
+    
+    // BPM range filter
+    if (filters.bpm?.min) {
+      soundsList = soundsList.filter(track => track.bpm && track.bpm >= filters.bpm.min)
+    }
+    if (filters.bpm?.max) {
+      soundsList = soundsList.filter(track => track.bpm && track.bpm <= filters.bpm.max)
+    }
+    
+    // Key filter
+    if (filters.key?.length > 0) {
+      soundsList = soundsList.filter(track => filters.key.includes(track.key))
+    }
+    
+    // Mood filter (array overlap)
+    if (filters.mood?.length > 0) {
+      soundsList = soundsList.filter(track => {
+        if (!track.mood || !Array.isArray(track.mood)) return false
+        return filters.mood.some((m: string) => track.mood.includes(m))
+      })
+    }
+    
+    // Year range filter
+    if (filters.year?.min) {
+      soundsList = soundsList.filter(track => track.year && track.year >= filters.year.min)
+    }
+    if (filters.year?.max) {
+      soundsList = soundsList.filter(track => track.year && track.year <= filters.year.max)
+    }
+    
+    // Apply sort
+    soundsList.sort((a, b) => {
+      const aVal = a[sort.sortBy]
+      const bVal = b[sort.sortBy]
+      if (sort.sortDirection === 'asc') {
+        return aVal > bVal ? 1 : -1
+      } else {
+        return aVal < bVal ? 1 : -1
+      }
+    })
+    
+    // Fetch collection names and slugs for each track
+    const tracksWithCollections = await Promise.all(soundsList.map(async (track: any) => {
+      const { data: junctionData } = await supabase
+        .from('collections_sounds')
+        .select('collection_id')
+        .eq('sound_id', track.id)
+      
+      const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
+      
+      if (collectionIds.length === 0) {
+        return { ...track, collections: [] }
+      }
+      
+      const { data: collectionData } = await supabase
+        .from('collections')
+        .select('name, slug')
+        .in('id', collectionIds)
+      
+      return {
+        ...track,
+        collections: collectionData || []
+      }
+    }))
+    
+    tracks.value = tracksWithCollections
+  } catch (error) {
+    console.error('Error filtering tracks:', error)
+  } finally {
+    tracksLoading.value = false
+  }
+}
+
+// Expose handleSearch and updateFiltersAndSort for parent to call
 defineExpose({
-  handleSearch
+  handleSearch,
+  updateFiltersAndSort
 })
 
 // Listen for track update events
