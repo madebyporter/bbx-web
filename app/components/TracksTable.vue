@@ -9,16 +9,13 @@
           {{ isOwnProfile ? 'No tracks uploaded yet' : 'No tracks available' }}
         </h3>
         <p class="text-neutral-500 text-sm mb-6">
-          {{ isOwnProfile 
-            ? 'Start building your music library by uploading your first track.' 
-            : 'This user hasn\'t uploaded any tracks yet.' 
+          {{ isOwnProfile
+          ? 'Start building your music library by uploading your first track.'
+          : 'This user hasn\'t uploaded any tracks yet.'
           }}
         </p>
-        <button 
-          v-if="isOwnProfile"
-          @click="handleUploadClick"
-          class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-neutral-900 font-medium rounded transition-colors cursor-pointer"
-        >
+        <button v-if="isOwnProfile" @click="handleUploadClick"
+          class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-neutral-900 font-medium rounded transition-colors cursor-pointer">
           Upload Music
         </button>
       </div>
@@ -43,12 +40,12 @@
 
       <!-- Tracks -->
       <div v-for="(track, index) in tracks" :key="track.id" :class="[
-          'text-sm border-b border-neutral-800/50 hover:bg-neutral-800/30 py-3',
-          isOwnProfile ? 'trackGrid-edit' : 'trackGrid'
+          'text-sm border-b border-neutral-800/50 py-3 transition-colors',
+          isOwnProfile ? 'trackGrid-edit' : 'trackGrid', isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800/30'
         ]">
         <div class="px-2 flex items-center justify-center">
           <button @click="handlePlayClick(track, index)"
-            class="text-neutral-400 hover:text-white transition-colors cursor-pointer"
+            :class="['text-neutral-400 hover:text-white transition-colors cursor-pointer'] + (isCurrentlyPlaying(track) ? ' text-orange-400' : '')"
             :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'">
             <svg v-if="isCurrentlyPlaying(track)" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
@@ -60,7 +57,7 @@
         </div>
         <div class="overflow-hidden truncate">
           <NuxtLink :to="`/u/${username}/t/${generateTrackSlug(track)}`"
-            class="hover:text-white transition-colors hover:underline">
+            :class="['hover:text-white transition-colors hover:underline'] + (isCurrentlyPlaying(track) ? ' font-bold text-white' : '')">
             {{ track.title || 'Untitled' }}
           </NuxtLink>
         </div>
@@ -78,7 +75,7 @@
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
         <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>
         <div v-if="isOwnProfile">
-          <button @click="$emit('edit-track', track)" class="text-amber-400 hover:text-amber-300 text-xs cursor-pointer"
+          <button @click="$emit('edit-track', track)" class="text-neutral-500 hover:text-amber-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5"
             title="Edit track">
             Edit
           </button>

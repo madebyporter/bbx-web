@@ -26,9 +26,10 @@
 
       <!-- Tracks -->
       <div v-for="(track, index) in tracks" :key="track.id" :class="[
-          'text-sm border-b border-neutral-800/50 hover:bg-neutral-800/30 py-3 transition-opacity',
+          'text-sm border-b border-neutral-800/50 py-3 transition-all',
           isOwnProfile ? 'collectionTrackGrid-edit' : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut'),
-          { 'opacity-30': track.hidden && viewMode === 'all' }
+          { 'opacity-30': track.hidden && viewMode === 'all' },
+          isCurrentlyPlaying(track) ? 'bg-neutral-700/50' : 'hover:bg-neutral-800/30'
         ]">
         <div class="px-2 flex items-center justify-center">
           <button @click="handlePlayClick(track, index)"
