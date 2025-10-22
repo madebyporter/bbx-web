@@ -79,6 +79,15 @@
                 Analyzing BPM...
               </div>
 
+              <!-- Key Analysis Status -->
+              <div v-if="file.isAnalyzingKey" class="flex items-center gap-2 text-sm text-amber-400">
+                <svg class="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Analyzing Key...
+              </div>
+
               <!-- Metadata Fields -->
               <div class="flex flex-col gap-3">
                 <!-- Title (full width) -->
@@ -144,6 +153,23 @@
                       :disabled="isUploading" />
                   </div>
                   <div>
+                    <label class="flex items-center justify-between text-xs text-neutral-400">
+                      <span>Key</span>
+                      <label class="flex items-center gap-1 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          v-model="file.analyzeKey"
+                          :disabled="isUploading"
+                          class="cursor-pointer"
+                        />
+                        <span class="text-xs">Auto-analyze</span>
+                      </label>
+                    </label>
+                    <input v-model="file.metadata.key" type="text" placeholder="e.g. C Major"
+                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                      :disabled="isUploading" />
+                  </div>
+                  <div>
                     <label class="text-xs text-neutral-400">Year</label>
                     <input v-model.number="file.metadata.year" type="number"
                       class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
@@ -204,7 +230,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { usePlayer } from '~/composables/usePlayer'
-import { analyzeBPM } from '~/composables/useBPMAnalyzer'
+import { analyzeBPM, analyzeKey } from '~/composables/useAudioAnalyzer'
 import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
@@ -226,6 +252,7 @@ interface FileMetadata {
   genre: string
   mood: string
   bpm: number | null
+  key: string | null
   year: number | null
 }
 
@@ -238,6 +265,8 @@ interface SelectedFile {
   error: string | null
   analyzeBpm: boolean
   isAnalyzingBpm: boolean
+  analyzeKey: boolean
+  isAnalyzingKey: boolean
   uploadedSoundId: number | null
 }
 
@@ -384,6 +413,7 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
           genre: exactMatch.genre || '',
           mood: Array.isArray(exactMatch.mood) ? exactMatch.mood.join(', ') : (exactMatch.mood || ''),
           bpm: exactMatch.bpm || null,
+          key: exactMatch.key || null,
           year: exactMatch.year || null,
           version: exactMatch.version || 'v1.0',
           collectionIds: []
@@ -440,6 +470,7 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
       genre: bestMatch.genre || '',
       mood: moodString,
       bpm: bestMatch.bpm || null,
+      key: bestMatch.key || null,
       year: bestMatch.year || null,
       version: nextVersion,
       collectionIds
@@ -561,6 +592,9 @@ const processFiles = async (files: File[]) => {
         // BPM: Similar track > Filename > Null
         bpm: prefillData?.bpm || parsedData.bpm || null,
         
+        // Key: Similar track > Null (no key in MP3 tags typically)
+        key: prefillData?.key || null,
+        
         // Year: Similar track > MP3 tags > Null
         year: prefillData?.year || mp3Meta?.year || null
       },
@@ -568,8 +602,10 @@ const processFiles = async (files: File[]) => {
       duration,
       progress: 0,
       error: warningMessage, // Will show as warning in yellow
-      analyzeBpm: !(prefillData?.bpm || parsedData.bpm), // Auto-enable analysis if no BPM detected
+      analyzeBpm: false, // Manual opt-in for speed
       isAnalyzingBpm: false,
+      analyzeKey: false, // Manual opt-in for speed
+      isAnalyzingKey: false,
       uploadedSoundId: null
     })
   }
@@ -672,6 +708,36 @@ const analyzeAndUpdateBPM = async (fileData: SelectedFile) => {
   }
 }
 
+const analyzeAndUpdateKey = async (fileData: SelectedFile) => {
+  if (!supabase || !fileData.uploadedSoundId) return
+  
+  fileData.isAnalyzingKey = true
+  
+  try {
+    console.log(`🎹 Analyzing Key for: ${fileData.metadata.title}`)
+    const detectedKey = await analyzeKey(fileData.file)
+    
+    // Update the database with the detected key
+    const { error: updateError } = await supabase
+      .from('sounds')
+      .update({ key: detectedKey })
+      .eq('id', fileData.uploadedSoundId)
+    
+    if (updateError) {
+      console.error('Failed to update key:', updateError)
+      fileData.error = `Upload successful, but key analysis update failed`
+    } else {
+      fileData.metadata.key = detectedKey
+      console.log(`✓ Key detected and saved: ${detectedKey} for "${fileData.metadata.title}"`)
+    }
+  } catch (error: any) {
+    console.error('Key analysis failed:', error)
+    fileData.error = `Upload successful, but key analysis failed: ${error.message}`
+  } finally {
+    fileData.isAnalyzingKey = false
+  }
+}
+
 const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
   if (!supabase || !user.value) {
     fileData.error = 'Not authenticated'
@@ -727,6 +793,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         genre: fileData.metadata.genre || null,
         mood: moodArray,
         bpm: fileData.metadata.bpm,
+        key: fileData.metadata.key,
         year: fileData.metadata.year
       })
       .select('id')
@@ -863,13 +930,25 @@ const onSubmit = async () => {
       emit('music-uploaded')
       
       // Start BPM analysis in background for files that have analyzeBpm enabled
-      const filesToAnalyze = selectedFiles.value.filter(f => f.analyzeBpm && f.uploadedSoundId)
-      if (filesToAnalyze.length > 0) {
-        console.log(`🎵 Starting background BPM analysis for ${filesToAnalyze.length} track(s)`)
+      const filesToAnalyzeBPM = selectedFiles.value.filter(f => f.analyzeBpm && f.uploadedSoundId)
+      if (filesToAnalyzeBPM.length > 0) {
+        console.log(`🎵 Starting background BPM analysis for ${filesToAnalyzeBPM.length} track(s)`)
         // Run analysis in background without awaiting
-        filesToAnalyze.forEach(fileData => {
+        filesToAnalyzeBPM.forEach(fileData => {
           analyzeAndUpdateBPM(fileData).catch(err => {
             console.error('Background BPM analysis error:', err)
+          })
+        })
+      }
+      
+      // Start Key analysis in background for files that have analyzeKey enabled
+      const filesToAnalyzeKey = selectedFiles.value.filter(f => f.analyzeKey && f.uploadedSoundId)
+      if (filesToAnalyzeKey.length > 0) {
+        console.log(`🎹 Starting background Key analysis for ${filesToAnalyzeKey.length} track(s)`)
+        // Run analysis in background without awaiting
+        filesToAnalyzeKey.forEach(fileData => {
+          analyzeAndUpdateKey(fileData).catch(err => {
+            console.error('Background Key analysis error:', err)
           })
         })
       }

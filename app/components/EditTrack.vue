@@ -90,6 +90,27 @@
                 <p v-else-if="isAnalyzingBpm" class="text-xs text-amber-400 mt-1">Analyzing BPM...</p>
               </div>
               <div>
+                <label class="text-sm text-neutral-400">Key</label>
+                <div class="flex gap-2">
+                  <input v-model="metadata.key" type="text" placeholder="e.g. C Major, A Minor"
+                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                  <button 
+                    type="button"
+                    @click="analyzeKeyForTrack"
+                    :disabled="isAnalyzingKey"
+                    class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 rounded text-neutral-500 hover:text-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                    title="Analyze Key">
+                    <CircleSpark v-if="!isAnalyzingKey" width="20" height="20" stroke-width="1.5" />
+                    <svg v-else class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </button>
+                </div>
+                <p v-if="keyAnalysisError" class="text-xs text-red-500 mt-1">{{ keyAnalysisError }}</p>
+                <p v-else-if="isAnalyzingKey" class="text-xs text-amber-400 mt-1">Analyzing Key...</p>
+              </div>
+              <div>
                 <label class="text-sm text-neutral-400">Year</label>
                 <input v-model.number="metadata.year" type="number"
                   class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
@@ -147,7 +168,7 @@
 import { ref, watch, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
-import { analyzeBPM } from '~/composables/useBPMAnalyzer'
+import { analyzeBPM, analyzeKey } from '~/composables/useAudioAnalyzer'
 import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
@@ -170,6 +191,7 @@ interface TrackMetadata {
   genre: string
   mood: string
   bpm: number | null
+  key: string | null
   year: number | null
 }
 
@@ -190,6 +212,8 @@ const isCopyingMetadata = ref(false)
 const copyMetadataMessage = ref<string | null>(null)
 const isAnalyzingBpm = ref(false)
 const bpmAnalysisError = ref<string | null>(null)
+const isAnalyzingKey = ref(false)
+const keyAnalysisError = ref<string | null>(null)
 
 const metadata = ref<TrackMetadata>({
   title: '',
@@ -199,6 +223,7 @@ const metadata = ref<TrackMetadata>({
   genre: '',
   mood: '',
   bpm: null,
+  key: null,
   year: null
 })
 
@@ -388,6 +413,7 @@ watch(() => props.trackToEdit, async (newTrack) => {
       genre: newTrack.genre || '',
       mood: moodString,
       bpm: newTrack.bpm || null,
+      key: newTrack.key || null,
       year: newTrack.year || null
     }
     
@@ -428,6 +454,41 @@ const analyzeBPMForTrack = async () => {
     setTimeout(() => { bpmAnalysisError.value = null }, 5000)
   } finally {
     isAnalyzingBpm.value = false
+  }
+}
+
+const analyzeKeyForTrack = async () => {
+  if (!supabase || !props.trackToEdit || !props.trackToEdit.storage_path) {
+    keyAnalysisError.value = 'Cannot analyze: track data unavailable'
+    return
+  }
+  
+  isAnalyzingKey.value = true
+  keyAnalysisError.value = null
+  
+  try {
+    // Get the audio file from Supabase storage
+    const { data: audioData, error: downloadError } = await supabase.storage
+      .from('sounds')
+      .download(props.trackToEdit.storage_path)
+    
+    if (downloadError) throw downloadError
+    if (!audioData) throw new Error('Failed to download audio file')
+    
+    // Analyze Key
+    console.log(`🎹 Analyzing Key for track: ${metadata.value.title}`)
+    const detectedKey = await analyzeKey(audioData)
+    
+    // Update the form field
+    metadata.value.key = detectedKey
+    console.log(`✓ Key detected: ${detectedKey}`)
+    
+  } catch (err: any) {
+    console.error('Key analysis failed:', err)
+    keyAnalysisError.value = err.message || 'Failed to analyze key'
+    setTimeout(() => { keyAnalysisError.value = null }, 5000)
+  } finally {
+    isAnalyzingKey.value = false
   }
 }
 
@@ -500,6 +561,10 @@ const copyMetadataFromGroup = async () => {
     if (!metadata.value.bpm && bestTrack.bpm) {
       metadata.value.bpm = bestTrack.bpm
       copiedFields.push('BPM')
+    }
+    if (!metadata.value.key && bestTrack.key) {
+      metadata.value.key = bestTrack.key
+      copiedFields.push('key')
     }
     if (!metadata.value.year && bestTrack.year) {
       metadata.value.year = bestTrack.year
@@ -616,6 +681,7 @@ const onSubmit = async () => {
         genre: metadata.value.genre || null,
         mood: moodArray,
         bpm: metadata.value.bpm,
+        key: metadata.value.key,
         year: metadata.value.year
       })
       .eq('id', props.trackToEdit.id)

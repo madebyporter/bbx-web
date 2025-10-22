@@ -1,6 +1,6 @@
 /**
- * BPM Analysis Composable using Tone.js
- * Provides functionality to analyze audio files and detect BPM
+ * Audio Analysis Composable
+ * Provides functionality to analyze audio files and detect BPM and Key
  */
 
 import { ref } from 'vue'
@@ -209,6 +209,170 @@ function findAudioPeaks(data: Float32Array, threshold = 0.1): number[] {
 }
 
 /**
+ * Analyze musical key of an audio file
+ * @param audioFile - File or Blob object containing audio data
+ * @returns Promise<string> - Detected musical key (e.g., "C Major", "A Minor")
+ */
+export async function analyzeKey(audioFile: File | Blob): Promise<string> {
+  try {
+    // Load Tone.js if not already loaded
+    await loadTone()
+    
+    // Create audio context for decoding
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    
+    // Read file as array buffer
+    const arrayBuffer = await audioFile.arrayBuffer()
+    
+    // Decode audio data
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+    
+    console.log('Audio decoded for key detection:', audioBuffer.duration, 'seconds')
+    
+    // Limit to first 60 seconds for key analysis
+    const maxDuration = 60
+    const limitedDuration = Math.min(audioBuffer.duration, maxDuration)
+    
+    console.log('Analyzing key from first', limitedDuration, 'seconds')
+    
+    // Get mono channel data
+    const audioData = audioBuffer.getChannelData(0)
+    const maxSamples = audioBuffer.sampleRate * maxDuration
+    const limitedAudioData = audioData.length > maxSamples 
+      ? audioData.slice(0, maxSamples) 
+      : audioData
+    
+    // Detect key using chroma analysis
+    const key = detectKeyFromAudioData(limitedAudioData, audioBuffer.sampleRate)
+    
+    // Clean up
+    audioContext.close()
+    
+    if (!key) {
+      throw new Error('Could not detect key')
+    }
+    
+    console.log('Detected key:', key)
+    
+    return key
+    
+  } catch (error: any) {
+    console.error('Key analysis failed:', error)
+    throw new Error(`Failed to analyze key: ${error.message || 'Unknown error'}`)
+  }
+}
+
+/**
+ * Detect musical key from audio data using chroma analysis
+ */
+function detectKeyFromAudioData(audioData: Float32Array, sampleRate: number): string {
+  console.log('Detecting key from audio data:', audioData.length, 'samples')
+  
+  // Note names
+  const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+  
+  // Calculate chroma (pitch class distribution)
+  const chroma = calculateChroma(audioData, sampleRate)
+  
+  // Find the most prominent pitch class
+  const maxChromaIndex = chroma.indexOf(Math.max(...chroma))
+  const rootNote = notes[maxChromaIndex]
+  
+  // Determine if major or minor based on third interval
+  const isMajor = determineMajorMinor(chroma, maxChromaIndex)
+  
+  return `${rootNote} ${isMajor ? 'Major' : 'Minor'}`
+}
+
+/**
+ * Calculate chroma vector (pitch class distribution)
+ */
+function calculateChroma(audioData: Float32Array, sampleRate: number): number[] {
+  const chroma = new Array(12).fill(0)
+  
+  // Analyze in chunks
+  const chunkSize = 8192
+  const hopSize = 4096
+  
+  for (let i = 0; i < audioData.length - chunkSize; i += hopSize) {
+    const chunk = audioData.slice(i, i + chunkSize)
+    
+    // Perform FFT-like frequency analysis (simplified)
+    const spectrum = calculateSpectrum(chunk, sampleRate)
+    
+    // Map frequencies to pitch classes
+    for (let freq = 0; freq < spectrum.length; freq++) {
+      if (spectrum[freq] > 0) {
+        const hz = (freq * sampleRate) / chunkSize
+        if (hz > 65 && hz < 2000) { // Focus on musical range
+          const pitchClass = frequencyToPitchClass(hz)
+          chroma[pitchClass] += spectrum[freq]
+        }
+      }
+    }
+  }
+  
+  // Normalize
+  const max = Math.max(...chroma)
+  if (max > 0) {
+    for (let i = 0; i < chroma.length; i++) {
+      chroma[i] /= max
+    }
+  }
+  
+  return chroma
+}
+
+/**
+ * Simple spectrum calculation (magnitude squared)
+ */
+function calculateSpectrum(data: Float32Array, sampleRate: number): number[] {
+  const spectrum = new Array(data.length / 2).fill(0)
+  
+  for (let i = 0; i < data.length; i++) {
+    const magnitude = Math.abs(data[i])
+    const bin = Math.floor(i / 2)
+    if (bin < spectrum.length) {
+      spectrum[bin] += magnitude * magnitude
+    }
+  }
+  
+  return spectrum
+}
+
+/**
+ * Convert frequency to pitch class (0-11)
+ */
+function frequencyToPitchClass(frequency: number): number {
+  // A4 = 440 Hz, corresponds to pitch class 9 (A)
+  const a4 = 440
+  const c0 = a4 * Math.pow(2, -4.75) // C0 frequency
+  
+  // Calculate semitones from C0
+  const semitones = 12 * Math.log2(frequency / c0)
+  
+  // Get pitch class (0-11)
+  return Math.round(semitones) % 12
+}
+
+/**
+ * Determine if key is major or minor based on chroma profile
+ */
+function determineMajorMinor(chroma: number[], rootIndex: number): boolean {
+  // Major third is 4 semitones from root
+  const majorThirdIndex = (rootIndex + 4) % 12
+  // Minor third is 3 semitones from root
+  const minorThirdIndex = (rootIndex + 3) % 12
+  
+  // Compare strengths
+  const majorThirdStrength = chroma[majorThirdIndex]
+  const minorThirdStrength = chroma[minorThirdIndex]
+  
+  // If major third is stronger, it's major; otherwise minor
+  return majorThirdStrength > minorThirdStrength
+}
+
+/**
  * Composable for BPM analysis with reactive state
  */
 export function useBPMAnalyzer() {
@@ -237,6 +401,39 @@ export function useBPMAnalyzer() {
     isAnalyzing,
     error,
     bpm,
+    analyze
+  }
+}
+
+/**
+ * Composable for Key analysis with reactive state
+ */
+export function useKeyAnalyzer() {
+  const isAnalyzing = ref(false)
+  const error = ref<string | null>(null)
+  const key = ref<string | null>(null)
+  
+  const analyze = async (audioFile: File | Blob): Promise<string | null> => {
+    isAnalyzing.value = true
+    error.value = null
+    key.value = null
+    
+    try {
+      const detectedKey = await analyzeKey(audioFile)
+      key.value = detectedKey
+      return detectedKey
+    } catch (err: any) {
+      error.value = err.message || 'Key analysis failed'
+      return null
+    } finally {
+      isAnalyzing.value = false
+    }
+  }
+  
+  return {
+    isAnalyzing,
+    error,
+    key,
     analyze
   }
 }

@@ -44,6 +44,7 @@
             <div><span class="text-neutral-500">Duration:</span> {{ formatDuration(track.duration) }}</div>
             <div><span class="text-neutral-500">Genre:</span> {{ track.genre || '-' }}</div>
             <div><span class="text-neutral-500">BPM:</span> {{ track.bpm || '-' }}</div>
+            <div><span class="text-neutral-500">Key:</span> {{ track.key || '-' }}</div>
             <div><span class="text-neutral-500">Year:</span> {{ track.year || '-' }}</div>
             <div><span class="text-neutral-500">Mood:</span> {{ track.mood?.join(', ') || '-' }}</div>
             <div>

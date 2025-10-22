@@ -20,6 +20,7 @@ export interface Resource {
   genre?: string
   mood?: string[]
   bpm?: number
+  key?: string
   year?: number
   track_number?: number
   disc_number?: number
