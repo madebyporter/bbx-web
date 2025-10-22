@@ -102,12 +102,30 @@ const fetchTracks = async () => {
   loading.value = true
   console.log('fetchTracks: Querying sounds for user:', profileUserId.value)
   
+  // Load saved sort preferences from localStorage
+  let sortBy = 'created_at'
+  let sortDirection: 'asc' | 'desc' = 'desc'
+  
+  try {
+    const savedFilters = localStorage.getItem('filterSort_music')
+    if (savedFilters) {
+      const parsed = JSON.parse(savedFilters)
+      if (parsed.sort) {
+        sortBy = parsed.sort.sortBy || 'created_at'
+        sortDirection = parsed.sort.sortDirection || 'desc'
+        console.log('fetchTracks: Using saved sort:', sortBy, sortDirection)
+      }
+    }
+  } catch (e) {
+    console.error('fetchTracks: Error loading saved sort:', e)
+  }
+  
   try {
     const { data, error } = await supabase
       .from('sounds')
       .select('*')
       .eq('user_id', profileUserId.value)
-      .order('created_at', { ascending: false })
+      .order(sortBy, { ascending: sortDirection === 'asc' })
 
     console.log('fetchTracks: Query result', { data, error, count: data?.length })
     

@@ -242,7 +242,7 @@ import IconApple from './IconApple.vue'
 import IconWindows from './IconWindows.vue'
 import IconLinux from './IconLinux.vue'
 import { useSupabase } from '~/utils/supabase'
-import { ref, onMounted, reactive, computed } from 'vue'
+import { ref, onMounted, reactive, computed, watch } from 'vue'
 import MasterDrawer from './MasterDrawer.vue'
 
 // Reference to the MasterDrawer component
@@ -339,9 +339,116 @@ const fetchTags = async () => {
   }
 }
 
+// Load saved filters from localStorage
+const loadSavedFilters = () => {
+  if (typeof window === 'undefined') return // SSR guard
+  
+  try {
+    const savedFiltersKey = `filterSort_${props.context}`
+    const savedData = localStorage.getItem(savedFiltersKey)
+    
+    if (savedData) {
+      const parsed = JSON.parse(savedData)
+      console.log(`FilterSort: Loading saved filters for ${props.context}:`, parsed)
+      
+      // Restore sort
+      if (parsed.sort) {
+        sortBy.value = parsed.sort.sortBy || 'created_at'
+        sortDirection.value = parsed.sort.sortDirection || 'desc'
+      }
+      
+      // Restore filters based on context
+      if (parsed.filters) {
+        // Software/Kits filters
+        if (props.context !== 'music') {
+          if (parsed.filters.price) {
+            filters.price.free = parsed.filters.price.free || false
+            filters.price.paid = parsed.filters.price.paid || false
+          }
+          if (parsed.filters.os) filters.os = [...parsed.filters.os]
+          if (parsed.filters.tags) filters.tags = [...parsed.filters.tags]
+        }
+        
+        // Music filters
+        if (props.context === 'music') {
+          if (parsed.filters.genre) filters.genre = [...parsed.filters.genre]
+          if (parsed.filters.bpm) {
+            filters.bpm.min = parsed.filters.bpm.min
+            filters.bpm.max = parsed.filters.bpm.max
+          }
+          if (parsed.filters.key) filters.key = [...parsed.filters.key]
+          if (parsed.filters.mood) filters.mood = [...parsed.filters.mood]
+          if (parsed.filters.year) {
+            filters.year.min = parsed.filters.year.min
+            filters.year.max = parsed.filters.year.max
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('FilterSort: Error loading saved filters:', error)
+  }
+}
+
+// Save filters to localStorage
+const saveFilters = () => {
+  if (typeof window === 'undefined') return // SSR guard
+  
+  try {
+    const savedFiltersKey = `filterSort_${props.context}`
+    const dataToSave = {
+      sort: {
+        sortBy: sortBy.value,
+        sortDirection: sortDirection.value
+      },
+      filters: {
+        // Software/Kits filters
+        price: { ...filters.price },
+        os: [...filters.os],
+        tags: [...filters.tags],
+        // Music filters
+        genre: [...filters.genre],
+        bpm: { ...filters.bpm },
+        key: [...filters.key],
+        mood: [...filters.mood],
+        year: { ...filters.year }
+      }
+    }
+    
+    localStorage.setItem(savedFiltersKey, JSON.stringify(dataToSave))
+    console.log(`FilterSort: Saved filters for ${props.context}`)
+  } catch (error) {
+    console.error('FilterSort: Error saving filters:', error)
+  }
+}
+
+// Watch for context changes and reset sortBy if needed
+watch(() => props.context, (newContext, oldContext) => {
+  if (newContext !== oldContext) {
+    // Load saved filters for new context
+    loadSavedFilters()
+    
+    // Define valid sort options for each context
+    const validSortOptions = {
+      software: ['created_at', 'name', 'creator', 'price'],
+      kits: ['created_at', 'name', 'creator', 'price'],
+      music: ['created_at', 'title', 'artist', 'bpm', 'year']
+    }
+    
+    const validOptions = validSortOptions[newContext] || ['created_at']
+    
+    // If current sortBy is not valid for new context, reset to 'created_at'
+    if (!validOptions.includes(sortBy.value)) {
+      console.log(`FilterSort: Context changed to ${newContext}, resetting sortBy from ${sortBy.value} to created_at`)
+      sortBy.value = 'created_at'
+    }
+  }
+}, { immediate: false })
+
 // Initialize component
 onMounted(async () => {
   await fetchTags()
+  loadSavedFilters()
 })
 
 // Filter tags based on input
@@ -423,6 +530,9 @@ const applyFiltersAndSort = () => {
   
   console.log('FilterSort: Applying filters and sort:', filterSortParams)
   
+  // Save filters to localStorage for persistence
+  saveFilters()
+  
   // First emit the filters
   emit('apply-filters', filterSortParams)
   
@@ -461,5 +571,8 @@ const clearAll = () => {
   filters.mood = []
   filters.year.min = null
   filters.year.max = null
+  
+  // Save cleared state to localStorage
+  saveFilters()
 }
 </script>

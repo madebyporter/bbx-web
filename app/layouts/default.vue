@@ -356,13 +356,13 @@ const handleFiltersAndSort = (params: FilterSortParams) => {
     }
   }
   
-  // For music pages, use pageRef directly (All Music, Collection, Group pages expose updateFiltersAndSort)
-  if (filterSortContext.value === 'music' && pageRef.value) {
+  // Nuxt 3 NuxtPage wraps the component, so we need to access the nested pageRef
+  const actualPage = pageRef.value ? ((pageRef.value as any).pageRef || pageRef.value) : null
+  
+  // For music pages, call updateFiltersAndSort directly on the page
+  if (filterSortContext.value === 'music' && actualPage) {
     try {
-      // Nuxt 3 NuxtPage wraps the component, so we need to access the nested pageRef
-      const actualPage = (pageRef.value as any).pageRef || pageRef.value
-      
-      if (actualPage && typeof actualPage.updateFiltersAndSort === 'function') {
+      if (typeof actualPage.updateFiltersAndSort === 'function') {
         actualPage.updateFiltersAndSort(params)
         return
       }
@@ -375,28 +375,28 @@ const handleFiltersAndSort = (params: FilterSortParams) => {
   let dbComponent = databaseRef.value
   
   // If direct ref doesn't work, try to get it through the page ref
-  if (!dbComponent && pageRef.value) {
-    console.log('Layout: Trying to find database component through page ref')
-    
+  if (!dbComponent && actualPage) {
     try {
-      // Check if page has exposed database property
-      if (pageRef.value.database && pageRef.value.database.value) {
-        dbComponent = pageRef.value.database.value
-        console.log('Layout: Found database component through page database property')
+      // Check if page has exposed database property (software page)
+      if (actualPage.database && actualPage.database.value) {
+        dbComponent = actualPage.database.value
       } 
-      // If no database property, check if page has databaseGrid property
-      else if (pageRef.value.databaseGrid && pageRef.value.databaseGrid.value) {
-        dbComponent = pageRef.value.databaseGrid.value
-        console.log('Layout: Found database component through page databaseGrid property')
+      // If no database property, check if page has databaseGrid property (kits page)
+      else if (actualPage.databaseGrid && actualPage.databaseGrid.value) {
+        dbComponent = actualPage.databaseGrid.value
+      }
+      // Check if page itself exposes updateFiltersAndSort (kits page with direct exposure)
+      else if (typeof actualPage.updateFiltersAndSort === 'function') {
+        actualPage.updateFiltersAndSort(params)
+        return
       }
     } catch (e) {
       console.error('Layout: Error accessing page component:', e)
     }
   }
   
-  // Attempt to update filters
+  // Attempt to update filters on database component
   if (dbComponent && typeof dbComponent.updateFiltersAndSort === 'function') {
-    console.log('Layout: Database component found, updating filters')
     try {
       dbComponent.updateFiltersAndSort({
         sort: currentSort.value,

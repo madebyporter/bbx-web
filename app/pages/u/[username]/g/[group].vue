@@ -112,13 +112,30 @@ const fetchGroupTracks = async () => {
     
     profileUserId.value = profileData.id as string
     
+    // Load saved sort preferences from localStorage
+    let sortBy = 'version'
+    let sortDirection: 'asc' | 'desc' = 'desc'
+    
+    try {
+      const savedFilters = localStorage.getItem('filterSort_music')
+      if (savedFilters) {
+        const parsed = JSON.parse(savedFilters)
+        if (parsed.sort) {
+          sortBy = parsed.sort.sortBy || 'version'
+          sortDirection = parsed.sort.sortDirection || 'desc'
+        }
+      }
+    } catch (e) {
+      console.error('Group page: Error loading saved sort:', e)
+    }
+    
     // Fetch all tracks in this group
     const { data: tracksData, error: tracksError } = await supabase
       .from('sounds')
       .select('*')
       .eq('user_id', profileData.id)
       .eq('track_group_name', groupParam)
-      .order('version', { ascending: false })
+      .order(sortBy, { ascending: sortDirection === 'asc' })
     
     if (tracksError) throw tracksError
     
