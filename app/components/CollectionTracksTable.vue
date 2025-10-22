@@ -25,7 +25,7 @@
       </div>
 
       <!-- Tracks -->
-      <div v-for="(track, index) in tracks" :key="track.id" :class="[
+      <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
           'text-sm border-b border-neutral-800/50 py-3 transition-colors items-center',
           isOwnProfile ? 'collectionTrackGrid-edit' : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut'),
           { 'opacity-30': track.hidden && viewMode === 'all' },
@@ -92,6 +92,7 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
 import { useAuth } from '~/composables/useAuth'
 
@@ -108,6 +109,26 @@ defineEmits(['edit-track', 'toggle-hidden'])
 
 const { loadQueue, currentTrack, isPlaying } = usePlayer()
 const { user } = useAuth()
+
+// Handle scroll-to-track event
+const handleScrollToTrack = (event: CustomEvent) => {
+  const trackId = event.detail?.trackId
+  if (!trackId) return
+  
+  // Find the track element
+  const trackElement = document.querySelector(`[data-track-id="${trackId}"]`)
+  if (trackElement) {
+    trackElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('scroll-to-track', handleScrollToTrack as EventListener)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll-to-track', handleScrollToTrack as EventListener)
+})
 
 const isCurrentlyPlaying = (track: any) => {
   return currentTrack.value?.id === track.id && isPlaying.value

@@ -6,7 +6,7 @@
       <div class="flex flex-row items-stretch gap-1 justify-between h-fit lg:h-full pt-6 lg:pt-0">
         <!-- Left: Track Info -->
         <div class="flex items-center justify-start lg:bg-neutral-800/10 rounded-sm p-1 lg:min-w-48 grow lg:grow-0 order-1 lg:order-none">
-          <div v-if="currentTrack" class="text-xs lg:text-sm p-1 lg:p-2 overflow-auto max-w-3xs">
+          <div v-if="currentTrack" @click="scrollToCurrentTrack" class="text-xs lg:text-sm p-1 lg:p-2 overflow-auto max-w-3xs cursor-pointer hover:bg-neutral-800/30 rounded transition-colors">
             <div class="font-medium text-white truncate">{{ currentTrack.title || 'Untitled' }}</div>
             <div class="text-neutral-400 text-xs truncate">{{ currentTrack.artist || 'Unknown Artist' }}</div>
           </div>
@@ -209,6 +209,18 @@ const handleSeek = (event: Event) => {
 const handleAudioError = (event: Event) => {
   console.error('Audio playback error:', event)
   // Could implement auto-skip to next track on error
+}
+
+// Scroll to current track in the library
+const scrollToCurrentTrack = () => {
+  if (currentTrack.value?.id) {
+    const event = new CustomEvent('scroll-to-track', {
+      detail: { trackId: currentTrack.value.id },
+      bubbles: true,
+      composed: true
+    })
+    window.dispatchEvent(event)
+  }
 }
 </script>
 

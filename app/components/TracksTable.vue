@@ -39,7 +39,7 @@
       </div>
 
       <!-- Tracks -->
-      <div v-for="(track, index) in tracks" :key="track.id" :class="[
+      <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
           'text-sm border-b border-neutral-800/50 py-3 transition-colors items-center',
           isOwnProfile ? 'trackGrid-edit' : 'trackGrid', isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800/30'
         ]">
@@ -86,6 +86,7 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
 
 interface Props {
@@ -102,6 +103,26 @@ defineEmits<{
 }>()
 
 const { currentTrack, isPlaying, loadQueue, togglePlayPause } = usePlayer()
+
+// Handle scroll-to-track event
+const handleScrollToTrack = (event: CustomEvent) => {
+  const trackId = event.detail?.trackId
+  if (!trackId) return
+  
+  // Find the track element
+  const trackElement = document.querySelector(`[data-track-id="${trackId}"]`)
+  if (trackElement) {
+    trackElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('scroll-to-track', handleScrollToTrack as EventListener)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll-to-track', handleScrollToTrack as EventListener)
+})
 
 const generateTrackSlug = (track: any): string => {
   // Use title + ID as slug, fallback to just ID
