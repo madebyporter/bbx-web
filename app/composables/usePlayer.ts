@@ -188,6 +188,9 @@ export function usePlayer() {
     // Check if this is an "all music" queue (profile page)
     const isAllMusicQueue = sourceId?.startsWith('profile-')
 
+    // Get the explicitly selected track (the one user clicked on)
+    const explicitlySelectedTrack = tracks[autoPlayIndex]
+    
     // Apply shuffle if enabled
     if (isShuffled.value) {
       // For "all music" queues, first deduplicate by group name
@@ -198,22 +201,14 @@ export function usePlayer() {
         console.log(`loadQueue: After deduplication: ${tracks.length} → ${tracksToShuffle.length} tracks`)
       }
       
-      // Get the track to play - from deduplicated list if applicable
-      const trackToPlay = tracks[autoPlayIndex]
+      // Remove the explicitly selected track from the shuffled list
+      const otherTracks = tracksToShuffle.filter(t => t.id !== explicitlySelectedTrack.id)
       
-      // Ensure the track to play is in the deduplicated list
-      const trackToPlayInList = tracksToShuffle.find(t => t.id === trackToPlay.id)
-      
-      if (trackToPlayInList) {
-        // Remove it from the list and place it first
-        const otherTracks = tracksToShuffle.filter(t => t.id !== trackToPlay.id)
-        queue.value = [trackToPlayInList, ...otherTracks]
-      } else {
-        // Track was deduplicated out, just use the deduplicated list
-        queue.value = [...tracksToShuffle]
-      }
-      
+      // Always place the explicitly selected track first, regardless of deduplication
+      queue.value = [explicitlySelectedTrack, ...otherTracks]
       currentIndex.value = 0
+      
+      console.log(`loadQueue: Explicitly selected track [ID: ${explicitlySelectedTrack.id}] placed first`)
     } else {
       queue.value = [...tracks]
       currentIndex.value = autoPlayIndex
