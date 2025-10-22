@@ -40,7 +40,7 @@
 
       <!-- Tracks -->
       <div v-for="(track, index) in tracks" :key="track.id" :class="[
-          'text-sm border-b border-neutral-800/50 py-3 transition-colors',
+          'text-sm border-b border-neutral-800/50 py-3 transition-colors items-center',
           isOwnProfile ? 'trackGrid-edit' : 'trackGrid', isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800/30'
         ]">
         <div class="px-2 flex items-center justify-center">

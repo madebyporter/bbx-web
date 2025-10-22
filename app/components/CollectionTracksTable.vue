@@ -26,14 +26,14 @@
 
       <!-- Tracks -->
       <div v-for="(track, index) in tracks" :key="track.id" :class="[
-          'text-sm border-b border-neutral-800/50 py-3 transition-all',
+          'text-sm border-b border-neutral-800/50 py-3 transition-colors items-center',
           isOwnProfile ? 'collectionTrackGrid-edit' : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut'),
           { 'opacity-30': track.hidden && viewMode === 'all' },
-          isCurrentlyPlaying(track) ? 'bg-neutral-700/50' : 'hover:bg-neutral-800/30'
+          isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800/30'
         ]">
         <div class="px-2 flex items-center justify-center">
           <button @click="handlePlayClick(track, index)"
-            class="text-neutral-400 hover:text-white transition-colors cursor-pointer"
+            :class="['text-neutral-400 hover:text-white transition-colors cursor-pointer'] + (isCurrentlyPlaying(track) ? ' text-orange-400' : '')"
             :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'">
             <svg v-if="isCurrentlyPlaying(track)" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
@@ -43,9 +43,9 @@
             </svg>
           </button>
         </div>
-        <div>
+        <div class="overflow-hidden truncate">
           <NuxtLink :to="`/u/${username}/t/${generateTrackSlug(track)}`"
-            class="hover:text-white transition-colors hover:underline">
+            :class="['hover:text-white transition-colors hover:underline'] + (isCurrentlyPlaying(track) ? ' font-bold text-white' : '')">
             {{ track.title || 'Untitled' }}
           </NuxtLink>
         </div>
@@ -81,7 +81,7 @@
           </button>
         </div>
         <div v-if="isOwnProfile">
-          <button @click="$emit('edit-track', track)" class="text-amber-400 hover:text-amber-300 text-xs cursor-pointer"
+          <button @click="$emit('edit-track', track)" class="text-neutral-500 hover:text-amber-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5"
             title="Edit track">
             Edit
           </button>
