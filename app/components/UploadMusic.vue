@@ -40,7 +40,19 @@
 
         <!-- Selected Files List -->
         <div v-if="selectedFiles.length > 0" class="flex flex-col gap-4 h-full">
-          <h3 class="font-semibold">Selected Files ({{ selectedFiles.length }})</h3>
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <h3 class="font-semibold">Selected Files ({{ selectedFiles.length }})</h3>
+            <label class="flex items-center gap-2 text-sm text-neutral-400 cursor-pointer">
+              <input 
+                type="checkbox" 
+                :checked="allFilesAnalyzeBpm"
+                @change="toggleAllAnalyzeBpm"
+                :disabled="isUploading"
+                class="cursor-pointer"
+              />
+              Analyze BPM for all tracks
+            </label>
+          </div>
           <div class="flex flex-col gap-4">
             <div v-for="(file, index) in selectedFiles" :key="index" class="border border-neutral-800 bg-neutral-800 rounded-lg *:p-4">
               <div class="flex items-center justify-between bg-neutral-900/30">
@@ -56,6 +68,15 @@
               <!-- Upload Progress -->
               <div v-if="file.progress > 0 && file.progress < 100" class="w-full bg-neutral-700 rounded-full h-2">
                 <div class="bg-blue-500 h-2 rounded-full transition-all" :style="{ width: `${file.progress}%` }"></div>
+              </div>
+
+              <!-- BPM Analysis Status -->
+              <div v-if="file.isAnalyzingBpm" class="flex items-center gap-2 text-sm text-amber-400">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Analyzing BPM...
               </div>
 
               <!-- Metadata Fields -->
@@ -106,7 +127,18 @@
                       :disabled="isUploading" />
                   </div>
                   <div>
-                    <label class="text-xs text-neutral-400">BPM</label>
+                    <label class="flex items-center justify-between text-xs text-neutral-400">
+                      <span>BPM</span>
+                      <label class="flex items-center gap-1 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          v-model="file.analyzeBpm"
+                          :disabled="isUploading"
+                          class="cursor-pointer"
+                        />
+                        <span class="text-xs">Auto-analyze</span>
+                      </label>
+                    </label>
                     <input v-model.number="file.metadata.bpm" type="number"
                       class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
                       :disabled="isUploading" />
@@ -172,6 +204,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { usePlayer } from '~/composables/usePlayer'
+import { analyzeBPM } from '~/composables/useBPMAnalyzer'
 import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
@@ -203,6 +236,9 @@ interface SelectedFile {
   duration: number | null
   progress: number
   error: string | null
+  analyzeBpm: boolean
+  isAnalyzingBpm: boolean
+  uploadedSoundId: number | null
 }
 
 interface Collection {
@@ -237,6 +273,17 @@ const uploadButtonText = computed(() => {
   }
   return `Upload ${selectedFiles.value.length} track${selectedFiles.value.length !== 1 ? 's' : ''}`
 })
+
+const allFilesAnalyzeBpm = computed(() => {
+  return selectedFiles.value.length > 0 && selectedFiles.value.every(f => f.analyzeBpm)
+})
+
+const toggleAllAnalyzeBpm = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  selectedFiles.value.forEach(f => {
+    f.analyzeBpm = target.checked
+  })
+}
 
 const queueCollectionCreation = (name: string, fileIndex: number) => {
   if (!name.trim()) return
@@ -520,7 +567,10 @@ const processFiles = async (files: File[]) => {
       selectedCollectionIds: prefillData?.collectionIds || [],
       duration,
       progress: 0,
-      error: warningMessage // Will show as warning in yellow
+      error: warningMessage, // Will show as warning in yellow
+      analyzeBpm: !(prefillData?.bpm || parsedData.bpm), // Auto-enable analysis if no BPM detected
+      isAnalyzingBpm: false,
+      uploadedSoundId: null
     })
   }
 }
@@ -592,6 +642,36 @@ const autoHideOlderVersions = async (
   }
 }
 
+const analyzeAndUpdateBPM = async (fileData: SelectedFile) => {
+  if (!supabase || !fileData.uploadedSoundId) return
+  
+  fileData.isAnalyzingBpm = true
+  
+  try {
+    console.log(`🎵 Analyzing BPM for: ${fileData.metadata.title}`)
+    const detectedBPM = await analyzeBPM(fileData.file)
+    
+    // Update the database with the detected BPM
+    const { error: updateError } = await supabase
+      .from('sounds')
+      .update({ bpm: detectedBPM })
+      .eq('id', fileData.uploadedSoundId)
+    
+    if (updateError) {
+      console.error('Failed to update BPM:', updateError)
+      fileData.error = `Upload successful, but BPM analysis update failed`
+    } else {
+      fileData.metadata.bpm = detectedBPM
+      console.log(`✓ BPM detected and saved: ${detectedBPM} for "${fileData.metadata.title}"`)
+    }
+  } catch (error: any) {
+    console.error('BPM analysis failed:', error)
+    fileData.error = `Upload successful, but BPM analysis failed: ${error.message}`
+  } finally {
+    fileData.isAnalyzingBpm = false
+  }
+}
+
 const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
   if (!supabase || !user.value) {
     fileData.error = 'Not authenticated'
@@ -653,6 +733,9 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       .single()
     
     if (dbError) throw dbError
+    
+    // Store the sound ID for later use (e.g., BPM analysis)
+    fileData.uploadedSoundId = soundData.id
     
     // Add to collections if any are selected
     let collectionNames = ''
@@ -778,6 +861,18 @@ const onSubmit = async () => {
       uploadedCount.value = successCount
       showSuccessMessage.value = true
       emit('music-uploaded')
+      
+      // Start BPM analysis in background for files that have analyzeBpm enabled
+      const filesToAnalyze = selectedFiles.value.filter(f => f.analyzeBpm && f.uploadedSoundId)
+      if (filesToAnalyze.length > 0) {
+        console.log(`🎵 Starting background BPM analysis for ${filesToAnalyze.length} track(s)`)
+        // Run analysis in background without awaiting
+        filesToAnalyze.forEach(fileData => {
+          analyzeAndUpdateBPM(fileData).catch(err => {
+            console.error('Background BPM analysis error:', err)
+          })
+        })
+      }
     } else {
       globalError.value = 'All uploads failed. Please try again.'
     }

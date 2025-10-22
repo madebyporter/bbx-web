@@ -70,8 +70,26 @@
               </div>
               <div>
                 <label class="text-sm text-neutral-400">BPM</label>
-                <input v-model.number="metadata.bpm" type="number"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                <div class="flex gap-2">
+                  <input v-model.number="metadata.bpm" type="number"
+                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                  <button 
+                    type="button"
+                    @click="analyzeBPMForTrack"
+                    :disabled="isAnalyzingBpm"
+                    class="px-3 py-2 border border-amber-600 hover:bg-amber-600/10 rounded text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                    title="Analyze BPM">
+                    <svg v-if="!isAnalyzingBpm" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                    </svg>
+                    <svg v-else class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </button>
+                </div>
+                <p v-if="bpmAnalysisError" class="text-xs text-red-500 mt-1">{{ bpmAnalysisError }}</p>
+                <p v-else-if="isAnalyzingBpm" class="text-xs text-amber-400 mt-1">Analyzing BPM...</p>
               </div>
               <div>
                 <label class="text-sm text-neutral-400">Year</label>
@@ -131,6 +149,7 @@
 import { ref, watch, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
+import { analyzeBPM } from '~/composables/useBPMAnalyzer'
 import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
@@ -170,6 +189,8 @@ const showSuccessMessage = ref(false)
 const error = ref<string | null>(null)
 const isCopyingMetadata = ref(false)
 const copyMetadataMessage = ref<string | null>(null)
+const isAnalyzingBpm = ref(false)
+const bpmAnalysisError = ref<string | null>(null)
 
 const metadata = ref<TrackMetadata>({
   title: '',
@@ -375,6 +396,41 @@ watch(() => props.trackToEdit, async (newTrack) => {
     await loadTrackCollections(newTrack.id)
   }
 }, { immediate: true })
+
+const analyzeBPMForTrack = async () => {
+  if (!supabase || !props.trackToEdit || !props.trackToEdit.storage_path) {
+    bpmAnalysisError.value = 'Cannot analyze: track data unavailable'
+    return
+  }
+  
+  isAnalyzingBpm.value = true
+  bpmAnalysisError.value = null
+  
+  try {
+    // Get the audio file from Supabase storage
+    const { data: audioData, error: downloadError } = await supabase.storage
+      .from('sounds')
+      .download(props.trackToEdit.storage_path)
+    
+    if (downloadError) throw downloadError
+    if (!audioData) throw new Error('Failed to download audio file')
+    
+    // Analyze BPM
+    console.log(`🎵 Analyzing BPM for track: ${metadata.value.title}`)
+    const detectedBPM = await analyzeBPM(audioData)
+    
+    // Update the form field
+    metadata.value.bpm = detectedBPM
+    console.log(`✓ BPM detected: ${detectedBPM}`)
+    
+  } catch (err: any) {
+    console.error('BPM analysis failed:', err)
+    bpmAnalysisError.value = err.message || 'Failed to analyze BPM'
+    setTimeout(() => { bpmAnalysisError.value = null }, 5000)
+  } finally {
+    isAnalyzingBpm.value = false
+  }
+}
 
 const copyMetadataFromGroup = async () => {
   if (!supabase || !props.trackToEdit || !metadata.value.track_group_name) return
