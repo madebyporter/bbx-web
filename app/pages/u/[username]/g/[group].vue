@@ -187,6 +187,96 @@ const handleEdit = (track: any) => {
   window.dispatchEvent(event)
 }
 
+// Apply filters and sort to tracks
+const updateFiltersAndSort = async (params: any) => {
+  console.log('Group page: Applying filters and sort:', params)
+  
+  if (!supabase || !profileUserId.value || !groupName.value) return
+  
+  loading.value = true
+  
+  try {
+    let query = supabase
+      .from('sounds')
+      .select('*')
+      .eq('user_id', profileUserId.value)
+      .eq('track_group_name', groupName.value)
+    
+    // Apply music filters
+    const { filters, sort } = params
+    
+    // Genre filter
+    if (filters.genre?.length > 0) {
+      query = query.in('genre', filters.genre)
+    }
+    
+    // BPM range filter
+    if (filters.bpm?.min) {
+      query = query.gte('bpm', filters.bpm.min)
+    }
+    if (filters.bpm?.max) {
+      query = query.lte('bpm', filters.bpm.max)
+    }
+    
+    // Key filter
+    if (filters.key?.length > 0) {
+      query = query.in('key', filters.key)
+    }
+    
+    // Mood filter (array overlap)
+    if (filters.mood?.length > 0) {
+      query = query.overlaps('mood', filters.mood)
+    }
+    
+    // Year range filter
+    if (filters.year?.min) {
+      query = query.gte('year', filters.year.min)
+    }
+    if (filters.year?.max) {
+      query = query.lte('year', filters.year.max)
+    }
+    
+    // Apply sort
+    query = query.order(sort.sortBy, { ascending: sort.sortDirection === 'asc' })
+    
+    const { data, error } = await query
+    
+    if (error) throw error
+    
+    // Fetch collection names and slugs for each track
+    const tracksWithCollections = await Promise.all((data || []).map(async (track: any) => {
+      const { data: junctionData } = await supabase
+        .from('collections_sounds')
+        .select('collection_id')
+        .eq('sound_id', track.id)
+      
+      const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
+      
+      if (collectionIds.length === 0) {
+        return { ...track, collections: [] }
+      }
+      
+      const { data: collectionData } = await supabase
+        .from('collections')
+        .select('name, slug')
+        .in('id', collectionIds)
+      
+      return { ...track, collections: collectionData || [] }
+    }))
+    
+    tracks.value = tracksWithCollections
+  } catch (error) {
+    console.error('Error filtering tracks:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Expose updateFiltersAndSort for parent to call
+defineExpose({
+  updateFiltersAndSort
+})
+
 // Listen for track update events
 const handleTrackUpdate = () => {
   console.log('[group].vue: Received track update event, refetching tracks')

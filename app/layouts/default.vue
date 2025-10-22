@@ -15,7 +15,7 @@
           <SearchFilter @open-filter-modal="openFilterModal" @open-modal="openModal" @search="handleSearch"
             @toggle-nav="handleToggleNav" />
         </div>
-        <slot @edit-resource="handleEdit" @show-signup="handleShowSignup" />
+        <NuxtPage ref="pageRef" @edit-resource="handleEdit" @show-signup="handleShowSignup" />
       </section>
     </main>
 
@@ -86,8 +86,14 @@
     />
 
     <!-- Filter Modal -->
-    <FilterSort v-model:show="showFilterSort" :initial-sort="currentSort" :initial-filters="currentFilters"
-      @apply-filters="handleFiltersAndSort" />
+    <FilterSort 
+      v-if="filterSortContext"
+      v-model:show="showFilterSort" 
+      :context="filterSortContext"
+      :initial-sort="currentSort" 
+      :initial-filters="currentFilters"
+      @apply-filters="handleFiltersAndSort" 
+    />
   </div>
   <div v-else class="flex items-center justify-center min-h-screen">
     <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500"></div>
@@ -138,9 +144,16 @@ interface FilterSortParams {
     sortDirection: 'asc' | 'desc'
   }
   filters: {
+    // Software/Kits filters
     price: { free: boolean; paid: boolean }
     os: string[]
     tags: string[]
+    // Music filters
+    genre: string[]
+    bpm: { min: number | null; max: number | null }
+    key: string[]
+    mood: string[]
+    year: { min: number | null; max: number | null }
   }
 }
 
@@ -173,6 +186,15 @@ const isUserProfilePage = computed(() => {
   return route.path.startsWith('/u/')
 })
 
+// Determine FilterSort context based on current route
+const filterSortContext = computed(() => {
+  const path = route.path
+  if (path.includes('/software')) return 'software'
+  if (path.includes('/kits')) return 'kits'
+  if (path.startsWith('/u/') && !path.includes('/t/')) return 'music' // Exclude single track pages
+  return null
+})
+
 // Auth state
 const showAuthModal = ref(false)
 const showAdminModal = ref(false)
@@ -202,9 +224,16 @@ const currentSort = ref<{ sortBy: string; sortDirection: SortDirection }>({
 })
 
 const currentFilters = ref({
+  // Software/Kits filters
   price: { free: false, paid: false },
   os: [] as string[],
-  tags: [] as string[]
+  tags: [] as string[],
+  // Music filters
+  genre: [] as string[],
+  bpm: { min: null as number | null, max: null as number | null },
+  key: [] as string[],
+  mood: [] as string[],
+  year: { min: null as number | null, max: null as number | null }
 })
 
 const handleToggleNav = () => {
@@ -318,18 +347,31 @@ const handleFiltersAndSort = (params: FilterSortParams) => {
     currentFilters.value = {
       price: { ...params.filters.price },
       os: [...params.filters.os],
-      tags: [...params.filters.tags]
+      tags: [...params.filters.tags],
+      genre: [...(params.filters.genre || [])],
+      bpm: { ...(params.filters.bpm || {}) },
+      key: [...(params.filters.key || [])],
+      mood: [...(params.filters.mood || [])],
+      year: { ...(params.filters.year || {}) }
     }
   }
   
-  console.log('Layout: Updated filters to:', {
-    price: currentFilters.value.price,
-    os: currentFilters.value.os,
-    tags: currentFilters.value.tags
-  })
+  // For music pages, use pageRef directly (All Music, Collection, Group pages expose updateFiltersAndSort)
+  if (filterSortContext.value === 'music' && pageRef.value) {
+    try {
+      // Nuxt 3 NuxtPage wraps the component, so we need to access the nested pageRef
+      const actualPage = (pageRef.value as any).pageRef || pageRef.value
+      
+      if (actualPage && typeof actualPage.updateFiltersAndSort === 'function') {
+        actualPage.updateFiltersAndSort(params)
+        return
+      }
+    } catch (e) {
+      console.error('Layout: Error calling music page updateFiltersAndSort:', e)
+    }
+  }
   
-  // Get database component reference - try different approaches to find it
-  // First try direct reference
+  // For software/kits pages, get database component reference
   let dbComponent = databaseRef.value
   
   // If direct ref doesn't work, try to get it through the page ref
@@ -347,12 +389,6 @@ const handleFiltersAndSort = (params: FilterSortParams) => {
         dbComponent = pageRef.value.databaseGrid.value
         console.log('Layout: Found database component through page databaseGrid property')
       }
-      // Check if page is directly exposing component methods
-      else if (typeof pageRef.value.updateFiltersAndSort === 'function') {
-        console.log('Layout: Using page component methods directly')
-        pageRef.value.updateFiltersAndSort(params)
-        return
-      }
     } catch (e) {
       console.error('Layout: Error accessing page component:', e)
     }
@@ -369,28 +405,9 @@ const handleFiltersAndSort = (params: FilterSortParams) => {
     } catch (error) {
       console.error('Layout: Error applying filters:', error)
     }
-  } else {
+  } else if (filterSortContext.value !== 'music') {
+    // Only log error for software/kits pages that should have a database component
     console.error('Layout: Database component not found or updateFiltersAndSort method not available!')
-    
-    // Last resort - try to find any component with updateFiltersAndSort method
-    if (pageRef.value) {
-      console.log('Layout: Attempting to find updateFiltersAndSort on page component')
-      try {
-        const keys = Object.keys(pageRef.value)
-        console.log('Layout: Available page properties:', keys)
-        
-        for (const key of keys) {
-          const prop = pageRef.value[key]
-          if (prop && typeof prop.updateFiltersAndSort === 'function') {
-            console.log(`Layout: Found updateFiltersAndSort method on page.${key}`)
-            prop.updateFiltersAndSort(params)
-            return
-          }
-        }
-      } catch (e) {
-        console.error('Layout: Error searching for component method:', e)
-      }
-    }
   }
 }
 

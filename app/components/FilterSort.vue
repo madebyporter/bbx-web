@@ -4,172 +4,233 @@
       <h2 class="text-2xl">Filter & Sort</h2>
     </template>
 
-    <div class="grid lg:grid-cols-2 gap-4">
-      <!-- Column 1: Sort By -->
-      <div>
-        <label class="block nav-header mb-2">Sort By</label>
-        <select 
-          v-model="sortBy" 
-          class="w-full p-2 border border-neutral-800 rounded-md"
-        >
-          <option value="created_at">Date Added</option>
-          <option value="name">Name</option>
-          <option value="creator">Creator</option>
-          <option value="price">Price</option>
-        </select>
-      </div>
+    <div class="grow overflow-y-auto flex flex-col gap-8">
+      <div class="grid lg:grid-cols-2 gap-4">
+        <!-- Column 1: Sort By -->
+        <div>
+          <label class="block nav-header mb-2">Sort By</label>
+          <select v-model="sortBy" class="w-full p-2 border border-neutral-800 rounded-md outline-none">
+            <option value="created_at">Date Added</option>
+            <!-- Software/Kits options -->
+            <option v-if="context !== 'music'" value="name">Name</option>
+            <option v-if="context !== 'music'" value="creator">Creator</option>
+            <option v-if="context !== 'music'" value="price">Price</option>
+            <!-- Music options -->
+            <option v-if="context === 'music'" value="title">Title</option>
+            <option v-if="context === 'music'" value="artist">Artist</option>
+            <option v-if="context === 'music'" value="bpm">BPM</option>
+            <option v-if="context === 'music'" value="year">Year</option>
+          </select>
+        </div>
 
-      <!-- Column 2: Direction -->
-      <div>
-        <label class="block nav-header mb-2">Direction</label>
-        <select 
-          v-model="sortDirection" 
-          class="w-full p-2 border border-neutral-800 rounded-md"
-        >
-          <option value="asc">Ascending</option>
-          <option value="desc">Descending</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Filtering Section -->
-    <div class="flex flex-col gap-6">
-      <!-- Price Filter -->
-      <div>
-        <label class="block nav-header mb-2">Price</label>
-        <div class="flex gap-2">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input 
-              type="checkbox" 
-              v-model="filters.price.free" 
-              class="hidden"
-            />
-            <div class="px-3 py-2 rounded-md" :class="[
-              filters.price.free ? 'tag-active' : 'tag'
-            ]">
-              Free
-            </div>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input 
-              type="checkbox" 
-              v-model="filters.price.paid" 
-              class="hidden"
-            />
-            <div class="px-3 py-2 rounded-md" :class="[
-              filters.price.paid ? 'tag-active' : 'tag'
-            ]">
-              Paid
-            </div>
-          </label>
+        <!-- Column 2: Direction -->
+        <div>
+          <label class="block nav-header mb-2">Direction</label>
+          <select v-model="sortDirection" class="w-full p-2 border border-neutral-800 rounded-md outline-none">
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
         </div>
       </div>
 
-      <!-- OS Filter -->
-      <div>
-        <label class="block nav-header mb-2">Operating System</label>
-        <div class="flex gap-2">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input 
-              type="checkbox" 
-              value="mac" 
-              v-model="filters.os"
-              class="hidden"
-            />
-            <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
-              filters.os.includes('mac') ? 'tag-active' : 'tag'
-            ]">
-              <IconApple />
-              <span>macOS</span>
+      <!-- Filtering Section -->
+      <div class="flex flex-col gap-6">
+        <!-- Software/Kits Filters -->
+        <template v-if="context !== 'music'">
+          <!-- Price Filter -->
+          <div>
+            <label class="block nav-header mb-2">Price</label>
+            <div class="flex gap-2">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" v-model="filters.price.free" class="hidden" />
+                <div class="px-3 py-2 rounded-md" :class="[
+                  filters.price.free ? 'tag-active' : 'tag'
+                ]">
+                  Free
+                </div>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" v-model="filters.price.paid" class="hidden" />
+                <div class="px-3 py-2 rounded-md" :class="[
+                  filters.price.paid ? 'tag-active' : 'tag'
+                ]">
+                  Paid
+                </div>
+              </label>
             </div>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input 
-              type="checkbox" 
-              value="windows" 
-              v-model="filters.os"
-              class="hidden"
-            />
-            <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
-              filters.os.includes('windows') ? 'tag-active' : 'tag'
-            ]">
-              <IconWindows />
-              <span>Windows</span>
-            </div>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input 
-              type="checkbox" 
-              value="linux" 
-              v-model="filters.os"
-              class="hidden"
-            />
-            <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
-              filters.os.includes('linux') ? 'tag-active' : 'tag'
-            ]">
-              <IconLinux />
-              <span>Linux</span>
-            </div>
-          </label>
-        </div>
-      </div>
-
-      <!-- Tags Filter -->
-      <div>
-        <label class="block nav-header mb-2">Tags</label>
-        <div class="flex flex-wrap gap-2 p-4 bg-neutral-900 ring-1 ring-neutral-800 rounded-lg min-h-[56px]">
-          <div 
-            v-for="tag in selectedTags" 
-            :key="tag" 
-            class="tag"
-          >
-            {{ tag }}
-            <button 
-              @click="removeTag(tag)" 
-              class="hover:text-neutral-600 cursor-pointer"
-            >
-              ×
-            </button>
           </div>
-          
-          <input 
-            v-model="tagInput"
-            type="text"
-            class="flex-grow bg-transparent outline-none"
-            placeholder="Type to search or add tags"
-            @input="searchTags"
-            @keydown.enter.prevent="addTag"
-          />
-        </div>
-        <!-- Tag suggestions dropdown -->
-        <div 
-          v-if="showSuggestions && filteredTags.length > 0"
-          class="mt-1 bg-neutral-800 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
-        >
-          <div 
-            v-for="tag in filteredTags" 
-            :key="tag"
-            class="px-4 py-2 hover:bg-neutral-700 cursor-pointer"
-            @click="selectTag(tag)"
-          >
-            {{ tag }}
+
+          <!-- OS Filter -->
+          <div>
+            <label class="block nav-header mb-2">Operating System</label>
+            <div class="flex gap-2">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" value="mac" v-model="filters.os" class="hidden" />
+                <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
+                  filters.os.includes('mac') ? 'tag-active' : 'tag'
+                ]">
+                  <IconApple />
+                  <span>macOS</span>
+                </div>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" value="windows" v-model="filters.os" class="hidden" />
+                <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
+                  filters.os.includes('windows') ? 'tag-active' : 'tag'
+                ]">
+                  <IconWindows />
+                  <span>Windows</span>
+                </div>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" value="linux" v-model="filters.os" class="hidden" />
+                <div class="flex items-center gap-2 px-3 py-2 rounded-md" :class="[
+                  filters.os.includes('linux') ? 'tag-active' : 'tag'
+                ]">
+                  <IconLinux />
+                  <span>Linux</span>
+                </div>
+              </label>
+            </div>
           </div>
-        </div>
+
+          <!-- Tags Filter -->
+          <div>
+            <label class="block nav-header mb-2">Tags</label>
+            <div class="flex flex-wrap gap-2 p-4 bg-neutral-900 ring-1 ring-neutral-800 rounded-lg min-h-[56px]">
+              <div v-for="tag in selectedTags" :key="tag" class="tag">
+                {{ tag }}
+                <button @click="removeTag(tag)" class="hover:text-neutral-600 cursor-pointer">
+                  ×
+                </button>
+              </div>
+
+              <input v-model="tagInput" type="text" class="flex-grow bg-transparent outline-none"
+                placeholder="Type to search or add tags" @input="searchTags" @keydown.enter.prevent="addTag" />
+            </div>
+            <!-- Tag suggestions dropdown -->
+            <div v-if="showSuggestions && filteredTags.length > 0"
+              class="mt-1 bg-neutral-800 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
+              <div v-for="tag in filteredTags" :key="tag" class="px-4 py-2 hover:bg-neutral-700 cursor-pointer"
+                @click="selectTag(tag)">
+                {{ tag }}
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Music Filters -->
+        <template v-if="context === 'music'">
+          <!-- Genre Filter -->
+          <div>
+            <label class="block nav-header mb-2">Genre</label>
+            <select v-model="filters.genre" multiple
+              class="w-full p-2 border border-neutral-800 rounded-md min-h-[100px] outline-none">
+              <option value="Electronic">Electronic</option>
+              <option value="Hip-Hop">Hip-Hop</option>
+              <option value="Trap">Trap</option>
+              <option value="Ambient">Ambient</option>
+              <option value="House">House</option>
+              <option value="Techno">Techno</option>
+              <option value="Drum & Bass">Drum & Bass</option>
+              <option value="Dubstep">Dubstep</option>
+              <option value="Pop">Pop</option>
+              <option value="Rock">Rock</option>
+              <option value="Jazz">Jazz</option>
+              <option value="Classical">Classical</option>
+            </select>
+            <p class="text-xs text-neutral-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
+          </div>
+
+          <!-- BPM Range Filter -->
+          <div>
+            <label class="block nav-header mb-2">BPM Range</label>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <input v-model.number="filters.bpm.min" type="number" placeholder="Min (e.g. 120)"
+                  class="w-full p-2 border border-neutral-800 rounded-md outline-none" min="0" max="300" />
+              </div>
+              <div>
+                <input v-model.number="filters.bpm.max" type="number" placeholder="Max (e.g. 140)"
+                  class="w-full p-2 border border-neutral-800 rounded-md outline-none" min="0" max="300" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Key Filter -->
+          <div>
+            <label class="block nav-header mb-2">Key</label>
+            <select v-model="filters.key" multiple
+              class="w-full p-2 border border-neutral-800 rounded-md min-h-[100px] outline-none">
+              <option value="C Major">C Major</option>
+              <option value="C Minor">C Minor</option>
+              <option value="C# Major">C# Major</option>
+              <option value="C# Minor">C# Minor</option>
+              <option value="D Major">D Major</option>
+              <option value="D Minor">D Minor</option>
+              <option value="D# Major">D# Major</option>
+              <option value="D# Minor">D# Minor</option>
+              <option value="E Major">E Major</option>
+              <option value="E Minor">E Minor</option>
+              <option value="F Major">F Major</option>
+              <option value="F Minor">F Minor</option>
+              <option value="F# Major">F# Major</option>
+              <option value="F# Minor">F# Minor</option>
+              <option value="G Major">G Major</option>
+              <option value="G Minor">G Minor</option>
+              <option value="G# Major">G# Major</option>
+              <option value="G# Minor">G# Minor</option>
+              <option value="A Major">A Major</option>
+              <option value="A Minor">A Minor</option>
+              <option value="A# Major">A# Major</option>
+              <option value="A# Minor">A# Minor</option>
+              <option value="B Major">B Major</option>
+              <option value="B Minor">B Minor</option>
+            </select>
+            <p class="text-xs text-neutral-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
+          </div>
+
+          <!-- Mood Filter (similar to tags) -->
+          <div>
+            <label class="block nav-header mb-2">Mood</label>
+            <div class="flex flex-wrap gap-2">
+              <label
+                v-for="mood in ['Dark', 'Happy', 'Energetic', 'Chill', 'Aggressive', 'Melancholic', 'Uplifting', 'Mysterious']"
+                :key="mood" class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" :value="mood" v-model="filters.mood" class="hidden" />
+                <div class="px-3 py-2 rounded-md" :class="[
+                  filters.mood.includes(mood) ? 'tag-active' : 'tag'
+                ]">
+                  {{ mood }}
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Year Range Filter -->
+          <div>
+            <label class="block nav-header mb-2">Year Range</label>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <input v-model.number="filters.year.min" type="number" placeholder="From (e.g. 2020)"
+                  class="w-full p-2 border border-neutral-800 rounded-md outline-none" min="1900" max="2099" />
+              </div>
+              <div>
+                <input v-model.number="filters.year.max" type="number" placeholder="To (e.g. 2024)"
+                  class="w-full p-2 border border-neutral-800 rounded-md outline-none" min="1900" max="2099" />
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
 
     <!-- Apply and Clear Buttons -->
     <div class="flex flex-col items-center gap-4">
-      <button 
-        @click="applyFiltersAndSort"
-        class="btn w-full apply-filters-btn"
-      >
+      <button @click="applyFiltersAndSort" class="btn w-full apply-filters-btn">
         Apply Filters & Sort
       </button>
-      <button 
-        @click="clearAll"
-        class="text-neutral-500 hover:text-neutral-700 cursor-pointer"
-      >
+      <button @click="clearAll" class="text-neutral-500 hover:text-neutral-700 cursor-pointer">
         Clear All
       </button>
     </div>
@@ -192,12 +253,23 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  context: {
+    type: String,
+    default: 'software',
+    validator: (value) => ['software', 'kits', 'music'].includes(value)
+  },
   initialFilters: {
     type: Object,
     default: () => ({
       price: { free: false, paid: false },
       os: [],
-      tags: []
+      tags: [],
+      // Music filters
+      genre: [],
+      bpm: { min: null, max: null },
+      key: [],
+      mood: [],
+      year: { min: null, max: null }
     })
   },
   initialSort: {
@@ -215,12 +287,25 @@ const emit = defineEmits(['update:show', 'apply-filters'])
 const sortBy = ref(props.initialSort.sortBy)
 const sortDirection = ref(props.initialSort.sortDirection)
 const filters = reactive({
+  // Software/Kits filters
   price: {
     free: props.initialFilters.price?.free || false,
     paid: props.initialFilters.price?.paid || false
   },
   os: [...(props.initialFilters.os || [])],
-  tags: [...(props.initialFilters.tags || [])]
+  tags: [...(props.initialFilters.tags || [])],
+  // Music filters
+  genre: [...(props.initialFilters.genre || [])],
+  bpm: {
+    min: props.initialFilters.bpm?.min || null,
+    max: props.initialFilters.bpm?.max || null
+  },
+  key: [...(props.initialFilters.key || [])],
+  mood: [...(props.initialFilters.mood || [])],
+  year: {
+    min: props.initialFilters.year?.min || null,
+    max: props.initialFilters.year?.max || null
+  }
 })
 
 // Tags state
@@ -323,9 +408,16 @@ const applyFiltersAndSort = () => {
       sortDirection: sortDirection.value
     },
     filters: {
+      // Software/Kits filters
       price: { ...filters.price },
       os: [...filters.os],
-      tags: [...filters.tags]
+      tags: [...filters.tags],
+      // Music filters
+      genre: [...filters.genre],
+      bpm: { ...filters.bpm },
+      key: [...filters.key],
+      mood: [...filters.mood],
+      year: { ...filters.year }
     }
   }
   
@@ -356,9 +448,18 @@ const applyFiltersAndSort = () => {
 const clearAll = () => {
   sortBy.value = 'created_at'
   sortDirection.value = 'desc'
+  // Software/Kits filters
   filters.price.free = false
   filters.price.paid = false
   filters.os = []
   filters.tags = []
+  // Music filters
+  filters.genre = []
+  filters.bpm.min = null
+  filters.bpm.max = null
+  filters.key = []
+  filters.mood = []
+  filters.year.min = null
+  filters.year.max = null
 }
 </script>
