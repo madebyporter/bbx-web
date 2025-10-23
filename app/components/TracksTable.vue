@@ -43,9 +43,34 @@
           'text-sm border-b border-neutral-800/50 py-3 transition-colors items-center',
           isOwnProfile ? 'trackGrid-edit' : 'trackGrid', isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800/30'
         ]">
-        <div class="px-2 flex items-center justify-center">
-          <button @click="handlePlayClick(track, index)"
-            :class="['text-neutral-400 hover:text-white transition-colors cursor-pointer'] + (isCurrentlyPlaying(track) ? ' text-orange-400' : '')"
+        <div class="px-2 flex items-center justify-center gap-1">
+          <!-- Stem Player Mode: Show Mute/Solo -->
+          <template v-if="isStemPlayerActive">
+            <button @click="toggleMute(track.id)"
+              :class="[
+                'px-2 py-1 text-xs rounded transition-colors cursor-pointer',
+                getStemTrack(track.id)?.isMuted
+                  ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                  : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+              ]"
+              :title="getStemTrack(track.id)?.isMuted ? 'Unmute' : 'Mute'">
+              M
+            </button>
+            <button @click="toggleSolo(track.id)"
+              :class="[
+                'px-2 py-1 text-xs rounded transition-colors cursor-pointer',
+                getStemTrack(track.id)?.isSolo
+                  ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
+                  : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+              ]"
+              :title="getStemTrack(track.id)?.isSolo ? 'Unsolo' : 'Solo'">
+              S
+            </button>
+          </template>
+          
+          <!-- Normal Mode: Show Play Button -->
+          <button v-else @click="handlePlayClick(track, index)"
+            :class="['text-neutral-400 hover:text-white transition-colors cursor-pointer', isCurrentlyPlaying(track) ? 'text-orange-400' : '']"
             :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'">
             <svg v-if="isCurrentlyPlaying(track)" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
@@ -88,6 +113,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
+import { useStemPlayer } from '~/composables/useStemPlayer'
 
 interface Props {
   tracks: any[]
@@ -103,6 +129,7 @@ defineEmits<{
 }>()
 
 const { currentTrack, isPlaying, loadQueue, togglePlayPause } = usePlayer()
+const { isStemPlayerActive, stemTracks, toggleMute, toggleSolo } = useStemPlayer()
 
 // Handle scroll-to-track event
 const handleScrollToTrack = (event: CustomEvent) => {
@@ -147,7 +174,15 @@ const isCurrentlyPlaying = (track: any): boolean => {
   return currentTrack.value?.id === track.id && isPlaying.value
 }
 
+// Get stem track by ID for mute/solo state
+const getStemTrack = (trackId: number) => {
+  return stemTracks.value.find(t => t.id === trackId)
+}
+
 const handlePlayClick = async (track: any, index: number) => {
+  // Don't allow playback if stem player is active
+  if (isStemPlayerActive.value) return
+  
   // If clicking the currently playing track, just toggle play/pause
   if (currentTrack.value?.id === track.id) {
     await togglePlayPause()

@@ -63,63 +63,9 @@
       </div>
       </div>
 
-      <!-- Loading State -->
-      <div v-if="loading" class="p-4 text-neutral-400 text-sm">
-        Loading stems...
-      </div>
-
-      <!-- Track List -->
-      <div v-else-if="isLoaded" class="flex flex-col">
-        <div v-for="track in stemTracks" :key="track.id"
-          class="flex items-center gap-3 p-3 border-t border-neutral-800/50 hover:bg-neutral-800/20 transition-colors">
-          
-          <!-- Track Info -->
-          <div class="flex-1 min-w-0">
-            <div class="text-sm text-white truncate">{{ track.title }}</div>
-            <div class="text-xs text-neutral-500 truncate">{{ track.artist }}</div>
-          </div>
-
-          <!-- Mute Button -->
-          <button @click="toggleMute(track.id)"
-            :class="[
-              'px-3 py-1 text-xs rounded transition-colors cursor-pointer',
-              track.isMuted
-                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-            ]"
-            :title="track.isMuted ? 'Unmute' : 'Mute'">
-            {{ track.isMuted ? 'M' : 'M' }}
-          </button>
-
-          <!-- Solo Button -->
-          <button @click="toggleSolo(track.id)"
-            :class="[
-              'px-3 py-1 text-xs rounded transition-colors cursor-pointer',
-              track.isSolo
-                ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
-                : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-            ]"
-            :title="track.isSolo ? 'Unsolo' : 'Solo'">
-            {{ track.isSolo ? 'S' : 'S' }}
-          </button>
-
-          <!-- Volume Slider -->
-          <div class="hidden lg:flex items-center gap-2">
-            <input type="range" :value="track.volume" min="0" max="1" step="0.01"
-              @input="(e) => handleTrackVolume(track.id, e)"
-              class="w-20 h-1 appearance-none bg-neutral-700 rounded-full cursor-pointer
-              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 
-              [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neutral-300 [&::-webkit-slider-thumb]:cursor-pointer
-              [&::-moz-range-thumb]:w-2 [&::-moz-range-thumb]:h-2 [&::-moz-range-thumb]:rounded-full 
-              [&::-moz-range-thumb]:bg-neutral-300 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer" />
-            <span class="text-xs text-neutral-400 w-8">{{ Math.round(track.volume * 100) }}%</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Empty State -->
-      <div v-else class="p-4 text-neutral-500 text-sm">
-        No tracks loaded
+      <!-- Info Text -->
+      <div class="p-3 border-t border-neutral-800/50 text-center text-sm text-neutral-500">
+        Use Mute/Solo buttons in track list below to control individual stems
       </div>
     </div>
   </div>
@@ -149,9 +95,6 @@ const {
   play,
   togglePlayPause,
   seekTo,
-  toggleMute,
-  toggleSolo,
-  setTrackVolume,
   setMasterVolume,
   cleanup
 } = useStemPlayer()
@@ -212,12 +155,6 @@ const handleSeek = (event: Event) => {
 const handleMasterVolume = (event: Event) => {
   const target = event.target as HTMLInputElement
   setMasterVolume(parseFloat(target.value))
-}
-
-// Handle track volume
-const handleTrackVolume = (trackId: number, event: Event) => {
-  const target = event.target as HTMLInputElement
-  setTrackVolume(trackId, parseFloat(target.value))
 }
 
 // Cleanup on unmount
