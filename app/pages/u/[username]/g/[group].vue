@@ -10,33 +10,26 @@
       <!-- Group Header with Edit -->
       <div class="p-4 border-b border-neutral-800">
         <div class="flex items-center justify-between">
-          <div v-if="!isEditingGroupName" class="flex items-center gap-3">
-            <h1 class="text-3xl font-bold">{{ groupName }}</h1>
-            <button 
-              v-if="isOwnProfile"
-              @click="isEditingGroupName = true"
-              class="text-neutral-400 hover:text-white transition-colors text-sm"
-              title="Rename group"
-            >
+          <div v-if="!isEditingGroupName" class="flex items-center gap-3 justify-between">
+            <div class="overflow-auto w-4/5 lg:w-full">
+              <h1 class="text-lg lg:text-3xl font-bold truncate">{{ groupName }}</h1>
+            </div>
+            <button v-if="isOwnProfile" @click="isEditingGroupName = true"
+              class="text-neutral-400 hover:text-white transition-colors text-sm" title="Rename group">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
             </button>
           </div>
-          
+
           <div v-else class="flex items-center gap-2 flex-1 max-w-md">
-            <input
-              v-model="newGroupName"
-              type="text"
-              class="input flex-1"
-              placeholder="Enter new group name"
-              @keyup.enter="saveGroupName"
-              @keyup.esc="isEditingGroupName = false"
-            />
+            <input v-model="newGroupName" type="text" class="input flex-1" placeholder="Enter new group name"
+              @keyup.enter="saveGroupName" @keyup.esc="isEditingGroupName = false" />
             <button @click="saveGroupName" class="btn-sm">Save</button>
             <button @click="isEditingGroupName = false" class="btn-secondary-sm">Cancel</button>
           </div>
-          
+
           <p class="text-sm text-neutral-500">
             {{ tracks.length }} {{ tracks.length === 1 ? 'track' : 'tracks' }}
           </p>
@@ -46,16 +39,12 @@
         </p>
       </div>
 
+      <!-- Stem Player -->
+      <StemPlayer :tracks="tracks" />
       <!-- Tracks in Group -->
       <div class="grow">
-        <TracksTable 
-          :tracks="tracks" 
-          :source-id="`group-${groupName}`"
-          :is-own-profile="isOwnProfile"
-          :loading="false"
-          :username="username"
-          @edit-track="handleEdit"
-        />
+        <TracksTable :tracks="tracks" :source-id="`group-${groupName}`" :is-own-profile="isOwnProfile" :loading="false"
+          :username="username" @edit-track="handleEdit" />
       </div>
     </template>
   </div>
@@ -67,6 +56,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import TracksTable from '~/components/TracksTable.vue'
+import StemPlayer from '~/components/StemPlayer.vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -2,6 +2,16 @@
   <div v-if="hasEverHadTrack" ref="playerRef"
     class="w-full bg-neutral-900 border-t border-neutral-800 z-50 h-fit lg:h-fit relative"
     style="transform: translateY(100%)">
+    
+    <!-- Stem Player Active Overlay -->
+    <div v-if="isStemPlayerActive"
+      class="absolute inset-0 bg-neutral-900/95 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div class="text-center">
+        <div class="text-neutral-400 text-sm">Stem player in use</div>
+        <div class="text-neutral-600 text-xs mt-1">Main player is paused</div>
+      </div>
+    </div>
+    
     <div class="w-full p-1 h-full">
       <div class="flex flex-row items-stretch gap-1 justify-between h-fit lg:h-full pt-6 lg:pt-0">
         <!-- Left: Track Info -->
@@ -123,6 +133,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
+import { useStemPlayer } from '~/composables/useStemPlayer'
 import gsap from 'gsap'
 
 const {
@@ -148,8 +159,11 @@ const {
   updateDuration,
   handleTrackEnd,
   setAudioElement,
-  loadState
+  loadState,
+  pause
 } = usePlayer()
+
+const { isStemPlayerActive } = useStemPlayer()
 
 const playerRef = ref<HTMLDivElement | null>(null)
 const audioEl = ref<HTMLAudioElement | null>(null)
@@ -170,6 +184,13 @@ onMounted(async () => {
 onUnmounted(() => {
   console.log('Player.vue: onUnmounted, cleaning up')
   setAudioElement(null)
+})
+
+// Pause main player when stem player becomes active
+watch(isStemPlayerActive, (isActive) => {
+  if (isActive && isPlaying.value) {
+    pause()
+  }
 })
 
 // Track when a track is first loaded and animate player in/out
