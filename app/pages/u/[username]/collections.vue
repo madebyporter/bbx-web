@@ -1,6 +1,8 @@
 <template>
   <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
-    <div v-if="loading" class="text-neutral-500 p-4">Loading collections...</div>
+    <div v-if="loading" class="flex items-center justify-center p-8">
+      <LoadingLogo />
+    </div>
     
     <div v-else-if="!profileUserId" class="text-neutral-500 p-4">
       User not found.
@@ -66,6 +68,7 @@ import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
+import LoadingLogo from '~/components/LoadingLogo.vue'
 
 const route = useRoute()
 const { user } = useAuth()

@@ -1,6 +1,8 @@
 <template>
-  <div class="flex flex-col gap-0 text-neutral-300 grow">
-    <div v-if="loading" class="text-neutral-500 p-4">Loading collection...</div>
+  <div class="flex flex-col gap-0 text-neutral-300 grow h-full">
+    <div v-if="loading" class="flex items-center justify-center p-8 w-full h-full grow">
+      <LoadingLogo />
+    </div>
 
     <div v-else-if="!collection" class="text-neutral-500 p-4">
       Collection not found.
@@ -40,6 +42,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import { usePlayer } from '~/composables/usePlayer'
+import LoadingLogo from '~/components/LoadingLogo.vue'
 import CollectionTracksTable from '~/components/CollectionTracksTable.vue'
 
 const route = useRoute()

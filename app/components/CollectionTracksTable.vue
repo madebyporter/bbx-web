@@ -1,6 +1,8 @@
 <template>
   <div class="py-2 w-full">
-    <div v-if="loading" class="text-neutral-500 p-4">Loading tracks...</div>
+    <div v-if="loading" class="flex items-center justify-center p-8">
+      <LoadingLogo />
+    </div>
 
     <div v-else-if="tracks.length === 0" class="text-neutral-500 p-4">
       {{ isOwnProfile ? 'No tracks in this collection yet.' : 'No tracks available.' }}
@@ -95,6 +97,7 @@
 import { onMounted, onUnmounted } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
 import { useAuth } from '~/composables/useAuth'
+import LoadingLogo from '~/components/LoadingLogo.vue'
 
 const props = defineProps<{
   tracks: any[]

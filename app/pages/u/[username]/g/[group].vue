@@ -1,6 +1,8 @@
 <template>
   <div class="flex flex-col gap-0 text-neutral-300 grow">
-    <div v-if="loading" class="text-neutral-500 p-4">Loading group...</div>
+    <div v-if="loading" class="flex items-center justify-center p-8">
+      <LoadingLogo />
+    </div>
 
     <div v-else-if="tracks.length === 0" class="text-neutral-500 p-4">
       No tracks found in this group.
@@ -57,6 +59,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import TracksTable from '~/components/TracksTable.vue'
 import StemPlayer from '~/components/StemPlayer.vue'
+import LoadingLogo from '~/components/LoadingLogo.vue'
 
 const route = useRoute()
 const router = useRouter()

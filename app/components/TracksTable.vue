@@ -1,6 +1,8 @@
 <template>
-  <div class="overflow-x-auto lg:overflow-x-visible w-full">
-    <div v-if="loading" class="text-neutral-500 p-4">Loading tracks...</div>
+  <div class="overflow-x-auto lg:overflow-x-visible w-full h-full">
+    <div v-if="loading" class="flex items-center justify-center p-8 h-full w-full grow">
+      <LoadingLogo />
+    </div>
 
     <!-- Zero State -->
     <div v-else-if="tracks.length === 0" class="py-16 w-full text-center">
@@ -114,6 +116,7 @@
 import { onMounted, onUnmounted } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
 import { useStemPlayer } from '~/composables/useStemPlayer'
+import LoadingLogo from '~/components/LoadingLogo.vue'
 
 interface Props {
   tracks: any[]

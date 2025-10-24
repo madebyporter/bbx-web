@@ -87,4 +87,151 @@
   .resourceGrid-edit {
     @apply grid gap-4 items-center *:first:pl-4 grid-cols-[300px_127px_127px_127px_127px_127px_127px] lg:grid-cols-[320px_127px_127px_127px_1fr_127px_127px];
   }
+
+  /* Loading Logo */
+  .loading-logo {
+    @apply flex flex-wrap w-[60px] h-[60px];
+  }
+
+  .loading-logo-block {
+    @apply bg-[#222] flex-[0_1_25%];
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
+  }
+
+  /* Logo block colors and z-index - diagonal pattern */
+  .loading-logo-block-1,
+  .loading-logo-block-6,
+  .loading-logo-block-11,
+  .loading-logo-block-16 {
+    @apply bg-[#E52800] z-[1];
+  }
+
+  .loading-logo-block-2,
+  .loading-logo-block-5,
+  .loading-logo-block-12,
+  .loading-logo-block-15 {
+    @apply bg-[#E64D01] z-[2];
+  }
+
+  .loading-logo-block-3,
+  .loading-logo-block-10,
+  .loading-logo-block-7,
+  .loading-logo-block-14 {
+    @apply bg-[#E67300] z-[3];
+  }
+
+  .loading-logo-block-4,
+  .loading-logo-block-9,
+  .loading-logo-block-8,
+  .loading-logo-block-13 {
+    @apply bg-[#E79901] z-[4];
+  }
+
+  /* Automatic looping animations */
+  .loading-logo-block-1,
+  .loading-logo-block-16 {
+    animation: logo-pulse 600ms alternate infinite;
+  }
+
+  .loading-logo-block-2,
+  .loading-logo-block-15 {
+    animation: logo-pulse2 600ms ease 200ms alternate infinite;
+  }
+
+  .loading-logo-block-3,
+  .loading-logo-block-14 {
+    animation: logo-pulse3 600ms ease 300ms alternate infinite;
+  }
+
+  .loading-logo-block-4,
+  .loading-logo-block-13 {
+    animation: logo-pulse4 600ms ease 400ms alternate infinite;
+  }
+
+  .loading-logo-block-5,
+  .loading-logo-block-12 {
+    animation: logo-pulse6 600ms ease 500ms alternate infinite;
+  }
+
+  .loading-logo-block-6,
+  .loading-logo-block-11 {
+    animation: logo-pulse8 600ms ease 600ms alternate infinite;
+  }
+
+  .loading-logo-block-7,
+  .loading-logo-block-10 {
+    animation: logo-pulse8 600ms ease 700ms alternate infinite;
+  }
+
+  .loading-logo-block-8,
+  .loading-logo-block-9 {
+    animation: logo-pulse6 600ms ease 800ms alternate infinite;
+  }
+}
+
+/* Logo Pulse Animations */
+@keyframes logo-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
+  }
+  100% {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@keyframes logo-pulse2 {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
+  }
+  100% {
+    transform: scale(1.2);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@keyframes logo-pulse3 {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
+  }
+  100% {
+    transform: scale(1.3);
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@keyframes logo-pulse4 {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
+  }
+  100% {
+    transform: scale(1.4);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@keyframes logo-pulse6 {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
+  }
+  100% {
+    transform: scale(1.6);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@keyframes logo-pulse8 {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
+  }
+  100% {
+    transform: scale(1.8);
+    box-shadow: 0 0 80px rgba(0, 0, 0, 0.2);
+  }
 }

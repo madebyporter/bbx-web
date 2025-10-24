@@ -1,8 +1,14 @@
 <template>
   <div class="flex flex-col gap-0 border-b border-neutral-800 bg-neutral-900/50">
-    <!-- Collapsed State: Play All Button -->
+    <!-- Collapsed State: Play All Button / Loading -->
     <div v-if="!isExpanded" class="p-4">
-      <button @click="handlePlayAll" :disabled="!isLoaded || loading"
+      <!-- Loading State -->
+      <div v-if="loading" class="flex items-center justify-center py-4">
+        <LoadingLogo />
+      </div>
+      
+      <!-- Play All Button -->
+      <button v-else @click="handlePlayAll" :disabled="!isLoaded"
         class="flex items-center gap-2 px-4 py-2 bg-white hover:bg-neutral-100 rounded-sm text-black text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         title="Play all tracks simultaneously">
         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -74,6 +80,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useStemPlayer } from '~/composables/useStemPlayer'
+import LoadingLogo from '~/components/LoadingLogo.vue'
 import gsap from 'gsap'
 
 interface Props {
