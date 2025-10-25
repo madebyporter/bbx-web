@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -98,6 +98,8 @@ const route = useRoute()
 const { user } = useAuth()
 const { supabase } = useSupabase()
 const { loadQueue, currentTrack, isPlaying } = usePlayer()
+const config = useRuntimeConfig()
+const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 const track = ref<any>(null)
 const groupTracks = ref<any[]>([])
@@ -224,6 +226,48 @@ function formatDuration(seconds: number | null | undefined): string {
   const secs = Math.floor(seconds % 60)
   return `${minutes}:${secs.toString().padStart(2, '0')}`
 }
+
+// SEO Meta Tags
+const updateSeoMeta = () => {
+  if (!track.value || !username.value) return
+  
+  const trackTitle = track.value.title || 'Untitled'
+  const artist = track.value.artist || username.value
+  const title = `${trackTitle} by ${artist} | Beatbox`
+  
+  // Build description with track details
+  const details = []
+  if (track.value.genre) details.push(track.value.genre)
+  if (track.value.bpm) details.push(`${track.value.bpm} BPM`)
+  if (track.value.key) details.push(track.value.key)
+  const detailsStr = details.length > 0 ? ` - ${details.join(', ')}` : ''
+  
+  const description = `Listen to ${trackTitle} by ${artist} on Beatbox${detailsStr}`
+  const url = `${siteUrl}/u/${username.value}/t/${route.params.track}`
+  
+  useSeoMeta({
+    title,
+    description,
+    ogTitle: title,
+    ogDescription: description,
+    ogUrl: url,
+    ogType: 'music.song',
+    twitterCard: 'summary',
+    twitterTitle: title,
+    twitterDescription: description
+  })
+  
+  useHead({
+    link: [
+      { rel: 'canonical', href: url }
+    ]
+  })
+}
+
+// Watch for data changes to update SEO
+watch(track, () => {
+  updateSeoMeta()
+}, { deep: true })
 
 // Listen for track update events
 const handleTrackUpdate = () => {

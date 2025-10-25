@@ -53,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -65,6 +65,8 @@ const route = useRoute()
 const router = useRouter()
 const { user } = useAuth()
 const { supabase } = useSupabase()
+const config = useRuntimeConfig()
+const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 const tracks = ref<any[]>([])
 const loading = ref(true)
@@ -196,6 +198,38 @@ const handleEdit = (track: any) => {
   })
   window.dispatchEvent(event)
 }
+
+// SEO Meta Tags
+const updateSeoMeta = () => {
+  if (!groupName.value || !username.value || tracks.value.length === 0) return
+  
+  const title = `${groupName.value} by ${username.value} | Beatbox`
+  const description = `View different versions of ${groupName.value} by ${username.value} on Beatbox - ${tracks.value.length} tracks`
+  const url = `${siteUrl}/u/${username.value}/g/${groupName.value}`
+  
+  useSeoMeta({
+    title,
+    description,
+    ogTitle: title,
+    ogDescription: description,
+    ogUrl: url,
+    ogType: 'music.playlist',
+    twitterCard: 'summary',
+    twitterTitle: title,
+    twitterDescription: description
+  })
+  
+  useHead({
+    link: [
+      { rel: 'canonical', href: url }
+    ]
+  })
+}
+
+// Watch for data changes to update SEO
+watch([groupName, tracks], () => {
+  updateSeoMeta()
+}, { deep: true })
 
 // Apply filters and sort to tracks
 const updateFiltersAndSort = async (params: any) => {
