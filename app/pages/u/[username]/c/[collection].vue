@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -50,6 +50,8 @@ const router = useRouter()
 const { user } = useAuth()
 const { supabase } = useSupabase()
 const { updateQueue, queueSourceId } = usePlayer()
+const config = useRuntimeConfig()
+const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 // Inject search handler registration functions
 const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
@@ -270,6 +272,39 @@ const handleEdit = (track: any) => {
 const handleSearch = (query: string) => {
   searchQuery.value = query
 }
+
+// SEO Meta Tags
+const updateSeoMeta = () => {
+  if (!collection.value) return
+  
+  const username = route.params.username as string
+  const title = `${collection.value.name} by ${username} | Beatbox`
+  const description = collection.value.description || `Browse ${collection.value.name} by ${username} on Beatbox - ${displayedTracksCount.value} tracks`
+  const url = `${siteUrl}/u/${username}/c/${collection.value.slug}`
+  
+  useSeoMeta({
+    title,
+    description,
+    ogTitle: title,
+    ogDescription: description,
+    ogUrl: url,
+    ogType: 'music.playlist',
+    twitterCard: 'summary',
+    twitterTitle: title,
+    twitterDescription: description
+  })
+  
+  useHead({
+    link: [
+      { rel: 'canonical', href: url }
+    ]
+  })
+}
+
+// Watch for data changes to update SEO
+watch([collection, tracks], () => {
+  updateSeoMeta()
+}, { deep: true })
 
 // Apply filters and sort to tracks
 const updateFiltersAndSort = async (params: any) => {
