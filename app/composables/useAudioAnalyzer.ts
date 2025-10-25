@@ -13,6 +13,8 @@ let loadingPromise: Promise<void> | null = null
 let essentiaLoaded = false
 let essentiaLoadingPromise: Promise<void> | null = null
 let Essentia: any = null
+let EssentiaWASMBackend: any = null // Keep WASM backend alive to prevent garbage collection
+let EssentiaClass: any = null // Store the Essentia class for creating fresh instances
 
 /**
  * Load Tone.js script dynamically
@@ -101,7 +103,10 @@ async function loadEssentia(): Promise<void> {
       console.log('Available exports:', Object.keys(essentiaModule))
       
       // Get the exports - check for both named and default exports
-      const { Essentia: EssentiaClass, EssentiaWASM: EssentiaWASMModule } = essentiaModule as any
+      const { Essentia: EssentiaClassExport, EssentiaWASM: EssentiaWASMModule } = essentiaModule as any
+      
+      // Store the class for creating fresh instances later
+      EssentiaClass = EssentiaClassExport
       
       if (!EssentiaClass) {
         console.error('Essentia not found. Exports:', essentiaModule)
@@ -147,9 +152,27 @@ async function loadEssentia(): Promise<void> {
         console.log('Actual WASM module type:', typeof actualWasmModule)
       }
       
+      // If it's a function, we need to call it to initialize the WASM
+      if (typeof actualWasmModule === 'function') {
+        console.log('WASM module is a function, calling it to initialize...')
+        actualWasmModule = await actualWasmModule()
+        console.log('WASM module initialized:', actualWasmModule)
+      }
+      
+      // Store the WASM backend to keep it alive (prevent garbage collection)
+      EssentiaWASMBackend = actualWasmModule
+      
       console.log('Creating Essentia instance with WASM backend...')
+      console.log('Final WASM module type:', typeof actualWasmModule)
+      console.log('Final WASM module keys:', actualWasmModule ? Object.keys(actualWasmModule).slice(0, 10) : 'null')
+      
       // Create Essentia instance with the initialized WASM backend
-      Essentia = new EssentiaClass(actualWasmModule)
+      Essentia = new EssentiaClass(EssentiaWASMBackend)
+      
+      console.log('Essentia instance created successfully')
+      console.log('Checking if instance is valid...')
+      console.log('Essentia has KeyExtractor?', typeof Essentia.KeyExtractor === 'function')
+      console.log('WASM backend reference stored:', !!EssentiaWASMBackend)
       
       // Give it a moment to fully initialize
       await new Promise(resolve => setTimeout(resolve, 200))
@@ -866,44 +889,52 @@ export async function analyzeKey(audioFile: File | Blob): Promise<string> {
  * Detect musical key from audio data using Essentia.js KeyExtractor
  */
 function detectKeyWithEssentia(audioData: Float32Array, sampleRate: number): string {
-  if (!Essentia) {
-    throw new Error('Essentia not initialized')
+  if (!EssentiaWASMBackend) {
+    throw new Error('Essentia WASM backend not initialized')
   }
   
   console.log('Detecting key with Essentia.js:', audioData.length, 'samples at', sampleRate, 'Hz')
   
   try {
-    // Convert Float32Array to vector format expected by Essentia
-    const audioVector = Essentia.arrayToVector(audioData)
+    if (!EssentiaClass) {
+      throw new Error('Essentia class not available - initialization may have failed')
+    }
     
+    // Create a FRESH Essentia instance for this analysis to avoid state issues
+    console.log('Creating fresh Essentia instance for this analysis...')
+    const essentiaInstance = new EssentiaClass(EssentiaWASMBackend)
+    
+    console.log('Fresh Essentia instance created')
+    console.log('Instance has KeyExtractor?', typeof essentiaInstance.KeyExtractor === 'function')
+    
+    // Convert Float32Array to vector format expected by Essentia
+    console.log('Converting audio to vector...')
+    const audioVector = essentiaInstance.arrayToVector(audioData)
+    console.log('Audio vector created:', audioVector)
+    
+    console.log('Calling KeyExtractor...')
     // Use Essentia's KeyExtractor algorithm
-    // API: KeyExtractor(audio, averageDetuningCorrection?, frameSize?, hopSize?, hpcpSize?, 
-    //                   maxFrequency?, maximumSpectralPeaks?, minFrequency?, pcpThreshold?, 
-    //                   profileType?, sampleRate?, spectralPeaksThreshold?, tuningFrequency?, 
-    //                   weightType?, windowType?)
-    const keyData = Essentia.KeyExtractor(
+    const keyData = essentiaInstance.KeyExtractor(
       audioVector,
-      true,       // averageDetuningCorrection - shifts pcp to nearest tempered bin
-      4096,       // frameSize - size of the analysis frame
-      2048,       // hopSize - hop size between frames
-      12,         // hpcpSize - size of the HPCP (Harmonic Pitch Class Profile) vector (12 = chromatic scale)
-      5000,       // maxFrequency - max frequency to analyze (Hz)
-      100,        // maximumSpectralPeaks - max number of spectral peaks to consider
-      25,         // minFrequency - min frequency to analyze (Hz)
-      0.2,        // pcpThreshold - threshold for pitch class profile
-      'temperley', // profileType - key profile type ('temperley', 'krumhansl', 'edma', etc.)
-      sampleRate, // sampleRate
-      0.0001,     // spectralPeaksThreshold - threshold for spectral peak detection
-      440,        // tuningFrequency - reference tuning frequency (A4)
-      'cosine',   // weightType - weighting function for frequency contribution
-      'blackmanharris92' // windowType - analysis window type
+      true,         // averageDetuningCorrection
+      4096,         // frameSize
+      2048,         // hopSize
+      12,           // hpcpSize
+      5000,         // maxFrequency
+      100,          // maximumSpectralPeaks
+      25,           // minFrequency
+      0.2,          // pcpThreshold
+      'temperley',  // profileType
+      sampleRate,   // sampleRate
+      0.0001,       // spectralPeaksThreshold
+      440,          // tuningFrequency
+      'cosine',     // weightType
+      'blackmanharris92' // windowType
     )
     
-    // KeyExtractor returns { key, scale, strength }
-    // key: string like "C", "D#", "G", etc.
-    // scale: "major" or "minor"
-    // strength: confidence value (0-1)
+    console.log('KeyExtractor result:', keyData)
     
+    // KeyExtractor returns { key, scale, strength }
     const detectedKey = keyData.key
     const detectedScale = keyData.scale
     const strength = keyData.strength
@@ -914,14 +945,25 @@ function detectKeyWithEssentia(audioData: Float32Array, sampleRate: number): str
     const formattedScale = detectedScale.charAt(0).toUpperCase() + detectedScale.slice(1)
     const result = `${detectedKey} ${formattedScale}`
     
-    // Delete the vector to free memory (prevent memory leaks)
-    Essentia.delete(audioVector)
+    // Clean up the vector
+    if (typeof essentiaInstance.delete === 'function') {
+      try {
+        essentiaInstance.delete(audioVector)
+      } catch (cleanupError) {
+        console.warn('Could not delete audio vector, continuing anyway:', cleanupError)
+      }
+    }
     
     return result
     
   } catch (error) {
     console.error('Essentia key detection error:', error)
-    throw new Error('Key detection failed with Essentia')
+    console.error('Error details:', {
+      name: (error as any).name,
+      message: (error as any).message,
+      stack: (error as any).stack
+    })
+    throw new Error('Key detection failed with Essentia: ' + (error as any).message)
   }
 }
 
