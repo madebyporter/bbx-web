@@ -94,6 +94,9 @@
       :initial-filters="currentFilters"
       @apply-filters="handleFiltersAndSort" 
     />
+
+    <!-- Toast Notifications -->
+    <Toast />
   </div>
   <div v-else class="flex items-center justify-center min-h-screen">
     <!-- No loading indicator -->
@@ -105,7 +108,9 @@ import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
 import { useRoute } from 'vue-router'
 import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
+import { useToast } from '~/composables/useToast'
 import Player from '~/components/Player.vue'
+import Toast from '~/components/Toast.vue'
 
 // Define interfaces
 interface DatabaseComponent {
@@ -178,6 +183,7 @@ interface Resource {
 
 const auth = useAuth()
 const { user, isAdmin } = auth
+const { showSuccess, showError, showProcessing, showInfo } = useToast()
 const isInitialized = ref(false)
 const route = useRoute()
 
@@ -258,20 +264,22 @@ const handleSubmit = async () => {
       const result = await auth.signUp(email.value, password.value)
       if (result.user && !result.session) {
         // User created but needs email confirmation
-        alert('Account created! Please check your email and click the confirmation link to activate your account.')
+        showInfo('Account created! Please check your email and click the confirmation link to activate your account.', 8000)
       } else {
         // User created and signed in (email confirmation disabled)
-        alert('Account created successfully!')
+        showSuccess('Account created successfully!')
       }
     } else {
       await auth.signIn(email.value, password.value)
+      showSuccess(`Welcome back, ${email.value}!`)
     }
     showAuthModal.value = false
     email.value = ''
     password.value = ''
   } catch (error: unknown) {
     console.error('Auth error:', error)
-    alert(error instanceof Error ? error.message : 'Unknown error')
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    showError(`Authentication failed: ${errorMessage}`)
   }
 }
 
@@ -471,11 +479,22 @@ provide('handleEdit', handleEdit)
 provide('handleShowSignup', handleShowSignup)
 provide('showModal', { value: showModal })
 
+// Test toast on mount (temporary for debugging)
+const testToast = () => {
+  console.log('Testing toast...')
+  showInfo('Toast system is working! 🎉')
+}
+
 // Listen for edit-track events from profile page
 onMounted(async () => {
   console.log('Layout: Starting auth initialization...')
   await auth.init()
   isInitialized.value = true
+  
+  // Test toast on page load (temporary)
+  setTimeout(() => {
+    testToast()
+  }, 1000)
   
   // Listen for track edit events
   window.addEventListener('edit-track', ((event: CustomEvent) => {
