@@ -22,7 +22,9 @@ export const useToast = () => {
       duration
     }
     
+    console.log('Adding toast:', toast, 'Current toasts:', toasts.value.length)
     toasts.value.push(toast)
+    console.log('Toast added. Total toasts:', toasts.value.length)
     
     // Auto-remove toast after duration (unless duration is 0 for persistent)
     if (duration > 0) {

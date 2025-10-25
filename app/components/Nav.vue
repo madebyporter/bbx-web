@@ -96,11 +96,13 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
+import { useToast } from '~/composables/useToast'
 import { useSupabase } from '~/utils/supabase'
 
 
 const auth = useAuth()
 const { user, isAdmin } = auth
+const { showSuccess, showError } = useToast()
 const { supabase } = useSupabase()
 
 const mobileNav = ref(null)
@@ -113,7 +115,13 @@ const emit = defineEmits(['show-auth-modal', 'show-admin-modal', 'toggle-mobile-
 
 const handleAuth = async () => {
   if (user.value) {
-    await auth.signOut()
+    try {
+      await auth.signOut()
+      showSuccess('Logged out successfully')
+    } catch (error) {
+      console.error('Logout error:', error)
+      showError('Failed to logout')
+    }
   } else {
     emit('show-auth-modal')
   }

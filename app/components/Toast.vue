@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+  <div class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none" style="position: fixed !important; z-index: 9999 !important;">
     <TransitionGroup name="toast">
       <div
         v-for="toast in toasts"
@@ -79,9 +79,15 @@
 </template>
 
 <script setup lang="ts">
+import { watch } from 'vue'
 import { useToast } from '~/composables/useToast'
 
 const { toasts, removeToast } = useToast()
+
+// Debug: Log when toasts change
+watch(toasts, (newToasts) => {
+  console.log('Toast count:', newToasts.length, newToasts)
+}, { deep: true })
 
 const toastClasses = {
   processing: 'bg-yellow-400 text-black',
