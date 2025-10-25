@@ -11,6 +11,28 @@
   framework = "#custom"
   publish = "dist"
 
+# Cache audio files from Supabase aggressively
+[[headers]]
+  for = "https://*.supabase.co/storage/v1/object/public/sounds/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    
+# Cache static assets
+[[headers]]
+  for = "/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

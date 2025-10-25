@@ -95,12 +95,26 @@ export default defineNuxtConfig({
   
   plugins: [
     '~/plugins/supabase.client.ts',
-    '~/plugins/google-analytics.client.ts'
+    '~/plugins/google-analytics.client.ts',
+    '~/plugins/service-worker.client.ts'
   ],
 
   // Set compatibility date and Netlify preset
   nitro: {
     compatibilityDate: '2024-04-03',
-    preset: 'netlify'
+    preset: 'netlify',
+    // Ensure service worker is served with correct MIME type
+    publicAssets: [
+      {
+        dir: 'public',
+        maxAge: 0, // Service worker should not be cached
+        baseURL: '/'
+      }
+    ]
+  },
+
+  // Optimize build for caching
+  experimental: {
+    payloadExtraction: false
   }
 })

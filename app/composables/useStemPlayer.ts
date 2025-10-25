@@ -31,6 +31,7 @@ const masterVolume = ref(1)
 const startTime = ref(0)
 const pauseTime = ref(0)
 const animationFrameId = ref<number | null>(null)
+const urlCache = ref<Map<string, { url: string; expiry: number }>>(new Map())
 
 export function useStemPlayer() {
   const { supabase } = useSupabase()
@@ -43,21 +44,42 @@ export function useStemPlayer() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Get signed URL from Supabase Storage
+  // Get signed URL from Supabase Storage (with caching)
   const getSignedUrl = async (filepath: string): Promise<string | null> => {
+    // Check cache first - check if URL is still valid
+    const cached = urlCache.value.get(filepath)
+    if (cached && cached.expiry > Date.now()) {
+      console.log('[StemPlayer] Using cached signed URL')
+      return cached.url
+    }
+
     try {
+      // Request 24-hour expiry for signed URLs
       const { data, error } = await supabase.storage
         .from('sounds')
-        .createSignedUrl(filepath, 3600)
+        .createSignedUrl(filepath, 86400) // 24 hours
 
       if (error) {
-        console.error('Error getting signed URL:', error)
+        console.error('[StemPlayer] Error getting signed URL:', error)
         return null
       }
 
+      if (!data?.signedUrl) {
+        console.error('[StemPlayer] No signed URL returned for:', filepath)
+        return null
+      }
+
+      console.log('[StemPlayer] Generated new signed URL for:', filepath)
+
+      // Cache the URL for 23 hours (safe margin)
+      urlCache.value.set(filepath, {
+        url: data.signedUrl,
+        expiry: Date.now() + (23 * 60 * 60 * 1000)
+      })
+
       return data.signedUrl
     } catch (err) {
-      console.error('Error getting signed URL:', err)
+      console.error('[StemPlayer] Error getting signed URL:', err)
       return null
     }
   }
@@ -116,13 +138,13 @@ export function useStemPlayer() {
     for (const track of stemTracks.value) {
       const url = await getSignedUrl(track.storage_path)
       if (!url) {
-        console.error('Failed to get signed URL for track:', track.title)
+        console.error('[StemPlayer] Failed to get signed URL for track:', track.title)
         continue
       }
 
       const audioBuffer = await loadAudioBuffer(url)
       if (!audioBuffer) {
-        console.error('Failed to load audio buffer for track:', track.title)
+        console.error('[StemPlayer] Failed to load audio buffer for track:', track.title)
         continue
       }
 
