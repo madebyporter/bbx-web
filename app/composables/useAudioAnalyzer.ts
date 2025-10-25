@@ -9,6 +9,11 @@ import { ref } from 'vue'
 let toneLoaded = false
 let loadingPromise: Promise<void> | null = null
 
+// Cache the Essentia.js instance
+let essentiaLoaded = false
+let essentiaLoadingPromise: Promise<void> | null = null
+let Essentia: any = null
+
 /**
  * Load Tone.js script dynamically
  */
@@ -68,6 +73,100 @@ async function loadTone(): Promise<void> {
   })
   
   return loadingPromise
+}
+
+/**
+ * Dynamically load Essentia.js
+ */
+async function loadEssentia(): Promise<void> {
+  // Return if already loaded
+  if (essentiaLoaded && Essentia) {
+    return
+  }
+  
+  // Return existing loading promise if currently loading
+  if (essentiaLoadingPromise) {
+    return essentiaLoadingPromise
+  }
+  
+  essentiaLoadingPromise = new Promise<void>(async (resolve, reject) => {
+    try {
+      console.log('Loading Essentia.js...')
+      
+      // Try importing from the main package entry point
+      // The package uses UMD/CommonJS so we'll load it as a whole module
+      const essentiaModule = await import('essentia.js')
+      
+      console.log('Essentia module:', essentiaModule)
+      console.log('Available exports:', Object.keys(essentiaModule))
+      
+      // Get the exports - check for both named and default exports
+      const { Essentia: EssentiaClass, EssentiaWASM: EssentiaWASMModule } = essentiaModule as any
+      
+      if (!EssentiaClass) {
+        console.error('Essentia not found. Exports:', essentiaModule)
+        throw new Error('Essentia class not found in module. Available exports: ' + Object.keys(essentiaModule).join(', '))
+      }
+      
+      if (!EssentiaWASMModule) {
+        console.error('EssentiaWASM not found. Exports:', essentiaModule)
+        throw new Error('EssentiaWASM not found in module. Available exports: ' + Object.keys(essentiaModule).join(', '))
+      }
+      
+      console.log('Initializing WASM module...')
+      console.log('EssentiaWASM type:', typeof EssentiaWASMModule)
+      console.log('EssentiaWASM keys:', Object.keys(EssentiaWASMModule))
+      
+      // EssentiaWASM is typically a function that returns a Promise
+      // But it might already be the module or need different initialization
+      let wasmBackend
+      if (typeof EssentiaWASMModule === 'function') {
+        // It's a factory function, call it to get the WASM module
+        console.log('Calling EssentiaWASM() to initialize...')
+        wasmBackend = await EssentiaWASMModule()
+      } else if (EssentiaWASMModule.then) {
+        // It's a Promise, await it
+        console.log('Awaiting EssentiaWASM promise...')
+        wasmBackend = await EssentiaWASMModule
+      } else {
+        // It's already the WASM module
+        console.log('Using EssentiaWASM directly...')
+        wasmBackend = EssentiaWASMModule
+      }
+      
+      console.log('WASM backend:', wasmBackend)
+      console.log('WASM backend type:', typeof wasmBackend)
+      console.log('WASM backend keys:', wasmBackend ? Object.keys(wasmBackend) : 'null')
+      
+      // The WASM module might be nested - extract it if needed
+      let actualWasmModule = wasmBackend
+      if (wasmBackend && typeof wasmBackend === 'object' && wasmBackend.EssentiaWASM) {
+        console.log('Extracting nested EssentiaWASM property...')
+        actualWasmModule = wasmBackend.EssentiaWASM
+        console.log('Actual WASM module:', actualWasmModule)
+        console.log('Actual WASM module type:', typeof actualWasmModule)
+      }
+      
+      console.log('Creating Essentia instance with WASM backend...')
+      // Create Essentia instance with the initialized WASM backend
+      Essentia = new EssentiaClass(actualWasmModule)
+      
+      // Give it a moment to fully initialize
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      console.log('✓ Essentia.js loaded and initialized successfully')
+      console.log('✓ Essentia instance:', Essentia)
+      essentiaLoaded = true
+      resolve()
+    } catch (error) {
+      console.error('Failed to load Essentia.js:', error)
+      essentiaLoadingPromise = null
+      Essentia = null
+      reject(new Error(`Failed to load key analysis library: ${error}`))
+    }
+  })
+  
+  return essentiaLoadingPromise
 }
 
 /**
@@ -694,14 +793,18 @@ function findAudioPeaks(data: Float32Array, sampleRate: number): number[] {
 }
 
 /**
- * Analyze musical key of an audio file
+ * Analyze musical key of an audio file using Essentia.js
  * @param audioFile - File or Blob object containing audio data
  * @returns Promise<string> - Detected musical key (e.g., "C Major", "A Minor")
  */
 export async function analyzeKey(audioFile: File | Blob): Promise<string> {
   try {
-    // Load Tone.js if not already loaded
-    await loadTone()
+    // Load Essentia.js if not already loaded
+    await loadEssentia()
+    
+    if (!Essentia) {
+      throw new Error('Essentia.js not initialized')
+    }
     
     // Create audio context for decoding
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -714,21 +817,33 @@ export async function analyzeKey(audioFile: File | Blob): Promise<string> {
     
     console.log('Audio decoded for key detection:', audioBuffer.duration, 'seconds')
     
-    // Limit to first 60 seconds for key analysis
+    // Limit to first 60 seconds for key analysis (Essentia works better with shorter samples)
     const maxDuration = 60
     const limitedDuration = Math.min(audioBuffer.duration, maxDuration)
     
     console.log('Analyzing key from first', limitedDuration, 'seconds')
     
-    // Get mono channel data
-    const audioData = audioBuffer.getChannelData(0)
+    // Get mono channel data (mix down if stereo)
+    let audioData: Float32Array
+    if (audioBuffer.numberOfChannels === 1) {
+      audioData = audioBuffer.getChannelData(0)
+    } else {
+      // Mix stereo to mono
+      const left = audioBuffer.getChannelData(0)
+      const right = audioBuffer.getChannelData(1)
+      audioData = new Float32Array(left.length)
+      for (let i = 0; i < left.length; i++) {
+        audioData[i] = (left[i] + right[i]) / 2
+      }
+    }
+    
     const maxSamples = audioBuffer.sampleRate * maxDuration
     const limitedAudioData = audioData.length > maxSamples 
       ? audioData.slice(0, maxSamples) 
       : audioData
     
-    // Detect key using chroma analysis
-    const key = detectKeyFromAudioData(limitedAudioData, audioBuffer.sampleRate)
+    // Detect key using Essentia.js
+    const key = detectKeyWithEssentia(limitedAudioData, audioBuffer.sampleRate)
     
     // Clean up
     audioContext.close()
@@ -748,122 +863,66 @@ export async function analyzeKey(audioFile: File | Blob): Promise<string> {
 }
 
 /**
- * Detect musical key from audio data using chroma analysis
+ * Detect musical key from audio data using Essentia.js KeyExtractor
  */
-function detectKeyFromAudioData(audioData: Float32Array, sampleRate: number): string {
-  console.log('Detecting key from audio data:', audioData.length, 'samples')
+function detectKeyWithEssentia(audioData: Float32Array, sampleRate: number): string {
+  if (!Essentia) {
+    throw new Error('Essentia not initialized')
+  }
   
-  // Note names
-  const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+  console.log('Detecting key with Essentia.js:', audioData.length, 'samples at', sampleRate, 'Hz')
   
-  // Calculate chroma (pitch class distribution)
-  const chroma = calculateChroma(audioData, sampleRate)
-  
-  // Find the most prominent pitch class
-  const maxChromaIndex = chroma.indexOf(Math.max(...chroma))
-  const rootNote = notes[maxChromaIndex]
-  
-  // Determine if major or minor based on third interval
-  const isMajor = determineMajorMinor(chroma, maxChromaIndex)
-  
-  return `${rootNote} ${isMajor ? 'Major' : 'Minor'}`
-}
-
-/**
- * Calculate chroma vector (pitch class distribution)
- */
-function calculateChroma(audioData: Float32Array, sampleRate: number): number[] {
-  const chroma = new Array(12).fill(0)
-  
-  // Analyze in chunks
-  const chunkSize = 8192
-  const hopSize = 4096
-  
-  for (let i = 0; i < audioData.length - chunkSize; i += hopSize) {
-    const chunk = audioData.slice(i, i + chunkSize)
+  try {
+    // Convert Float32Array to vector format expected by Essentia
+    const audioVector = Essentia.arrayToVector(audioData)
     
-    // Perform FFT-like frequency analysis (simplified)
-    const spectrum = calculateSpectrum(chunk, sampleRate)
+    // Use Essentia's KeyExtractor algorithm
+    // API: KeyExtractor(audio, averageDetuningCorrection?, frameSize?, hopSize?, hpcpSize?, 
+    //                   maxFrequency?, maximumSpectralPeaks?, minFrequency?, pcpThreshold?, 
+    //                   profileType?, sampleRate?, spectralPeaksThreshold?, tuningFrequency?, 
+    //                   weightType?, windowType?)
+    const keyData = Essentia.KeyExtractor(
+      audioVector,
+      true,       // averageDetuningCorrection - shifts pcp to nearest tempered bin
+      4096,       // frameSize - size of the analysis frame
+      2048,       // hopSize - hop size between frames
+      12,         // hpcpSize - size of the HPCP (Harmonic Pitch Class Profile) vector (12 = chromatic scale)
+      5000,       // maxFrequency - max frequency to analyze (Hz)
+      100,        // maximumSpectralPeaks - max number of spectral peaks to consider
+      25,         // minFrequency - min frequency to analyze (Hz)
+      0.2,        // pcpThreshold - threshold for pitch class profile
+      'temperley', // profileType - key profile type ('temperley', 'krumhansl', 'edma', etc.)
+      sampleRate, // sampleRate
+      0.0001,     // spectralPeaksThreshold - threshold for spectral peak detection
+      440,        // tuningFrequency - reference tuning frequency (A4)
+      'cosine',   // weightType - weighting function for frequency contribution
+      'blackmanharris92' // windowType - analysis window type
+    )
     
-    // Map frequencies to pitch classes
-    for (let freq = 0; freq < spectrum.length; freq++) {
-      const specVal = spectrum[freq]
-      if (specVal !== undefined && specVal > 0) {
-        const hz = (freq * sampleRate) / chunkSize
-        if (hz > 65 && hz < 2000) { // Focus on musical range
-          const pitchClass = frequencyToPitchClass(hz)
-          const chromaVal = chroma[pitchClass]
-          if (chromaVal !== undefined) {
-            chroma[pitchClass] = chromaVal + specVal
-          }
-        }
-      }
-    }
+    // KeyExtractor returns { key, scale, strength }
+    // key: string like "C", "D#", "G", etc.
+    // scale: "major" or "minor"
+    // strength: confidence value (0-1)
+    
+    const detectedKey = keyData.key
+    const detectedScale = keyData.scale
+    const strength = keyData.strength
+    
+    console.log(`Essentia detected: ${detectedKey} ${detectedScale} (strength: ${strength.toFixed(3)})`)
+    
+    // Format the output to match our expected format (e.g., "C Major", "A Minor")
+    const formattedScale = detectedScale.charAt(0).toUpperCase() + detectedScale.slice(1)
+    const result = `${detectedKey} ${formattedScale}`
+    
+    // Delete the vector to free memory (prevent memory leaks)
+    Essentia.delete(audioVector)
+    
+    return result
+    
+  } catch (error) {
+    console.error('Essentia key detection error:', error)
+    throw new Error('Key detection failed with Essentia')
   }
-  
-  // Normalize
-  const max = Math.max(...chroma)
-  if (max > 0) {
-    for (let i = 0; i < chroma.length; i++) {
-      chroma[i] /= max
-    }
-  }
-  
-  return chroma
-}
-
-/**
- * Simple spectrum calculation (magnitude squared)
- */
-function calculateSpectrum(data: Float32Array, sampleRate: number): number[] {
-  const spectrum = new Array(data.length / 2).fill(0)
-  
-  for (let i = 0; i < data.length; i++) {
-    const val = data[i]
-    if (val === undefined) continue
-    const magnitude = Math.abs(val)
-    const bin = Math.floor(i / 2)
-    const binVal = spectrum[bin]
-    if (bin < spectrum.length && binVal !== undefined) {
-      spectrum[bin] = binVal + (magnitude * magnitude)
-    }
-  }
-  
-  return spectrum
-}
-
-/**
- * Convert frequency to pitch class (0-11)
- */
-function frequencyToPitchClass(frequency: number): number {
-  // A4 = 440 Hz, corresponds to pitch class 9 (A)
-  const a4 = 440
-  const c0 = a4 * Math.pow(2, -4.75) // C0 frequency
-  
-  // Calculate semitones from C0
-  const semitones = 12 * Math.log2(frequency / c0)
-  
-  // Get pitch class (0-11)
-  return Math.round(semitones) % 12
-}
-
-/**
- * Determine if key is major or minor based on chroma profile
- */
-function determineMajorMinor(chroma: number[], rootIndex: number): boolean {
-  // Major third is 4 semitones from root
-  const majorThirdIndex = (rootIndex + 4) % 12
-  // Minor third is 3 semitones from root
-  const minorThirdIndex = (rootIndex + 3) % 12
-  
-  // Compare strengths
-  const majorThirdStrength = chroma[majorThirdIndex]
-  const minorThirdStrength = chroma[minorThirdIndex]
-  
-  // If major third is stronger, it's major; otherwise minor
-  return (majorThirdStrength !== undefined && minorThirdStrength !== undefined) 
-    ? majorThirdStrength > minorThirdStrength 
-    : true // Default to major if values are undefined
 }
 
 /**
