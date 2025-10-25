@@ -230,6 +230,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { usePlayer } from '~/composables/usePlayer'
+import { useToast } from '~/composables/useToast'
 import { analyzeBPM, analyzeKey } from '~/composables/useAudioAnalyzer'
 import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
@@ -279,6 +280,7 @@ interface Collection {
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const { addTrackToQueue, queueSourceId } = usePlayer()
+const { showProcessing, showError, showSuccess, removeToast, updateToast } = useToast()
 
 const isDragging = ref(false)
 const selectedFiles = ref<SelectedFile[]>([])
@@ -682,6 +684,7 @@ const analyzeAndUpdateBPM = async (fileData: SelectedFile) => {
   if (!supabase || !fileData.uploadedSoundId) return
   
   fileData.isAnalyzingBpm = true
+  const toastId = showProcessing(`Analyzing BPM for "${fileData.metadata.title}"...`)
   
   try {
     console.log(`🎵 Analyzing BPM for: ${fileData.metadata.title}`)
@@ -696,13 +699,19 @@ const analyzeAndUpdateBPM = async (fileData: SelectedFile) => {
     if (updateError) {
       console.error('Failed to update BPM:', updateError)
       fileData.error = `Upload successful, but BPM analysis update failed`
+      removeToast(toastId)
+      showError(`BPM analysis failed for "${fileData.metadata.title}"`)
     } else {
       fileData.metadata.bpm = detectedBPM
       console.log(`✓ BPM detected and saved: ${detectedBPM} for "${fileData.metadata.title}"`)
+      removeToast(toastId)
+      showSuccess(`BPM detected: ${detectedBPM} for "${fileData.metadata.title}"`)
     }
   } catch (error: any) {
     console.error('BPM analysis failed:', error)
     fileData.error = `Upload successful, but BPM analysis failed: ${error.message}`
+    removeToast(toastId)
+    showError(`BPM analysis failed for "${fileData.metadata.title}"`)
   } finally {
     fileData.isAnalyzingBpm = false
   }
@@ -712,6 +721,7 @@ const analyzeAndUpdateKey = async (fileData: SelectedFile) => {
   if (!supabase || !fileData.uploadedSoundId) return
   
   fileData.isAnalyzingKey = true
+  const toastId = showProcessing(`Analyzing key for "${fileData.metadata.title}"...`)
   
   try {
     console.log(`🎹 Analyzing Key for: ${fileData.metadata.title}`)
@@ -726,13 +736,19 @@ const analyzeAndUpdateKey = async (fileData: SelectedFile) => {
     if (updateError) {
       console.error('Failed to update key:', updateError)
       fileData.error = `Upload successful, but key analysis update failed`
+      removeToast(toastId)
+      showError(`Key analysis failed for "${fileData.metadata.title}"`)
     } else {
       fileData.metadata.key = detectedKey
       console.log(`✓ Key detected and saved: ${detectedKey} for "${fileData.metadata.title}"`)
+      removeToast(toastId)
+      showSuccess(`Key detected: ${detectedKey} for "${fileData.metadata.title}"`)
     }
   } catch (error: any) {
     console.error('Key analysis failed:', error)
     fileData.error = `Upload successful, but key analysis failed: ${error.message}`
+    removeToast(toastId)
+    showError(`Key analysis failed for "${fileData.metadata.title}"`)
   } finally {
     fileData.isAnalyzingKey = false
   }
@@ -857,6 +873,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
   } catch (error: any) {
     console.error('Upload error:', error)
     fileData.error = error.message || 'Upload failed'
+    showError(`Failed to upload "${fileData.metadata.title}": ${error.message || 'Unknown error'}`)
     return false
   }
 }
@@ -929,6 +946,9 @@ const onSubmit = async () => {
       showSuccessMessage.value = true
       emit('music-uploaded')
       
+      // Show success toast for uploads
+      showSuccess(`Successfully uploaded ${successCount} track${successCount !== 1 ? 's' : ''}`)
+      
       // Start BPM analysis in background for files that have analyzeBpm enabled
       const filesToAnalyzeBPM = selectedFiles.value.filter(f => f.analyzeBpm && f.uploadedSoundId)
       if (filesToAnalyzeBPM.length > 0) {
@@ -954,11 +974,13 @@ const onSubmit = async () => {
       }
     } else {
       globalError.value = 'All uploads failed. Please try again.'
+      showError('All uploads failed. Please try again.')
     }
     
   } catch (error) {
     console.error('Error during upload:', error)
     globalError.value = 'An error occurred during upload'
+    showError('An error occurred during upload')
   } finally {
     isUploading.value = false
   }

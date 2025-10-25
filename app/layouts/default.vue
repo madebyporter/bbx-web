@@ -94,6 +94,9 @@
       :initial-filters="currentFilters"
       @apply-filters="handleFiltersAndSort" 
     />
+
+    <!-- Toast Notifications -->
+    <Toast />
   </div>
   <div v-else class="flex items-center justify-center min-h-screen">
     <!-- No loading indicator -->
@@ -106,6 +109,7 @@ import { useRoute } from 'vue-router'
 import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
 import Player from '~/components/Player.vue'
+import Toast from '~/components/Toast.vue'
 
 // Define interfaces
 interface DatabaseComponent {
