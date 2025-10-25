@@ -76,7 +76,7 @@
       :key="`edit-track-${modalKey}`"
       v-model:show="showModal"
       :track-to-edit="editingTrack"
-      @track-updated="refreshDatabase"
+      @track-updated="(updatedTrack) => refreshDatabase(updatedTrack)"
     />
     <UploadMusic 
       v-else
@@ -310,11 +310,13 @@ const closeModal = () => {
   editingTrack.value = null
 }
 
-const refreshDatabase = () => {
-  // For user profile pages, dispatch window event to trigger refresh
+const refreshDatabase = (updatedTrack?: any) => {
+  // For user profile pages, dispatch window event with updated track data
   if (isUserProfilePage.value) {
-    console.log('Layout: Dispatching track-updated event')
-    const event = new CustomEvent('track-updated')
+    console.log('Layout: Dispatching track-updated event', updatedTrack ? 'with track data' : 'without data')
+    const event = new CustomEvent('track-updated', { 
+      detail: updatedTrack ? { track: updatedTrack } : null 
+    })
     window.dispatchEvent(event)
   }
   // For resource pages, refresh database grid

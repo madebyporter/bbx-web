@@ -696,8 +696,32 @@ const onSubmit = async () => {
     await syncCollections(props.trackToEdit.id)
     
     console.log('EditTrack: Update successful', data)
+    
+    // Fetch the updated track with collections to pass back
+    const updatedTrackData = data && data.length > 0 ? data[0] : null
+    if (updatedTrackData) {
+      // Get collection names and slugs for the updated track
+      const { data: junctionData } = await supabase
+        .from('collections_sounds')
+        .select('collection_id')
+        .eq('sound_id', updatedTrackData.id)
+      
+      const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
+      
+      if (collectionIds.length > 0) {
+        const { data: collectionData } = await supabase
+          .from('collections')
+          .select('name, slug')
+          .in('id', collectionIds)
+        
+        updatedTrackData.collections = collectionData || []
+      } else {
+        updatedTrackData.collections = []
+      }
+    }
+    
     showSuccessMessage.value = true
-    emit('track-updated')
+    emit('track-updated', updatedTrackData)
     
   } catch (err: any) {
     console.error('EditTrack: Error updating track:', err)
@@ -735,7 +759,7 @@ const handleDelete = async () => {
     
     if (dbError) throw dbError
     
-    emit('track-updated')
+    emit('track-updated', null) // Pass null to indicate deletion (trigger refetch)
     handleClose() // Close modal with animation
     
   } catch (err: any) {

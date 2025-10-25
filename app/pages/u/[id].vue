@@ -281,9 +281,25 @@ defineExpose({
 })
 
 // Listen for track update events
-const handleTrackUpdate = () => {
-  console.log('[id].vue: Received track update event, refetching tracks')
-  fetchTracks()
+const handleTrackUpdate = async (event: any) => {
+  const updatedTrack = event?.detail?.track
+  
+  if (updatedTrack) {
+    // Update the specific track in place instead of refetching everything
+    console.log('[id].vue: Updating track in place:', updatedTrack.id)
+    const index = tracks.value.findIndex(t => t.id === updatedTrack.id)
+    if (index !== -1) {
+      // Preserve scroll position by updating in place
+      tracks.value[index] = updatedTrack
+      console.log('[id].vue: Track updated in place, scroll position preserved')
+    } else {
+      console.log('[id].vue: Track not found in current list, may need to refetch')
+    }
+  } else {
+    // Fallback: refetch if no track data provided (e.g., track deleted)
+    console.log('[id].vue: No track data provided, refetching all tracks')
+    await fetchTracks()
+  }
 }
 
 // Lifecycle
