@@ -48,6 +48,7 @@ const loopOne = ref(false)
 const hasEverHadTrack = ref(false)
 const audioElement = ref<HTMLAudioElement | null>(null)
 const signedUrlCache = ref<Map<string, { url: string; expiry: number }>>(new Map())
+const preloadedUrls = ref<Set<string>>(new Set())
 
 const STORAGE_KEY = 'player_state'
 
@@ -62,34 +63,69 @@ export function usePlayer() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Get signed URL from Supabase Storage
+  // Get signed URL from Supabase Storage with long-term caching
+  // Service worker handles caching the actual audio files (the main egress saver)
   const getSignedUrl = async (filepath: string): Promise<string | null> => {
-    // Check cache first
+    // Check cache first - cached URLs are still valid
     const cached = signedUrlCache.value.get(filepath)
     if (cached && cached.expiry > Date.now()) {
+      console.log('Using cached signed URL for:', filepath)
       return cached.url
     }
 
     try {
+      // Request 24-hour expiry for signed URLs (longer cache period)
       const { data, error } = await supabase.storage
         .from('sounds')
-        .createSignedUrl(filepath, 3600) // 1 hour expiry
+        .createSignedUrl(filepath, 86400) // 24 hours
 
       if (error) {
         console.error('Error getting signed URL:', error)
         return null
       }
 
-      // Cache the URL with expiry time (55 minutes to be safe)
+      if (!data?.signedUrl) {
+        console.error('No signed URL returned for:', filepath)
+        return null
+      }
+
+      console.log('Generated new signed URL for:', filepath)
+
+      // Cache the URL for 23 hours (safe margin before expiry)
       signedUrlCache.value.set(filepath, {
         url: data.signedUrl,
-        expiry: Date.now() + (55 * 60 * 1000)
+        expiry: Date.now() + (23 * 60 * 60 * 1000)
       })
 
       return data.signedUrl
     } catch (err) {
       console.error('Error getting signed URL:', err)
       return null
+    }
+  }
+
+  // Preload next track in queue for seamless playback
+  const preloadNextTrack = async () => {
+    if (queue.value.length === 0) return
+
+    let nextIndex = currentIndex.value + 1
+    if (nextIndex >= queue.value.length) {
+      nextIndex = 0 // Loop to start
+    }
+
+    const nextTrack = queue.value[nextIndex]
+    if (nextTrack && !preloadedUrls.value.has(nextTrack.storage_path)) {
+      const url = await getSignedUrl(nextTrack.storage_path)
+      if (url && typeof window !== 'undefined') {
+        // Use link preload for audio
+        const link = document.createElement('link')
+        link.rel = 'prefetch'
+        link.as = 'audio'
+        link.href = url
+        document.head.appendChild(link)
+        preloadedUrls.value.add(nextTrack.storage_path)
+        console.log('Preloading next track:', nextTrack.title)
+      }
     }
   }
 
@@ -251,6 +287,8 @@ export function usePlayer() {
         console.log(`▶️ NOW PLAYING: "${currentTrack.value.title}" by ${currentTrack.value.artist} [ID: ${currentTrack.value.id}] [Group: ${currentTrack.value.track_group_name || 'none'}] [Version: ${currentTrack.value.version || 'N/A'}]`)
         await audioElement.value.play()
         isPlaying.value = true
+        // Preload next track for seamless playback
+        preloadNextTrack()
         saveState()
       } catch (err) {
         console.error('Error playing audio:', err)
