@@ -53,11 +53,18 @@
         </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
-        <div v-if="user" class="text-neutral-400 overflow-hidden truncate">
+        <div v-if="user" class="text-neutral-400 overflow-hidden">
           <template v-if="track.collections && track.collections.length > 0">
-            <NuxtLink v-for="(collection, idx) in track.collections" :key="collection.slug"
-              :to="`/u/${username}/c/${collection.slug}`" class="hover:text-white hover:underline transition-colors">{{
-              collection.name }}<span v-if="idx < track.collections.length - 1">, </span></NuxtLink>
+            <div class="flex flex-wrap gap-1">
+              <NuxtLink 
+                v-for="collection in track.collections" 
+                :key="collection.slug"
+                :to="`/u/${username}/c/${collection.slug}`" 
+                class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white transition-colors"
+              >
+                {{ collection.name }}
+              </NuxtLink>
+            </div>
           </template>
           <template v-else>-</template>
         </div>
