@@ -32,24 +32,37 @@
               stroke-linecap="round" stroke-linejoin="round" />
           </svg>
         </button>
-        <h2 class="text-xl font-bold mb-4">{{ isSignUp ? 'Sign Up' : 'Sign In' }}</h2>
+        <h2 class="text-xl font-bold mb-4">
+          {{ isForgotPassword ? 'Reset Password' : isSignUp ? 'Sign Up' : 'Sign In' }}
+        </h2>
         <form @submit.prevent="handleSubmit" class="space-y-4">
           <div>
             <label class="block text-sm font-medium mb-1">Email</label>
             <input v-model="email" type="email" required
               class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500" />
           </div>
-          <div>
+          <div v-if="!isForgotPassword">
             <label class="block text-sm font-medium mb-1">Password</label>
             <input v-model="password" type="password" required
               class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500" />
           </div>
+          <div v-if="isForgotPassword" class="text-sm text-neutral-400">
+            Enter your email address and we'll send you a link to reset your password.
+          </div>
+          <div v-if="!isForgotPassword && !isSignUp" class="flex justify-end">
+            <button type="button" @click="showForgotPassword" class="text-xs text-neutral-400 hover:text-neutral-300">
+              Forgot password?
+            </button>
+          </div>
           <div class="flex justify-between items-center">
             <button type="submit"
               class="bg-amber-500 text-black px-4 py-2 rounded hover:bg-amber-600 transition-colors">
-              {{ isSignUp ? 'Sign Up' : 'Sign In' }}
+              {{ isForgotPassword ? 'Send Reset Link' : isSignUp ? 'Sign Up' : 'Sign In' }}
             </button>
-            <button type="button" @click="toggleAuthMode" class="text-sm text-neutral-400 hover:text-neutral-300">
+            <button v-if="isForgotPassword" type="button" @click="backToSignIn" class="text-sm text-neutral-400 hover:text-neutral-300">
+              Back to Sign In
+            </button>
+            <button v-else type="button" @click="toggleAuthMode" class="text-sm text-neutral-400 hover:text-neutral-300">
               {{ isSignUp ? 'Already have an account?' : "Don't have an account?" }}
             </button>
           </div>
@@ -205,6 +218,7 @@ const filterSortContext = computed(() => {
 const showAuthModal = ref(false)
 const showAdminModal = ref(false)
 const isSignUp = ref(false)
+const isForgotPassword = ref(false)
 const email = ref('')
 const password = ref('')
 
@@ -256,11 +270,29 @@ const handleMobileNavToggle = (isOpen: boolean) => {
 // Auth handlers
 const toggleAuthMode = () => {
   isSignUp.value = !isSignUp.value
+  isForgotPassword.value = false
+}
+
+const showForgotPassword = () => {
+  isForgotPassword.value = true
+  isSignUp.value = false
+}
+
+const backToSignIn = () => {
+  isForgotPassword.value = false
+  isSignUp.value = false
 }
 
 const handleSubmit = async () => {
   try {
-    if (isSignUp.value) {
+    if (isForgotPassword.value) {
+      await auth.resetPassword(email.value)
+      showInfo('Password reset email sent! Please check your inbox and follow the link to reset your password.', 8000)
+      showAuthModal.value = false
+      email.value = ''
+      password.value = ''
+      isForgotPassword.value = false
+    } else if (isSignUp.value) {
       const result = await auth.signUp(email.value, password.value)
       if (result.user && !result.session) {
         // User created but needs email confirmation
@@ -269,13 +301,16 @@ const handleSubmit = async () => {
         // User created and signed in (email confirmation disabled)
         showSuccess('Account created successfully!')
       }
+      showAuthModal.value = false
+      email.value = ''
+      password.value = ''
     } else {
       await auth.signIn(email.value, password.value)
       showSuccess(`Welcome back, ${email.value}!`)
+      showAuthModal.value = false
+      email.value = ''
+      password.value = ''
     }
-    showAuthModal.value = false
-    email.value = ''
-    password.value = ''
   } catch (error: unknown) {
     console.error('Auth error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
