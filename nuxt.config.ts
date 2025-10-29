@@ -20,7 +20,7 @@ export default defineNuxtConfig({
   // Router configuration
   router: {
     options: {
-      strict: true
+      strict: false
     }
   },
   
