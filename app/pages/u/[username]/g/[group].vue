@@ -53,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -68,13 +68,56 @@ const { supabase } = useSupabase()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
+// Fetch initial group data server-side for SEO
+const { data: initialData } = await useAsyncData(
+  `group-${route.params.username}-${route.params.group}`,
+  async () => {
+    if (!supabase) return null
+    
+    const usernameParam = route.params.username as string
+    const groupParam = route.params.group as string
+    
+    try {
+      // Get user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('username', usernameParam)
+        .single()
+      
+      if (profileError || !profileData) return null
+      
+      // Fetch tracks in this group (basic data for SEO)
+      const { data: tracksData, error: tracksError } = await supabase
+        .from('sounds')
+        .select('*')
+        .eq('user_id', profileData.id)
+        .eq('track_group_name', groupParam)
+        .order('version', { ascending: false })
+        .limit(10) // Just fetch a few for SEO
+      
+      if (tracksError) return null
+      
+      return {
+        profileUserId: profileData.id,
+        username: usernameParam,
+        groupName: groupParam,
+        tracks: tracksData || []
+      }
+    } catch (error) {
+      console.error('Error fetching group data:', error)
+      return null
+    }
+  }
+)
+
 const tracks = ref<any[]>([])
 const loading = ref(true)
-const profileUserId = ref<string | null>(null)
-const username = ref('')
-const groupName = ref('')
+const profileUserId = ref<string | null>(initialData.value?.profileUserId || null)
+const username = ref(initialData.value?.username || '')
+const groupName = ref(initialData.value?.groupName || '')
 const isEditingGroupName = ref(false)
-const newGroupName = ref('')
+const newGroupName = ref(initialData.value?.groupName || '')
 
 const isOwnProfile = computed(() => {
   return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
@@ -202,37 +245,54 @@ const handleEdit = (track: any) => {
   window.dispatchEvent(event)
 }
 
-// SEO Meta Tags
-const updateSeoMeta = () => {
-  if (!groupName.value || !username.value || tracks.value.length === 0) return
-  
-  const title = `${groupName.value} by ${username.value} | Beatbox`
-  const description = `View different versions of ${groupName.value} by ${username.value} on Beatbox - ${tracks.value.length} tracks`
-  const url = `${siteUrl}/u/${username.value}/g/${groupName.value}`
-  
-  useSeoMeta({
-    title,
-    description,
-    ogTitle: title,
-    ogDescription: description,
-    ogUrl: url,
-    ogType: 'music.playlist',
-    twitterCard: 'summary',
-    twitterTitle: title,
-    twitterDescription: description
-  })
-  
-  useHead({
-    link: [
-      { rel: 'canonical', href: url }
-    ]
-  })
-}
+// Set SEO meta tags - use initialData for SSR, then reactive values for updates
+const groupForSEO = computed(() => ({
+  username: initialData.value?.username || username.value,
+  groupName: initialData.value?.groupName || groupName.value,
+  trackCount: initialData.value?.tracks?.length || tracks.value.length
+}))
 
-// Watch for data changes to update SEO
-watch([groupName, tracks], () => {
-  updateSeoMeta()
-}, { deep: true })
+const seoTitle = computed(() => 
+  groupForSEO.value.groupName && groupForSEO.value.username
+    ? `${groupForSEO.value.groupName} by ${groupForSEO.value.username} | Beatbox`
+    : 'Track Group | Beatbox'
+)
+
+const seoDescription = computed(() => {
+  if (!groupForSEO.value.groupName || !groupForSEO.value.username) {
+    return 'View track group on Beatbox'
+  }
+  const trackCount = groupForSEO.value.trackCount
+  return `View different versions of ${groupForSEO.value.groupName} by ${groupForSEO.value.username} on Beatbox${trackCount > 0 ? ` - ${trackCount} tracks` : ''}`
+})
+
+const seoUrl = computed(() => {
+  const usernameValue = groupForSEO.value.username || route.params.username
+  const groupValue = groupForSEO.value.groupName || route.params.group
+  return `${siteUrl}/u/${usernameValue}/g/${groupValue}`
+})
+
+useSeoMeta({
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogUrl: seoUrl,
+  ogType: 'music.playlist',
+  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription,
+  twitterImage: `${siteUrl}/img/og-image.jpg`
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: seoUrl }
+  ]
+})
 
 // Apply filters and sort to tracks
 const updateFiltersAndSort = async (params: any) => {

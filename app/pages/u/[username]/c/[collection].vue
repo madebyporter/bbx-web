@@ -320,26 +320,29 @@ const handleSearch = (query: string) => {
   searchQuery.value = query
 }
 
-// Set SEO meta tags - computed so they update when collection loads
+// Set SEO meta tags - use initialData for SSR, then reactive collection for updates
 const username = route.params.username as string
 
+// Get collection data from initialData (available during SSR) or reactive collection
+const collectionForSEO = computed(() => initialData.value?.collection || collection.value)
+
 const seoTitle = computed(() => 
-  collection.value 
-    ? `${collection.value.name} by ${username} | Beatbox`
+  collectionForSEO.value 
+    ? `${collectionForSEO.value.name} by ${username} | Beatbox`
     : `Collection by ${username} | Beatbox`
 )
 
 const seoDescription = computed(() => 
-  collection.value?.description 
-    ? collection.value.description
-    : collection.value
-      ? `Browse ${collection.value.name} by ${username} on Beatbox`
+  collectionForSEO.value?.description 
+    ? collectionForSEO.value.description
+    : collectionForSEO.value
+      ? `Browse ${collectionForSEO.value.name} by ${username} on Beatbox`
       : `Browse music collection by ${username} on Beatbox`
 )
 
 const seoUrl = computed(() => 
-  collection.value 
-    ? `${siteUrl}/u/${username}/c/${collection.value.slug}`
+  collectionForSEO.value 
+    ? `${siteUrl}/u/${username}/c/${collectionForSEO.value.slug}`
     : `${siteUrl}/u/${username}/c/${route.params.collection}`
 )
 

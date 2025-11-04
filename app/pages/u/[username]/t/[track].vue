@@ -316,27 +316,30 @@ const updateTrackStatus = async (trackId: number, statusId: number | null) => {
   }
 }
 
-// Set SEO meta tags - computed so they update when track loads
+// Set SEO meta tags - use trackData directly for SSR (available during server-side rendering)
+const usernameParam = route.params.username as string
+const trackForSEO = computed(() => trackData.value || track.value)
+
 const seoTitle = computed(() => {
-  const trackTitle = track.value?.title || 'Untitled'
-  const artist = track.value?.artist || username.value || 'Unknown Artist'
+  const trackTitle = trackForSEO.value?.title || 'Untitled'
+  const artist = trackForSEO.value?.artist || usernameParam || 'Unknown Artist'
   return `${trackTitle} by ${artist} | Beatbox`
 })
 
 const seoDescription = computed(() => {
-  const trackTitle = track.value?.title || 'Untitled'
-  const artist = track.value?.artist || username.value || 'Unknown Artist'
+  const trackTitle = trackForSEO.value?.title || 'Untitled'
+  const artist = trackForSEO.value?.artist || usernameParam || 'Unknown Artist'
   
   const details = []
-  if (track.value?.genre) details.push(track.value.genre)
-  if (track.value?.bpm) details.push(`${track.value.bpm} BPM`)
-  if (track.value?.key) details.push(track.value.key)
+  if (trackForSEO.value?.genre) details.push(trackForSEO.value.genre)
+  if (trackForSEO.value?.bpm) details.push(`${trackForSEO.value.bpm} BPM`)
+  if (trackForSEO.value?.key) details.push(trackForSEO.value.key)
   const detailsStr = details.length > 0 ? ` - ${details.join(', ')}` : ''
   
   return `Listen to ${trackTitle} by ${artist} on Beatbox${detailsStr}`
 })
 
-const seoUrl = computed(() => `${siteUrl}/u/${username.value}/t/${route.params.track}`)
+const seoUrl = computed(() => `${siteUrl}/u/${usernameParam}/t/${route.params.track}`)
 
 useSeoMeta({
   title: seoTitle,

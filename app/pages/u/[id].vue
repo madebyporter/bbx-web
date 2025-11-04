@@ -205,23 +205,29 @@ const handleSearch = (query: string) => {
   searchQuery.value = query
 }
 
-// Set SEO meta tags - computed so they update when data loads
-const seoTitle = computed(() => 
-  profileName.value 
-    ? `${profileName.value}'s Music Library | Beatbox`
+// Set SEO meta tags - use initialData for SSR, then reactive values for updates
+const profileForSEO = computed(() => initialData.value?.profile)
+const tracksForSEO = computed(() => initialData.value?.tracks || tracks.value)
+
+const seoTitle = computed(() => {
+  const name = profileForSEO.value?.display_name || profileForSEO.value?.username || profileName.value
+  return name 
+    ? `${name}'s Music Library | Beatbox`
     : 'Music Library | Beatbox'
-)
+})
 
 const seoDescription = computed(() => {
-  const trackCount = tracks.value.length > 0 ? `${tracks.value.length}+ tracks` : 'Music collection'
-  return profileName.value
-    ? `Explore ${profileName.value}'s music collection on Beatbox - ${trackCount}`
+  const trackCount = tracksForSEO.value.length > 0 ? `${tracksForSEO.value.length}+ tracks` : 'Music collection'
+  const name = profileForSEO.value?.display_name || profileForSEO.value?.username || profileName.value
+  return name
+    ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
     : 'Explore music collection on Beatbox'
 })
 
-const seoUrl = computed(() => 
-  username.value ? `${siteUrl}/u/${username.value}` : `${siteUrl}/u/${route.params.id}`
-)
+const seoUrl = computed(() => {
+  const usernameValue = profileForSEO.value?.username || username.value || route.params.id
+  return `${siteUrl}/u/${usernameValue}`
+})
 
 useSeoMeta({
   title: seoTitle,
