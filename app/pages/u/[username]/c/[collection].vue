@@ -169,7 +169,7 @@ const fetchTracks = async () => {
         hidden,
         sounds(
           *,
-          track_status:track_statuses(id, name)
+          track_statuses!status_id(id, name)
         )
       `)
       .eq('collection_id', collection.value.id)
@@ -183,7 +183,7 @@ const fetchTracks = async () => {
         ...(item.sounds as any),
         hidden: item.hidden || false,
         junction_sound_id: item.sound_id,
-        track_status: (item.sounds as any).track_status
+        track_status: (item.sounds as any).track_statuses
       }))
     
     // Fetch collection names and slugs for each track
@@ -212,7 +212,7 @@ const fetchTracks = async () => {
       return {
         ...track,
         collections: collectionData || [],
-        track_status: track.track_status
+        track_status: track.track_statuses
       }
     }))
     
@@ -328,7 +328,7 @@ const updateFiltersAndSort = async (params: any) => {
         hidden,
         sounds(
           *,
-          track_status:track_statuses(id, name)
+          track_statuses!status_id(id, name)
         )
       `)
       .eq('collection_id', collection.value.id)
@@ -344,7 +344,7 @@ const updateFiltersAndSort = async (params: any) => {
         ...(item.sounds as any),
         hidden: item.hidden || false,
         junction_sound_id: item.sound_id,
-        track_status: (item.sounds as any).track_status
+        track_status: (item.sounds as any).track_statuses
       }))
     
     // Apply filters
@@ -432,7 +432,7 @@ const updateFiltersAndSort = async (params: any) => {
       return {
         ...track,
         collections: collectionData || [],
-        track_status: track.track_status
+        track_status: track.track_statuses
       }
     }))
     

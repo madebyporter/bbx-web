@@ -129,7 +129,7 @@ const fetchGroupTracks = async () => {
       .from('sounds')
       .select(`
         *,
-        track_status:track_statuses(id, name)
+        track_statuses!status_id(id, name)
       `)
       .eq('user_id', profileData.id)
       .eq('track_group_name', groupParam)
@@ -147,7 +147,7 @@ const fetchGroupTracks = async () => {
       const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
       
       if (collectionIds.length === 0) {
-        return { ...track, collections: [], track_status: track.track_status }
+        return { ...track, collections: [], track_status: track.track_statuses }
       }
       
       const { data: collectionData } = await supabase
@@ -155,7 +155,7 @@ const fetchGroupTracks = async () => {
         .select('name, slug')
         .in('id', collectionIds)
       
-      return { ...track, collections: collectionData || [], track_status: track.track_status }
+      return { ...track, collections: collectionData || [], track_status: track.track_statuses }
     }))
     
     tracks.value = tracksWithCollections
@@ -247,7 +247,7 @@ const updateFiltersAndSort = async (params: any) => {
       .from('sounds')
       .select(`
         *,
-        track_status:track_statuses(id, name)
+        track_statuses!status_id(id, name)
       `)
       .eq('user_id', profileUserId.value)
       .eq('track_group_name', groupName.value)
@@ -308,7 +308,7 @@ const updateFiltersAndSort = async (params: any) => {
       const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
       
       if (collectionIds.length === 0) {
-        return { ...track, collections: [], track_status: track.track_status }
+        return { ...track, collections: [], track_status: track.track_statuses }
       }
       
       const { data: collectionData } = await supabase
@@ -316,7 +316,7 @@ const updateFiltersAndSort = async (params: any) => {
         .select('name, slug')
         .in('id', collectionIds)
       
-      return { ...track, collections: collectionData || [], track_status: track.track_status }
+      return { ...track, collections: collectionData || [], track_status: track.track_statuses }
     }))
     
     tracks.value = tracksWithCollections

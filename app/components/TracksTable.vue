@@ -34,10 +34,10 @@
         <div>Artist</div>
         <div>Version</div>
         <div>Collection</div>
-        <div>Status</div>
         <div>Genre</div>
         <div>BPM</div>
         <div>Duration</div>
+        <div v-if="isOwnProfile">Status</div>
         <div v-if="isOwnProfile"></div>
       </div>
 
@@ -106,17 +106,23 @@
           </template>
           <template v-else>-</template>
         </div>
-        <div class="text-neutral-400 overflow-hidden">
-          <template v-if="track.track_status">
-            <span class="inline-flex items-center px-2 py-0.5 bg-amber-900/30 border border-amber-700/50 rounded text-xs text-amber-200">
-              {{ track.track_status.name }}
-            </span>
-          </template>
-          <template v-else>-</template>
-        </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.genre || '-' }}</div>
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
         <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>
+        <div v-if="isOwnProfile" class="text-neutral-400 overflow-hidden">
+          <select 
+            v-if="statuses.length > 0"
+            :value="track.status_id || ''"
+            @change="updateTrackStatus(track.id, $event.target.value ? parseInt($event.target.value) : null)"
+            class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-xs text-neutral-200 cursor-pointer outline-none"
+          >
+            <option value="">No Status</option>
+            <option v-for="status in statuses" :key="status.id" :value="status.id">
+              {{ status.name }}
+            </option>
+          </select>
+          <div v-else class="text-xs px-2 py-1">Loading...</div>
+        </div>
         <div v-if="isOwnProfile">
           <button @click="$emit('edit-track', track)" class="text-neutral-500 hover:text-amber-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5"
             title="Edit track">
@@ -129,9 +135,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
 import { useStemPlayer } from '~/composables/useStemPlayer'
+import { useSupabase } from '~/utils/supabase'
+import { useAuth } from '~/composables/useAuth'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 
 interface Props {
@@ -149,6 +157,10 @@ defineEmits<{
 
 const { currentTrack, isPlaying, loadQueue, togglePlayPause } = usePlayer()
 const { isStemPlayerActive, stemTracks, toggleMute, toggleSolo } = useStemPlayer()
+const { supabase } = useSupabase()
+const { user } = useAuth()
+
+const statuses = ref<Array<{ id: number; name: string }>>([])
 
 // Handle scroll-to-track event
 const handleScrollToTrack = (event: CustomEvent) => {
@@ -162,13 +174,21 @@ const handleScrollToTrack = (event: CustomEvent) => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('scroll-to-track', handleScrollToTrack as EventListener)
+  await fetchStatuses()
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll-to-track', handleScrollToTrack as EventListener)
 })
+
+// Watch for user becoming available and refetch statuses
+watch([() => user.value, () => props.isOwnProfile], async ([newUser, newIsOwnProfile]) => {
+  if (newUser && newIsOwnProfile) {
+    await fetchStatuses()
+  }
+}, { immediate: true })
 
 const generateTrackSlug = (track: any): string => {
   // Use title + ID as slug, fallback to just ID
@@ -215,6 +235,70 @@ const handleUploadClick = () => {
   // Dispatch event to open upload modal
   const event = new CustomEvent('open-upload-modal')
   window.dispatchEvent(event)
+}
+
+// Fetch statuses for the current user
+const fetchStatuses = async () => {
+  if (!supabase || !user.value || !props.isOwnProfile) return
+  
+  try {
+    const { data, error } = await supabase
+      .from('track_statuses')
+      .select('id, name')
+      .eq('user_id', user.value.id)
+      .order('name')
+    
+    if (error) throw error
+    
+    // If user has no statuses, create defaults for them
+    if (!data || data.length === 0) {
+      await supabase.rpc('create_default_statuses_for_user', { target_user_id: user.value.id })
+      
+      // Fetch again after creating defaults
+      const { data: newData } = await supabase
+        .from('track_statuses')
+        .select('id, name')
+        .eq('user_id', user.value.id)
+        .order('name')
+      
+      statuses.value = newData || []
+    } else {
+      statuses.value = data
+    }
+  } catch (error) {
+    console.error('Error fetching statuses:', error)
+    statuses.value = []
+  }
+}
+
+// Update track status immediately
+const updateTrackStatus = async (trackId: number, statusId: number | null) => {
+  if (!supabase) return
+  
+  try {
+    const { error } = await supabase
+      .from('sounds')
+      .update({ status_id: statusId })
+      .eq('id', trackId)
+    
+    if (error) throw error
+    
+    // Update local track data
+    const track = props.tracks.find(t => t.id === trackId)
+    if (track) {
+      track.status_id = statusId
+      if (statusId === null) {
+        track.track_statuses = null
+      } else {
+        const status = statuses.value.find(s => s.id === statusId)
+        if (status) {
+          track.track_statuses = { id: status.id, name: status.name }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error updating track status:', error)
+  }
 }
 </script>
 

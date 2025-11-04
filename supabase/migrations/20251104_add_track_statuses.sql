@@ -65,6 +65,9 @@ BEGIN
 END;
 $$;
 
+-- Grant execute permission on the function to authenticated users
+GRANT EXECUTE ON FUNCTION create_default_statuses_for_user(UUID) TO authenticated;
+
 -- Seed default statuses for all existing users who have tracks
 DO $$
 DECLARE

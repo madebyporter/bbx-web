@@ -149,7 +149,7 @@ const fetchTrack = async () => {
       .from('sounds')
       .select(`
         *,
-        track_status:track_statuses(id, name)
+        track_statuses!status_id(id, name)
       `)
       .eq('id', trackId)
       .eq('user_id', profileData.id)

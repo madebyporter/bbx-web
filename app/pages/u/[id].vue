@@ -127,7 +127,7 @@ const fetchTracks = async () => {
       .from('sounds')
       .select(`
         *,
-        track_status:track_statuses(id, name)
+        track_statuses!status_id(id, name)
       `)
       .eq('user_id', profileUserId.value)
       .order(sortBy, { ascending: sortDirection === 'asc' })
@@ -150,7 +150,7 @@ const fetchTracks = async () => {
         return {
           ...track,
           collections: [],
-          track_status: track.track_status
+          track_status: track.track_statuses
         }
       }
       
@@ -235,7 +235,7 @@ const updateFiltersAndSort = async (params: any) => {
       .from('sounds')
       .select(`
         *,
-        track_status:track_statuses(id, name)
+        track_statuses!status_id(id, name)
       `)
       .eq('user_id', profileUserId.value)
     
@@ -298,7 +298,7 @@ const updateFiltersAndSort = async (params: any) => {
         return {
           ...track,
           collections: [],
-          track_status: track.track_status
+          track_status: track.track_statuseses
         }
       }
       
@@ -310,7 +310,7 @@ const updateFiltersAndSort = async (params: any) => {
       return {
         ...track,
         collections: collectionData || [],
-        track_status: track.track_status
+        track_status: track.track_statuses
       }
     }))
     
