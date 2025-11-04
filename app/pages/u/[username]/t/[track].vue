@@ -11,29 +11,47 @@
     <template v-else>
       <!-- Track Header with Group Link -->
       <div class="p-4 border-b border-neutral-800">
-        <div class="flex items-center gap-4">
-          <button @click="handlePlay"
-            class="w-16 h-16 flex items-center justify-center bg-white hover:bg-neutral-100 rounded-full text-black transition-transform cursor-pointer">
-            <svg v-if="isPlaying && currentTrack?.id === track.id" class="w-8 h-8" fill="currentColor"
-              viewBox="0 0 24 24">
-              <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-            </svg>
-            <svg v-else class="w-8 h-8 ml-1" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </button>
-          <div class="flex flex-col gap-1">
-            <h1 class="text-3xl font-bold">{{ track.title || 'Untitled' }}</h1>
-            <p class="text-neutral-400">{{ track.artist || 'Unknown Artist' }}</p>
-            <p class="text-sm text-neutral-500 mt-2">
-              Version: {{ track.version }}
-              <span v-if="track.track_group_name" class="ml-2">
-                | Group:
-                <NuxtLink :to="`/u/${username}/g/${track.track_group_name}`" class="text-blue-400 hover:underline">
-                  {{ track.track_group_name }}
-                </NuxtLink>
-              </span>
-            </p>
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <button @click="handlePlay"
+              class="min-w-16 w-16 h-16 flex items-center justify-center bg-white hover:bg-neutral-100 rounded-full text-black transition-transform cursor-pointer">
+              <svg v-if="isPlaying && currentTrack?.id === track.id" class="w-8 h-8" fill="currentColor"
+                viewBox="0 0 24 24">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+              </svg>
+              <svg v-else class="w-8 h-8 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+            <div class="flex flex-col gap-1">
+              <h1 class="text-3xl font-bold">{{ track.title || 'Untitled' }}</h1>
+              <p class="text-neutral-400">{{ track.artist || 'Unknown Artist' }}</p>
+              <p class="text-sm text-neutral-500 mt-2">
+                Version: {{ track.version }}
+                <span v-if="track.track_group_name" class="ml-2">
+                  | Group:
+                  <NuxtLink :to="`/u/${username}/g/${track.track_group_name}`" class="text-blue-400 hover:underline">
+                    {{ track.track_group_name }}
+                  </NuxtLink>
+                </span>
+              </p>
+            </div>
+          </div>
+          
+          <!-- Status Dropdown (Owner Only) -->
+          <div v-if="isOwnProfile" class="flex items-center gap-2 w-full md:w-auto">
+            <select 
+              v-if="statuses.length > 0"
+              :value="track.status_id || ''"
+              @change="updateTrackStatus(track.id, $event.target.value ? parseInt($event.target.value) : null)"
+              class="px-3 py-2 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-sm text-neutral-200 cursor-pointer outline-none min-w-[160px] w-full md:w-auto"
+            >
+              <option value="">No Status</option>
+              <option v-for="status in statuses" :key="status.id" :value="status.id">
+                {{ status.name }}
+              </option>
+            </select>
+            <div v-else class="text-xs text-neutral-500">Loading...</div>
           </div>
         </div>
 
@@ -87,83 +105,93 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import { usePlayer } from '~/composables/usePlayer'
+import { useToast } from '~/composables/useToast'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 
 const route = useRoute()
 const { user } = useAuth()
 const { supabase } = useSupabase()
 const { loadQueue, currentTrack, isPlaying } = usePlayer()
+const { showSuccess, showError } = useToast()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
-const track = ref<any>(null)
+const username = ref(route.params.username as string)
 const groupTracks = ref<any[]>([])
 const collections = ref<any[]>([])
-const loading = ref(true)
 const profileUserId = ref<string | null>(null)
-const username = ref('')
+const statuses = ref<Array<{ id: number; name: string }>>([])
+
+// Fetch track data server-side for SEO
+const { data: trackData, pending: loading } = await useAsyncData(
+  `track-${route.params.track}`,
+  async () => {
+    if (!supabase) return null
+    
+    const usernameParam = route.params.username as string
+    const trackSlugParam = route.params.track as string
+    
+    // Extract track ID from slug (format: "slug-123")
+    const trackIdMatch = trackSlugParam.match(/-(\d+)$/)
+    const trackId = trackIdMatch ? parseInt(trackIdMatch[1]) : null
+    
+    if (!trackId) return null
+    
+    try {
+      // Get user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('username', usernameParam)
+        .single()
+      
+      if (profileError || !profileData) return null
+      
+      // Store profile ID
+      profileUserId.value = profileData.id as string
+      
+      // Fetch the specific track
+      const { data: trackData, error: trackError } = await supabase
+        .from('sounds')
+        .select(`
+          *,
+          track_statuses!status_id(id, name)
+        `)
+        .eq('id', trackId)
+        .eq('user_id', profileData.id)
+        .single()
+      
+      if (trackError || !trackData) return null
+      
+      return trackData
+    } catch (error) {
+      console.error('Error fetching track:', error)
+      return null
+    }
+  }
+)
+
+const track = computed(() => trackData.value)
 
 const isOwnProfile = computed(() => {
   return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
 })
 
-const fetchTrack = async () => {
-  const usernameParam = route.params.username as string
-  const trackSlugParam = route.params.track as string
-  
-  username.value = usernameParam
-  
-  // Extract track ID from slug (format: "slug-123")
-  const trackIdMatch = trackSlugParam.match(/-(\d+)$/)
-  const trackId = trackIdMatch ? parseInt(trackIdMatch[1]) : null
-  
-  if (!supabase || !trackId) {
-    loading.value = false
-    return
-  }
-  
-  loading.value = true
+// Fetch collections and group tracks client-side (not critical for SEO)
+const fetchCollectionsAndGroup = async () => {
+  if (!supabase || !track.value) return
   
   try {
-    // Get user profile
-    const { data: profileData, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('id')
-      .eq('username', usernameParam)
-      .single()
-    
-    if (profileError || !profileData) {
-      loading.value = false
-      return
-    }
-    
-    profileUserId.value = profileData.id as string
-    
-    // Fetch the specific track
-    const { data: trackData, error: trackError } = await supabase
-      .from('sounds')
-      .select('*')
-      .eq('id', trackId)
-      .eq('user_id', profileData.id)
-      .single()
-    
-    if (trackError || !trackData) {
-      loading.value = false
-      return
-    }
-    
-    track.value = trackData
-    
     // Fetch collections
     const { data: junctionData } = await supabase
       .from('collections_sounds')
       .select('collection_id')
-      .eq('sound_id', trackData.id)
+      .eq('sound_id', track.value.id)
     
     if (junctionData && junctionData.length > 0) {
       const collectionIds = junctionData.map((item: any) => item.collection_id)
@@ -174,26 +202,21 @@ const fetchTrack = async () => {
         .order('name')
       
       collections.value = colData || []
-    } else {
-      collections.value = []
     }
     
     // Fetch other tracks in the same group
-    if (trackData.track_group_name) {
+    if (track.value.track_group_name && profileUserId.value) {
       const { data: groupData } = await supabase
         .from('sounds')
         .select('*')
-        .eq('user_id', profileData.id)
-        .eq('track_group_name', trackData.track_group_name)
+        .eq('user_id', profileUserId.value)
+        .eq('track_group_name', track.value.track_group_name)
         .order('version', { ascending: false })
       
       groupTracks.value = groupData || []
     }
-    
   } catch (error) {
-    console.error('Error fetching track:', error)
-  } finally {
-    loading.value = false
+    console.error('Error fetching collections and group:', error)
   }
 }
 
@@ -227,56 +250,130 @@ function formatDuration(seconds: number | null | undefined): string {
   return `${minutes}:${secs.toString().padStart(2, '0')}`
 }
 
-// SEO Meta Tags
-const updateSeoMeta = () => {
-  if (!track.value || !username.value) return
+// Fetch statuses for the current user
+const fetchStatuses = async () => {
+  if (!supabase || !user.value || !isOwnProfile.value) return
   
-  const trackTitle = track.value.title || 'Untitled'
-  const artist = track.value.artist || username.value
-  const title = `${trackTitle} by ${artist} | Beatbox`
-  
-  // Build description with track details
-  const details = []
-  if (track.value.genre) details.push(track.value.genre)
-  if (track.value.bpm) details.push(`${track.value.bpm} BPM`)
-  if (track.value.key) details.push(track.value.key)
-  const detailsStr = details.length > 0 ? ` - ${details.join(', ')}` : ''
-  
-  const description = `Listen to ${trackTitle} by ${artist} on Beatbox${detailsStr}`
-  const url = `${siteUrl}/u/${username.value}/t/${route.params.track}`
-  
-  useSeoMeta({
-    title,
-    description,
-    ogTitle: title,
-    ogDescription: description,
-    ogUrl: url,
-    ogType: 'music.song',
-    twitterCard: 'summary',
-    twitterTitle: title,
-    twitterDescription: description
-  })
-  
-  useHead({
-    link: [
-      { rel: 'canonical', href: url }
-    ]
-  })
+  try {
+    const { data, error } = await supabase
+      .from('track_statuses')
+      .select('id, name')
+      .eq('user_id', user.value.id)
+      .order('name')
+    
+    if (error) throw error
+    
+    // If user has no statuses, create defaults for them
+    if (!data || data.length === 0) {
+      await supabase.rpc('create_default_statuses_for_user', { target_user_id: user.value.id })
+      
+      // Fetch again after creating defaults
+      const { data: newData } = await supabase
+        .from('track_statuses')
+        .select('id, name')
+        .eq('user_id', user.value.id)
+        .order('name')
+      
+      statuses.value = newData || []
+    } else {
+      statuses.value = data
+    }
+  } catch (error) {
+    console.error('Error fetching statuses:', error)
+    statuses.value = []
+  }
 }
 
-// Watch for data changes to update SEO
-watch(track, () => {
-  updateSeoMeta()
-}, { deep: true })
+// Update track status immediately
+const updateTrackStatus = async (trackId: number, statusId: number | null) => {
+  if (!supabase) return
+  
+  try {
+    const { error } = await supabase
+      .from('sounds')
+      .update({ status_id: statusId })
+      .eq('id', trackId)
+    
+    if (error) throw error
+    
+    // Update local track data
+    if (track.value) {
+      track.value.status_id = statusId
+      if (statusId === null) {
+        track.value.track_statuses = null
+      } else {
+        const status = statuses.value.find(s => s.id === statusId)
+        if (status) {
+          track.value.track_statuses = { id: status.id, name: status.name }
+        }
+      }
+    }
+    
+    showSuccess('Status updated successfully')
+  } catch (error) {
+    console.error('Error updating track status:', error)
+    showError('Failed to update status')
+  }
+}
 
-// Listen for track update events
+// Set SEO meta tags - computed so they update when track loads
+const seoTitle = computed(() => {
+  const trackTitle = track.value?.title || 'Untitled'
+  const artist = track.value?.artist || username.value || 'Unknown Artist'
+  return `${trackTitle} by ${artist} | Beatbox`
+})
+
+const seoDescription = computed(() => {
+  const trackTitle = track.value?.title || 'Untitled'
+  const artist = track.value?.artist || username.value || 'Unknown Artist'
+  
+  const details = []
+  if (track.value?.genre) details.push(track.value.genre)
+  if (track.value?.bpm) details.push(`${track.value.bpm} BPM`)
+  if (track.value?.key) details.push(track.value.key)
+  const detailsStr = details.length > 0 ? ` - ${details.join(', ')}` : ''
+  
+  return `Listen to ${trackTitle} by ${artist} on Beatbox${detailsStr}`
+})
+
+const seoUrl = computed(() => `${siteUrl}/u/${username.value}/t/${route.params.track}`)
+
+useSeoMeta({
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogUrl: seoUrl,
+  ogType: 'music.song',
+  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription,
+  twitterImage: `${siteUrl}/img/og-image.jpg`
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: seoUrl }
+  ]
+})
+
+// Listen for track update events (client-side only)
 const handleTrackUpdate = () => {
-  console.log('[track].vue: Received track update event, refetching track')
-  fetchTrack()
+  console.log('[track].vue: Received track update event, refreshing data')
+  refreshNuxtData(`track-${route.params.track}`)
 }
 
 onMounted(async () => {
-  await fetchTrack()
+  // Fetch collections and group tracks (not critical for SEO)
+  await fetchCollectionsAndGroup()
+  
+  // Fetch statuses if owner
+  if (isOwnProfile.value) {
+    await fetchStatuses()
+  }
   
   // Listen for track updates
   window.addEventListener('track-updated', handleTrackUpdate)

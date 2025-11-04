@@ -14,7 +14,8 @@
         :is-own-profile="isOwnProfile" 
         :loading="loading"
         :username="username"
-        @edit-track="handleEdit" 
+        @edit-track="handleEdit"
+        @tracks-deleted="fetchTracks" 
       />
     </div>
   </div>
@@ -38,12 +39,49 @@ const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
 const unregisterSearchHandler = inject<() => void>('unregisterSearchHandler')
 
+// Fetch initial profile data server-side for SEO
+const { data: initialData } = await useAsyncData(
+  `profile-${route.params.id}`,
+  async () => {
+    if (!supabase) return null
+    
+    const usernameOrId = route.params.id as string
+    
+    try {
+      // Try to fetch profile by username
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('id, username, display_name')
+        .eq('username', usernameOrId)
+        .single()
+
+      if (error || !data) return null
+      
+      // Fetch initial tracks for SEO (just first 10)
+      const { data: tracksData } = await supabase
+        .from('sounds')
+        .select('*')
+        .eq('user_id', data.id)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      
+      return {
+        profile: data,
+        tracks: tracksData || []
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+      return null
+    }
+  }
+)
+
 // State
-const profileName = ref('')
-const username = ref('')
-const profileUserId = ref<string | null>(null)
-const tracks = ref<any[]>([])
-const loading = ref(true)
+const profileName = ref(initialData.value?.profile?.display_name || initialData.value?.profile?.username || '')
+const username = ref(initialData.value?.profile?.username || '')
+const profileUserId = ref<string | null>(initialData.value?.profile?.id || null)
+const tracks = ref<any[]>(initialData.value?.tracks || [])
+const loading = ref(false)
 const searchQuery = ref('')
 
 // Computed
@@ -62,36 +100,13 @@ const filteredTracks = computed(() => {
   })
 })
 
-// Methods
+// Methods - Keep fetchProfile for backwards compatibility but simplified
 const fetchProfile = async () => {
-  const usernameOrId = route.params.id as string
-  
-  if (!supabase) return
-  
-  try {
-    // Try to fetch profile by username
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('id, username, display_name')
-      .eq('username', usernameOrId)
-      .single()
-
-    if (error || !data) {
-      // Fallback: try as UUID if username lookup fails
-      profileUserId.value = usernameOrId
-      profileName.value = usernameOrId
-      username.value = usernameOrId
-    } else {
-      profileUserId.value = data.id as string
-      profileName.value = (data.display_name || data.username || usernameOrId) as string
-      username.value = data.username as string
-    }
-  } catch (error) {
-    console.error('Error fetching profile:', error)
-    // Fallback
-    profileUserId.value = usernameOrId
-    profileName.value = usernameOrId
-    username.value = usernameOrId
+  // Profile already loaded server-side, just ensure values are set
+  if (!profileUserId.value && initialData.value?.profile) {
+    profileUserId.value = initialData.value.profile.id
+    profileName.value = initialData.value.profile.display_name || initialData.value.profile.username
+    username.value = initialData.value.profile.username
   }
 }
 
@@ -125,7 +140,10 @@ const fetchTracks = async () => {
   try {
     const { data, error } = await supabase
       .from('sounds')
-      .select('*')
+      .select(`
+        *,
+        track_statuses!status_id(id, name)
+      `)
       .eq('user_id', profileUserId.value)
       .order(sortBy, { ascending: sortDirection === 'asc' })
 
@@ -146,7 +164,8 @@ const fetchTracks = async () => {
       if (collectionIds.length === 0) {
         return {
           ...track,
-          collections: []
+          collections: [],
+          track_status: track.track_statuses
         }
       }
       
@@ -158,7 +177,8 @@ const fetchTracks = async () => {
       
       return {
         ...track,
-        collections: collectionData || []
+        collections: collectionData || [],
+        track_status: track.track_statuses
       }
     }))
     
@@ -185,37 +205,45 @@ const handleSearch = (query: string) => {
   searchQuery.value = query
 }
 
-// SEO Meta Tags
-const updateSeoMeta = () => {
-  if (!profileName.value || !username.value) return
-  
-  const title = `${profileName.value}'s Music Library | Beatbox`
-  const description = `Explore ${profileName.value}'s music collection on Beatbox - ${tracks.value.length} tracks`
-  const url = `${siteUrl}/u/${username.value}`
-  
-  useSeoMeta({
-    title,
-    description,
-    ogTitle: title,
-    ogDescription: description,
-    ogUrl: url,
-    ogType: 'profile',
-    twitterCard: 'summary',
-    twitterTitle: title,
-    twitterDescription: description
-  })
-  
-  useHead({
-    link: [
-      { rel: 'canonical', href: url }
-    ]
-  })
-}
+// Set SEO meta tags - computed so they update when data loads
+const seoTitle = computed(() => 
+  profileName.value 
+    ? `${profileName.value}'s Music Library | Beatbox`
+    : 'Music Library | Beatbox'
+)
 
-// Watch for data changes to update SEO
-watch([profileName, tracks], () => {
-  updateSeoMeta()
-}, { deep: true })
+const seoDescription = computed(() => {
+  const trackCount = tracks.value.length > 0 ? `${tracks.value.length}+ tracks` : 'Music collection'
+  return profileName.value
+    ? `Explore ${profileName.value}'s music collection on Beatbox - ${trackCount}`
+    : 'Explore music collection on Beatbox'
+})
+
+const seoUrl = computed(() => 
+  username.value ? `${siteUrl}/u/${username.value}` : `${siteUrl}/u/${route.params.id}`
+)
+
+useSeoMeta({
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogUrl: seoUrl,
+  ogType: 'profile',
+  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription,
+  twitterImage: `${siteUrl}/img/og-image.jpg`
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: seoUrl }
+  ]
+})
 
 // Apply filters and sort to tracks
 const updateFiltersAndSort = async (params: any) => {
@@ -228,7 +256,10 @@ const updateFiltersAndSort = async (params: any) => {
   try {
     let query = supabase
       .from('sounds')
-      .select('*')
+      .select(`
+        *,
+        track_statuses!status_id(id, name)
+      `)
       .eq('user_id', profileUserId.value)
     
     // Apply music filters
@@ -265,6 +296,11 @@ const updateFiltersAndSort = async (params: any) => {
       query = query.lte('year', filters.year.max)
     }
     
+    // Status filter
+    if (filters.status?.length > 0) {
+      query = query.in('status_id', filters.status)
+    }
+    
     // Apply sort
     query = query.order(sort.sortBy, { ascending: sort.sortDirection === 'asc' })
     
@@ -284,7 +320,8 @@ const updateFiltersAndSort = async (params: any) => {
       if (collectionIds.length === 0) {
         return {
           ...track,
-          collections: []
+          collections: [],
+          track_status: track.track_statuses
         }
       }
       
@@ -295,7 +332,8 @@ const updateFiltersAndSort = async (params: any) => {
       
       return {
         ...track,
-        collections: collectionData || []
+        collections: collectionData || [],
+        track_status: track.track_statuses
       }
     }))
     

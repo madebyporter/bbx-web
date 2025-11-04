@@ -1,3 +1,10 @@
+export interface TrackStatus {
+  id: number
+  user_id: string
+  name: string
+  created_at: string
+}
+
 export interface Resource {
   id: number
   name: string
@@ -26,4 +33,6 @@ export interface Resource {
   disc_number?: number
   file_size?: number
   duration?: number
+  status_id?: number | null
+  track_status?: TrackStatus | null
 } 

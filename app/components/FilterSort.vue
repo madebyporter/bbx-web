@@ -20,6 +20,7 @@
             <option v-if="context === 'music'" value="artist">Artist</option>
             <option v-if="context === 'music'" value="bpm">BPM</option>
             <option v-if="context === 'music'" value="year">Year</option>
+            <option v-if="context === 'music'" value="status">Status</option>
           </select>
         </div>
 
@@ -221,6 +222,32 @@
               </div>
             </div>
           </div>
+
+          <!-- Status Filter -->
+          <div>
+            <label class="block nav-header mb-2">Status</label>
+            <div class="flex flex-wrap gap-2">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" :value="null" v-model="filters.status" class="hidden" />
+                <div class="px-3 py-2 rounded-md" :class="[
+                  filters.status.includes(null) ? 'tag-active' : 'tag'
+                ]">
+                  No Status
+                </div>
+              </label>
+              <label
+                v-for="status in availableStatuses"
+                :key="status.id"
+                class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" :value="status.id" v-model="filters.status" class="hidden" />
+                <div class="px-3 py-2 rounded-md" :class="[
+                  filters.status.includes(status.id) ? 'tag-active' : 'tag'
+                ]">
+                  {{ status.name }}
+                </div>
+              </label>
+            </div>
+          </div>
         </template>
       </div>
     </div>
@@ -242,6 +269,7 @@ import IconApple from './IconApple.vue'
 import IconWindows from './IconWindows.vue'
 import IconLinux from './IconLinux.vue'
 import { useSupabase } from '~/utils/supabase'
+import { useAuth } from '~/composables/useAuth'
 import { ref, onMounted, reactive, computed, watch } from 'vue'
 import MasterDrawer from './MasterDrawer.vue'
 
@@ -269,7 +297,8 @@ const props = defineProps({
       bpm: { min: null, max: null },
       key: [],
       mood: [],
-      year: { min: null, max: null }
+      year: { min: null, max: null },
+      status: []
     })
   },
   initialSort: {
@@ -305,16 +334,21 @@ const filters = reactive({
   year: {
     min: props.initialFilters.year?.min || null,
     max: props.initialFilters.year?.max || null
-  }
+  },
+  status: [...(props.initialFilters.status || [])]
 })
 
 // Tags state
 const { supabase } = useSupabase()
+const { user } = useAuth()
 const tagInput = ref('')
 const availableTags = ref([])
 const filteredTags = ref([])
 const showSuggestions = ref(false)
 const selectedTags = computed(() => filters.tags)
+
+// Status state
+const availableStatuses = ref([])
 
 // TODO: Consider extracting tag search functionality into a reusable composable
 // that both FilterSort and SubmitResource components can use
@@ -336,6 +370,40 @@ const fetchTags = async () => {
       .sort((a, b) => a.localeCompare(b))
   } catch (error) {
     console.error('FilterSort: Error fetching tags:', error)
+  }
+}
+
+// Fetch all available statuses for the current user
+const fetchStatuses = async () => {
+  if (!supabase || !user.value) return
+
+  try {
+    const { data, error } = await supabase
+      .from('track_statuses')
+      .select('id, name')
+      .eq('user_id', user.value.id)
+      .order('name')
+
+    if (error) throw error
+    
+    // If user has no statuses, create defaults for them
+    if (!data || data.length === 0) {
+      await supabase.rpc('create_default_statuses_for_user', { target_user_id: user.value.id })
+      
+      // Fetch again after creating defaults
+      const { data: newData } = await supabase
+        .from('track_statuses')
+        .select('id, name')
+        .eq('user_id', user.value.id)
+        .order('name')
+      
+      availableStatuses.value = newData || []
+    } else {
+      availableStatuses.value = data
+    }
+  } catch (error) {
+    console.error('FilterSort: Error fetching statuses:', error)
+    availableStatuses.value = []
   }
 }
 
@@ -382,6 +450,7 @@ const loadSavedFilters = () => {
             filters.year.min = parsed.filters.year.min
             filters.year.max = parsed.filters.year.max
           }
+          if (parsed.filters.status) filters.status = [...parsed.filters.status]
         }
       }
     }
@@ -411,7 +480,8 @@ const saveFilters = () => {
         bpm: { ...filters.bpm },
         key: [...filters.key],
         mood: [...filters.mood],
-        year: { ...filters.year }
+        year: { ...filters.year },
+        status: [...filters.status]
       }
     }
     
@@ -432,7 +502,7 @@ watch(() => props.context, (newContext, oldContext) => {
     const validSortOptions = {
       software: ['created_at', 'name', 'creator', 'price'],
       kits: ['created_at', 'name', 'creator', 'price'],
-      music: ['created_at', 'title', 'artist', 'bpm', 'year']
+      music: ['created_at', 'title', 'artist', 'bpm', 'year', 'status']
     }
     
     const validOptions = validSortOptions[newContext] || ['created_at']
@@ -448,6 +518,7 @@ watch(() => props.context, (newContext, oldContext) => {
 // Initialize component
 onMounted(async () => {
   await fetchTags()
+  await fetchStatuses()
   loadSavedFilters()
 })
 
@@ -524,7 +595,8 @@ const applyFiltersAndSort = () => {
       bpm: { ...filters.bpm },
       key: [...filters.key],
       mood: [...filters.mood],
-      year: { ...filters.year }
+      year: { ...filters.year },
+      status: [...filters.status]
     }
   }
   
@@ -571,6 +643,7 @@ const clearAll = () => {
   filters.mood = []
   filters.year.min = null
   filters.year.max = null
+  filters.status = []
   
   // Save cleared state to localStorage
   saveFilters()

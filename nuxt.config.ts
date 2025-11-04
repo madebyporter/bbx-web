@@ -14,6 +14,9 @@ export default defineNuxtConfig({
   // Development
   devtools: { enabled: false },
   
+  // Enable SSR
+  ssr: true,
+  
   // Pages configuration
   pages: true,
   
