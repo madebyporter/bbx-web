@@ -100,6 +100,24 @@ const createAuth = () => {
     if (error) throw error
   }
 
+  const resetPassword = async (email: string) => {
+    if (!supabase) throw new Error('Supabase not initialized')
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`
+    })
+    if (error) throw error
+    return data
+  }
+
+  const updatePassword = async (newPassword: string) => {
+    if (!supabase) throw new Error('Supabase not initialized')
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword
+    })
+    if (error) throw error
+    return data
+  }
+
   // Handle email confirmation from URL
   const handleEmailConfirmation = async () => {
     if (!supabase) return
@@ -135,6 +153,8 @@ const createAuth = () => {
     signIn,
     signUp,
     signOut,
+    resetPassword,
+    updatePassword,
     handleEmailConfirmation,
     cleanup
   }
