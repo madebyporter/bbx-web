@@ -58,6 +58,32 @@
                 </p>
               </div>
 
+              <!-- Status -->
+              <div class="col-span-2">
+                <label class="text-sm text-neutral-400">Status</label>
+                <select v-if="!showNewStatusInput" v-model="metadata.status_id"
+                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 outline-none"
+                  @change="(e) => { if ((e.target as HTMLSelectElement).value === 'new') { showNewStatusInput = true; metadata.status_id = null } }">
+                  <option :value="null">No Status</option>
+                  <option v-for="status in statuses" :key="status.id" :value="status.id">
+                    {{ status.name }}
+                  </option>
+                  <option value="new">+ Create New Status</option>
+                </select>
+                <div v-else class="flex gap-2">
+                  <input v-model="newStatusName" type="text" placeholder="Enter status name"
+                    class="flex-1 p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                    @keydown.enter.prevent />
+                  <button type="button" @click="showNewStatusInput = false; newStatusName = ''"
+                    class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 rounded text-neutral-400 cursor-pointer">
+                    Cancel
+                  </button>
+                </div>
+                <p class="text-xs text-neutral-500 mt-1">
+                  {{ showNewStatusInput ? 'New status will be created when you save' : 'Label tracks with their licensing status' }}
+                </p>
+              </div>
+
               <div class="col-span-2">
                 <label class="text-sm text-neutral-400">Collections (optional)</label>
                 <CollectionSelect v-model="selectedCollectionIds" :collections="collections" size="md"
@@ -193,6 +219,12 @@ interface TrackMetadata {
   bpm: number | null
   key: string | null
   year: number | null
+  status_id: number | null
+}
+
+interface TrackStatus {
+  id: number
+  name: string
 }
 
 interface Collection {
@@ -224,12 +256,17 @@ const metadata = ref<TrackMetadata>({
   mood: '',
   bpm: null,
   key: null,
-  year: null
+  year: null,
+  status_id: null
 })
 
 const collections = ref<Collection[]>([])
 const selectedCollectionIds = ref<number[]>([])
 const pendingCollections = ref<Array<{ tempId: number, name: string }>>([])
+
+const statuses = ref<TrackStatus[]>([])
+const showNewStatusInput = ref(false)
+const newStatusName = ref('')
 
 // Define functions before watch to avoid hoisting issues
 const loadTrackCollections = async (trackId: number) => {
@@ -264,6 +301,39 @@ const fetchCollections = async () => {
   } catch (error) {
     console.error('Error fetching collections:', error)
     collections.value = []
+  }
+}
+
+const fetchStatuses = async () => {
+  if (!supabase || !user.value) return
+  
+  try {
+    const { data, error } = await supabase
+      .from('track_statuses')
+      .select('id, name')
+      .eq('user_id', user.value.id)
+      .order('name')
+    
+    if (error) throw error
+    
+    // If user has no statuses, create defaults for them
+    if (!data || data.length === 0) {
+      await supabase.rpc('create_default_statuses_for_user', { target_user_id: user.value.id })
+      
+      // Fetch again after creating defaults
+      const { data: newData } = await supabase
+        .from('track_statuses')
+        .select('id, name')
+        .eq('user_id', user.value.id)
+        .order('name')
+      
+      statuses.value = newData || []
+    } else {
+      statuses.value = data
+    }
+  } catch (error) {
+    console.error('Error fetching statuses:', error)
+    statuses.value = []
   }
 }
 
@@ -392,9 +462,10 @@ const syncCollections = async (trackId: number) => {
   }
 }
 
-// Fetch collections on mount
+// Fetch collections and statuses on mount
 onMounted(async () => {
   await fetchCollections()
+  await fetchStatuses()
 })
 
 // Watch for trackToEdit changes to populate form and load collections
@@ -414,7 +485,8 @@ watch(() => props.trackToEdit, async (newTrack) => {
       mood: moodString,
       bpm: newTrack.bpm || null,
       key: newTrack.key || null,
-      year: newTrack.year || null
+      year: newTrack.year || null,
+      status_id: newTrack.status_id || null
     }
     
     // Load track's current collections
@@ -602,6 +674,34 @@ const copyMetadataFromGroup = async () => {
   }
 }
 
+const createNewStatus = async (): Promise<number | null> => {
+  if (!supabase || !user.value || !newStatusName.value.trim()) return null
+  
+  try {
+    const { data, error: createError } = await supabase
+      .from('track_statuses')
+      .insert({
+        user_id: user.value.id,
+        name: newStatusName.value.trim()
+      })
+      .select()
+      .single()
+    
+    if (createError) throw createError
+    
+    // Add to local statuses list
+    statuses.value.push({
+      id: data.id,
+      name: data.name
+    })
+    
+    return data.id
+  } catch (err: any) {
+    console.error('Error creating status:', err)
+    throw err
+  }
+}
+
 const onSubmit = async () => {
   if (!supabase || !user.value || !props.trackToEdit) {
     console.error('EditTrack: Missing requirements', { supabase: !!supabase, user: !!user.value, track: !!props.trackToEdit })
@@ -612,6 +712,16 @@ const onSubmit = async () => {
   error.value = null
   
   try {
+    // Create new status if needed
+    if (showNewStatusInput.value && newStatusName.value.trim()) {
+      const newStatusId = await createNewStatus()
+      if (newStatusId) {
+        metadata.value.status_id = newStatusId
+      }
+      showNewStatusInput.value = false
+      newStatusName.value = ''
+    }
+    
     // Create pending collections first
     if (pendingCollections.value.length > 0) {
       for (const { tempId, name } of pendingCollections.value) {
@@ -682,7 +792,8 @@ const onSubmit = async () => {
         mood: moodArray,
         bpm: metadata.value.bpm,
         key: metadata.value.key,
-        year: metadata.value.year
+        year: metadata.value.year,
+        status_id: metadata.value.status_id
       })
       .eq('id', props.trackToEdit.id)
       .select()

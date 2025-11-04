@@ -147,7 +147,10 @@ const fetchTrack = async () => {
     // Fetch the specific track
     const { data: trackData, error: trackError } = await supabase
       .from('sounds')
-      .select('*')
+      .select(`
+        *,
+        track_status:track_statuses(id, name)
+      `)
       .eq('id', trackId)
       .eq('user_id', profileData.id)
       .single()

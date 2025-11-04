@@ -125,7 +125,10 @@ const fetchTracks = async () => {
   try {
     const { data, error } = await supabase
       .from('sounds')
-      .select('*')
+      .select(`
+        *,
+        track_status:track_statuses(id, name)
+      `)
       .eq('user_id', profileUserId.value)
       .order(sortBy, { ascending: sortDirection === 'asc' })
 
@@ -146,7 +149,8 @@ const fetchTracks = async () => {
       if (collectionIds.length === 0) {
         return {
           ...track,
-          collections: []
+          collections: [],
+          track_status: track.track_status
         }
       }
       
@@ -158,7 +162,8 @@ const fetchTracks = async () => {
       
       return {
         ...track,
-        collections: collectionData || []
+        collections: collectionData || [],
+        track_status: track.track_status
       }
     }))
     
@@ -228,7 +233,10 @@ const updateFiltersAndSort = async (params: any) => {
   try {
     let query = supabase
       .from('sounds')
-      .select('*')
+      .select(`
+        *,
+        track_status:track_statuses(id, name)
+      `)
       .eq('user_id', profileUserId.value)
     
     // Apply music filters
@@ -265,6 +273,11 @@ const updateFiltersAndSort = async (params: any) => {
       query = query.lte('year', filters.year.max)
     }
     
+    // Status filter
+    if (filters.status?.length > 0) {
+      query = query.in('status_id', filters.status)
+    }
+    
     // Apply sort
     query = query.order(sort.sortBy, { ascending: sort.sortDirection === 'asc' })
     
@@ -284,7 +297,8 @@ const updateFiltersAndSort = async (params: any) => {
       if (collectionIds.length === 0) {
         return {
           ...track,
-          collections: []
+          collections: [],
+          track_status: track.track_status
         }
       }
       
@@ -295,7 +309,8 @@ const updateFiltersAndSort = async (params: any) => {
       
       return {
         ...track,
-        collections: collectionData || []
+        collections: collectionData || [],
+        track_status: track.track_status
       }
     }))
     

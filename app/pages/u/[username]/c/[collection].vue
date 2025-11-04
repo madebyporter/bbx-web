@@ -167,7 +167,10 @@ const fetchTracks = async () => {
       .select(`
         sound_id,
         hidden,
-        sounds(*)
+        sounds(
+          *,
+          track_status:track_statuses(id, name)
+        )
       `)
       .eq('collection_id', collection.value.id)
     
@@ -179,7 +182,8 @@ const fetchTracks = async () => {
       .map(item => ({
         ...(item.sounds as any),
         hidden: item.hidden || false,
-        junction_sound_id: item.sound_id
+        junction_sound_id: item.sound_id,
+        track_status: (item.sounds as any).track_status
       }))
     
     // Fetch collection names and slugs for each track
@@ -207,7 +211,8 @@ const fetchTracks = async () => {
       
       return {
         ...track,
-        collections: collectionData || []
+        collections: collectionData || [],
+        track_status: track.track_status
       }
     }))
     
@@ -321,7 +326,10 @@ const updateFiltersAndSort = async (params: any) => {
       .select(`
         sound_id,
         hidden,
-        sounds(*)
+        sounds(
+          *,
+          track_status:track_statuses(id, name)
+        )
       `)
       .eq('collection_id', collection.value.id)
     
@@ -335,7 +343,8 @@ const updateFiltersAndSort = async (params: any) => {
       .map(item => ({
         ...(item.sounds as any),
         hidden: item.hidden || false,
-        junction_sound_id: item.sound_id
+        junction_sound_id: item.sound_id,
+        track_status: (item.sounds as any).track_status
       }))
     
     // Apply filters
@@ -375,10 +384,26 @@ const updateFiltersAndSort = async (params: any) => {
       soundsList = soundsList.filter(track => track.year && track.year <= filters.year.max)
     }
     
-    // Apply sort
+    // Status filter
+    if (filters.status?.length > 0) {
+      soundsList = soundsList.filter(track => {
+        if (filters.status.includes(null) && !track.status_id) return true
+        return filters.status.includes(track.status_id)
+      })
+    }
+    
+    // Apply sort - handle status sort specially
     soundsList.sort((a, b) => {
-      const aVal = a[sort.sortBy]
-      const bVal = b[sort.sortBy]
+      let aVal, bVal
+      
+      if (sort.sortBy === 'status') {
+        aVal = a.track_status?.name || ''
+        bVal = b.track_status?.name || ''
+      } else {
+        aVal = a[sort.sortBy]
+        bVal = b[sort.sortBy]
+      }
+      
       if (sort.sortDirection === 'asc') {
         return aVal > bVal ? 1 : -1
       } else {
@@ -406,7 +431,8 @@ const updateFiltersAndSort = async (params: any) => {
       
       return {
         ...track,
-        collections: collectionData || []
+        collections: collectionData || [],
+        track_status: track.track_status
       }
     }))
     

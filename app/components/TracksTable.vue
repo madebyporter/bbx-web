@@ -34,6 +34,7 @@
         <div>Artist</div>
         <div>Version</div>
         <div>Collection</div>
+        <div>Status</div>
         <div>Genre</div>
         <div>BPM</div>
         <div>Duration</div>
@@ -102,6 +103,14 @@
                 {{ collection.name }}
               </NuxtLink>
             </div>
+          </template>
+          <template v-else>-</template>
+        </div>
+        <div class="text-neutral-400 overflow-hidden">
+          <template v-if="track.track_status">
+            <span class="inline-flex items-center px-2 py-0.5 bg-amber-900/30 border border-amber-700/50 rounded text-xs text-amber-200">
+              {{ track.track_status.name }}
+            </span>
           </template>
           <template v-else>-</template>
         </div>

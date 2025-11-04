@@ -127,7 +127,10 @@ const fetchGroupTracks = async () => {
     // Fetch all tracks in this group
     const { data: tracksData, error: tracksError } = await supabase
       .from('sounds')
-      .select('*')
+      .select(`
+        *,
+        track_status:track_statuses(id, name)
+      `)
       .eq('user_id', profileData.id)
       .eq('track_group_name', groupParam)
       .order(sortBy, { ascending: sortDirection === 'asc' })
@@ -144,7 +147,7 @@ const fetchGroupTracks = async () => {
       const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
       
       if (collectionIds.length === 0) {
-        return { ...track, collections: [] }
+        return { ...track, collections: [], track_status: track.track_status }
       }
       
       const { data: collectionData } = await supabase
@@ -152,7 +155,7 @@ const fetchGroupTracks = async () => {
         .select('name, slug')
         .in('id', collectionIds)
       
-      return { ...track, collections: collectionData || [] }
+      return { ...track, collections: collectionData || [], track_status: track.track_status }
     }))
     
     tracks.value = tracksWithCollections
@@ -242,7 +245,10 @@ const updateFiltersAndSort = async (params: any) => {
   try {
     let query = supabase
       .from('sounds')
-      .select('*')
+      .select(`
+        *,
+        track_status:track_statuses(id, name)
+      `)
       .eq('user_id', profileUserId.value)
       .eq('track_group_name', groupName.value)
     
@@ -280,6 +286,11 @@ const updateFiltersAndSort = async (params: any) => {
       query = query.lte('year', filters.year.max)
     }
     
+    // Status filter
+    if (filters.status?.length > 0) {
+      query = query.in('status_id', filters.status)
+    }
+    
     // Apply sort
     query = query.order(sort.sortBy, { ascending: sort.sortDirection === 'asc' })
     
@@ -297,7 +308,7 @@ const updateFiltersAndSort = async (params: any) => {
       const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
       
       if (collectionIds.length === 0) {
-        return { ...track, collections: [] }
+        return { ...track, collections: [], track_status: track.track_status }
       }
       
       const { data: collectionData } = await supabase
@@ -305,7 +316,7 @@ const updateFiltersAndSort = async (params: any) => {
         .select('name, slug')
         .in('id', collectionIds)
       
-      return { ...track, collections: collectionData || [] }
+      return { ...track, collections: collectionData || [], track_status: track.track_status }
     }))
     
     tracks.value = tracksWithCollections

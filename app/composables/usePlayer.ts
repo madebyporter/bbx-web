@@ -17,6 +17,11 @@ export interface Track {
   collection_names?: string
   track_group_name?: string | null
   created_at?: string
+  status_id?: number | null
+  track_status?: {
+    id: number
+    name: string
+  } | null
 }
 
 interface PlayerState {
