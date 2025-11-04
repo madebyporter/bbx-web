@@ -28,8 +28,10 @@
           :loading="tracksLoading"
           :username="route.params.username as string"
           :view-mode="viewMode"
+          :collection-id="collection?.id"
           @edit-track="handleEdit"
           @toggle-hidden="toggleHidden"
+          @tracks-removed="fetchTracks"
         />
       </div>
     </template>

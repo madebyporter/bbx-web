@@ -24,12 +24,38 @@
     </div>
 
     <div v-else class="w-fit lg:w-full">
+      <!-- Confirm Dialog -->
+      <ConfirmDialog
+        v-model:show="showConfirmDialog"
+        title="Delete Tracks"
+        :message="`Delete ${selectedTrackIds.size} track${selectedTrackIds.size > 1 ? 's' : ''} from your library? This will permanently delete the files.`"
+        confirm-text="Delete"
+        cancel-text="Cancel"
+        :confirm-danger="true"
+        @confirm="handleBulkDelete"
+      />
+      
       <!-- Header -->
       <div :class="[
           'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 lg:sticky lg:top-20 bg-neutral-900 z-40',
           isOwnProfile ? 'trackGrid-edit' : 'trackGrid'
         ]">
-        <div></div>
+        <div class="flex items-center justify-center">
+          <button
+            v-if="isOwnProfile"
+            @click="handleHeaderCheckboxClick"
+            class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+            :title="bulkSelectionMode ? (clickCount === 2 ? 'Deselect all' : 'Select all') : 'Select tracks'"
+          >
+            <svg v-if="bulkSelectionMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect v-if="clickCount !== 2" x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
+              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
+            </svg>
+          </button>
+        </div>
         <div>Title</div>
         <div>Artist</div>
         <div>Version</div>
@@ -38,7 +64,15 @@
         <div>BPM</div>
         <div>Duration</div>
         <div v-if="isOwnProfile">Status</div>
-        <div v-if="isOwnProfile"></div>
+        <div v-if="isOwnProfile" class="flex items-center justify-start">
+          <button
+            v-if="hasSelections"
+            @click="showConfirmDialog = true"
+            class="px-3 py-0.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors cursor-pointer"
+          >
+            Delete
+          </button>
+        </div>
       </div>
 
       <!-- Tracks -->
@@ -47,8 +81,21 @@
           isOwnProfile ? 'trackGrid-edit' : 'trackGrid', isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800/30'
         ]">
         <div class="px-2 flex items-center justify-center gap-1">
+          <!-- Bulk Selection Mode: Show Checkbox -->
+          <template v-if="bulkSelectionMode">
+            <button
+              @click="toggleTrackSelection(track.id)"
+              class="text-neutral-400 hover:text-neutral-200 transition-colors cursor-pointer"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect v-if="!selectedTrackIds.has(track.id)" x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
+                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+          </template>
+          
           <!-- Stem Player Mode: Show Mute/Solo -->
-          <template v-if="isStemPlayerActive">
+          <template v-else-if="isStemPlayerActive">
             <button @click="toggleMute(track.id)"
               :class="[
                 'px-2 py-1 text-xs rounded transition-colors cursor-pointer',
@@ -135,12 +182,14 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch, computed } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
 import { useStemPlayer } from '~/composables/useStemPlayer'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
+import { useToast } from '~/composables/useToast'
 import LoadingLogo from '~/components/LoadingLogo.vue'
+import ConfirmDialog from '~/components/ConfirmDialog.vue'
 
 interface Props {
   tracks: any[]
@@ -151,16 +200,26 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-defineEmits<{
+const emit = defineEmits<{
   'edit-track': [track: any]
+  'tracks-deleted': []
 }>()
 
 const { currentTrack, isPlaying, loadQueue, togglePlayPause } = usePlayer()
 const { isStemPlayerActive, stemTracks, toggleMute, toggleSolo } = useStemPlayer()
 const { supabase } = useSupabase()
 const { user } = useAuth()
+const { showProcessing, showSuccess, showError, removeToast } = useToast()
 
 const statuses = ref<Array<{ id: number; name: string }>>([])
+
+// Bulk selection state
+const bulkSelectionMode = ref(false)
+const selectedTrackIds = ref(new Set<number>())
+const clickCount = ref(0)
+const showConfirmDialog = ref(false)
+
+const hasSelections = computed(() => selectedTrackIds.value.size > 0)
 
 // Handle scroll-to-track event
 const handleScrollToTrack = (event: CustomEvent) => {
@@ -298,6 +357,107 @@ const updateTrackStatus = async (trackId: number, statusId: number | null) => {
     }
   } catch (error) {
     console.error('Error updating track status:', error)
+  }
+}
+
+// Bulk selection handlers
+const handleHeaderCheckboxClick = () => {
+  clickCount.value++
+  
+  if (clickCount.value === 1) {
+    // Activate bulk mode
+    bulkSelectionMode.value = true
+    selectedTrackIds.value.clear()
+  } else if (clickCount.value === 2) {
+    // Select all
+    props.tracks.forEach(track => selectedTrackIds.value.add(track.id))
+  } else if (clickCount.value === 3) {
+    // Deselect all
+    selectedTrackIds.value.clear()
+  } else {
+    // Deactivate bulk mode
+    bulkSelectionMode.value = false
+    selectedTrackIds.value.clear()
+    clickCount.value = 0
+  }
+}
+
+const toggleTrackSelection = (trackId: number) => {
+  if (selectedTrackIds.value.has(trackId)) {
+    selectedTrackIds.value.delete(trackId)
+  } else {
+    selectedTrackIds.value.add(trackId)
+  }
+}
+
+const handleBulkDelete = async () => {
+  if (!supabase || selectedTrackIds.value.size === 0) return
+  
+  const selectedIds = Array.from(selectedTrackIds.value)
+  const selectedTracks = props.tracks.filter(t => selectedIds.includes(t.id))
+  const count = selectedIds.length
+  
+  let toastId: string | undefined
+  
+  try {
+    toastId = showProcessing(`Deleting ${count} track${count > 1 ? 's' : ''}...`)
+    
+    let deleteErrors = 0
+    
+    // Delete files from storage and records from database
+    for (const track of selectedTracks) {
+      try {
+        // Delete file from storage
+        if (track.storage_path) {
+          const { error: storageError } = await supabase.storage
+            .from('sounds')
+            .remove([track.storage_path])
+          
+          if (storageError) {
+            console.error('Storage deletion error:', storageError)
+            deleteErrors++
+            continue
+          }
+        }
+        
+        // Delete database record
+        const { error: dbError } = await supabase
+          .from('sounds')
+          .delete()
+          .eq('id', track.id)
+        
+        if (dbError) {
+          console.error('Database deletion error:', dbError)
+          deleteErrors++
+        }
+      } catch (error) {
+        console.error('Error deleting track:', error)
+        deleteErrors++
+      }
+    }
+    
+    if (toastId) removeToast(toastId)
+    
+    if (deleteErrors === 0) {
+      showSuccess(`Successfully deleted ${count} track${count > 1 ? 's' : ''}`)
+    } else if (deleteErrors < count) {
+      showError(`Deleted ${count - deleteErrors} of ${count} tracks. ${deleteErrors} failed.`)
+    } else {
+      showError('Failed to delete tracks')
+    }
+    
+    // Clear selection and exit bulk mode
+    bulkSelectionMode.value = false
+    selectedTrackIds.value.clear()
+    clickCount.value = 0
+    
+    // Notify parent to refetch
+    emit('tracks-deleted')
+    
+  } catch (error) {
+    if (toastId) removeToast(toastId)
+    showError('Failed to delete tracks')
+    console.error('Bulk delete error:', error)
   }
 }
 </script>

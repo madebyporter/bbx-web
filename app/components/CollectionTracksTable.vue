@@ -9,12 +9,38 @@
     </div>
 
     <div class="w-fit md:w-full" v-else>
+      <!-- Confirm Dialog -->
+      <ConfirmDialog
+        v-model:show="showConfirmDialog"
+        title="Remove Tracks"
+        :message="`Remove ${selectedTrackIds.size} track${selectedTrackIds.size > 1 ? 's' : ''} from this collection?`"
+        confirm-text="Remove"
+        cancel-text="Cancel"
+        :confirm-danger="true"
+        @confirm="handleBulkRemove"
+      />
+      
       <!-- Header -->
       <div :class="[
           'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 xl:sticky xl:top-20 bg-neutral-900 z-40',
           isOwnProfile ? 'collectionTrackGrid-edit' : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut')
         ]">
-        <div></div>
+        <div class="flex items-center justify-center">
+          <button
+            v-if="isOwnProfile"
+            @click="handleHeaderCheckboxClick"
+            class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+            :title="bulkSelectionMode ? (clickCount === 2 ? 'Deselect all' : 'Select all') : 'Select tracks'"
+          >
+            <svg v-if="bulkSelectionMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect v-if="clickCount !== 2" x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
+              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
+            </svg>
+          </button>
+        </div>
         <div>Title</div>
         <div>Artist</div>
         <div>Version</div>
@@ -24,7 +50,15 @@
         <div>Duration</div>
         <div v-if="isOwnProfile && viewMode === 'all'">Visible</div>
         <div v-if="isOwnProfile">Status</div>
-        <div v-if="isOwnProfile"></div>
+        <div v-if="isOwnProfile" class="flex items-center justify-start">
+          <button
+            v-if="hasSelections"
+            @click="showConfirmDialog = true"
+            class="px-3 py-0.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors cursor-pointer"
+          >
+            Remove
+          </button>
+        </div>
       </div>
 
       <!-- Tracks -->
@@ -35,7 +69,21 @@
           isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800/30'
         ]">
         <div class="px-2 flex items-center justify-center">
-          <button @click="handlePlayClick(track, index)"
+          <!-- Bulk Selection Mode: Show Checkbox -->
+          <template v-if="bulkSelectionMode">
+            <button
+              @click="toggleTrackSelection(track.id)"
+              class="text-neutral-400 hover:text-neutral-200 transition-colors cursor-pointer"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect v-if="!selectedTrackIds.has(track.id)" x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
+                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+          </template>
+          
+          <!-- Normal Mode: Show Play Button -->
+          <button v-else @click="handlePlayClick(track, index)"
             :class="['text-neutral-400 hover:text-white transition-colors cursor-pointer'] + (isCurrentlyPlaying(track) ? ' text-orange-400' : '')"
             :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'">
             <svg v-if="isCurrentlyPlaying(track)" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -116,11 +164,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch, computed } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
+import { useToast } from '~/composables/useToast'
 import LoadingLogo from '~/components/LoadingLogo.vue'
+import ConfirmDialog from '~/components/ConfirmDialog.vue'
 
 const props = defineProps<{
   tracks: any[]
@@ -129,15 +179,29 @@ const props = defineProps<{
   loading: boolean
   username: string
   viewMode: 'final' | 'all'
+  collectionId?: number
 }>()
 
-defineEmits(['edit-track', 'toggle-hidden'])
+const emit = defineEmits<{
+  'edit-track': [track: any]
+  'toggle-hidden': [trackId: number]
+  'tracks-removed': []
+}>()
 
 const { loadQueue, currentTrack, isPlaying } = usePlayer()
 const { user } = useAuth()
 const { supabase } = useSupabase()
+const { showProcessing, showSuccess, showError, removeToast } = useToast()
 
 const statuses = ref<Array<{ id: number; name: string }>>([])
+
+// Bulk selection state
+const bulkSelectionMode = ref(false)
+const selectedTrackIds = ref(new Set<number>())
+const clickCount = ref(0)
+const showConfirmDialog = ref(false)
+
+const hasSelections = computed(() => selectedTrackIds.value.size > 0)
 
 // Handle scroll-to-track event
 const handleScrollToTrack = (event: CustomEvent) => {
@@ -259,6 +323,77 @@ function formatDuration(seconds: number | null | undefined): string {
   const minutes = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
   return `${minutes}:${secs.toString().padStart(2, '0')}`
+}
+
+// Bulk selection handlers
+const handleHeaderCheckboxClick = () => {
+  clickCount.value++
+  
+  if (clickCount.value === 1) {
+    // Activate bulk mode
+    bulkSelectionMode.value = true
+    selectedTrackIds.value.clear()
+  } else if (clickCount.value === 2) {
+    // Select all
+    props.tracks.forEach(track => selectedTrackIds.value.add(track.id))
+  } else if (clickCount.value === 3) {
+    // Deselect all
+    selectedTrackIds.value.clear()
+  } else {
+    // Deactivate bulk mode
+    bulkSelectionMode.value = false
+    selectedTrackIds.value.clear()
+    clickCount.value = 0
+  }
+}
+
+const toggleTrackSelection = (trackId: number) => {
+  if (selectedTrackIds.value.has(trackId)) {
+    selectedTrackIds.value.delete(trackId)
+  } else {
+    selectedTrackIds.value.add(trackId)
+  }
+}
+
+const handleBulkRemove = async () => {
+  if (!supabase || selectedTrackIds.value.size === 0 || !props.collectionId) return
+  
+  const selectedIds = Array.from(selectedTrackIds.value)
+  const count = selectedIds.length
+  
+  let toastId: string | undefined
+  
+  try {
+    toastId = showProcessing(`Removing ${count} track${count > 1 ? 's' : ''}...`)
+    
+    // Remove tracks from collection via junction table
+    const { error } = await supabase
+      .from('collections_sounds')
+      .delete()
+      .in('sound_id', selectedIds)
+      .eq('collection_id', props.collectionId)
+    
+    if (toastId) removeToast(toastId)
+    
+    if (error) {
+      showError('Failed to remove tracks from collection')
+      console.error('Remove error:', error)
+    } else {
+      showSuccess(`Successfully removed ${count} track${count > 1 ? 's' : ''} from collection`)
+      
+      // Clear selection and exit bulk mode
+      bulkSelectionMode.value = false
+      selectedTrackIds.value.clear()
+      clickCount.value = 0
+      
+      // Notify parent to refetch
+      emit('tracks-removed')
+    }
+  } catch (error) {
+    if (toastId) removeToast(toastId)
+    showError('Failed to remove tracks from collection')
+    console.error('Bulk remove error:', error)
+  }
 }
 </script>
 

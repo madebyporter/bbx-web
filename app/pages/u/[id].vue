@@ -14,7 +14,8 @@
         :is-own-profile="isOwnProfile" 
         :loading="loading"
         :username="username"
-        @edit-track="handleEdit" 
+        @edit-track="handleEdit"
+        @tracks-deleted="fetchTracks" 
       />
     </div>
   </div>
