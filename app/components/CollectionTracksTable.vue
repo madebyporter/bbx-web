@@ -1,5 +1,5 @@
 <template>
-  <div class="py-2 w-full">
+  <div class="w-full">
     <div v-if="loading" class="flex items-center justify-center p-8">
       <LoadingLogo />
     </div>
@@ -23,7 +23,9 @@
       <!-- Header -->
       <div :class="[
           'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 xl:sticky xl:top-20 bg-neutral-900 z-40',
-          isOwnProfile ? 'collectionTrackGrid-edit' : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut')
+          isOwnProfile 
+            ? (viewMode === 'all' ? 'collectionTrackGrid-edit' : 'collectionTrackGrid-edit-no-visible')
+            : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut')
         ]">
         <div class="flex items-center justify-center">
           <button
@@ -64,7 +66,9 @@
       <!-- Tracks -->
       <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
           'text-sm border-b border-neutral-800/50 py-3 transition-colors items-center',
-          isOwnProfile ? 'collectionTrackGrid-edit' : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut'),
+          isOwnProfile 
+            ? (viewMode === 'all' ? 'collectionTrackGrid-edit' : 'collectionTrackGrid-edit-no-visible')
+            : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut'),
           { 'opacity-30': track.hidden && viewMode === 'all' },
           isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800/30'
         ]">
