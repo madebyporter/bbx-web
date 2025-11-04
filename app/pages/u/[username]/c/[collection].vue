@@ -59,12 +59,52 @@ const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
 const unregisterSearchHandler = inject<() => void>('unregisterSearchHandler')
 
+// Fetch initial collection data server-side for SEO
+const { data: initialData } = await useAsyncData(
+  `collection-${route.params.username}-${route.params.collection}`,
+  async () => {
+    if (!supabase) return null
+    
+    const usernameParam = route.params.username as string
+    const collectionSlug = route.params.collection as string
+    
+    try {
+      // Get user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('id, username')
+        .eq('username', usernameParam)
+        .single()
+      
+      if (profileError || !profileData) return null
+      
+      // Fetch collection
+      const { data: collectionData, error: collectionError } = await supabase
+        .from('collections')
+        .select('*')
+        .eq('slug', collectionSlug)
+        .eq('user_id', profileData.id)
+        .single()
+      
+      if (collectionError || !collectionData) return null
+      
+      return {
+        collection: collectionData,
+        profileUserId: profileData.id
+      }
+    } catch (error) {
+      console.error('Error fetching collection:', error)
+      return null
+    }
+  }
+)
+
 // State
-const collection = ref<any>(null)
+const collection = ref<any>(initialData.value?.collection || null)
 const tracks = ref<any[]>([])
-const loading = ref(true)
+const loading = ref(false)
 const tracksLoading = ref(false)
-const profileUserId = ref<string | null>(null)
+const profileUserId = ref<string | null>(initialData.value?.profileUserId || null)
 const searchQuery = ref('')
 const viewMode = ref<'final' | 'all'>('final')
 const showViewMenu = ref(false)
@@ -280,38 +320,50 @@ const handleSearch = (query: string) => {
   searchQuery.value = query
 }
 
-// SEO Meta Tags
-const updateSeoMeta = () => {
-  if (!collection.value) return
-  
-  const username = route.params.username as string
-  const title = `${collection.value.name} by ${username} | Beatbox`
-  const description = collection.value.description || `Browse ${collection.value.name} by ${username} on Beatbox - ${displayedTracksCount.value} tracks`
-  const url = `${siteUrl}/u/${username}/c/${collection.value.slug}`
-  
-  useSeoMeta({
-    title,
-    description,
-    ogTitle: title,
-    ogDescription: description,
-    ogUrl: url,
-    ogType: 'music.playlist',
-    twitterCard: 'summary',
-    twitterTitle: title,
-    twitterDescription: description
-  })
-  
-  useHead({
-    link: [
-      { rel: 'canonical', href: url }
-    ]
-  })
-}
+// Set SEO meta tags - computed so they update when collection loads
+const username = route.params.username as string
 
-// Watch for data changes to update SEO
-watch([collection, tracks], () => {
-  updateSeoMeta()
-}, { deep: true })
+const seoTitle = computed(() => 
+  collection.value 
+    ? `${collection.value.name} by ${username} | Beatbox`
+    : `Collection by ${username} | Beatbox`
+)
+
+const seoDescription = computed(() => 
+  collection.value?.description 
+    ? collection.value.description
+    : collection.value
+      ? `Browse ${collection.value.name} by ${username} on Beatbox`
+      : `Browse music collection by ${username} on Beatbox`
+)
+
+const seoUrl = computed(() => 
+  collection.value 
+    ? `${siteUrl}/u/${username}/c/${collection.value.slug}`
+    : `${siteUrl}/u/${username}/c/${route.params.collection}`
+)
+
+useSeoMeta({
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogUrl: seoUrl,
+  ogType: 'music.playlist',
+  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription,
+  twitterImage: `${siteUrl}/img/og-image.jpg`
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: seoUrl }
+  ]
+})
 
 // Apply filters and sort to tracks
 const updateFiltersAndSort = async (params: any) => {
