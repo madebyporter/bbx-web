@@ -178,7 +178,7 @@ const fetchTracks = async () => {
       return {
         ...track,
         collections: collectionData || [],
-        track_status: track.track_status
+        track_status: track.track_statuses
       }
     }))
     
@@ -321,7 +321,7 @@ const updateFiltersAndSort = async (params: any) => {
         return {
           ...track,
           collections: [],
-          track_status: track.track_statuseses
+          track_status: track.track_statuses
         }
       }
       

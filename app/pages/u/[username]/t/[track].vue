@@ -11,29 +11,47 @@
     <template v-else>
       <!-- Track Header with Group Link -->
       <div class="p-4 border-b border-neutral-800">
-        <div class="flex items-center gap-4">
-          <button @click="handlePlay"
-            class="w-16 h-16 flex items-center justify-center bg-white hover:bg-neutral-100 rounded-full text-black transition-transform cursor-pointer">
-            <svg v-if="isPlaying && currentTrack?.id === track.id" class="w-8 h-8" fill="currentColor"
-              viewBox="0 0 24 24">
-              <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-            </svg>
-            <svg v-else class="w-8 h-8 ml-1" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </button>
-          <div class="flex flex-col gap-1">
-            <h1 class="text-3xl font-bold">{{ track.title || 'Untitled' }}</h1>
-            <p class="text-neutral-400">{{ track.artist || 'Unknown Artist' }}</p>
-            <p class="text-sm text-neutral-500 mt-2">
-              Version: {{ track.version }}
-              <span v-if="track.track_group_name" class="ml-2">
-                | Group:
-                <NuxtLink :to="`/u/${username}/g/${track.track_group_name}`" class="text-blue-400 hover:underline">
-                  {{ track.track_group_name }}
-                </NuxtLink>
-              </span>
-            </p>
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <button @click="handlePlay"
+              class="min-w-16 w-16 h-16 flex items-center justify-center bg-white hover:bg-neutral-100 rounded-full text-black transition-transform cursor-pointer">
+              <svg v-if="isPlaying && currentTrack?.id === track.id" class="w-8 h-8" fill="currentColor"
+                viewBox="0 0 24 24">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+              </svg>
+              <svg v-else class="w-8 h-8 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+            <div class="flex flex-col gap-1">
+              <h1 class="text-3xl font-bold">{{ track.title || 'Untitled' }}</h1>
+              <p class="text-neutral-400">{{ track.artist || 'Unknown Artist' }}</p>
+              <p class="text-sm text-neutral-500 mt-2">
+                Version: {{ track.version }}
+                <span v-if="track.track_group_name" class="ml-2">
+                  | Group:
+                  <NuxtLink :to="`/u/${username}/g/${track.track_group_name}`" class="text-blue-400 hover:underline">
+                    {{ track.track_group_name }}
+                  </NuxtLink>
+                </span>
+              </p>
+            </div>
+          </div>
+          
+          <!-- Status Dropdown (Owner Only) -->
+          <div v-if="isOwnProfile" class="flex items-center gap-2 w-full md:w-auto">
+            <select 
+              v-if="statuses.length > 0"
+              :value="track.status_id || ''"
+              @change="updateTrackStatus(track.id, $event.target.value ? parseInt($event.target.value) : null)"
+              class="px-3 py-2 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-sm text-neutral-200 cursor-pointer outline-none min-w-[160px] w-full md:w-auto"
+            >
+              <option value="">No Status</option>
+              <option v-for="status in statuses" :key="status.id" :value="status.id">
+                {{ status.name }}
+              </option>
+            </select>
+            <div v-else class="text-xs text-neutral-500">Loading...</div>
           </div>
         </div>
 
@@ -92,12 +110,14 @@ import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import { usePlayer } from '~/composables/usePlayer'
+import { useToast } from '~/composables/useToast'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 
 const route = useRoute()
 const { user } = useAuth()
 const { supabase } = useSupabase()
 const { loadQueue, currentTrack, isPlaying } = usePlayer()
+const { showSuccess, showError } = useToast()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
@@ -105,6 +125,7 @@ const username = ref(route.params.username as string)
 const groupTracks = ref<any[]>([])
 const collections = ref<any[]>([])
 const profileUserId = ref<string | null>(null)
+const statuses = ref<Array<{ id: number; name: string }>>([])
 
 // Fetch track data server-side for SEO
 const { data: trackData, pending: loading } = await useAsyncData(
@@ -229,6 +250,72 @@ function formatDuration(seconds: number | null | undefined): string {
   return `${minutes}:${secs.toString().padStart(2, '0')}`
 }
 
+// Fetch statuses for the current user
+const fetchStatuses = async () => {
+  if (!supabase || !user.value || !isOwnProfile.value) return
+  
+  try {
+    const { data, error } = await supabase
+      .from('track_statuses')
+      .select('id, name')
+      .eq('user_id', user.value.id)
+      .order('name')
+    
+    if (error) throw error
+    
+    // If user has no statuses, create defaults for them
+    if (!data || data.length === 0) {
+      await supabase.rpc('create_default_statuses_for_user', { target_user_id: user.value.id })
+      
+      // Fetch again after creating defaults
+      const { data: newData } = await supabase
+        .from('track_statuses')
+        .select('id, name')
+        .eq('user_id', user.value.id)
+        .order('name')
+      
+      statuses.value = newData || []
+    } else {
+      statuses.value = data
+    }
+  } catch (error) {
+    console.error('Error fetching statuses:', error)
+    statuses.value = []
+  }
+}
+
+// Update track status immediately
+const updateTrackStatus = async (trackId: number, statusId: number | null) => {
+  if (!supabase) return
+  
+  try {
+    const { error } = await supabase
+      .from('sounds')
+      .update({ status_id: statusId })
+      .eq('id', trackId)
+    
+    if (error) throw error
+    
+    // Update local track data
+    if (track.value) {
+      track.value.status_id = statusId
+      if (statusId === null) {
+        track.value.track_statuses = null
+      } else {
+        const status = statuses.value.find(s => s.id === statusId)
+        if (status) {
+          track.value.track_statuses = { id: status.id, name: status.name }
+        }
+      }
+    }
+    
+    showSuccess('Status updated successfully')
+  } catch (error) {
+    console.error('Error updating track status:', error)
+    showError('Failed to update status')
+  }
+}
+
 // Set SEO meta tags - computed so they update when track loads
 const seoTitle = computed(() => {
   const trackTitle = track.value?.title || 'Untitled'
@@ -282,6 +369,11 @@ const handleTrackUpdate = () => {
 onMounted(async () => {
   // Fetch collections and group tracks (not critical for SEO)
   await fetchCollectionsAndGroup()
+  
+  // Fetch statuses if owner
+  if (isOwnProfile.value) {
+    await fetchStatuses()
+  }
   
   // Listen for track updates
   window.addEventListener('track-updated', handleTrackUpdate)
