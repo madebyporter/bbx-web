@@ -2,23 +2,63 @@
   <div class="flex flex-col gap-0 text-neutral-300 grow">
     <!-- Profile Header -->
     <LibraryHeader :title="profileName" :count="filteredTracks.length" />
-    <div class="flex flex-col gap-2 p-4 border-b border-neutral-800" v-if="profileBio || profileWebsite || hasSocialLinks">
+    <div class="flex flex-col gap-2 p-4 border-b border-neutral-800"
+      v-if="profileBio || profileWebsite || hasSocialLinks || isOwnProfile">
       <div v-if="profileBio" class="text-sm text-neutral-300">{{ profileBio }}</div>
-      <div class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap">
-        <a v-if="profileWebsite" :href="profileWebsite" target="_blank" rel="noopener noreferrer" 
-           class="hover:text-neutral-300 transition-colors">Website</a>
-        <template v-if="hasSocialLinks">
-          <a v-if="profileSocialLinks.twitter" :href="profileSocialLinks.twitter" target="_blank" rel="noopener noreferrer"
-             class="hover:text-neutral-300 transition-colors">Twitter</a>
-          <a v-if="profileSocialLinks.instagram" :href="profileSocialLinks.instagram" target="_blank" rel="noopener noreferrer"
-             class="hover:text-neutral-300 transition-colors">Instagram</a>
-          <a v-if="profileSocialLinks.soundcloud" :href="profileSocialLinks.soundcloud" target="_blank" rel="noopener noreferrer"
-             class="hover:text-neutral-300 transition-colors">SoundCloud</a>
-          <a v-if="profileSocialLinks.spotify" :href="profileSocialLinks.spotify" target="_blank" rel="noopener noreferrer"
-             class="hover:text-neutral-300 transition-colors">Spotify</a>
-          <a v-if="profileSocialLinks.youtube" :href="profileSocialLinks.youtube" target="_blank" rel="noopener noreferrer"
-             class="hover:text-neutral-300 transition-colors">YouTube</a>
+      <div class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap items-center">
+        <a v-if="profileWebsite" :href="profileWebsite" target="_blank" rel="noopener noreferrer"
+          class="hover:text-neutral-300 transition-colors">Website</a>
+
+        <!-- Social Links -->
+        <template v-for="platform in socialLinkPlatforms" :key="platform">
+          <!-- Editing state -->
+          <div v-if="editingSocialLink === platform"
+            class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
+            <input ref="socialLinkInputRef" v-model="newSocialLinkValue" type="text"
+              class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]"
+              @keyup.enter="saveSocialLink(platform)" @keyup.esc="cancelEditingSocialLink" />
+            <button @click="cancelEditingSocialLink"
+              class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+              <Xmark class="w-[10px] h-[10px]" />
+            </button>
+            <button @click="saveSocialLink(platform)"
+              class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
+              <Check class="w-[10px] h-[10px]" />
+            </button>
+          </div>
+          <!-- Existing link with edit/delete buttons -->
+          <div v-else-if="profileSocialLinks[platform]"
+            class="flex flex-row gap-0 items-center border border-transparent hover:border-neutral-800 rounded-md p-1">
+            <a :href="profileSocialLinks[platform]" target="_blank" rel="noopener noreferrer"
+              class="hover:text-neutral-300 transition-colors px-1">
+              {{ getPlatformDisplayName(platform) }}
+            </a>
+            <template v-if="isOwnProfile">
+              <button @click="startEditingSocialLink(platform)"
+                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Edit">
+                <EditPencil class="w-[10px] h-[10px]" />
+              </button>
+              <button @click="deleteSocialLink(platform)"
+                class="p-1 rounded hover:bg-red-900/20 transition-colors cursor-pointer" title="Delete">
+                <Trash class="w-[10px] h-[10px] text-red-500" />
+              </button>
+            </template>
+          </div>
+          <!-- Plus button for adding new link (show if own profile, link doesn't exist, and we have at least one existing link) -->
+          <div v-else-if="isOwnProfile && hasSocialLinks" class="flex flex-row gap-1 items-center">
+            <button @click="startAddingSocialLink(platform)"
+              class="p-1 border border-neutral-700 rounded hover:bg-neutral-800 transition-colors cursor-pointer"
+              title="Add">
+              <Plus class="w-[10px] h-[10px]" />
+            </button>
+          </div>
         </template>
+
+        <!-- Show "Add Social Links" text if no links exist and is own profile -->
+        <div v-if="isOwnProfile && !hasSocialLinks && !editingSocialLink" @click="startAddingSocialLink('twitter')"
+          class="hover:text-neutral-300 transition-colors cursor-pointer">
+          Add Social Links
+        </div>
       </div>
     </div>
     <!-- Software Section -->
@@ -78,6 +118,7 @@ import { useSupabase } from '~/utils/supabase'
 import LibraryHeader from '~/components/LibraryHeader.vue'
 import TracksTable from '~/components/TracksTable.vue'
 import gsap from 'gsap'
+import { Plus, EditPencil, Trash, Check, Xmark } from '@iconoir/vue'
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
@@ -275,6 +316,170 @@ const isTagSelected = (tag: string) => {
 const hasSocialLinks = computed(() => {
   const links = profileSocialLinks.value
   return !!(links?.twitter || links?.instagram || links?.soundcloud || links?.spotify || links?.youtube)
+})
+
+// Social links editing state
+const editingSocialLink = ref<string | null>(null)
+const newSocialLinkValue = ref('')
+const socialLinkInputRef = ref<HTMLInputElement | null>(null)
+
+// Available social link platforms
+const socialLinkPlatforms = ['twitter', 'instagram', 'soundcloud', 'spotify', 'youtube'] as const
+type SocialLinkPlatform = typeof socialLinkPlatforms[number]
+
+// Get display name for platform
+const getPlatformDisplayName = (platform: string): string => {
+  const names: Record<string, string> = {
+    twitter: 'Twitter',
+    instagram: 'Instagram',
+    soundcloud: 'SoundCloud',
+    spotify: 'Spotify',
+    youtube: 'YouTube'
+  }
+  return names[platform] || platform
+}
+
+// Start editing a social link
+const startEditingSocialLink = (platform: string) => {
+  editingSocialLink.value = platform
+  const currentUrl = profileSocialLinks.value[platform as SocialLinkPlatform] || ''
+  // Keep the full URL including https://
+  newSocialLinkValue.value = currentUrl || 'https://'
+}
+
+// Start adding a new social link
+const startAddingSocialLink = (platform: string) => {
+  editingSocialLink.value = platform
+  newSocialLinkValue.value = 'https://'
+}
+
+// Cancel editing
+const cancelEditingSocialLink = () => {
+  editingSocialLink.value = null
+  newSocialLinkValue.value = ''
+}
+
+// Save social link
+const saveSocialLink = async (platform: string) => {
+  if (!supabase || !profileUserId.value || !user.value) return
+  
+  let url = newSocialLinkValue.value.trim()
+  
+  // Ensure URL starts with https://
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url
+  }
+  
+  // Validate URL
+  try {
+    new URL(url)
+  } catch (e) {
+    alert('Please enter a valid URL')
+    return
+  }
+  
+  try {
+    // Get current social_links
+    const currentLinks = { ...profileSocialLinks.value }
+    // Update the specific platform
+    currentLinks[platform as SocialLinkPlatform] = url
+    
+    // Update database
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ social_links: currentLinks })
+      .eq('id', profileUserId.value)
+    
+    if (error) throw error
+    
+    // Update local state
+    profileSocialLinks.value = currentLinks
+    editingSocialLink.value = null
+    newSocialLinkValue.value = ''
+    
+    // Refresh initial data
+    await refreshProfile()
+  } catch (error) {
+    console.error('Error saving social link:', error)
+    alert('Failed to save social link')
+  }
+}
+
+// Delete social link
+const deleteSocialLink = async (platform: string) => {
+  if (!supabase || !profileUserId.value || !user.value) return
+  
+  if (!confirm(`Are you sure you want to remove your ${getPlatformDisplayName(platform)} link?`)) {
+    return
+  }
+  
+  try {
+    // Get current social_links
+    const currentLinks = { ...profileSocialLinks.value }
+    // Remove the platform
+    delete currentLinks[platform as SocialLinkPlatform]
+    
+    // Update database
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ social_links: currentLinks })
+      .eq('id', profileUserId.value)
+    
+    if (error) throw error
+    
+    // Update local state
+    profileSocialLinks.value = currentLinks
+  } catch (error) {
+    console.error('Error deleting social link:', error)
+    alert('Failed to delete social link')
+  }
+}
+
+// Refresh profile data
+const refreshProfile = async () => {
+  if (!supabase || !profileUserId.value) return
+  
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('bio, website, social_links')
+      .eq('id', profileUserId.value)
+      .single()
+    
+    if (error) throw error
+    
+    if (data) {
+      profileBio.value = data.bio || ''
+      profileWebsite.value = data.website || ''
+      profileSocialLinks.value = (data.social_links as any) || {}
+    }
+  } catch (error) {
+    console.error('Error refreshing profile:', error)
+  }
+}
+
+// Watch for editingSocialLink changes to focus input
+watch(editingSocialLink, async (newPlatform) => {
+  if (newPlatform) {
+    await nextTick()
+    if (socialLinkInputRef.value) {
+      socialLinkInputRef.value.focus()
+      const httpsPrefix = 'https://'
+      if (newSocialLinkValue.value === httpsPrefix || !newSocialLinkValue.value.startsWith(httpsPrefix)) {
+        await nextTick()
+        if (socialLinkInputRef.value) {
+          socialLinkInputRef.value.setSelectionRange(httpsPrefix.length, httpsPrefix.length)
+        }
+      } else {
+        // If editing existing link, position cursor at end
+        await nextTick()
+        if (socialLinkInputRef.value) {
+          const len = newSocialLinkValue.value.length
+          socialLinkInputRef.value.setSelectionRange(len, len)
+        }
+      }
+    }
+  }
 })
 
 // GSAP animation refs
