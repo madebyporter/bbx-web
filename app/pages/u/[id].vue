@@ -33,13 +33,13 @@
           <div class="py-1 flex items-center justify-start whitespace-nowrap" v-if="loadingSoftware">
             Loading software...
           </div>
-          <div class="flex flex-row items-end w-fit *:p-4 *:last:pr-4 *:pr-0" v-else-if="softwareList.length > 0">
+          <div ref="softwareContainer" class="flex flex-row items-end w-fit *:p-4 *:last:pr-4 *:pr-0" v-else-if="softwareList.length > 0">
             <div class="flex flex-col gap-2 items-start justify-start w-fit whitespace-nowrap snap-start snap-always"
               v-for="software in softwareList" :key="software.id">
               <img :src="getSoftwareImageUrl(software.image_url)" :alt="software.name"
-                class="min-w-72 max-w-72 h-auto object-contain object-top-left rounded-[2px]"
+                class="software-image min-w-72 max-w-72 h-auto object-contain object-top-left rounded-[2px]"
                 @error="(e) => { (e.target as HTMLImageElement).src = '/img/placeholder.png' }" />
-              <div class="text-sm text-neutral-400">{{ software.name }}</div>
+              <div class="software-name text-sm text-neutral-400">{{ software.name }}</div>
             </div>
           </div>
           <div class="py-2 flex items-center justify-start whitespace-nowrap" v-else>
@@ -58,12 +58,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import LibraryHeader from '~/components/LibraryHeader.vue'
 import TracksTable from '~/components/TracksTable.vue'
+import gsap from 'gsap'
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
@@ -246,6 +247,40 @@ const clearFilters = () => {
 const isTagSelected = (tag: string) => {
   return selectedTags.value.includes(tag)
 }
+
+// GSAP animation refs
+const softwareContainer = ref<HTMLDivElement | null>(null)
+
+// Animate software items when list changes
+watch(softwareList, async () => {
+  if (!softwareContainer.value || softwareList.value.length === 0) return
+  
+  await nextTick()
+  
+  // Get all images and text elements
+  const images = softwareContainer.value.querySelectorAll('.software-image')
+  const names = softwareContainer.value.querySelectorAll('.software-name')
+  
+  // Set initial opacity to 0
+  gsap.set([...images, ...names], { opacity: 0 })
+  
+  // Fade in images first
+  gsap.to(images, {
+    opacity: 1,
+    duration: 0.4,
+    ease: 'power2.out',
+    stagger: 0.05
+  })
+  
+  // Fade in text 0.1s later
+  gsap.to(names, {
+    opacity: 1,
+    duration: 0.4,
+    ease: 'power2.out',
+    stagger: 0.05,
+    delay: 0.1
+  })
+}, { immediate: true })
 
 // Computed
 const isOwnProfile = computed(() => {
