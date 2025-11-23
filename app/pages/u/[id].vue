@@ -2,12 +2,29 @@
   <div class="flex flex-col gap-0 text-neutral-300 grow">
     <!-- Profile Header -->
     <LibraryHeader :title="profileName" :count="filteredTracks.length" />
-
+    <div class="flex flex-col gap-2 p-4 border-b border-neutral-800" v-if="profileBio || profileWebsite || hasSocialLinks">
+      <div v-if="profileBio" class="text-sm text-neutral-300">{{ profileBio }}</div>
+      <div class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap">
+        <a v-if="profileWebsite" :href="profileWebsite" target="_blank" rel="noopener noreferrer" 
+           class="hover:text-neutral-300 transition-colors">Website</a>
+        <template v-if="hasSocialLinks">
+          <a v-if="profileSocialLinks.twitter" :href="profileSocialLinks.twitter" target="_blank" rel="noopener noreferrer"
+             class="hover:text-neutral-300 transition-colors">Twitter</a>
+          <a v-if="profileSocialLinks.instagram" :href="profileSocialLinks.instagram" target="_blank" rel="noopener noreferrer"
+             class="hover:text-neutral-300 transition-colors">Instagram</a>
+          <a v-if="profileSocialLinks.soundcloud" :href="profileSocialLinks.soundcloud" target="_blank" rel="noopener noreferrer"
+             class="hover:text-neutral-300 transition-colors">SoundCloud</a>
+          <a v-if="profileSocialLinks.spotify" :href="profileSocialLinks.spotify" target="_blank" rel="noopener noreferrer"
+             class="hover:text-neutral-300 transition-colors">Spotify</a>
+          <a v-if="profileSocialLinks.youtube" :href="profileSocialLinks.youtube" target="_blank" rel="noopener noreferrer"
+             class="hover:text-neutral-300 transition-colors">YouTube</a>
+        </template>
+      </div>
+    </div>
+    <!-- Software Section -->
     <div class="flex flex-col gap-0 border-b border-neutral-800">
       <div class="p-2 flex flex-row gap-2 text-xs overflow-x-auto no-scrollbar">
-        <div
-          @click="clearFilters"
-          :class="[
+        <div @click="clearFilters" :class="[
             'rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors',
             selectedTags.length === 0 
               ? 'bg-neutral-800' 
@@ -15,11 +32,7 @@
           ]">
           All Software
         </div>
-        <div
-          v-for="tag in availableTags"
-          :key="tag"
-          @click="toggleTag(tag)"
-          :class="[
+        <div v-for="tag in availableTags" :key="tag" @click="toggleTag(tag)" :class="[
             'rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors',
             isTagSelected(tag)
               ? 'bg-neutral-800'
@@ -33,7 +46,8 @@
           <div class="py-1 flex items-center justify-start whitespace-nowrap" v-if="loadingSoftware">
             Loading software...
           </div>
-          <div ref="softwareContainer" class="flex flex-row items-end w-fit *:p-4 *:last:pr-4 *:pr-0" v-else-if="softwareList.length > 0">
+          <div ref="softwareContainer" class="flex flex-row items-end w-fit *:p-4 *:last:pr-4 *:pr-0"
+            v-else-if="softwareList.length > 0">
             <div class="flex flex-col gap-2 items-start justify-start w-fit whitespace-nowrap snap-start snap-always"
               v-for="software in softwareList" :key="software.id">
               <img :src="getSoftwareImageUrl(software.image_url)" :alt="software.name"
@@ -47,7 +61,6 @@
           </div>
         </div>
       </div>
-
     </div>
     <!-- Tracks Section -->
     <div class="grow">
@@ -87,7 +100,7 @@ const { data: initialData } = await useAsyncData(
       // Try to fetch profile by username
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, username, display_name')
+        .select('id, username, display_name, bio, website, social_links')
         .eq('username', usernameOrId)
         .single()
 
@@ -185,6 +198,16 @@ const { data: softwareData, refresh: refreshSoftware } = await useAsyncData(
 const profileName = ref(initialData.value?.profile?.display_name || initialData.value?.profile?.username || '')
 const username = ref(initialData.value?.profile?.username || '')
 const profileUserId = ref<string | null>(initialData.value?.profile?.id || null)
+const profileBio = ref(initialData.value?.profile?.bio || '')
+const profileWebsite = ref(initialData.value?.profile?.website || '')
+const profileSocialLinks = ref<{
+  twitter?: string
+  instagram?: string
+  soundcloud?: string
+  spotify?: string
+  youtube?: string
+  [key: string]: string | undefined
+}>((initialData.value?.profile?.social_links as any) || {})
 const tracks = ref<any[]>(initialData.value?.tracks || [])
 const loading = ref(false)
 const searchQuery = ref('')
@@ -247,6 +270,12 @@ const clearFilters = () => {
 const isTagSelected = (tag: string) => {
   return selectedTags.value.includes(tag)
 }
+
+// Check if user has any social links
+const hasSocialLinks = computed(() => {
+  const links = profileSocialLinks.value
+  return !!(links?.twitter || links?.instagram || links?.soundcloud || links?.spotify || links?.youtube)
+})
 
 // GSAP animation refs
 const softwareContainer = ref<HTMLDivElement | null>(null)
@@ -314,6 +343,9 @@ const fetchProfile = async () => {
     profileUserId.value = initialData.value.profile.id
     profileName.value = initialData.value.profile.display_name || initialData.value.profile.username
     username.value = initialData.value.profile.username
+    profileBio.value = initialData.value.profile.bio || ''
+    profileWebsite.value = initialData.value.profile.website || ''
+    profileSocialLinks.value = (initialData.value.profile.social_links as any) || {}
   }
 }
 
