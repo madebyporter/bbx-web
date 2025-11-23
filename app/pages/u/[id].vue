@@ -1,25 +1,30 @@
 <template>
   <div class="flex flex-col gap-0 text-neutral-300 grow">
     <!-- Profile Header -->
-    <LibraryHeader 
-      :title="profileName" 
-      :count="filteredTracks.length" 
-    />
-    
-    <div class="flex flex-col gap-4 p-4 border-b border-neutral-800">
-      Profile stuff
+    <LibraryHeader :title="profileName" :count="filteredTracks.length" />
+
+    <div class="flex flex-col gap-4 border-b border-neutral-800 *:first:pt-4 *:last:pb-4">
+      <div class="flex flex-col gap-2 px-4">
+        Profile stuff
+      </div>
+      <div class="flex flex-row gap-2 px-4 w-full overflow-x-auto">
+        <div v-if="loadingSoftware">
+          Loading software...
+        </div>
+        <div class="flex flex-row gap-2 w-fit" v-else-if="softwareList.length > 0">
+          <div v-for="software in softwareList" :key="software.id">
+            {{ software.name }}
+          </div>
+        </div>
+        <div v-else>
+          No software listed
+        </div>
+      </div>
     </div>
     <!-- Tracks Section -->
     <div class="grow">
-      <TracksTable 
-        :tracks="filteredTracks" 
-        :source-id="`profile-${profileUserId}`"
-        :is-own-profile="isOwnProfile" 
-        :loading="loading"
-        :username="username"
-        @edit-track="handleEdit"
-        @tracks-deleted="fetchTracks" 
-      />
+      <TracksTable :tracks="filteredTracks" :source-id="`profile-${profileUserId}`" :is-own-profile="isOwnProfile"
+        :loading="loading" :username="username" @edit-track="handleEdit" @tracks-deleted="fetchTracks" />
     </div>
   </div>
 </template>
@@ -86,6 +91,8 @@ const profileUserId = ref<string | null>(initialData.value?.profile?.id || null)
 const tracks = ref<any[]>(initialData.value?.tracks || [])
 const loading = ref(false)
 const searchQuery = ref('')
+const softwareList = ref<any[]>([])
+const loadingSoftware = ref(false)
 
 // Computed
 const isOwnProfile = computed(() => {
@@ -110,6 +117,54 @@ const fetchProfile = async () => {
     profileUserId.value = initialData.value.profile.id
     profileName.value = initialData.value.profile.display_name || initialData.value.profile.username
     username.value = initialData.value.profile.username
+  }
+}
+
+const fetchSoftware = async () => {
+  if (!supabase || !profileUserId.value) {
+    return
+  }
+  
+  loadingSoftware.value = true
+  
+  try {
+    // First, get the software type_id
+    const { data: typeData, error: typeError } = await supabase
+      .from('resource_types')
+      .select('id')
+      .eq('slug', 'software')
+      .single()
+    
+    if (typeError || !typeData) {
+      console.error('Error finding software type:', typeError)
+      softwareList.value = []
+      return
+    }
+    
+    // Then fetch user_resources with resources filtered by type_id
+    const { data, error } = await supabase
+      .from('user_resources')
+      .select(`
+        resource_id,
+        resources!inner (
+          id,
+          name,
+          type_id
+        )
+      `)
+      .eq('user_id', profileUserId.value)
+      .eq('resources.type_id', typeData.id)
+    
+    if (error) throw error
+    
+    softwareList.value = (data || [])
+      .map((item: any) => item.resources)
+      .filter((resource: any) => resource !== null)
+  } catch (error) {
+    console.error('Error fetching software:', error)
+    softwareList.value = []
+  } finally {
+    loadingSoftware.value = false
   }
 }
 
@@ -387,6 +442,7 @@ const handleTrackUpdate = async (event: any) => {
 onMounted(async () => {
   await fetchProfile()
   await fetchTracks()
+  await fetchSoftware()
   
   // Register search handler
   if (registerSearchHandler) {
