@@ -3,23 +3,47 @@
     <!-- Profile Header -->
     <LibraryHeader :title="profileName" :count="filteredTracks.length" />
 
-    <div class="flex flex-col gap-4 border-b border-neutral-800 *:first:pt-4 *:last:pb-4">
-      <div class="flex flex-col gap-2 px-4">
-        Profile stuff
+    <div class="flex flex-col gap-0 border-b border-neutral-800">
+      <div class="p-2 flex flex-row gap-2 text-xs">
+        <div
+          class="bg-neutral-800 rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer">
+          All Software</div>
+        <div
+          class="bg-transparent rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer">
+          EQs</div>
+        <div
+          class="bg-transparent rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer">
+          Samplers</div>
+        <div
+          class="bg-transparent rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer">
+          Drums</div>
+        <div
+          class="bg-transparent rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer">
+          Synths</div>
+        <div
+          class="bg-transparent rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer">
+          Other</div>
       </div>
-      <div class="flex flex-row gap-2 px-4 w-full overflow-x-auto">
-        <div v-if="loadingSoftware">
-          Loading software...
-        </div>
-        <div class="flex flex-row gap-2 w-fit" v-else-if="softwareList.length > 0">
-          <div v-for="software in softwareList" :key="software.id">
-            {{ software.name }}
+      <div class="flex flex-row gap-0">
+        <div class=" flex flex-row gap-2 w-full overflow-x-auto no-scrollbar snap-x snap-mandatory">
+          <div class="py-1 flex items-center justify-start whitespace-nowrap" v-if="loadingSoftware">
+            Loading software...
+          </div>
+          <div class="flex flex-row items-end w-fit *:p-4 *:last:pr-4 *:pr-0" v-else-if="softwareList.length > 0">
+            <div class="flex flex-col gap-2 items-start justify-start w-fit whitespace-nowrap snap-start snap-always"
+              v-for="software in softwareList" :key="software.id">
+              <img :src="getSoftwareImageUrl(software.image_url)" :alt="software.name"
+                class="min-w-72 h-auto object-contain object-top-left rounded-[2px]"
+                @error="(e) => { (e.target as HTMLImageElement).src = '/img/placeholder.png' }" />
+              <div class="text-sm text-neutral-400">{{ software.name }}</div>
+            </div>
+          </div>
+          <div class="py-2 flex items-center justify-start whitespace-nowrap" v-else>
+            No software listed
           </div>
         </div>
-        <div v-else>
-          No software listed
-        </div>
       </div>
+
     </div>
     <!-- Tracks Section -->
     <div class="grow">
@@ -36,7 +60,6 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import LibraryHeader from '~/components/LibraryHeader.vue'
 import TracksTable from '~/components/TracksTable.vue'
-
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
@@ -84,6 +107,61 @@ const { data: initialData } = await useAsyncData(
   }
 )
 
+// Fetch software data with caching
+// Wait for initialData to be available before fetching
+const { data: softwareData, refresh: refreshSoftware } = await useAsyncData(
+  `software-${route.params.id}`,
+  async () => {
+    if (!supabase) return []
+    
+    // Wait for initialData to be available
+    const profileId = initialData.value?.profile?.id
+    if (!profileId) return []
+    
+    try {
+      // First, get the software type_id
+      const { data: typeData, error: typeError } = await supabase
+        .from('resource_types')
+        .select('id')
+        .eq('slug', 'software')
+        .single()
+      
+      if (typeError || !typeData) {
+        console.error('Error finding software type:', typeError)
+        return []
+      }
+      
+      // Then fetch user_resources with resources filtered by type_id
+      const { data, error } = await supabase
+        .from('user_resources')
+        .select(`
+          resource_id,
+          resources!inner (
+            id,
+            name,
+            image_url,
+            type_id
+          )
+        `)
+        .eq('user_id', profileId)
+        .eq('resources.type_id', typeData.id)
+      
+      if (error) throw error
+      
+      return (data || [])
+        .map((item: any) => item.resources)
+        .filter((resource: any) => resource !== null)
+    } catch (error) {
+      console.error('Error fetching software:', error)
+      return []
+    }
+  },
+  {
+    default: () => [],
+    lazy: true
+  }
+)
+
 // State
 const profileName = ref(initialData.value?.profile?.display_name || initialData.value?.profile?.username || '')
 const username = ref(initialData.value?.profile?.username || '')
@@ -91,8 +169,8 @@ const profileUserId = ref<string | null>(initialData.value?.profile?.id || null)
 const tracks = ref<any[]>(initialData.value?.tracks || [])
 const loading = ref(false)
 const searchQuery = ref('')
-const softwareList = ref<any[]>([])
-const loadingSoftware = ref(false)
+const softwareList = computed(() => softwareData.value || [])
+const loadingSoftware = computed(() => softwareData.value === null)
 
 // Computed
 const isOwnProfile = computed(() => {
@@ -110,6 +188,15 @@ const filteredTracks = computed(() => {
   })
 })
 
+// Helper function to get image URL for software
+const getSoftwareImageUrl = (imageUrl: string | null | undefined): string => {
+  if (!imageUrl) return '/img/placeholder.png'
+  if (imageUrl.startsWith('http')) return imageUrl
+  const supabaseUrl = process.env.NUXT_PUBLIC_SUPABASE_URL
+  if (!supabaseUrl) return '/img/placeholder.png'
+  return `${supabaseUrl}/storage/v1/object/public/resource-images/${imageUrl}`
+}
+
 // Methods - Keep fetchProfile for backwards compatibility but simplified
 const fetchProfile = async () => {
   // Profile already loaded server-side, just ensure values are set
@@ -120,52 +207,10 @@ const fetchProfile = async () => {
   }
 }
 
+// fetchSoftware is now handled by useAsyncData with caching
+// Use refreshSoftware() if you need to manually refresh
 const fetchSoftware = async () => {
-  if (!supabase || !profileUserId.value) {
-    return
-  }
-  
-  loadingSoftware.value = true
-  
-  try {
-    // First, get the software type_id
-    const { data: typeData, error: typeError } = await supabase
-      .from('resource_types')
-      .select('id')
-      .eq('slug', 'software')
-      .single()
-    
-    if (typeError || !typeData) {
-      console.error('Error finding software type:', typeError)
-      softwareList.value = []
-      return
-    }
-    
-    // Then fetch user_resources with resources filtered by type_id
-    const { data, error } = await supabase
-      .from('user_resources')
-      .select(`
-        resource_id,
-        resources!inner (
-          id,
-          name,
-          type_id
-        )
-      `)
-      .eq('user_id', profileUserId.value)
-      .eq('resources.type_id', typeData.id)
-    
-    if (error) throw error
-    
-    softwareList.value = (data || [])
-      .map((item: any) => item.resources)
-      .filter((resource: any) => resource !== null)
-  } catch (error) {
-    console.error('Error fetching software:', error)
-    softwareList.value = []
-  } finally {
-    loadingSoftware.value = false
-  }
+  await refreshSoftware()
 }
 
 const fetchTracks = async () => {
@@ -174,7 +219,12 @@ const fetchTracks = async () => {
     return
   }
   
-  loading.value = true
+  // Only show loading state if we don't have any tracks yet (from initialData)
+  // This prevents showing loading spinner when we already have cached data
+  const hasInitialTracks = tracks.value.length > 0
+  if (!hasInitialTracks) {
+    loading.value = true
+  }
   console.log('fetchTracks: Querying sounds for user:', profileUserId.value)
   
   // Load saved sort preferences from localStorage
@@ -442,7 +492,7 @@ const handleTrackUpdate = async (event: any) => {
 onMounted(async () => {
   await fetchProfile()
   await fetchTracks()
-  await fetchSoftware()
+  // Software is already loaded via useAsyncData (cached), no need to fetch again
   
   // Register search handler
   if (registerSearchHandler) {
