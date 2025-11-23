@@ -6,6 +6,9 @@
       :count="filteredTracks.length" 
     />
     
+    <div class="flex flex-col gap-4 p-4 border-b border-neutral-800">
+      Profile stuff
+    </div>
     <!-- Tracks Section -->
     <div class="grow">
       <TracksTable 
