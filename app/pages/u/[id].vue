@@ -4,25 +4,29 @@
     <LibraryHeader :title="profileName" :count="filteredTracks.length" />
 
     <div class="flex flex-col gap-0 border-b border-neutral-800">
-      <div class="p-2 flex flex-row gap-2 text-xs">
+      <div class="p-2 flex flex-row gap-2 text-xs overflow-x-auto no-scrollbar">
         <div
-          class="bg-neutral-800 rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer">
-          All Software</div>
+          @click="clearFilters"
+          :class="[
+            'rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors',
+            selectedTags.length === 0 
+              ? 'bg-neutral-800' 
+              : 'bg-transparent hover:bg-neutral-800/50'
+          ]">
+          All Software
+        </div>
         <div
-          class="bg-transparent rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer">
-          EQs</div>
-        <div
-          class="bg-transparent rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer">
-          Samplers</div>
-        <div
-          class="bg-transparent rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer">
-          Drums</div>
-        <div
-          class="bg-transparent rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer">
-          Synths</div>
-        <div
-          class="bg-transparent rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer">
-          Other</div>
+          v-for="tag in availableTags"
+          :key="tag"
+          @click="toggleTag(tag)"
+          :class="[
+            'rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors',
+            isTagSelected(tag)
+              ? 'bg-neutral-800'
+              : 'bg-transparent hover:bg-neutral-800/50'
+          ]">
+          {{ tag }}
+        </div>
       </div>
       <div class="flex flex-row gap-0">
         <div class=" flex flex-row gap-2 w-full overflow-x-auto no-scrollbar snap-x snap-mandatory">
@@ -33,7 +37,7 @@
             <div class="flex flex-col gap-2 items-start justify-start w-fit whitespace-nowrap snap-start snap-always"
               v-for="software in softwareList" :key="software.id">
               <img :src="getSoftwareImageUrl(software.image_url)" :alt="software.name"
-                class="min-w-72 h-auto object-contain object-top-left rounded-[2px]"
+                class="min-w-72 max-w-72 h-auto object-contain object-top-left rounded-[2px]"
                 @error="(e) => { (e.target as HTMLImageElement).src = '/img/placeholder.png' }" />
               <div class="text-sm text-neutral-400">{{ software.name }}</div>
             </div>
@@ -131,7 +135,7 @@ const { data: softwareData, refresh: refreshSoftware } = await useAsyncData(
         return []
       }
       
-      // Then fetch user_resources with resources filtered by type_id
+      // Then fetch user_resources with resources filtered by type_id, including tags
       const { data, error } = await supabase
         .from('user_resources')
         .select(`
@@ -140,7 +144,12 @@ const { data: softwareData, refresh: refreshSoftware } = await useAsyncData(
             id,
             name,
             image_url,
-            type_id
+            type_id,
+            resource_tags (
+              tags (
+                name
+              )
+            )
           )
         `)
         .eq('user_id', profileId)
@@ -149,7 +158,16 @@ const { data: softwareData, refresh: refreshSoftware } = await useAsyncData(
       if (error) throw error
       
       return (data || [])
-        .map((item: any) => item.resources)
+        .map((item: any) => {
+          const resource = item.resources
+          if (!resource) return null
+          // Extract tags from nested structure
+          const tags = resource.resource_tags?.map((rt: any) => rt.tags?.name).filter(Boolean) || []
+          return {
+            ...resource,
+            tags
+          }
+        })
         .filter((resource: any) => resource !== null)
     } catch (error) {
       console.error('Error fetching software:', error)
@@ -169,8 +187,65 @@ const profileUserId = ref<string | null>(initialData.value?.profile?.id || null)
 const tracks = ref<any[]>(initialData.value?.tracks || [])
 const loading = ref(false)
 const searchQuery = ref('')
-const softwareList = computed(() => softwareData.value || [])
+const allSoftware = computed(() => softwareData.value || [])
 const loadingSoftware = computed(() => softwareData.value === null)
+
+// Filter state
+const selectedTags = ref<string[]>([])
+
+// Extract unique tags from all software
+const availableTags = computed(() => {
+  const tagSet = new Set<string>()
+  allSoftware.value.forEach((software: any) => {
+    if (software.tags && Array.isArray(software.tags)) {
+      software.tags.forEach((tag: string) => tagSet.add(tag))
+    }
+  })
+  return Array.from(tagSet).sort()
+})
+
+// Filter software based on selected tags (OR logic - must have ANY of the selected tags)
+// Also sort alphabetically by name
+const softwareList = computed(() => {
+  let filtered: any[] = []
+  
+  if (selectedTags.value.length === 0) {
+    filtered = allSoftware.value
+  } else {
+    filtered = allSoftware.value.filter((software: any) => {
+      const softwareTags = software.tags || []
+      // Check if software has ANY of the selected tags
+      return selectedTags.value.some(tag => softwareTags.includes(tag))
+    })
+  }
+  
+  // Sort alphabetically by name
+  return filtered.sort((a: any, b: any) => {
+    const nameA = (a.name || '').toLowerCase()
+    const nameB = (b.name || '').toLowerCase()
+    return nameA.localeCompare(nameB)
+  })
+})
+
+// Toggle tag selection
+const toggleTag = (tag: string) => {
+  const index = selectedTags.value.indexOf(tag)
+  if (index > -1) {
+    selectedTags.value.splice(index, 1)
+  } else {
+    selectedTags.value.push(tag)
+  }
+}
+
+// Clear all filters (show all software)
+const clearFilters = () => {
+  selectedTags.value = []
+}
+
+// Check if tag is selected
+const isTagSelected = (tag: string) => {
+  return selectedTags.value.includes(tag)
+}
 
 // Computed
 const isOwnProfile = computed(() => {
