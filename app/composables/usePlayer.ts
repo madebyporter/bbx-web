@@ -54,6 +54,7 @@ const hasEverHadTrack = ref(false)
 const audioElement = ref<HTMLAudioElement | null>(null)
 const signedUrlCache = ref<Map<string, { url: string; expiry: number }>>(new Map())
 const preloadedUrls = ref<Set<string>>(new Set())
+const loopCheckAnimationFrame = ref<number | null>(null)
 
 const STORAGE_KEY = 'player_state'
 
@@ -274,7 +275,13 @@ export function usePlayer() {
       if (url && audioElement.value) {
         console.log('loadQueue: Setting audio src and loading')
         audioElement.value.src = url
+        audioElement.value.loop = false // Always false - we handle looping manually
+        audioElement.value.preload = 'auto' // Ensure audio is preloaded
         audioElement.value.load()
+        // Wait a bit for buffering before playing for smoother loop
+        if (loopOne.value) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
         console.log('loadQueue: Calling play()')
         await play()
       } else {
@@ -292,6 +299,10 @@ export function usePlayer() {
         console.log(`▶️ NOW PLAYING: "${currentTrack.value.title}" by ${currentTrack.value.artist} [ID: ${currentTrack.value.id}] [Group: ${currentTrack.value.track_group_name || 'none'}] [Version: ${currentTrack.value.version || 'N/A'}]`)
         await audioElement.value.play()
         isPlaying.value = true
+        // Start frame-perfect loop check if loopOne is enabled
+        if (loopOne.value) {
+          startLoopCheck()
+        }
         // Preload next track for seamless playback
         preloadNextTrack()
         saveState()
@@ -306,6 +317,8 @@ export function usePlayer() {
     if (audioElement.value) {
       audioElement.value.pause()
       isPlaying.value = false
+      // Stop frame-perfect loop check
+      stopLoopCheck()
       saveState()
     }
   }
@@ -331,7 +344,13 @@ export function usePlayer() {
       const url = await getSignedUrl(currentTrack.value.storage_path)
       if (url && audioElement.value) {
         audioElement.value.src = url
+        audioElement.value.loop = false // Always false - we handle looping manually
+        audioElement.value.preload = 'auto' // Ensure audio is preloaded
         audioElement.value.load()
+        // Wait a bit for buffering before playing for smoother loop
+        if (loopOne.value) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
         await play()
       }
     }
@@ -460,6 +479,19 @@ export function usePlayer() {
   // Toggle loop one
   const toggleLoop = () => {
     loopOne.value = !loopOne.value
+    // Don't use native loop property - we handle looping manually with requestAnimationFrame
+    // for frame-perfect seamless control, especially for short beats
+    if (audioElement.value) {
+      audioElement.value.loop = false // Always false - we handle looping manually
+    }
+    
+    // Start/stop frame-perfect loop check based on loop state
+    if (loopOne.value && isPlaying.value) {
+      startLoopCheck()
+    } else {
+      stopLoopCheck()
+    }
+    
     saveState()
   }
 
@@ -493,11 +525,16 @@ export function usePlayer() {
 
   // Handle track end
   const handleTrackEnd = async () => {
-    if (loopOne.value) {
-      // Loop current track
-      seekTo(0)
-      await play()
-    } else {
+    // If loopOne is enabled, checkLoopFrame should have already looped seamlessly
+    // This is just a backup in case the ended event fires
+    if (loopOne.value && audioElement.value) {
+      // Backup loop (checkLoopFrame should handle this, but just in case)
+      audioElement.value.currentTime = 0
+      currentTime.value = 0
+      if (isPlaying.value) {
+        await audioElement.value.play()
+      }
+    } else if (!loopOne.value) {
       // Play next track
       await playNext()
     }
@@ -547,6 +584,8 @@ export function usePlayer() {
           const url = await getSignedUrl(currentTrack.value.storage_path)
           if (url) {
             audioElement.value.src = url
+            audioElement.value.loop = false // Always false - we handle looping manually
+            audioElement.value.preload = 'auto' // Ensure audio is preloaded
             audioElement.value.load()
             audioElement.value.currentTime = state.currentTime || 0
             audioElement.value.volume = volume.value
@@ -562,6 +601,7 @@ export function usePlayer() {
   // Clear all state
   const clearPlayer = () => {
     pause()
+    stopLoopCheck() // Ensure loop check is stopped
     currentTrack.value = null
     queue.value = []
     originalQueue.value = []
@@ -573,10 +613,55 @@ export function usePlayer() {
     localStorage.removeItem(STORAGE_KEY)
   }
 
-  // Update current time
+  // Frame-perfect loop check using requestAnimationFrame
+  // This runs at 60fps (~16ms intervals) for ultra-seamless looping
+  const checkLoopFrame = () => {
+    if (!audioElement.value || !loopOne.value || !isPlaying.value || duration.value === 0) {
+      loopCheckAnimationFrame.value = null
+      return
+    }
+    
+    const current = audioElement.value.currentTime
+    currentTime.value = current
+    
+    // Ultra-tight threshold: ~1 frame at 60fps (~0.016 seconds) 
+    // For very short beats, use an even tighter threshold (~0.008 seconds = half frame)
+    // This ensures we catch the end within milliseconds for truly seamless looping
+    const threshold = duration.value < 5 ? 0.008 : 0.016
+    const timeUntilEnd = duration.value - current
+    
+    // If we're within the threshold, immediately loop
+    if (timeUntilEnd <= threshold && timeUntilEnd > 0) {
+      // Immediately seek to 0 for seamless loop
+      // This happens at frame-level precision (60fps = ~16ms checks), eliminating any gap
+      audioElement.value.currentTime = 0
+      currentTime.value = 0
+    }
+    
+    // Continue the animation loop
+    loopCheckAnimationFrame.value = requestAnimationFrame(checkLoopFrame)
+  }
+
+  // Start the frame-perfect loop check
+  const startLoopCheck = () => {
+    if (loopOne.value && isPlaying.value && !loopCheckAnimationFrame.value) {
+      loopCheckAnimationFrame.value = requestAnimationFrame(checkLoopFrame)
+    }
+  }
+
+  // Stop the frame-perfect loop check
+  const stopLoopCheck = () => {
+    if (loopCheckAnimationFrame.value) {
+      cancelAnimationFrame(loopCheckAnimationFrame.value)
+      loopCheckAnimationFrame.value = null
+    }
+  }
+
+  // Update current time (used by timeupdate event for UI updates)
   const updateTime = () => {
     if (audioElement.value) {
-      currentTime.value = audioElement.value.currentTime
+      const current = audioElement.value.currentTime
+      currentTime.value = current
     }
   }
 
@@ -593,6 +678,8 @@ export function usePlayer() {
     audioElement.value = el
     if (el) {
       el.volume = volume.value
+      el.loop = false // Always false - we handle looping manually in updateTime for seamless control
+      el.preload = 'auto' // Preload audio for seamless playback
       if (isMuted.value) {
         el.muted = true
       }

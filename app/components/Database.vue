@@ -550,18 +550,24 @@ const toggleUse = async (resource: Resource) => {
       const { error } = await supabase
         .from('user_resources')
         .insert({
+          user_id: auth.user.value.id,
           resource_id: resource.id,
-          user_id: auth.user.value.id
+          used_at: new Date().toISOString()
         })
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error details:', error)
+        throw error
+      }
       
       userUsedResources.value[resource.id] = true
       useCounts.value[resource.id] = (useCounts.value[resource.id] || 0) + 1
     }
   } catch (error) {
     console.error('Error toggling resource use:', error)
-    alert('Failed to update resource use')
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error('Full error object:', error)
+    alert(`Failed to update resource use: ${errorMessage}`)
   }
 }
 
