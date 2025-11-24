@@ -75,7 +75,7 @@
               <div class="w-full flex items-center p-2">
                 <button v-if="isAdmin" @click="handleShowAdminModal"
                   class="cursor-pointer text-xs hover:text-amber-400">
-                  Manage Submissions
+                  Admin
                 </button>
               </div>
               <div class="w-full flex items-center p-2">

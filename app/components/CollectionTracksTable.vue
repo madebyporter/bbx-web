@@ -113,7 +113,7 @@
                 v-for="collection in track.collections" 
                 :key="collection.slug"
                 :to="`/u/${username}/c/${collection.slug}`" 
-                class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white transition-colors"
+                class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white transition-colors whitespace-nowrap"
               >
                 {{ collection.name }}
               </NuxtLink>
