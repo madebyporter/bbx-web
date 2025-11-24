@@ -6,9 +6,12 @@
     <div class="flex flex-col md:flex-row gap-0 justify-between md:items-center border-b border-neutral-800">
 
       <!-- Profile Info -->
-      <div class="flex flex-col gap-2 p-4" v-if="profileBio || profileWebsite || hasSocialLinks || isOwnProfile">
-        <div v-if="profileBio" class="text-sm text-neutral-300 pt-1">{{ profileBio }}</div>
-        <div class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap items-center">
+      <div class="flex flex-col gap-2 p-4">
+        <div class="text-sm text-neutral-300 pt-1">
+          <span v-if="profileBio">{{ profileBio }}</span>
+          <span v-else class="text-neutral-500 italic">Something's supposed to be here</span>
+        </div>
+        <div v-if="profileWebsite || hasSocialLinks || isOwnProfile" class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap items-center">
           <a v-if="profileWebsite" :href="profileWebsite" target="_blank" rel="noopener noreferrer"
             class="hover:text-neutral-300 transition-colors">Website</a>
 
@@ -89,7 +92,7 @@
 
     <!-- Software Section -->
     <div v-if="softwareSectionOpen" class="flex flex-col gap-0 border-b border-neutral-800">
-      <div class="p-2 pb-0 flex flex-row gap-2 text-xs overflow-x-auto no-scrollbar">
+      <div v-if="!loadingSoftware && softwareList.length > 0" class="p-2 max-md:pb-0 flex flex-row gap-2 text-xs overflow-x-auto no-scrollbar">
         <div @click="clearFilters" :class="[
             'rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors select-none',
             selectedTags.length === 0 
@@ -108,7 +111,7 @@
         </div>
       </div>
       <div class="flex flex-row gap-0">
-        <div class=" flex flex-row gap-2 w-full overflow-x-auto no-scrollbar snap-x snap-mandatory">
+        <div class="flex flex-row gap-2 w-full overflow-x-auto no-scrollbar snap-x snap-mandatory">
           <div class="py-1 flex items-center justify-start whitespace-nowrap" v-if="loadingSoftware">
             Loading software...
           </div>
@@ -122,8 +125,15 @@
               <div class="software-name text-sm text-neutral-400">{{ software.name }}</div>
             </div>
           </div>
-          <div class="py-2 flex items-center justify-start whitespace-nowrap" v-else>
-            No software listed
+          <div class="p-4 flex items-center justify-start whitespace-nowrap text-sm text-neutral-400" v-else>
+            <span v-if="isOwnProfile">
+              <NuxtLink to="/software" class="hover:text-amber-400 transition-colors">
+                Add some software to your profile
+              </NuxtLink>
+            </span>
+            <span v-else>
+              This producer doesn't have any software listed yet.
+            </span>
           </div>
         </div>
       </div>
@@ -282,7 +292,15 @@ const allSoftware = computed(() => softwareData.value || [])
 const loadingSoftware = computed(() => softwareData.value === null)
 
 // Software section visibility state (closed by default)
-const softwareSectionOpen = ref(false)
+const softwareSectionOpenState = ref(false)
+
+// Check if software is available
+const hasSoftware = computed(() => {
+  return !loadingSoftware.value && allSoftware.value.length > 0
+})
+
+// Software section visibility - can be toggled manually, but starts closed if no software
+const softwareSectionOpen = computed(() => softwareSectionOpenState.value)
 
 // Music section visibility state (open by default)
 const musicSectionOpen = ref(true)
@@ -292,7 +310,13 @@ const loadSoftwareSectionState = () => {
   try {
     const saved = localStorage.getItem('softwareSectionOpen')
     if (saved !== null) {
-      softwareSectionOpen.value = saved === 'true'
+      // Only restore state if there's software available
+      // If no software, always start closed regardless of cache
+      if (hasSoftware.value) {
+        softwareSectionOpenState.value = saved === 'true'
+      } else {
+        softwareSectionOpenState.value = false
+      }
     }
   } catch (e) {
     console.error('Error loading software section state:', e)
@@ -302,7 +326,7 @@ const loadSoftwareSectionState = () => {
 // Save software section state to localStorage
 const saveSoftwareSectionState = () => {
   try {
-    localStorage.setItem('softwareSectionOpen', softwareSectionOpen.value.toString())
+    localStorage.setItem('softwareSectionOpen', softwareSectionOpenState.value.toString())
   } catch (e) {
     console.error('Error saving software section state:', e)
   }
@@ -310,7 +334,7 @@ const saveSoftwareSectionState = () => {
 
 // Toggle software section
 const toggleSoftwareSection = () => {
-  softwareSectionOpen.value = !softwareSectionOpen.value
+  softwareSectionOpenState.value = !softwareSectionOpenState.value
   saveSoftwareSectionState()
 }
 
@@ -933,8 +957,11 @@ onMounted(async () => {
   // Software is already loaded via useAsyncData (cached), no need to fetch again
   
   // Load section states from localStorage
-  loadSoftwareSectionState()
   loadMusicSectionState()
+  // Load software section state after checking if software is available
+  // Use nextTick to ensure software data is loaded first
+  await nextTick()
+  loadSoftwareSectionState()
   
   // Register search handler
   if (registerSearchHandler) {

@@ -124,9 +124,12 @@
             class="border border-neutral-800 rounded-lg p-4"
           >
             <div class="flex flex-col gap-2">
-              <div class="font-medium text-white">
+              <NuxtLink
+                :to="user.username ? `/u/${user.username}` : `/u/${user.id}`"
+                class="font-medium text-white hover:text-amber-400 transition-colors"
+              >
                 {{ user.display_name || user.username || user.email || 'Unknown User' }}
-              </div>
+              </NuxtLink>
               <div v-if="user.last_sign_in_at" class="text-sm text-neutral-400">
                 <span class="text-neutral-500">Last logged in:</span> {{ formatDate(user.last_sign_in_at) }}
               </div>
