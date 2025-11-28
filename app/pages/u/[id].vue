@@ -1,20 +1,131 @@
 <template>
   <div class="flex flex-col gap-0 text-neutral-300 grow">
     <!-- Profile Header -->
-    <LibraryHeader :title="profileName" :count="filteredTracks.length" />
+    <div class="flex flex-row justify-between items-center gap-4 py-2 px-4 lg:py-4 border-b border-neutral-800">
+      <div class="flex flex-col overflow-auto">
+        <!-- Display Name and Username -->
+        <div class="flex flex-row gap-2 items-end flex-wrap">
+          <!-- Display Name Section -->
+          <div class="flex flex-row gap-2 items-center">
+            <!-- Editing Display Name -->
+            <div v-if="editingDisplayName"
+              class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
+              <input ref="displayNameInputRef" v-model="newDisplayNameValue" type="text"
+                class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]"
+                @keyup.enter="saveDisplayName" @keyup.esc="cancelEditingDisplayName" />
+              <button @click="cancelEditingDisplayName"
+                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+                <Xmark class="w-[10px] h-[10px]" />
+              </button>
+              <button @click="saveDisplayName"
+                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
+                <Check class="w-[10px] h-[10px]" />
+              </button>
+            </div>
+            <!-- Display Name (not editing) -->
+            <template v-else>
+              <h1 v-if="profileName" class="text-xl lg:text-3xl font-bold truncate">{{ profileName }}</h1>
+              <h1 v-else-if="isOwnProfile" @click="startEditingDisplayName"
+                class="text-xl lg:text-3xl font-bold text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer truncate">
+                Add a Display Name
+              </h1>
+            </template>
+          </div>
+          
+          <!-- Username Section -->
+          <div class="flex flex-row gap-1 items-end">
+            <!-- Editing Username -->
+            <div v-if="editingUsername"
+              class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
+              <span class="text-base lg:text-xl font-normal text-neutral-400">@</span>
+              <input ref="usernameInputRef" v-model="newUsernameValue" type="text"
+                class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[150px]"
+                @keyup.enter="saveUsername" @keyup.esc="cancelEditingUsername" />
+              <button @click="cancelEditingUsername"
+                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+                <Xmark class="w-[10px] h-[10px]" />
+              </button>
+              <button @click="saveUsername"
+                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
+                <Check class="w-[10px] h-[10px]" />
+              </button>
+            </div>
+            <!-- Username (not editing) -->
+            <template v-else>
+              <span v-if="username" class="text-base lg:text-xl font-normal text-neutral-400">@{{ username }}</span>
+              <span v-else-if="isOwnProfile" @click="startEditingUsername"
+                class="text-sm lg:text-base font-normal text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer">
+                Add @username
+              </span>
+            </template>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <p class="text-sm text-neutral-500">
+          {{ filteredTracks.length }} {{ filteredTracks.length === 1 ? 'track' : 'tracks' }}
+        </p>
+      </div>
+    </div>
 
     <div class="flex flex-col md:flex-row gap-0 justify-between md:items-center border-b border-neutral-800">
 
       <!-- Profile Info -->
       <div class="flex flex-col gap-2 p-4">
         <div class="text-sm text-neutral-300 pt-1">
-          <span v-if="profileBio">{{ profileBio }}</span>
-          <span v-else class="text-neutral-500 italic">Something's supposed to be here</span>
+          <!-- Editing Bio -->
+          <div v-if="editingBio"
+            class="flex flex-row gap-1 items-start border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
+            <textarea ref="bioInputRef" v-model="newBioValue" 
+              class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[300px] min-h-[60px] resize-y"
+              @keyup.ctrl.enter="saveBio" @keyup.esc="cancelEditingBio"></textarea>
+            <div class="flex flex-col gap-1">
+              <button @click="cancelEditingBio"
+                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+                <Xmark class="w-[10px] h-[10px]" />
+              </button>
+              <button @click="saveBio"
+                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
+                <Check class="w-[10px] h-[10px]" />
+              </button>
+            </div>
+          </div>
+          <!-- Bio (not editing) -->
+          <template v-else>
+            <span v-if="profileBio">{{ profileBio }}</span>
+            <span v-else-if="isOwnProfile" @click="startEditingBio"
+              class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer italic">
+              Add a bio
+            </span>
+            <span v-else class="text-neutral-500 italic">Something's supposed to be here</span>
+          </template>
         </div>
         <div v-if="profileWebsite || hasSocialLinks || isOwnProfile"
           class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap items-center">
-          <a v-if="profileWebsite" :href="profileWebsite" target="_blank" rel="noopener noreferrer"
-            class="hover:text-neutral-300 transition-colors">Website</a>
+          <!-- Editing Website -->
+          <div v-if="editingWebsite"
+            class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
+            <input ref="websiteInputRef" v-model="newWebsiteValue" type="text"
+              class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]"
+              @keyup.enter="saveWebsite" @keyup.esc="cancelEditingWebsite" />
+            <button @click="cancelEditingWebsite"
+              class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+              <Xmark class="w-[10px] h-[10px]" />
+            </button>
+            <button @click="saveWebsite"
+              class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
+              <Check class="w-[10px] h-[10px]" />
+            </button>
+          </div>
+          <!-- Website (not editing) -->
+          <template v-else>
+            <a v-if="profileWebsite" :href="profileWebsite" target="_blank" rel="noopener noreferrer"
+              class="hover:text-neutral-300 transition-colors">Website</a>
+            <span v-else-if="isOwnProfile" @click="startEditingWebsite"
+              class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer">
+              Add Website
+            </span>
+          </template>
 
           <!-- Social Links -->
           <div class="flex flex-row gap-0">
@@ -166,7 +277,6 @@ import { ref, computed, onMounted, onUnmounted, inject, watch, nextTick } from '
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
-import LibraryHeader from '~/components/LibraryHeader.vue'
 import TracksTable from '~/components/TracksTable.vue'
 import ManageMembers from '~/components/ManageMembers.vue'
 import gsap from 'gsap'
@@ -190,12 +300,41 @@ const { data: initialData } = await useAsyncData(
     const usernameOrId = route.params.id as string
     
     try {
-      // Try to fetch profile by username
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('id, username, display_name, bio, website, social_links')
-        .eq('username', usernameOrId)
-        .single()
+      // Check if it's a UUID (36 chars with hyphens) or username
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(usernameOrId)
+      
+      let data, error
+      
+      if (isUUID) {
+        // Try to fetch by ID first
+        const result = await supabase
+          .from('user_profiles')
+          .select('id, username, display_name, bio, website, social_links')
+          .eq('id', usernameOrId)
+          .single()
+        data = result.data
+        error = result.error
+      } else {
+        // Try to fetch by username
+        const result = await supabase
+          .from('user_profiles')
+          .select('id, username, display_name, bio, website, social_links')
+          .eq('username', usernameOrId)
+          .single()
+        data = result.data
+        error = result.error
+      }
+
+      // If username lookup failed and it's not a UUID, try by ID as fallback
+      if ((error || !data) && !isUUID) {
+        const result = await supabase
+          .from('user_profiles')
+          .select('id, username, display_name, bio, website, social_links')
+          .eq('id', usernameOrId)
+          .single()
+        data = result.data
+        error = result.error
+      }
 
       if (error || !data) return null
       
@@ -289,8 +428,8 @@ const { data: softwareData, refresh: refreshSoftware } = await useAsyncData(
 )
 
 // State
-const profileName = ref(initialData.value?.profile?.display_name || initialData.value?.profile?.username || '')
-const username = ref(initialData.value?.profile?.username || '')
+const profileName = ref<string>(initialData.value?.profile?.display_name || initialData.value?.profile?.username || '')
+const username = ref<string>(initialData.value?.profile?.username || '')
 const profileUserId = ref<string | null>(initialData.value?.profile?.id || null)
 const profileBio = ref(initialData.value?.profile?.bio || '')
 const profileWebsite = ref(initialData.value?.profile?.website || '')
@@ -458,6 +597,20 @@ const editingSocialLink = ref<string | null>(null)
 const newSocialLinkValue = ref('')
 const socialLinkInputRef = ref<HTMLInputElement | null>(null)
 
+// Display name and username editing state
+const editingDisplayName = ref(false)
+const editingUsername = ref(false)
+const editingBio = ref(false)
+const editingWebsite = ref(false)
+const newDisplayNameValue = ref('')
+const newUsernameValue = ref('')
+const newBioValue = ref('')
+const newWebsiteValue = ref('')
+const displayNameInputRef = ref<HTMLInputElement | null>(null)
+const usernameInputRef = ref<HTMLInputElement | null>(null)
+const bioInputRef = ref<HTMLTextAreaElement | null>(null)
+const websiteInputRef = ref<HTMLInputElement | null>(null)
+
 // Available social link platforms
 const socialLinkPlatforms = ['twitter', 'instagram', 'soundcloud', 'spotify', 'youtube'] as const
 type SocialLinkPlatform = typeof socialLinkPlatforms[number]
@@ -545,6 +698,217 @@ const saveSocialLink = async (platform: string) => {
   }
 }
 
+// Start editing display name
+const startEditingDisplayName = () => {
+  editingDisplayName.value = true
+  newDisplayNameValue.value = profileName.value || ''
+}
+
+// Cancel editing display name
+const cancelEditingDisplayName = () => {
+  editingDisplayName.value = false
+  newDisplayNameValue.value = ''
+}
+
+// Save display name
+const saveDisplayName = async () => {
+  if (!supabase || !profileUserId.value || !user.value) return
+  
+  const displayName = newDisplayNameValue.value.trim()
+  
+  if (!displayName) {
+    alert('Display name cannot be empty')
+    return
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ display_name: displayName })
+      .eq('id', profileUserId.value)
+    
+    if (error) throw error
+    
+    // Update local state
+    profileName.value = displayName
+    editingDisplayName.value = false
+    newDisplayNameValue.value = ''
+    
+    // Refresh initial data
+    await refreshProfile()
+  } catch (error) {
+    console.error('Error saving display name:', error)
+    alert('Failed to save display name')
+  }
+}
+
+// Start editing username
+const startEditingUsername = () => {
+  editingUsername.value = true
+  newUsernameValue.value = username.value || ''
+}
+
+// Cancel editing username
+const cancelEditingUsername = () => {
+  editingUsername.value = false
+  newUsernameValue.value = ''
+}
+
+// Save username
+const saveUsername = async () => {
+  if (!supabase || !profileUserId.value || !user.value) return
+  
+  let newUsername = newUsernameValue.value.trim().toLowerCase()
+  
+  // Remove @ if user included it
+  if (newUsername.startsWith('@')) {
+    newUsername = newUsername.slice(1)
+  }
+  
+  if (!newUsername) {
+    alert('Username cannot be empty')
+    return
+  }
+  
+  // Validate username format (alphanumeric, underscore, hyphen)
+  if (!/^[a-z0-9_-]+$/.test(newUsername)) {
+    alert('Username can only contain letters, numbers, underscores, and hyphens')
+    return
+  }
+  
+  try {
+    // Check if username is already taken
+    const { data: existingUser, error: checkError } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('username', newUsername)
+      .neq('id', profileUserId.value)
+      .single()
+    
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      throw checkError
+    }
+    
+    if (existingUser) {
+      alert('This username is already taken')
+      return
+    }
+    
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ username: newUsername })
+      .eq('id', profileUserId.value)
+    
+    if (error) throw error
+    
+    // Update local state
+    username.value = newUsername
+    editingUsername.value = false
+    newUsernameValue.value = ''
+    
+    // Refresh initial data
+    await refreshProfile()
+  } catch (error) {
+    console.error('Error saving username:', error)
+    alert('Failed to save username')
+  }
+}
+
+// Start editing bio
+const startEditingBio = () => {
+  editingBio.value = true
+  newBioValue.value = profileBio.value || ''
+}
+
+// Cancel editing bio
+const cancelEditingBio = () => {
+  editingBio.value = false
+  newBioValue.value = ''
+}
+
+// Save bio
+const saveBio = async () => {
+  if (!supabase || !profileUserId.value || !user.value) return
+  
+  const bio = newBioValue.value.trim()
+  
+  try {
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ bio: bio || null })
+      .eq('id', profileUserId.value)
+    
+    if (error) throw error
+    
+    // Update local state
+    profileBio.value = bio
+    editingBio.value = false
+    newBioValue.value = ''
+    
+    // Refresh initial data
+    await refreshProfile()
+  } catch (error) {
+    console.error('Error saving bio:', error)
+    alert('Failed to save bio')
+  }
+}
+
+// Start editing website
+const startEditingWebsite = () => {
+  editingWebsite.value = true
+  newWebsiteValue.value = profileWebsite.value || 'https://'
+}
+
+// Cancel editing website
+const cancelEditingWebsite = () => {
+  editingWebsite.value = false
+  newWebsiteValue.value = ''
+}
+
+// Save website
+const saveWebsite = async () => {
+  if (!supabase || !profileUserId.value || !user.value) return
+  
+  let url = newWebsiteValue.value.trim()
+  
+  // Ensure URL starts with http:// or https://
+  if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url
+  }
+  
+  // Validate URL if provided
+  if (url && url !== 'https://') {
+    try {
+      new URL(url)
+    } catch (e) {
+      alert('Please enter a valid URL')
+      return
+    }
+  } else {
+    url = ''
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ website: url || null })
+      .eq('id', profileUserId.value)
+    
+    if (error) throw error
+    
+    // Update local state
+    profileWebsite.value = url
+    editingWebsite.value = false
+    newWebsiteValue.value = ''
+    
+    // Refresh initial data
+    await refreshProfile()
+  } catch (error) {
+    console.error('Error saving website:', error)
+    alert('Failed to save website')
+  }
+}
+
 // Delete social link
 const deleteSocialLink = async (platform: string) => {
   if (!supabase || !profileUserId.value || !user.value) return
@@ -582,15 +946,17 @@ const refreshProfile = async () => {
   try {
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('bio, website, social_links')
+      .select('display_name, username, bio, website, social_links')
       .eq('id', profileUserId.value)
       .single()
     
     if (error) throw error
     
     if (data) {
-      profileBio.value = data.bio || ''
-      profileWebsite.value = data.website || ''
+      profileName.value = (data.display_name as string) || (data.username as string) || ''
+      username.value = (data.username as string) || ''
+      profileBio.value = (data.bio as string) || ''
+      profileWebsite.value = (data.website as string) || ''
       profileSocialLinks.value = (data.social_links as any) || {}
     }
   } catch (error) {
@@ -616,6 +982,82 @@ watch(editingSocialLink, async (newPlatform) => {
         if (socialLinkInputRef.value) {
           const len = newSocialLinkValue.value.length
           socialLinkInputRef.value.setSelectionRange(len, len)
+        }
+      }
+    }
+  }
+})
+
+// Watch for editingDisplayName changes to focus input
+watch(editingDisplayName, async (isEditing) => {
+  if (isEditing) {
+    await nextTick()
+    if (displayNameInputRef.value) {
+      displayNameInputRef.value.focus()
+      // Select all text if editing existing name
+      if (newDisplayNameValue.value) {
+        await nextTick()
+        if (displayNameInputRef.value) {
+          displayNameInputRef.value.select()
+        }
+      }
+    }
+  }
+})
+
+// Watch for editingUsername changes to focus input
+watch(editingUsername, async (isEditing) => {
+  if (isEditing) {
+    await nextTick()
+    if (usernameInputRef.value) {
+      usernameInputRef.value.focus()
+      // Select all text if editing existing username
+      if (newUsernameValue.value) {
+        await nextTick()
+        if (usernameInputRef.value) {
+          usernameInputRef.value.select()
+        }
+      }
+    }
+  }
+})
+
+// Watch for editingBio changes to focus textarea
+watch(editingBio, async (isEditing) => {
+  if (isEditing) {
+    await nextTick()
+    if (bioInputRef.value) {
+      bioInputRef.value.focus()
+      // Position cursor at end if editing existing bio
+      if (newBioValue.value) {
+        await nextTick()
+        if (bioInputRef.value) {
+          const len = newBioValue.value.length
+          bioInputRef.value.setSelectionRange(len, len)
+        }
+      }
+    }
+  }
+})
+
+// Watch for editingWebsite changes to focus input
+watch(editingWebsite, async (isEditing) => {
+  if (isEditing) {
+    await nextTick()
+    if (websiteInputRef.value) {
+      websiteInputRef.value.focus()
+      const httpsPrefix = 'https://'
+      if (newWebsiteValue.value === httpsPrefix || !newWebsiteValue.value.startsWith(httpsPrefix)) {
+        await nextTick()
+        if (websiteInputRef.value) {
+          websiteInputRef.value.setSelectionRange(httpsPrefix.length, httpsPrefix.length)
+        }
+      } else {
+        // If editing existing website, position cursor at end
+        await nextTick()
+        if (websiteInputRef.value) {
+          const len = newWebsiteValue.value.length
+          websiteInputRef.value.setSelectionRange(len, len)
         }
       }
     }
@@ -658,6 +1100,12 @@ watch(softwareList, async () => {
 
 // Computed
 const isOwnProfile = computed(() => {
+  // Check if it's the user's own profile by comparing route param with user ID
+  // This works even if profileUserId isn't set yet (for new users)
+  if (user.value && route.params.id === user.value.id) {
+    return true
+  }
+  // Also check if profileUserId matches (for when profile is loaded)
   return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
 })
 
@@ -686,11 +1134,44 @@ const fetchProfile = async () => {
   // Profile already loaded server-side, just ensure values are set
   if (!profileUserId.value && initialData.value?.profile) {
     profileUserId.value = initialData.value.profile.id
-    profileName.value = initialData.value.profile.display_name || initialData.value.profile.username
-    username.value = initialData.value.profile.username
+    profileName.value = initialData.value.profile.display_name || initialData.value.profile.username || ''
+    username.value = initialData.value.profile.username || ''
     profileBio.value = initialData.value.profile.bio || ''
     profileWebsite.value = initialData.value.profile.website || ''
     profileSocialLinks.value = (initialData.value.profile.social_links as any) || {}
+  } else if (!profileUserId.value && supabase && user.value) {
+    // If profile wasn't loaded server-side, try to fetch it client-side
+    // This handles cases where the route param is a UUID
+    const usernameOrId = route.params.id as string
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(usernameOrId)
+    
+    try {
+      let result
+      if (isUUID) {
+        result = await supabase
+          .from('user_profiles')
+          .select('id, username, display_name, bio, website, social_links')
+          .eq('id', usernameOrId)
+          .single()
+      } else {
+        result = await supabase
+          .from('user_profiles')
+          .select('id, username, display_name, bio, website, social_links')
+          .eq('username', usernameOrId)
+          .single()
+      }
+      
+      if (result.data && !result.error) {
+        profileUserId.value = result.data.id
+        profileName.value = result.data.display_name || result.data.username || ''
+        username.value = result.data.username || ''
+        profileBio.value = result.data.bio || ''
+        profileWebsite.value = result.data.website || ''
+        profileSocialLinks.value = (result.data.social_links as any) || {}
+      }
+    } catch (error) {
+      console.error('Error fetching profile client-side:', error)
+    }
   }
 }
 

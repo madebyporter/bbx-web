@@ -103,21 +103,28 @@ const createAuth = () => {
     // If email confirmation is enabled, the profile will be created in confirm.vue
     if (data.user && data.session) {
       try {
+        const username = email.split('@')[0] || 'user'
         const { error: profileError } = await supabase
           .from('user_profiles')
           .upsert({
             id: data.user.id,
             user_type: userType,
-            username: email.split('@')[0],
-            display_name: email.split('@')[0]
+            username: username,
+            display_name: username
           }, {
             onConflict: 'id'
           })
         
         if (profileError) {
           console.error('Error creating user profile:', profileError)
+          console.error('Profile error details:', JSON.stringify(profileError, null, 2))
+          // Try to show a more helpful error
+          if (profileError.code === 'PGRST301' || profileError.message?.includes('permission')) {
+            console.error('RLS policy may be blocking profile creation. User ID:', data.user.id)
+          }
           // Don't throw - user is created, profile can be fixed later
         } else {
+          console.log('User profile created successfully with user_type:', userType)
           // Clear localStorage since profile is created
           if (typeof window !== 'undefined') {
             localStorage.removeItem('pending_user_type')
@@ -127,6 +134,9 @@ const createAuth = () => {
         console.error('Error creating user profile:', profileErr)
         // Don't throw - user is created, profile can be fixed later
       }
+    } else if (data.user && !data.session) {
+      // User created but needs email confirmation - profile will be created in confirm.vue
+      console.log('User created, waiting for email confirmation. user_type stored in localStorage:', userType)
     }
     
     return data

@@ -71,21 +71,27 @@ onMounted(async () => {
                         data.session.user.user_metadata?.user_type || 
                         'creator'
         try {
-          const { error: profileError } = await supabase
+          const username = data.session.user.email?.split('@')[0] || 'user'
+          const { error: profileError, data: profileData } = await supabase
             .from('user_profiles')
             .upsert({
               id: data.session.user.id,
               user_type: userType,
-              username: data.session.user.email?.split('@')[0] || 'user',
-              display_name: data.session.user.email?.split('@')[0] || 'user'
+              username: username,
+              display_name: username
             }, {
               onConflict: 'id'
             })
+            .select()
           
           if (profileError) {
             console.error('Error creating user profile:', profileError)
+            console.error('Profile error details:', JSON.stringify(profileError, null, 2))
+            console.error('User ID:', data.session.user.id, 'User Type:', userType)
             // Don't fail the confirmation if profile creation fails
           } else {
+            console.log('User profile created/updated successfully:', profileData)
+            console.log('User type set to:', userType)
             // Clear localStorage since profile is created
             if (typeof window !== 'undefined') {
               localStorage.removeItem('pending_user_type')
@@ -118,23 +124,43 @@ onMounted(async () => {
             .single()
           
           if (!existingProfile) {
-            const { error: profileError } = await supabase
+            const username = session.user.email?.split('@')[0] || 'user'
+            const { error: profileError, data: profileData } = await supabase
               .from('user_profiles')
               .upsert({
                 id: session.user.id,
                 user_type: userType,
-                username: session.user.email?.split('@')[0] || 'user',
-                display_name: session.user.email?.split('@')[0] || 'user'
+                username: username,
+                display_name: username
               }, {
                 onConflict: 'id'
               })
+              .select()
             
             if (profileError) {
               console.error('Error creating user profile:', profileError)
+              console.error('Profile error details:', JSON.stringify(profileError, null, 2))
+              console.error('User ID:', session.user.id, 'User Type:', userType)
             } else {
+              console.log('User profile created successfully:', profileData)
+              console.log('User type set to:', userType)
               // Clear localStorage since profile is created
               if (typeof window !== 'undefined') {
                 localStorage.removeItem('pending_user_type')
+              }
+            }
+          } else {
+            // Profile exists but might have NULL user_type - update it
+            if (userType) {
+              const { error: updateError } = await supabase
+                .from('user_profiles')
+                .update({ user_type: userType })
+                .eq('id', session.user.id)
+              
+              if (updateError) {
+                console.error('Error updating user_type:', updateError)
+              } else {
+                console.log('Updated user_type to:', userType)
               }
             }
           }

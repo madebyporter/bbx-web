@@ -238,7 +238,43 @@ const handleScrollToTrack = (event: CustomEvent) => {
   }
 }
 
-// Fetch statuses for the current user (moved to top of file)
+// Fetch statuses for the current user
+const fetchStatuses = async () => {
+  if (!supabase || !user.value || !props.isOwnProfile) return
+  
+  try {
+    const { data, error } = await supabase
+      .from('track_statuses')
+      .select('id, name')
+      .eq('user_id', user.value.id)
+      .order('name')
+    
+    if (error) throw error
+    
+    // If user has no statuses, create defaults for them
+    if (!data || data.length === 0) {
+      const defaultStatuses = [
+        { name: 'Available' },
+        { name: 'Used' },
+        { name: 'Non-exclusive' },
+        { name: 'Exclusive' },
+        { name: 'Royalty Free' }
+      ]
+      
+      const { data: newStatuses, error: insertError } = await supabase
+        .from('track_statuses')
+        .insert(defaultStatuses.map(s => ({ ...s, user_id: user.value!.id })))
+        .select('id, name')
+      
+      if (insertError) throw insertError
+      statuses.value = newStatuses || []
+    } else {
+      statuses.value = data
+    }
+  } catch (error) {
+    console.error('Error fetching statuses:', error)
+  }
+}
 
 onMounted(async () => {
   window.addEventListener('scroll-to-track', handleScrollToTrack as EventListener)
@@ -301,40 +337,6 @@ const handleUploadClick = () => {
   // Dispatch event to open upload modal
   const event = new CustomEvent('open-upload-modal')
   window.dispatchEvent(event)
-}
-
-// Fetch statuses for the current user
-const fetchStatuses = async () => {
-  if (!supabase || !user.value || !props.isOwnProfile) return
-  
-  try {
-    const { data, error } = await supabase
-      .from('track_statuses')
-      .select('id, name')
-      .eq('user_id', user.value.id)
-      .order('name')
-    
-    if (error) throw error
-    
-    // If user has no statuses, create defaults for them
-    if (!data || data.length === 0) {
-      await supabase.rpc('create_default_statuses_for_user', { target_user_id: user.value.id })
-      
-      // Fetch again after creating defaults
-      const { data: newData } = await supabase
-        .from('track_statuses')
-        .select('id, name')
-        .eq('user_id', user.value.id)
-        .order('name')
-      
-      statuses.value = newData || []
-    } else {
-      statuses.value = data
-    }
-  } catch (error) {
-    console.error('Error fetching statuses:', error)
-    statuses.value = []
-  }
 }
 
 // Update track status immediately
