@@ -86,6 +86,11 @@
           :class="softwareSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
           Software
         </div>
+        <div v-if="isOwnProfile" @click="toggleMembersSection"
+          class="rounded-full px-4 py-2 w-fit flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
+          :class="membersSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+          Members
+        </div>
       </div>
     </div>
 
@@ -143,6 +148,13 @@
       <TracksTable :tracks="filteredTracks" :source-id="`profile-${profileUserId}`" :is-own-profile="isOwnProfile"
         :loading="loading" :username="username" @edit-track="handleEdit" @tracks-deleted="fetchTracks" />
     </div>
+
+    <!-- Members Section -->
+    <div v-if="isOwnProfile && membersSectionOpen && profileUserId" class="grow border-b border-neutral-800">
+      <div class="p-4">
+        <ManageMembers :profile-id="profileUserId" />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -153,6 +165,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import LibraryHeader from '~/components/LibraryHeader.vue'
 import TracksTable from '~/components/TracksTable.vue'
+import ManageMembers from '~/components/ManageMembers.vue'
 import gsap from 'gsap'
 import { Plus, EditPencil, Trash, Check, Xmark } from '@iconoir/vue'
 const route = useRoute()
@@ -183,11 +196,12 @@ const { data: initialData } = await useAsyncData(
 
       if (error || !data) return null
       
-      // Fetch initial tracks for SEO (just first 10)
+      // Fetch initial tracks for SEO (just first 10, only public tracks)
       const { data: tracksData } = await supabase
         .from('sounds')
         .select('*')
         .eq('user_id', data.id)
+        .eq('is_public', true)
         .order('created_at', { ascending: false })
         .limit(10)
       
@@ -305,6 +319,9 @@ const softwareSectionOpen = computed(() => softwareSectionOpenState.value)
 // Music section visibility state (open by default)
 const musicSectionOpen = ref(true)
 
+// Members section visibility state (closed by default, only for own profile)
+const membersSectionOpen = ref(false)
+
 // Load software section state from localStorage
 const loadSoftwareSectionState = () => {
   try {
@@ -363,6 +380,11 @@ const saveMusicSectionState = () => {
 const toggleMusicSection = () => {
   musicSectionOpen.value = !musicSectionOpen.value
   saveMusicSectionState()
+}
+
+// Toggle members section
+const toggleMembersSection = () => {
+  membersSectionOpen.value = !membersSectionOpen.value
 }
 
 // Filter state

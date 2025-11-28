@@ -5,6 +5,14 @@ export interface TrackStatus {
   created_at: string
 }
 
+export interface ProfileMember {
+  id: number
+  profile_id: string
+  member_id: string
+  invited_by: string | null
+  created_at: string
+}
+
 export interface Resource {
   id: number
   name: string
@@ -35,4 +43,5 @@ export interface Resource {
   duration?: number
   status_id?: number | null
   track_status?: TrackStatus | null
+  is_public?: boolean
 } 

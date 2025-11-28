@@ -84,6 +84,24 @@
                 </p>
               </div>
 
+              <!-- Privacy -->
+              <div class="col-span-2">
+                <label class="text-sm text-neutral-400">Visibility</label>
+                <div class="flex items-center gap-3 mt-2">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      v-model="metadata.is_public"
+                      class="w-4 h-4 border border-neutral-700 rounded bg-neutral-900 checked:bg-amber-400 checked:border-amber-400 focus:ring-amber-400"
+                    />
+                    <span class="text-sm text-neutral-300">Public</span>
+                  </label>
+                  <p class="text-xs text-neutral-500">
+                    {{ metadata.is_public ? 'Visible to everyone' : 'Only visible to you and your profile members' }}
+                  </p>
+                </div>
+              </div>
+
               <div class="col-span-2">
                 <label class="text-sm text-neutral-400">Collections (optional)</label>
                 <CollectionSelect v-model="selectedCollectionIds" :collections="collections" size="md"
@@ -220,6 +238,7 @@ interface TrackMetadata {
   key: string | null
   year: number | null
   status_id: number | null
+  is_public: boolean
 }
 
 interface TrackStatus {
@@ -257,7 +276,8 @@ const metadata = ref<TrackMetadata>({
   bpm: null,
   key: null,
   year: null,
-  status_id: null
+  status_id: null,
+  is_public: true
 })
 
 const collections = ref<Collection[]>([])
@@ -486,7 +506,8 @@ watch(() => props.trackToEdit, async (newTrack) => {
       bpm: newTrack.bpm || null,
       key: newTrack.key || null,
       year: newTrack.year || null,
-      status_id: newTrack.status_id || null
+      status_id: newTrack.status_id || null,
+      is_public: newTrack.is_public !== undefined ? newTrack.is_public : true
     }
     
     // Load track's current collections
@@ -793,7 +814,8 @@ const onSubmit = async () => {
         bpm: metadata.value.bpm,
         key: metadata.value.key,
         year: metadata.value.year,
-        status_id: metadata.value.status_id
+        status_id: metadata.value.status_id,
+        is_public: metadata.value.is_public
       })
       .eq('id', props.trackToEdit.id)
       .select()
