@@ -24,15 +24,14 @@
     </div>
 
     <div v-else class="w-fit lg:w-full">
-      <!-- Confirm Dialog -->
-      <ConfirmDialog
-        v-model:show="showConfirmDialog"
-        title="Delete Tracks"
-        :message="`Delete ${selectedTrackIds.size} track${selectedTrackIds.size > 1 ? 's' : ''} from your library? This will permanently delete the files.`"
-        confirm-text="Delete"
-        cancel-text="Cancel"
-        :confirm-danger="true"
-        @confirm="handleBulkDelete"
+      <!-- Bulk Actions Drawer -->
+      <BulkActionsDrawer
+        v-model:show="showBulkActionsDrawer"
+        :selected-tracks="selectedTracksArray"
+        :selected-count="selectedTrackIds.size"
+        @tracks-deleted="handleTracksDeleted"
+        @tracks-updated="handleTracksUpdated"
+        @close="handleBulkActionsClose"
       />
       
       <!-- Header -->
@@ -67,10 +66,10 @@
         <div v-if="isOwnProfile" class="flex items-center justify-start">
           <button
             v-if="hasSelections"
-            @click="showConfirmDialog = true"
-            class="px-3 py-0.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors cursor-pointer"
+            @click="showBulkActionsDrawer = true"
+            class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded transition-colors cursor-pointer"
           >
-            Delete
+            Bulk ({{ selectedTrackIds.size }})
           </button>
         </div>
       </div>
@@ -189,7 +188,7 @@ import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import LoadingLogo from '~/components/LoadingLogo.vue'
-import ConfirmDialog from '~/components/ConfirmDialog.vue'
+import BulkActionsDrawer from '~/components/BulkActionsDrawer.vue'
 
 interface Props {
   tracks: any[]
@@ -217,9 +216,14 @@ const statuses = ref<Array<{ id: number; name: string }>>([])
 const bulkSelectionMode = ref(false)
 const selectedTrackIds = ref(new Set<number>())
 const clickCount = ref(0)
-const showConfirmDialog = ref(false)
+const showBulkActionsDrawer = ref(false)
 
 const hasSelections = computed(() => selectedTrackIds.value.size > 0)
+
+// Get selected tracks as array
+const selectedTracksArray = computed(() => {
+  return props.tracks.filter(track => selectedTrackIds.value.has(track.id))
+})
 
 // Handle scroll-to-track event
 const handleScrollToTrack = (event: CustomEvent) => {
@@ -392,75 +396,33 @@ const toggleTrackSelection = (trackId: number) => {
   }
 }
 
-const handleBulkDelete = async () => {
-  if (!supabase || selectedTrackIds.value.size === 0) return
+// Handle tracks deleted from bulk actions drawer
+const handleTracksDeleted = () => {
+  // Clear selection and exit bulk mode
+  bulkSelectionMode.value = false
+  selectedTrackIds.value.clear()
+  clickCount.value = 0
+  showBulkActionsDrawer.value = false
   
-  const selectedIds = Array.from(selectedTrackIds.value)
-  const selectedTracks = props.tracks.filter(t => selectedIds.includes(t.id))
-  const count = selectedIds.length
+  // Notify parent to refetch
+  emit('tracks-deleted')
+}
+
+// Handle tracks updated from bulk actions drawer
+const handleTracksUpdated = () => {
+  // Clear selection and exit bulk mode
+  bulkSelectionMode.value = false
+  selectedTrackIds.value.clear()
+  clickCount.value = 0
+  showBulkActionsDrawer.value = false
   
-  let toastId: string | undefined
-  
-  try {
-    toastId = showProcessing(`Deleting ${count} track${count > 1 ? 's' : ''}...`)
-    
-    let deleteErrors = 0
-    
-    // Delete files from storage and records from database
-    for (const track of selectedTracks) {
-      try {
-        // Delete file from storage
-        if (track.storage_path) {
-          const { error: storageError } = await supabase.storage
-            .from('sounds')
-            .remove([track.storage_path])
-          
-          if (storageError) {
-            console.error('Storage deletion error:', storageError)
-            deleteErrors++
-            continue
-          }
-        }
-        
-        // Delete database record
-        const { error: dbError } = await supabase
-          .from('sounds')
-          .delete()
-          .eq('id', track.id)
-        
-        if (dbError) {
-          console.error('Database deletion error:', dbError)
-          deleteErrors++
-        }
-      } catch (error) {
-        console.error('Error deleting track:', error)
-        deleteErrors++
-      }
-    }
-    
-    if (toastId) removeToast(toastId)
-    
-    if (deleteErrors === 0) {
-      showSuccess(`Successfully deleted ${count} track${count > 1 ? 's' : ''}`)
-    } else if (deleteErrors < count) {
-      showError(`Deleted ${count - deleteErrors} of ${count} tracks. ${deleteErrors} failed.`)
-    } else {
-      showError('Failed to delete tracks')
-    }
-    
-    // Clear selection and exit bulk mode
-    bulkSelectionMode.value = false
-    selectedTrackIds.value.clear()
-    clickCount.value = 0
-    
-    // Notify parent to refetch
-    emit('tracks-deleted')
-    
-  } catch (error) {
-    if (toastId) removeToast(toastId)
-    showError('Failed to delete tracks')
-    console.error('Bulk delete error:', error)
-  }
+  // Notify parent to refetch
+  emit('tracks-deleted') // Reuse same event to trigger refetch
+}
+
+// Handle bulk actions drawer close
+const handleBulkActionsClose = () => {
+  showBulkActionsDrawer.value = false
 }
 </script>
 

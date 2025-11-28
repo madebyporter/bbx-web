@@ -9,15 +9,16 @@
     </div>
 
     <div class="w-fit md:w-full" v-else>
-      <!-- Confirm Dialog -->
-      <ConfirmDialog
-        v-model:show="showConfirmDialog"
-        title="Remove Tracks"
-        :message="`Remove ${selectedTrackIds.size} track${selectedTrackIds.size > 1 ? 's' : ''} from this collection?`"
-        confirm-text="Remove"
-        cancel-text="Cancel"
-        :confirm-danger="true"
-        @confirm="handleBulkRemove"
+      <!-- Bulk Actions Drawer -->
+      <BulkActionsDrawer
+        v-model:show="showBulkActionsDrawer"
+        :selected-tracks="selectedTracksArray"
+        :selected-count="selectedTrackIds.size"
+        :collection-id="collectionId"
+        :is-collection-context="true"
+        @tracks-deleted="handleTracksRemoved"
+        @tracks-updated="handleTracksUpdated"
+        @close="handleBulkActionsClose"
       />
       
       <!-- Header -->
@@ -55,10 +56,10 @@
         <div v-if="isOwnProfile" class="flex items-center justify-start">
           <button
             v-if="hasSelections"
-            @click="showConfirmDialog = true"
-            class="px-3 py-0.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors cursor-pointer"
+            @click="showBulkActionsDrawer = true"
+            class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded transition-colors cursor-pointer"
           >
-            Remove
+            Bulk ({{ selectedTrackIds.size }})
           </button>
         </div>
       </div>
@@ -174,7 +175,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import { useToast } from '~/composables/useToast'
 import LoadingLogo from '~/components/LoadingLogo.vue'
-import ConfirmDialog from '~/components/ConfirmDialog.vue'
+import BulkActionsDrawer from '~/components/BulkActionsDrawer.vue'
 
 const props = defineProps<{
   tracks: any[]
@@ -203,9 +204,14 @@ const statuses = ref<Array<{ id: number; name: string }>>([])
 const bulkSelectionMode = ref(false)
 const selectedTrackIds = ref(new Set<number>())
 const clickCount = ref(0)
-const showConfirmDialog = ref(false)
+const showBulkActionsDrawer = ref(false)
 
 const hasSelections = computed(() => selectedTrackIds.value.size > 0)
+
+// Get selected tracks as array
+const selectedTracksArray = computed(() => {
+  return props.tracks.filter(track => selectedTrackIds.value.has(track.id))
+})
 
 // Handle scroll-to-track event
 const handleScrollToTrack = (event: CustomEvent) => {
@@ -359,45 +365,33 @@ const toggleTrackSelection = (trackId: number) => {
   }
 }
 
-const handleBulkRemove = async () => {
-  if (!supabase || selectedTrackIds.value.size === 0 || !props.collectionId) return
+// Handle tracks removed from bulk actions drawer
+const handleTracksRemoved = () => {
+  // Clear selection and exit bulk mode
+  bulkSelectionMode.value = false
+  selectedTrackIds.value.clear()
+  clickCount.value = 0
+  showBulkActionsDrawer.value = false
   
-  const selectedIds = Array.from(selectedTrackIds.value)
-  const count = selectedIds.length
+  // Notify parent to refetch
+  emit('tracks-removed')
+}
+
+// Handle tracks updated from bulk actions drawer
+const handleTracksUpdated = () => {
+  // Clear selection and exit bulk mode
+  bulkSelectionMode.value = false
+  selectedTrackIds.value.clear()
+  clickCount.value = 0
+  showBulkActionsDrawer.value = false
   
-  let toastId: string | undefined
-  
-  try {
-    toastId = showProcessing(`Removing ${count} track${count > 1 ? 's' : ''}...`)
-    
-    // Remove tracks from collection via junction table
-    const { error } = await supabase
-      .from('collections_sounds')
-      .delete()
-      .in('sound_id', selectedIds)
-      .eq('collection_id', props.collectionId)
-    
-    if (toastId) removeToast(toastId)
-    
-    if (error) {
-      showError('Failed to remove tracks from collection')
-      console.error('Remove error:', error)
-    } else {
-      showSuccess(`Successfully removed ${count} track${count > 1 ? 's' : ''} from collection`)
-      
-      // Clear selection and exit bulk mode
-      bulkSelectionMode.value = false
-      selectedTrackIds.value.clear()
-      clickCount.value = 0
-      
-      // Notify parent to refetch
-      emit('tracks-removed')
-    }
-  } catch (error) {
-    if (toastId) removeToast(toastId)
-    showError('Failed to remove tracks from collection')
-    console.error('Bulk remove error:', error)
-  }
+  // Notify parent to refetch
+  emit('tracks-removed') // Reuse same event to trigger refetch
+}
+
+// Handle bulk actions drawer close
+const handleBulkActionsClose = () => {
+  showBulkActionsDrawer.value = false
 }
 </script>
 
