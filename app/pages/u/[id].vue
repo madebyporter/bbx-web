@@ -11,7 +11,8 @@
           <span v-if="profileBio">{{ profileBio }}</span>
           <span v-else class="text-neutral-500 italic">Something's supposed to be here</span>
         </div>
-        <div v-if="profileWebsite || hasSocialLinks || isOwnProfile" class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap items-center">
+        <div v-if="profileWebsite || hasSocialLinks || isOwnProfile"
+          class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap items-center">
           <a v-if="profileWebsite" :href="profileWebsite" target="_blank" rel="noopener noreferrer"
             class="hover:text-neutral-300 transition-colors">Website</a>
 
@@ -76,15 +77,15 @@
       </div>
 
       <div class="flex flex-row gap-2 max-md:py-2 p-4 max-md:border-t max-md:border-neutral-800">
-        <div @click="toggleMusicSection"
-          class="rounded-full px-4 py-2 w-fit flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
-          :class="musicSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
-          Music
-        </div>
         <div @click="toggleSoftwareSection"
           class="rounded-full px-4 py-2 w-fit flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
           :class="softwareSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
           Software
+        </div>
+        <div @click="toggleMusicSection"
+          class="rounded-full px-4 py-2 w-fit flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
+          :class="musicSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+          Music
         </div>
         <div v-if="isOwnProfile" @click="toggleMembersSection"
           class="rounded-full px-4 py-2 w-fit flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
@@ -97,7 +98,8 @@
 
     <!-- Software Section -->
     <div v-if="softwareSectionOpen" class="flex flex-col gap-0 border-b border-neutral-800">
-      <div v-if="!loadingSoftware && softwareList.length > 0" class="p-2 max-md:pb-0 flex flex-row gap-2 text-xs overflow-x-auto no-scrollbar">
+      <div v-if="!loadingSoftware && softwareList.length > 0"
+        class="p-2 max-md:pb-0 flex flex-row gap-2 text-xs overflow-x-auto no-scrollbar">
         <div @click="clearFilters" :class="[
             'rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors select-none',
             selectedTags.length === 0 
@@ -122,7 +124,8 @@
           </div>
           <div ref="softwareContainer" class="flex flex-row items-end w-fit *:p-4 *:last:pr-4 *:pr-0"
             v-else-if="softwareList.length > 0">
-            <div class="flex flex-col gap-2 items-start justify-start w-fit whitespace-nowrap max-md:snap-center snap-start snap-always"
+            <div
+              class="flex flex-col gap-2 items-start justify-start w-fit whitespace-nowrap max-md:snap-center snap-start snap-always"
               v-for="software in softwareList" :key="software.id">
               <img :src="getSoftwareImageUrl(software.image_url)" :alt="software.name"
                 class="software-image min-w-64 max-w-64 md:min-w-72 md:max-w-72 h-auto object-contain object-top-left rounded-[2px]"

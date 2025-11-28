@@ -129,10 +129,11 @@
             </svg>
           </button>
         </div>
-        <div class="overflow-hidden truncate">
+        <div class="overflow-hidden">
           <NuxtLink :to="`/u/${username}/t/${generateTrackSlug(track)}`"
-            :class="['hover:text-white transition-colors hover:underline'] + (isCurrentlyPlaying(track) ? ' font-bold text-white' : '')">
-            {{ track.title || 'Untitled' }}
+            :class="['flex items-center justify-between gap-2 hover:text-white transition-colors hover:underline'] + (isCurrentlyPlaying(track) ? ' font-bold text-white' : '')">
+            <span class="truncate">{{ track.title || 'Untitled' }}</span>
+            <span v-if="track.is_public === false" class="text-xs text-neutral-500 flex-shrink-0">[private]</span>
           </NuxtLink>
         </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.artist || 'Unknown' }}</div>
