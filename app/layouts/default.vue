@@ -46,6 +46,14 @@
             <input v-model="password" type="password" required
               class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500" />
           </div>
+          <div v-if="isSignUp">
+            <label class="block text-sm font-medium mb-1">I am a</label>
+            <select v-model="userType" required
+              class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500">
+              <option value="creator">Creator (content creator, songwriter, music artist)</option>
+              <option value="audio_pro">Audio Pro (producer, engineer, etc.)</option>
+            </select>
+          </div>
           <div v-if="isForgotPassword" class="text-sm text-neutral-400">
             Enter your email address and we'll send you a link to reset your password.
           </div>
@@ -221,6 +229,7 @@ const isSignUp = ref(false)
 const isForgotPassword = ref(false)
 const email = ref('')
 const password = ref('')
+const userType = ref<'creator' | 'audio_pro'>('creator')
 
 // Resource management state
 const showModal = ref(false)
@@ -293,7 +302,7 @@ const handleSubmit = async () => {
       password.value = ''
       isForgotPassword.value = false
     } else if (isSignUp.value) {
-      const result = await auth.signUp(email.value, password.value)
+      const result = await auth.signUp(email.value, password.value, userType.value)
       if (result.user && !result.session) {
         // User created but needs email confirmation
         showInfo('Account created! Please check your email and click the confirmation link to activate your account.', 8000)
@@ -304,6 +313,7 @@ const handleSubmit = async () => {
       showAuthModal.value = false
       email.value = ''
       password.value = ''
+      userType.value = 'creator'
     } else {
       await auth.signIn(email.value, password.value)
       showSuccess(`Welcome back, ${email.value}!`)

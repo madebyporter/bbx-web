@@ -96,3 +96,7 @@ END $$;
 -- Step 8: Rename new enum to standard name
 ALTER TYPE user_type_simplified RENAME TO user_type;
 
+-- Step 9: Set default value for user_type column (for new user signups)
+ALTER TABLE public.user_profiles 
+ALTER COLUMN user_type SET DEFAULT 'creator'::user_type;
+

@@ -66,6 +66,36 @@ onMounted(async () => {
       }
       
       if (data.session?.user) {
+        // Get user_type from localStorage (set during signup) or default to 'creator'
+        const userType = (typeof window !== 'undefined' && localStorage.getItem('pending_user_type')) || 
+                        data.session.user.user_metadata?.user_type || 
+                        'creator'
+        try {
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .upsert({
+              id: data.session.user.id,
+              user_type: userType,
+              username: data.session.user.email?.split('@')[0] || 'user',
+              display_name: data.session.user.email?.split('@')[0] || 'user'
+            }, {
+              onConflict: 'id'
+            })
+          
+          if (profileError) {
+            console.error('Error creating user profile:', profileError)
+            // Don't fail the confirmation if profile creation fails
+          } else {
+            // Clear localStorage since profile is created
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('pending_user_type')
+            }
+          }
+        } catch (profileErr) {
+          console.error('Error creating user profile:', profileErr)
+          // Don't fail the confirmation if profile creation fails
+        }
+        
         isSuccess.value = true
         console.log('Email confirmed successfully:', data.session.user.email)
       }
@@ -75,6 +105,43 @@ onMounted(async () => {
       const { data: { session } } = await supabase?.auth.getSession()
       
       if (session?.user) {
+        // Get user_type from localStorage (set during signup) or default to 'creator'
+        const userType = (typeof window !== 'undefined' && localStorage.getItem('pending_user_type')) || 
+                        session.user.user_metadata?.user_type || 
+                        'creator'
+        try {
+          // Check if profile already exists
+          const { data: existingProfile } = await supabase
+            .from('user_profiles')
+            .select('id')
+            .eq('id', session.user.id)
+            .single()
+          
+          if (!existingProfile) {
+            const { error: profileError } = await supabase
+              .from('user_profiles')
+              .upsert({
+                id: session.user.id,
+                user_type: userType,
+                username: session.user.email?.split('@')[0] || 'user',
+                display_name: session.user.email?.split('@')[0] || 'user'
+              }, {
+                onConflict: 'id'
+              })
+            
+            if (profileError) {
+              console.error('Error creating user profile:', profileError)
+            } else {
+              // Clear localStorage since profile is created
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('pending_user_type')
+              }
+            }
+          }
+        } catch (profileErr) {
+          console.error('Error checking/creating user profile:', profileErr)
+        }
+        
         isSuccess.value = true
       } else {
         throw new Error('No valid confirmation token found')
