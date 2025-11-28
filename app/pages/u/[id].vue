@@ -24,7 +24,13 @@
             </div>
             <!-- Display Name (not editing) -->
             <template v-else>
-              <h1 v-if="profileName" class="text-xl lg:text-3xl font-bold truncate">{{ profileName }}</h1>
+              <div v-if="profileName" class="flex flex-row gap-1 items-center group">
+                <h1 class="text-xl lg:text-3xl font-bold truncate">{{ profileName }}</h1>
+                <button v-if="isOwnProfile" @click="startEditingDisplayName"
+                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer opacity-0 group-hover:opacity-100" title="Edit Display Name">
+                  <EditPencil class="w-[10px] h-[10px]" />
+                </button>
+              </div>
               <h1 v-else-if="isOwnProfile" @click="startEditingDisplayName"
                 class="text-xl lg:text-3xl font-bold text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer truncate">
                 Add a Display Name
@@ -52,7 +58,13 @@
             </div>
             <!-- Username (not editing) -->
             <template v-else>
-              <span v-if="username" class="text-base lg:text-xl font-normal text-neutral-400">@{{ username }}</span>
+              <div v-if="username" class="flex flex-row gap-1 items-center group">
+                <span class="text-base lg:text-xl font-normal text-neutral-400">@{{ username }}</span>
+                <button v-if="isOwnProfile" @click="startEditingUsername"
+                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer opacity-0 group-hover:opacity-100" title="Edit Username">
+                  <EditPencil class="w-[10px] h-[10px]" />
+                </button>
+              </div>
               <span v-else-if="isOwnProfile" @click="startEditingUsername"
                 class="text-sm lg:text-base font-normal text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer">
                 Add @username
@@ -198,7 +210,7 @@
           :class="musicSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
           Music
         </div>
-        <div v-if="isOwnProfile" @click="toggleMembersSection"
+        <div v-if="isOwnProfile && isAudioPro" @click="toggleMembersSection"
           class="rounded-full px-4 py-2 w-fit flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
           :class="membersSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
           Members
@@ -264,7 +276,7 @@
     </div>
 
     <!-- Members Section -->
-    <div v-if="isOwnProfile && membersSectionOpen && profileUserId" class="grow border-b border-neutral-800">
+    <div v-if="isOwnProfile && isAudioPro && membersSectionOpen && profileUserId" class="grow border-b border-neutral-800">
       <div class="p-4">
         <ManageMembers :profile-id="profileUserId" />
       </div>
@@ -309,7 +321,7 @@ const { data: initialData } = await useAsyncData(
         // Try to fetch by ID first
         const result = await supabase
           .from('user_profiles')
-          .select('id, username, display_name, bio, website, social_links')
+          .select('id, username, display_name, bio, website, social_links, user_type')
           .eq('id', usernameOrId)
           .single()
         data = result.data
@@ -318,7 +330,7 @@ const { data: initialData } = await useAsyncData(
         // Try to fetch by username
         const result = await supabase
           .from('user_profiles')
-          .select('id, username, display_name, bio, website, social_links')
+          .select('id, username, display_name, bio, website, social_links, user_type')
           .eq('username', usernameOrId)
           .single()
         data = result.data
@@ -329,7 +341,7 @@ const { data: initialData } = await useAsyncData(
       if ((error || !data) && !isUUID) {
         const result = await supabase
           .from('user_profiles')
-          .select('id, username, display_name, bio, website, social_links')
+          .select('id, username, display_name, bio, website, social_links, user_type')
           .eq('id', usernameOrId)
           .single()
         data = result.data
@@ -431,6 +443,7 @@ const { data: softwareData, refresh: refreshSoftware } = await useAsyncData(
 const profileName = ref<string>(initialData.value?.profile?.display_name || initialData.value?.profile?.username || '')
 const username = ref<string>(initialData.value?.profile?.username || '')
 const profileUserId = ref<string | null>(initialData.value?.profile?.id || null)
+const profileUserType = ref<'creator' | 'audio_pro' | null>((initialData.value?.profile?.user_type as 'creator' | 'audio_pro') || null)
 const profileBio = ref(initialData.value?.profile?.bio || '')
 const profileWebsite = ref(initialData.value?.profile?.website || '')
 const profileSocialLinks = ref<{
@@ -946,7 +959,7 @@ const refreshProfile = async () => {
   try {
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('display_name, username, bio, website, social_links')
+      .select('display_name, username, bio, website, social_links, user_type')
       .eq('id', profileUserId.value)
       .single()
     
@@ -955,6 +968,7 @@ const refreshProfile = async () => {
     if (data) {
       profileName.value = (data.display_name as string) || (data.username as string) || ''
       username.value = (data.username as string) || ''
+      profileUserType.value = (data.user_type as 'creator' | 'audio_pro' | null) || null
       profileBio.value = (data.bio as string) || ''
       profileWebsite.value = (data.website as string) || ''
       profileSocialLinks.value = (data.social_links as any) || {}
@@ -1109,6 +1123,11 @@ const isOwnProfile = computed(() => {
   return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
 })
 
+// Check if current profile is audio_pro (for showing Members feature)
+const isAudioPro = computed(() => {
+  return profileUserType.value === 'audio_pro'
+})
+
 const filteredTracks = computed(() => {
   if (!searchQuery.value) return tracks.value
   
@@ -1134,11 +1153,12 @@ const fetchProfile = async () => {
   // Profile already loaded server-side, just ensure values are set
   if (!profileUserId.value && initialData.value?.profile) {
     profileUserId.value = initialData.value.profile.id
-    profileName.value = initialData.value.profile.display_name || initialData.value.profile.username || ''
-    username.value = initialData.value.profile.username || ''
-    profileBio.value = initialData.value.profile.bio || ''
-    profileWebsite.value = initialData.value.profile.website || ''
-    profileSocialLinks.value = (initialData.value.profile.social_links as any) || {}
+      profileName.value = initialData.value.profile.display_name || initialData.value.profile.username || ''
+      username.value = initialData.value.profile.username || ''
+      profileUserType.value = (initialData.value.profile.user_type as 'creator' | 'audio_pro' | null) || null
+      profileBio.value = initialData.value.profile.bio || ''
+      profileWebsite.value = initialData.value.profile.website || ''
+      profileSocialLinks.value = (initialData.value.profile.social_links as any) || {}
   } else if (!profileUserId.value && supabase && user.value) {
     // If profile wasn't loaded server-side, try to fetch it client-side
     // This handles cases where the route param is a UUID
@@ -1150,13 +1170,13 @@ const fetchProfile = async () => {
       if (isUUID) {
         result = await supabase
           .from('user_profiles')
-          .select('id, username, display_name, bio, website, social_links')
+          .select('id, username, display_name, bio, website, social_links, user_type')
           .eq('id', usernameOrId)
           .single()
       } else {
         result = await supabase
           .from('user_profiles')
-          .select('id, username, display_name, bio, website, social_links')
+          .select('id, username, display_name, bio, website, social_links, user_type')
           .eq('username', usernameOrId)
           .single()
       }
@@ -1165,6 +1185,7 @@ const fetchProfile = async () => {
         profileUserId.value = result.data.id
         profileName.value = result.data.display_name || result.data.username || ''
         username.value = result.data.username || ''
+        profileUserType.value = (result.data.user_type as 'creator' | 'audio_pro') || null
         profileBio.value = result.data.bio || ''
         profileWebsite.value = result.data.website || ''
         profileSocialLinks.value = (result.data.social_links as any) || {}
