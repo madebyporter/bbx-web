@@ -52,7 +52,7 @@
         <div>BPM</div>
         <div>Duration</div>
         <div v-if="isOwnProfile && viewMode === 'all'">Visible</div>
-        <div v-if="isOwnProfile">Status</div>
+        <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
         <div v-if="isOwnProfile" class="flex items-center justify-start">
           <button
             v-if="hasSelections"
@@ -109,10 +109,10 @@
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
         <div v-if="user" class="text-neutral-400 overflow-hidden">
-          <template v-if="track.collections && track.collections.length > 0">
+          <template v-if="getOwnerCollectionsForTrack(track).length > 0">
             <div class="flex flex-wrap gap-1">
               <NuxtLink 
-                v-for="collection in track.collections" 
+                v-for="collection in getOwnerCollectionsForTrack(track)" 
                 :key="collection.slug"
                 :to="`/u/${username}/c/${collection.slug}`" 
                 class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white transition-colors whitespace-nowrap"
@@ -127,7 +127,7 @@
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
         <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>
         <div v-if="isOwnProfile && viewMode === 'all'" class="flex items-center justify-center">
-          <button @click="$emit('toggle-hidden', track.id, track.hidden)"
+          <button @click="$emit('toggle-hidden', track.id)"
             class="text-neutral-400 hover:text-white transition-colors cursor-pointer"
             :title="track.hidden ? 'Hidden from final (click to show)' : 'Visible in final (click to hide)'">
             <!-- Eye open (visible) -->
@@ -144,7 +144,7 @@
             </svg>
           </button>
         </div>
-        <div v-if="isOwnProfile" class="text-neutral-400 overflow-hidden">
+        <div v-if="isOwnProfile && profileUserType === 'audio_pro'" class="text-neutral-400 overflow-hidden">
           <select 
             v-if="statuses.length > 0"
             :value="track.status_id || ''"
@@ -159,9 +159,21 @@
           <div v-else class="text-xs px-2 py-1">Loading...</div>
         </div>
         <div v-if="isOwnProfile">
-          <button @click="$emit('edit-track', track)" class="text-neutral-500 hover:text-amber-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5"
+          <!-- Edit button for audio_pro owners -->
+          <button 
+            v-if="profileUserType === 'audio_pro'"
+            @click="$emit('edit-track', track)" 
+            class="text-neutral-500 hover:text-amber-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5"
             title="Edit track">
             Edit
+          </button>
+          <!-- Remove button for creators (remove from collection) -->
+          <button 
+            v-else-if="profileUserType === 'creator' && collectionId"
+            @click="handleRemoveFromCollection(track.id)" 
+            class="text-neutral-500 hover:text-red-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5"
+            title="Remove from collection">
+            Remove
           </button>
         </div>
       </div>
@@ -186,12 +198,15 @@ const props = defineProps<{
   username: string
   viewMode: 'final' | 'all'
   collectionId?: number
+  viewerUserType?: 'creator' | 'audio_pro' | null
+  profileUserType?: 'creator' | 'audio_pro' | null
 }>()
 
 const emit = defineEmits<{
   'edit-track': [track: any]
   'toggle-hidden': [trackId: number]
   'tracks-removed': []
+  'track-removed-from-collection': [trackId: number]
 }>()
 
 const { loadQueue, currentTrack, isPlaying } = usePlayer()
@@ -393,6 +408,38 @@ const handleTracksUpdated = () => {
 // Handle bulk actions drawer close
 const handleBulkActionsClose = () => {
   showBulkActionsDrawer.value = false
+}
+
+// Filter collections to only show owner's collections for a track
+// The parent component already filters collections by user_id, so we just return them
+const getOwnerCollectionsForTrack = (track: any) => {
+  return track.collections || []
+}
+
+// Remove track from collection
+const handleRemoveFromCollection = async (trackId: number) => {
+  if (!supabase || !user.value || !props.collectionId) return
+  
+  const toastId = showProcessing('Removing track from collection...')
+  
+  try {
+    const { error } = await supabase
+      .from('collections_sounds')
+      .delete()
+      .eq('collection_id', props.collectionId)
+      .eq('sound_id', trackId)
+    
+    if (error) throw error
+    
+    removeToast(toastId)
+    showSuccess('Track removed from collection')
+    emit('track-removed-from-collection', trackId)
+    emit('tracks-removed') // Trigger refetch
+  } catch (error) {
+    removeToast(toastId)
+    showError('Failed to remove track from collection')
+    console.error('Error removing track from collection:', error)
+  }
 }
 </script>
 

@@ -272,7 +272,8 @@
     <!-- Tracks Section -->
     <div v-if="musicSectionOpen" class="grow">
       <TracksTable :tracks="filteredTracks" :source-id="`profile-${profileUserId}`" :is-own-profile="isOwnProfile"
-        :loading="loading" :username="username" @edit-track="handleEdit" @tracks-deleted="fetchTracks" />
+        :loading="loading" :username="username" :viewer-user-type="viewerUserType" :profile-user-type="profileUserType"
+        @edit-track="handleEdit" @tracks-deleted="fetchTracks" @track-shortlisted="handleTrackShortlisted" @track-unshortlisted="handleTrackUnshortlisted" />
     </div>
 
     <!-- Members Section -->
@@ -444,6 +445,7 @@ const profileName = ref<string>(initialData.value?.profile?.display_name || init
 const username = ref<string>(initialData.value?.profile?.username || '')
 const profileUserId = ref<string | null>(initialData.value?.profile?.id || null)
 const profileUserType = ref<'creator' | 'audio_pro' | null>((initialData.value?.profile?.user_type as 'creator' | 'audio_pro') || null)
+const viewerUserType = ref<'creator' | 'audio_pro' | null>(null) // Logged-in user's type
 const profileBio = ref(initialData.value?.profile?.bio || '')
 const profileWebsite = ref(initialData.value?.profile?.website || '')
 const profileSocialLinks = ref<{
@@ -1128,6 +1130,36 @@ const isAudioPro = computed(() => {
   return profileUserType.value === 'audio_pro'
 })
 
+// Fetch viewer's user type when user is logged in
+const fetchViewerUserType = async () => {
+  if (!user.value || !supabase) return
+  
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('user_type')
+      .eq('id', user.value.id)
+      .single()
+    
+    if (error) throw error
+    
+    if (data) {
+      viewerUserType.value = (data.user_type as 'creator' | 'audio_pro') || null
+    }
+  } catch (error) {
+    console.error('Error fetching viewer user type:', error)
+  }
+}
+
+// Watch for user becoming available to fetch viewer user type
+watch(() => user.value, async (newUser) => {
+  if (newUser) {
+    await fetchViewerUserType()
+  } else {
+    viewerUserType.value = null
+  }
+}, { immediate: true })
+
 const filteredTracks = computed(() => {
   if (!searchQuery.value) return tracks.value
   
@@ -1208,6 +1240,12 @@ const fetchTracks = async () => {
     return
   }
   
+  // Ensure viewerUserType is fetched if user is logged in
+  if (user.value && !viewerUserType.value) {
+    console.log('fetchTracks: Fetching viewerUserType first')
+    await fetchViewerUserType()
+  }
+  
   // Only show loading state if we don't have any tracks yet (from initialData)
   // This prevents showing loading spinner when we already have cached data
   const hasInitialTracks = tracks.value.length > 0
@@ -1235,14 +1273,65 @@ const fetchTracks = async () => {
   }
   
   try {
-    const { data, error } = await supabase
-      .from('sounds')
-      .select(`
-        *,
-        track_statuses!status_id(id, name)
-      `)
-      .eq('user_id', profileUserId.value)
-      .order(sortBy, { ascending: sortDirection === 'asc' })
+    let data, error
+    
+    // If viewing own profile AND user is creator, fetch shortlisted tracks
+    console.log('fetchTracks: Checking conditions', { 
+      isOwnProfile: isOwnProfile.value, 
+      viewerUserType: viewerUserType.value, 
+      hasUser: !!user.value,
+      profileUserId: profileUserId.value,
+      userId: user.value?.id
+    })
+    
+    if (isOwnProfile.value && viewerUserType.value === 'creator' && user.value) {
+      console.log('fetchTracks: Fetching shortlisted tracks for creator')
+      const { getShortlistedTracks } = await import('~/utils/shortlist')
+      const result = await getShortlistedTracks(user.value.id)
+      
+      if (result.error) {
+        console.error('fetchTracks: Error fetching shortlisted tracks:', result.error)
+        throw result.error
+      }
+      
+      console.log('fetchTracks: Shortlisted tracks result', { count: result.data?.length, data: result.data })
+      data = result.data || []
+      error = null
+      
+      // Sort the data
+      if (sortBy === 'created_at') {
+        data.sort((a: any, b: any) => {
+          const aTime = new Date(a.shortlisted_at || a.created_at).getTime()
+          const bTime = new Date(b.shortlisted_at || b.created_at).getTime()
+          return sortDirection === 'asc' ? aTime - bTime : bTime - aTime
+        })
+      } else {
+        // For other sort fields, use the track's field
+        data.sort((a: any, b: any) => {
+          const aVal = a[sortBy] || ''
+          const bVal = b[sortBy] || ''
+          if (sortDirection === 'asc') {
+            return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+          } else {
+            return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+          }
+        })
+      }
+    } else {
+      // Normal query: fetch tracks from the profile owner
+      console.log('fetchTracks: Using normal query (not shortlist)')
+      const result = await supabase
+        .from('sounds')
+        .select(`
+          *,
+          track_statuses!status_id(id, name)
+        `)
+        .eq('user_id', profileUserId.value)
+        .order(sortBy, { ascending: sortDirection === 'asc' })
+      
+      data = result.data
+      error = result.error
+    }
 
     console.log('fetchTracks: Query result', { data, error, count: data?.length })
     
@@ -1250,15 +1339,20 @@ const fetchTracks = async () => {
     
     // Fetch collection names and slugs for each track
     const tracksWithCollections = await Promise.all((data || []).map(async (track: any) => {
+      // For shortlisted tracks (when viewing own profile as creator), only show collections owned by the creator
+      // For own tracks, show all collections the track is in
+      const isShortlistedTrack = isOwnProfile.value && viewerUserType.value === 'creator' && user.value
+      const collectionOwnerId = isShortlistedTrack ? user.value!.id : null
+      
       // Get collection IDs for this track
       const { data: junctionData } = await supabase
         .from('collections_sounds')
         .select('collection_id')
         .eq('sound_id', track.id)
       
-      const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
+      const allCollectionIds = (junctionData || []).map((item: any) => item.collection_id)
       
-      if (collectionIds.length === 0) {
+      if (allCollectionIds.length === 0) {
         return {
           ...track,
           collections: [],
@@ -1267,14 +1361,22 @@ const fetchTracks = async () => {
       }
       
       // Get collection names and slugs
-      const { data: collectionData } = await supabase
+      // For shortlisted tracks, filter to only collections owned by the creator
+      let collectionQuery = supabase
         .from('collections')
-        .select('name, slug')
-        .in('id', collectionIds)
+        .select('name, slug, user_id')
+        .in('id', allCollectionIds)
+      
+      const { data: collectionData } = await collectionQuery
+      
+      // Filter collections by owner if this is a shortlisted track
+      const filteredCollections = isShortlistedTrack && collectionOwnerId
+        ? (collectionData || []).filter((col: any) => col.user_id === collectionOwnerId).map((col: any) => ({ name: col.name, slug: col.slug }))
+        : (collectionData || []).map((col: any) => ({ name: col.name, slug: col.slug }))
       
       return {
         ...track,
-        collections: collectionData || [],
+        collections: filteredCollections,
         track_status: track.track_statuses
       }
     }))
@@ -1296,6 +1398,22 @@ const handleEdit = (track: any) => {
     composed: true
   })
   window.dispatchEvent(event)
+}
+
+// Handle track shortlisted event
+const handleTrackShortlisted = () => {
+  // If viewing own profile as creator, refetch tracks to show the new shortlist
+  if (isOwnProfile.value && viewerUserType.value === 'creator') {
+    fetchTracks()
+  }
+}
+
+// Handle track unshortlisted event
+const handleTrackUnshortlisted = () => {
+  // If viewing own profile as creator, refetch tracks to remove from shortlist
+  if (isOwnProfile.value && viewerUserType.value === 'creator') {
+    fetchTracks()
+  }
 }
 
 const handleSearch = (query: string) => {
