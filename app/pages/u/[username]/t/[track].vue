@@ -174,18 +174,57 @@ const { data: trackData, pending: loading } = await useAsyncData(
       // Store profile ID
       profileUserId.value = profileData.id as string
       
+      // Check if current user is the profile owner (only available on client)
+      const isProfileOwner = process.client && user.value && user.value.id === profileData.id
+      
       // Fetch the specific track
+      // Always filter by user_id to ensure we get tracks from this profile
+      // RLS will handle visibility (public tracks visible to all, private only to owner/members)
       const { data: trackData, error: trackError } = await supabase
         .from('sounds')
-        .select(`
-          *,
-          track_statuses!status_id(id, name)
-        `)
+        .select('*')
         .eq('id', trackId)
         .eq('user_id', profileData.id)
-        .single()
+        .maybeSingle() // Use maybeSingle() instead of single() to avoid errors if not found
       
-      if (trackError || !trackData) return null
+      if (trackError) {
+        console.error('Error fetching track:', trackError)
+        return null
+      }
+      
+      if (!trackData) {
+        return null // Track not found
+      }
+      
+      // Initialize track_statuses as null
+      trackData.track_statuses = null
+      
+      // Only fetch track_statuses if the current user is the track owner
+      // Non-owners should not see track statuses
+      // Only try to fetch on client-side where user context is available
+      if (process.client && isProfileOwner && trackData.status_id) {
+        try {
+          // Fetch track_status only for the owner
+          // Wrap in try-catch to handle RLS gracefully
+          const { data: statusData, error: statusError } = await supabase
+            .from('track_statuses')
+            .select('id, name')
+            .eq('id', trackData.status_id)
+            .single()
+          
+          if (!statusError && statusData) {
+            trackData.track_statuses = statusData
+          }
+        } catch (error) {
+          // Silently fail - track_statuses will remain null
+          console.debug('Could not fetch track_status (expected for non-owners):', error)
+        }
+      }
+      
+      // Hide status_id from non-owners
+      if (!isProfileOwner) {
+        trackData.status_id = null
+      }
       
       return trackData
     } catch (error) {

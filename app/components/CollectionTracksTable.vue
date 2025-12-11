@@ -100,7 +100,7 @@
           </button>
         </div>
         <div class="overflow-hidden">
-          <NuxtLink :to="`/u/${username}/t/${generateTrackSlug(track)}`"
+          <NuxtLink :to="`/u/${getTrackOwnerUsername(track)}/t/${generateTrackSlug(track)}`"
             :class="['flex items-center justify-between gap-2 hover:text-white transition-colors hover:underline'] + (isCurrentlyPlaying(track) ? ' font-bold text-white' : '')">
             <span class="truncate">{{ track.title || 'Untitled' }}</span>
             <span v-if="track.is_public === false" class="text-xs text-neutral-500 flex-shrink-0">[private]</span>
@@ -331,6 +331,18 @@ const handlePlayClick = (track: any, index: number) => {
   const visibleIndex = visibleTracks.findIndex(t => t.id === track.id)
   
   loadQueue(visibleTracks, props.sourceId, visibleIndex >= 0 ? visibleIndex : 0)
+}
+
+// Get the track owner's username
+// For shortlisted tracks, use original_owner.username
+// For regular tracks, use the profile username prop
+const getTrackOwnerUsername = (track: any): string => {
+  // Shortlisted tracks have original_owner with username
+  if (track.original_owner?.username) {
+    return track.original_owner.username
+  }
+  // Regular tracks use the profile username
+  return props.username
 }
 
 const generateTrackSlug = (track: any): string => {

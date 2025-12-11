@@ -1115,13 +1115,14 @@ watch(softwareList, async () => {
 
 // Computed
 const isOwnProfile = computed(() => {
-  // Check if it's the user's own profile by comparing route param with user ID
-  // This works even if profileUserId isn't set yet (for new users)
-  if (user.value && route.params.id === user.value.id) {
-    return true
+  // Only return true if we have both user and profileUserId, and they match exactly
+  // This ensures we're comparing the actual profile owner, not just route params
+  // (route params could be username, not ID)
+  if (!user.value || !profileUserId.value) {
+    return false
   }
-  // Also check if profileUserId matches (for when profile is loaded)
-  return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
+  // Explicit string comparison to ensure exact match
+  return String(user.value.id) === String(profileUserId.value)
 })
 
 // Check if current profile is audio_pro (for showing Members feature)

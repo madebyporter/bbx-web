@@ -62,7 +62,7 @@
         <div>Genre</div>
         <div>BPM</div>
         <div>Duration</div>
-        <div v-if="isOwnProfile">Status</div>
+        <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
         <div class="flex items-center justify-start">
           <button v-if="isOwnProfile && hasSelections" @click="showBulkActionsDrawer = true"
             class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded transition-colors cursor-pointer">
@@ -128,7 +128,7 @@
           </button>
         </div>
         <div class="overflow-hidden">
-          <NuxtLink :to="`/u/${username}/t/${generateTrackSlug(track)}`"
+          <NuxtLink :to="`/u/${getTrackOwnerUsername(track)}/t/${generateTrackSlug(track)}`"
             :class="['flex items-center justify-between gap-2 hover:text-white transition-colors hover:underline'] + (isCurrentlyPlaying(track) ? ' font-bold text-white' : '')">
             <span class="truncate">{{ track.title || 'Untitled' }}</span>
             <span v-if="track.is_public === false" class="text-xs text-neutral-500 flex-shrink-0">[private]</span>
@@ -167,7 +167,7 @@
             <template v-if="track.collections && track.collections.length > 0">
               <div class="flex flex-wrap gap-1">
                 <NuxtLink v-for="collection in track.collections" :key="collection.slug"
-                  :to="`/u/${username}/c/${collection.slug}`"
+                  :to="`/u/${getTrackOwnerUsername(track)}/c/${collection.slug}`"
                   class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white transition-colors whitespace-nowrap">
                   {{ collection.name }}
                 </NuxtLink>
@@ -184,7 +184,7 @@
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.genre || '-' }}</div>
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
         <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>
-        <div v-if="isOwnProfile" class="text-neutral-400 overflow-hidden">
+        <div v-if="isOwnProfile && profileUserType === 'audio_pro'" class="text-neutral-400 overflow-hidden">
           <select v-if="statuses.length > 0" :value="track.status_id || ''"
             @change="updateTrackStatus(track.id, $event.target.value ? parseInt($event.target.value) : null)"
             class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-xs text-neutral-200 cursor-pointer outline-none">
@@ -362,6 +362,18 @@ watch([() => user.value, () => props.isOwnProfile], async ([newUser, newIsOwnPro
     await fetchStatuses()
   }
 }, { immediate: true })
+
+// Get the track owner's username
+// For shortlisted tracks, use original_owner.username
+// For regular tracks, use the profile username prop
+const getTrackOwnerUsername = (track: any): string => {
+  // Shortlisted tracks have original_owner with username
+  if (track.original_owner?.username) {
+    return track.original_owner.username
+  }
+  // Regular tracks use the profile username
+  return props.username
+}
 
 const generateTrackSlug = (track: any): string => {
   // Use title + ID as slug, fallback to just ID
