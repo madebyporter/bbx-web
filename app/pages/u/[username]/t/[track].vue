@@ -134,7 +134,7 @@ import LoadingLogo from '~/components/LoadingLogo.vue'
 const route = useRoute()
 const { user } = useAuth()
 const { supabase } = useSupabase()
-const { loadQueue, currentTrack, isPlaying } = usePlayer()
+const { loadQueue, currentTrack, isPlaying, togglePlayPause } = usePlayer()
 const { showSuccess, showError } = useToast()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
@@ -278,10 +278,23 @@ const fetchCollectionsAndGroup = async () => {
   }
 }
 
-const handlePlay = () => {
-  if (track.value) {
-    loadQueue([track.value], `track-${track.value.id}`, 0)
+const handlePlay = async () => {
+  if (!track.value) return
+  
+  // If this track is already playing, toggle play/pause
+  if (currentTrack.value?.id === track.value.id && isPlaying.value) {
+    togglePlayPause()
+    return
   }
+  
+  // If this track is loaded but paused, just resume
+  if (currentTrack.value?.id === track.value.id && !isPlaying.value) {
+    await togglePlayPause()
+    return
+  }
+  
+  // Otherwise, load and play the track
+  await loadQueue([track.value], `track-${track.value.id}`, 0)
 }
 
 const handleEdit = () => {
