@@ -31,7 +31,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useAuth } from '~/composables/useAuth'
-import { useRoute } from 'vue-router'
 import { useSupabase } from '~/utils/supabase'
 
 const searchQuery = ref('')
@@ -44,7 +43,7 @@ const user = computed(() => auth.user.value)
 const isReady = computed(() => auth.isReady.value)
 const { supabase } = useSupabase()
 
-// Get current route
+// Get current route (Nuxt auto-imports useRoute)
 const route = useRoute()
 
 // User type state
@@ -92,7 +91,7 @@ const hasUser = computed(() => {
 
 // Determine button text based on route
 const isUserProfilePage = computed(() => {
-  return route.path.startsWith('/u/')
+  return route?.path?.startsWith('/u/') || false
 })
 
 // Check if we should show the upload button
@@ -102,7 +101,7 @@ const shouldShowUploadButton = computed(() => {
   if (!isUserProfilePage.value) return true // Always show "Submit" on non-profile pages
   
   // On profile pages, check if it's the user's own profile
-  const profileId = route.params.id as string
+  const profileId = route?.params?.id as string
   const isOwnProfile = user.value && profileId === user.value.id
   
   // Hide upload button if creator viewing own profile
@@ -118,8 +117,10 @@ const buttonText = computed(() => {
 })
 
 // Clear search when route changes
-watch(() => route.path, () => {
-  searchQuery.value = ''
+watch(() => route?.path, (newPath) => {
+  if (newPath) {
+    searchQuery.value = ''
+  }
 })
 
 onMounted(() => {

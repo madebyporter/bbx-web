@@ -79,6 +79,24 @@
             </div>
           </div>
         </div>
+        <!-- Download Sample Button -->
+        <div class="mt-4">
+          <button 
+            @click="handleDownloadSample"
+            :disabled="isDownloading"
+            class="btn w-full md:w-auto flex items-center gap-2"
+            :class="{ 'opacity-50 cursor-not-allowed': isDownloading }"
+          >
+            <svg v-if="!isDownloading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ isDownloading ? 'Generating Sample...' : 'Download Sample' }}
+          </button>
+        </div>
       </div>
 
       <!-- Edit Section (if own profile) -->
@@ -126,6 +144,7 @@ const groupTracks = ref<any[]>([])
 const collections = ref<any[]>([])
 const profileUserId = ref<string | null>(null)
 const statuses = ref<Array<{ id: number; name: string }>>([])
+const isDownloading = ref(false)
 
 // Fetch track data server-side for SEO
 const { data: trackData, pending: loading } = await useAsyncData(
@@ -233,6 +252,66 @@ const handleEdit = () => {
     composed: true
   })
   window.dispatchEvent(event)
+}
+
+const handleDownloadSample = async () => {
+  if (!track.value || isDownloading.value) return
+  
+  isDownloading.value = true
+  
+  try {
+    const trackId = track.value.id
+    const storagePath = track.value.storage_path
+    const usernameParam = username.value
+    
+    if (!trackId || !storagePath) {
+      showError('Track information missing')
+      return
+    }
+    
+    // Call Netlify function - use absolute URL to bypass Vue Router
+    // Add cache-busting parameter to prevent browser caching
+    const baseUrl = window.location.origin
+    const timestamp = Date.now()
+    const functionUrl = `${baseUrl}/.netlify/functions/download-sample?trackId=${trackId}&storagePath=${encodeURIComponent(storagePath)}&username=${encodeURIComponent(usernameParam)}&_t=${timestamp}`
+    
+    const response = await fetch(functionUrl, {
+      cache: 'no-store' // Prevent browser caching
+    })
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Failed to generate sample' }))
+      throw new Error(error.error || 'Failed to generate sample')
+    }
+    
+    // Get filename from Content-Disposition header or use default
+    const contentDisposition = response.headers.get('Content-Disposition')
+    let filename = `sample-${trackId}.mp3`
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/i)
+      if (filenameMatch) {
+        filename = filenameMatch[1]
+      }
+    }
+    
+    // Download the file
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    
+    showSuccess('Sample downloaded successfully')
+  } catch (error: any) {
+    console.error('Error downloading sample:', error)
+    showError(error.message || 'Failed to download sample')
+  } finally {
+    isDownloading.value = false
+  }
 }
 
 function generateTrackSlug(t: any): string {

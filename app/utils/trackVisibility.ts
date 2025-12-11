@@ -1,12 +1,6 @@
 import { useSupabase } from '~/utils/supabase'
 import { isMemberOfProfile } from '~/utils/memberships'
-
-export interface Track {
-  id: number
-  user_id: string
-  is_public?: boolean
-  [key: string]: any
-}
+import type { Track } from '~/types/track'
 
 /**
  * Check if a user can view a specific track

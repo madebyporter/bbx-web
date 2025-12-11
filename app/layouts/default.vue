@@ -15,7 +15,7 @@
           <SearchFilter @open-filter-modal="openFilterModal" @open-modal="openModal" @search="handleSearch"
             @toggle-nav="handleToggleNav" />
         </div>
-        <NuxtPage ref="pageRef" @edit-resource="handleEdit" @show-signup="handleShowSignup" />
+        <slot />
       </section>
     </main>
 
@@ -125,8 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, provide, nextTick } from 'vue'
 import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
@@ -205,17 +204,19 @@ interface Resource {
 const auth = useAuth()
 const { user, isAdmin } = auth
 const { showSuccess, showError, showProcessing, showInfo } = useToast()
+// Start as false on both server and client, set to true in onMounted
 const isInitialized = ref(false)
 const route = useRoute()
 
 // Determine which modal to show based on route
 const isUserProfilePage = computed(() => {
-  return route.path.startsWith('/u/')
+  return route?.path?.startsWith('/u/') || false
 })
 
 // Determine FilterSort context based on current route
 const filterSortContext = computed(() => {
-  const path = route.path
+  const path = route?.path
+  if (!path) return null
   if (path.includes('/software')) return 'software'
   if (path.includes('/kits')) return 'kits'
   if (path.startsWith('/u/') && !path.includes('/t/')) return 'music' // Exclude single track pages
@@ -532,9 +533,21 @@ const testToast = () => {
 
 // Listen for edit-track events from profile page
 onMounted(async () => {
+  if (!process.client) return
+  
   console.log('Layout: Starting auth initialization...')
-  await auth.init()
+  try {
+    await auth.init()
+  } catch (error) {
+    console.error('Auth init error:', error)
+  }
+  
+  // Wait for next tick to ensure router is initialized
+  await nextTick()
+  
+  // Ensure initialized is true after router is ready
   isInitialized.value = true
+  console.log('Layout: Initialized, isInitialized =', isInitialized.value)
   
   // Test toast on page load (temporary)
   setTimeout(() => {
