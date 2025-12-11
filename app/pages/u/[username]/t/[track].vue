@@ -245,7 +245,13 @@ const fetchCollectionsAndGroup = async () => {
   if (!supabase || !track.value) return
   
   try {
-    // Fetch collections
+    // Only show collections if user is logged in
+    if (!user.value) {
+      collections.value = []
+      return
+    }
+    
+    // Fetch collections that contain this track AND are owned by the logged-in user
     const { data: junctionData } = await supabase
       .from('collections_sounds')
       .select('collection_id')
@@ -257,9 +263,12 @@ const fetchCollectionsAndGroup = async () => {
         .from('collections')
         .select('id, name, slug')
         .in('id', collectionIds)
+        .eq('user_id', user.value.id) // Only show collections owned by logged-in user
         .order('name')
       
       collections.value = colData || []
+    } else {
+      collections.value = []
     }
     
     // Fetch other tracks in the same group

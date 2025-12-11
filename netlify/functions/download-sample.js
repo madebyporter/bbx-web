@@ -210,16 +210,25 @@ const downloadSampleHandler = async (event, context) => {
       // Cleanup temp files
       fs.rmSync(tempDir, { recursive: true, force: true })
 
-      // Get track title for filename
+      // Get track title and artist for filename
       const { data: trackData } = await supabase
         .from('sounds')
-        .select('title')
+        .select('title, artist')
         .eq('id', parseInt(trackId))
         .single()
 
-      const filename = trackData?.title 
-        ? `${trackData.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-sample.mp3`
-        : `sample-${trackId}.mp3`
+      let filename = `sample-${trackId}.mp3` // Default fallback
+      
+      if (trackData) {
+        const trackName = trackData.title 
+          ? trackData.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+          : 'untitled'
+        const artistName = trackData.artist
+          ? trackData.artist.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+          : 'unknown'
+        
+        filename = `${trackName}-${artistName}.mp3`
+      }
 
       return {
         statusCode: 200,
