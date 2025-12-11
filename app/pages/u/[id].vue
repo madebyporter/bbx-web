@@ -205,15 +205,15 @@
           :class="softwareSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
           Software
         </div>
-        <div @click="toggleMusicSection"
-          class="rounded-full px-4 py-2 w-fit flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
-          :class="musicSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
-          Music
-        </div>
         <div v-if="isOwnProfile && isAudioPro" @click="toggleMembersSection"
           class="rounded-full px-4 py-2 w-fit flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
           :class="membersSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
           Members
+        </div>
+        <div @click="toggleMusicSection"
+          class="rounded-full px-4 py-2 w-fit flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
+          :class="musicSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+          Music
         </div>
       </div>
     </div>
@@ -269,18 +269,17 @@
         </div>
       </div>
     </div>
-    <!-- Tracks Section -->
-    <div v-if="musicSectionOpen" class="grow">
-      <TracksTable :tracks="filteredTracks" :source-id="`profile-${profileUserId}`" :is-own-profile="isOwnProfile"
-        :loading="loading" :username="username" :viewer-user-type="viewerUserType" :profile-user-type="profileUserType"
-        @edit-track="handleEdit" @tracks-deleted="fetchTracks" @track-shortlisted="handleTrackShortlisted" @track-unshortlisted="handleTrackUnshortlisted" />
-    </div>
-
     <!-- Members Section -->
     <div v-if="isOwnProfile && isAudioPro && membersSectionOpen && profileUserId" class="grow border-b border-neutral-800">
       <div class="p-4">
         <ManageMembers :profile-id="profileUserId" />
       </div>
+    </div>
+    <!-- Tracks Section -->
+    <div v-if="musicSectionOpen" class="grow">
+      <TracksTable :tracks="filteredTracks" :source-id="`profile-${profileUserId}`" :is-own-profile="isOwnProfile"
+        :loading="loading" :username="username" :viewer-user-type="viewerUserType" :profile-user-type="profileUserType"
+        @edit-track="handleEdit" @tracks-deleted="fetchTracks" @track-shortlisted="handleTrackShortlisted" @track-unshortlisted="handleTrackUnshortlisted" />
     </div>
   </div>
 </template>
