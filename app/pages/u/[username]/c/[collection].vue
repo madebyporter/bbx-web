@@ -379,25 +379,26 @@ const seoUrl = computed(() =>
     : `${siteUrl}/u/${username}/c/${route.params.collection}`
 )
 
-useSeoMeta({
-  title: seoTitle,
-  description: seoDescription,
-  ogTitle: seoTitle,
-  ogDescription: seoDescription,
-  ogUrl: seoUrl,
-  ogType: 'music.playlist',
-  ogImage: `${siteUrl}/img/og-image.jpg`,
-  ogImageWidth: '1200',
-  ogImageHeight: '630',
-  twitterCard: 'summary_large_image',
-  twitterTitle: seoTitle,
-  twitterDescription: seoDescription,
-  twitterImage: `${siteUrl}/img/og-image.jpg`
-})
-
+// Set SEO meta tags using useHead to ensure they're evaluated during SSR
+// Use key properties to ensure these override defaults from nuxt.config.ts
 useHead({
+  title: seoTitle,
+  meta: [
+    { name: 'description', content: seoDescription, key: 'description' },
+    { property: 'og:title', content: seoTitle, key: 'og:title' },
+    { property: 'og:description', content: seoDescription, key: 'og:description' },
+    { property: 'og:url', content: seoUrl, key: 'og:url' },
+    { property: 'og:type', content: 'music.playlist', key: 'og:type' },
+    { property: 'og:image', content: `${siteUrl}/img/og-image.jpg`, key: 'og:image' },
+    { property: 'og:image:width', content: '1200', key: 'og:image:width' },
+    { property: 'og:image:height', content: '630', key: 'og:image:height' },
+    { name: 'twitter:card', content: 'summary_large_image', key: 'twitter:card' },
+    { name: 'twitter:title', content: seoTitle, key: 'twitter:title' },
+    { name: 'twitter:description', content: seoDescription, key: 'twitter:description' },
+    { name: 'twitter:image', content: `${siteUrl}/img/og-image.jpg`, key: 'twitter:image' }
+  ],
   link: [
-    { rel: 'canonical', href: seoUrl }
+    { rel: 'canonical', href: seoUrl, key: 'canonical' }
   ]
 })
 

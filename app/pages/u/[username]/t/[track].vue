@@ -501,29 +501,28 @@ const seoDescription = computed(() => {
 
 const seoUrl = computed(() => `${siteUrl}/u/${usernameParam}/t/${route.params.track}`)
 
-// Set SEO meta tags - these will be evaluated during SSR when trackData.value is available
+// Set SEO meta tags using useHead to ensure they're evaluated during SSR
 // Since useAsyncData with await ensures data is available during SSR, the computed properties
-// should have the correct values when useSeoMeta is called
-// Note: useSeoMeta accepts computed properties directly and will evaluate them during SSR
-useSeoMeta({
-  title: seoTitle,
-  description: seoDescription,
-  ogTitle: seoTitle,
-  ogDescription: seoDescription,
-  ogUrl: seoUrl,
-  ogType: 'music.song',
-  ogImage: `${siteUrl}/img/og-image.jpg`,
-  ogImageWidth: '1200',
-  ogImageHeight: '630',
-  twitterCard: 'summary_large_image',
-  twitterTitle: seoTitle,
-  twitterDescription: seoDescription,
-  twitterImage: `${siteUrl}/img/og-image.jpg`
-})
-
+// will have the correct values when useHead is called
+// Use key properties to ensure these override defaults from nuxt.config.ts
 useHead({
+  title: seoTitle,
+  meta: [
+    { name: 'description', content: seoDescription, key: 'description' },
+    { property: 'og:title', content: seoTitle, key: 'og:title' },
+    { property: 'og:description', content: seoDescription, key: 'og:description' },
+    { property: 'og:url', content: seoUrl, key: 'og:url' },
+    { property: 'og:type', content: 'music.song', key: 'og:type' },
+    { property: 'og:image', content: `${siteUrl}/img/og-image.jpg`, key: 'og:image' },
+    { property: 'og:image:width', content: '1200', key: 'og:image:width' },
+    { property: 'og:image:height', content: '630', key: 'og:image:height' },
+    { name: 'twitter:card', content: 'summary_large_image', key: 'twitter:card' },
+    { name: 'twitter:title', content: seoTitle, key: 'twitter:title' },
+    { name: 'twitter:description', content: seoDescription, key: 'twitter:description' },
+    { name: 'twitter:image', content: `${siteUrl}/img/og-image.jpg`, key: 'twitter:image' }
+  ],
   link: [
-    { rel: 'canonical', href: seoUrl }
+    { rel: 'canonical', href: seoUrl, key: 'canonical' }
   ]
 })
 
