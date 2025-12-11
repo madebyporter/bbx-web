@@ -108,6 +108,9 @@ const { data: initialData } = await useAsyncData(
       console.error('Error fetching group data:', error)
       return null
     }
+  },
+  {
+    server: true // Ensure this runs on the server for SSR
   }
 )
 

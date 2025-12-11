@@ -99,6 +99,9 @@ const { data: initialData } = await useAsyncData(
       console.error('Error fetching collection:', error)
       return null
     }
+  },
+  {
+    server: true // Ensure this runs on the server for SSR
   }
 )
 

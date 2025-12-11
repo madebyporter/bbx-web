@@ -367,6 +367,9 @@ const { data: initialData } = await useAsyncData(
       console.error('Error fetching profile:', error)
       return null
     }
+  },
+  {
+    server: true // Ensure this runs on the server for SSR
   }
 )
 
@@ -1421,11 +1424,13 @@ const handleSearch = (query: string) => {
 }
 
 // Set SEO meta tags - use initialData for SSR, then reactive values for updates
+// Prioritize initialData.value which is available during SSR
 const profileForSEO = computed(() => initialData.value?.profile)
 const tracksForSEO = computed(() => initialData.value?.tracks || tracks.value)
 
 const seoTitle = computed(() => {
-  const name = profileForSEO.value?.display_name || profileForSEO.value?.username || profileName.value
+  // Prioritize initialData first (available during SSR), then fallback to reactive values
+  const name = profileForSEO.value?.display_name || profileForSEO.value?.username || profileName.value || route.params.id
   return name 
     ? `${name}'s Music Library | Beatbox`
     : 'Music Library | Beatbox'
@@ -1433,7 +1438,8 @@ const seoTitle = computed(() => {
 
 const seoDescription = computed(() => {
   const trackCount = tracksForSEO.value.length > 0 ? `${tracksForSEO.value.length}+ tracks` : 'Music collection'
-  const name = profileForSEO.value?.display_name || profileForSEO.value?.username || profileName.value
+  // Prioritize initialData first (available during SSR), then fallback to reactive values
+  const name = profileForSEO.value?.display_name || profileForSEO.value?.username || profileName.value || route.params.id
   return name
     ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
     : 'Explore music collection on Beatbox'

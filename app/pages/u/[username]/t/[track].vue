@@ -123,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -147,6 +147,7 @@ const statuses = ref<Array<{ id: number; name: string }>>([])
 const isDownloading = ref(false)
 
 // Fetch track data server-side for SEO
+// Use server: true to ensure it runs during SSR
 const { data: trackData, pending: loading } = await useAsyncData(
   `track-${route.params.track}`,
   async () => {
@@ -231,8 +232,14 @@ const { data: trackData, pending: loading } = await useAsyncData(
       console.error('Error fetching track:', error)
       return null
     }
+  },
+  {
+    server: true // Ensure this runs on the server for SSR
   }
 )
+
+// Store initial data for SEO (available during SSR)
+const initialTrackData = trackData.value
 
 const track = computed(() => trackData.value)
 
@@ -456,24 +463,37 @@ const updateTrackStatus = async (trackId: number, statusId: number | null) => {
   }
 }
 
-// Set SEO meta tags - use trackData directly for SSR (available during server-side rendering)
+// Set SEO meta tags - use initialTrackData for SSR, then trackData for updates
 const usernameParam = route.params.username as string
-const trackForSEO = computed(() => trackData.value || track.value)
+
+// Use initialTrackData (available during SSR) or trackData (for client updates)
+// This pattern ensures SEO has data during SSR
+const trackForSEO = computed(() => {
+  // During SSR, initialTrackData should be available
+  // On client, trackData.value will be reactive
+  return initialTrackData || trackData.value
+})
 
 const seoTitle = computed(() => {
-  const trackTitle = trackForSEO.value?.title || 'Untitled'
-  const artist = trackForSEO.value?.artist || usernameParam || 'Unknown Artist'
+  if (!trackForSEO.value) {
+    return `Track by ${usernameParam} | Beatbox`
+  }
+  const trackTitle = trackForSEO.value.title || 'Untitled'
+  const artist = trackForSEO.value.artist || usernameParam || 'Unknown Artist'
   return `${trackTitle} by ${artist} | Beatbox`
 })
 
 const seoDescription = computed(() => {
-  const trackTitle = trackForSEO.value?.title || 'Untitled'
-  const artist = trackForSEO.value?.artist || usernameParam || 'Unknown Artist'
+  if (!trackForSEO.value) {
+    return `Listen to music by ${usernameParam} on Beatbox`
+  }
+  const trackTitle = trackForSEO.value.title || 'Untitled'
+  const artist = trackForSEO.value.artist || usernameParam || 'Unknown Artist'
   
   const details = []
-  if (trackForSEO.value?.genre) details.push(trackForSEO.value.genre)
-  if (trackForSEO.value?.bpm) details.push(`${trackForSEO.value.bpm} BPM`)
-  if (trackForSEO.value?.key) details.push(trackForSEO.value.key)
+  if (trackForSEO.value.genre) details.push(trackForSEO.value.genre)
+  if (trackForSEO.value.bpm) details.push(`${trackForSEO.value.bpm} BPM`)
+  if (trackForSEO.value.key) details.push(trackForSEO.value.key)
   const detailsStr = details.length > 0 ? ` - ${details.join(', ')}` : ''
   
   return `Listen to ${trackTitle} by ${artist} on Beatbox${detailsStr}`
@@ -481,6 +501,10 @@ const seoDescription = computed(() => {
 
 const seoUrl = computed(() => `${siteUrl}/u/${usernameParam}/t/${route.params.track}`)
 
+// Set SEO meta tags - these will be evaluated during SSR when trackData.value is available
+// Since useAsyncData with await ensures data is available during SSR, the computed properties
+// should have the correct values when useSeoMeta is called
+// Note: useSeoMeta accepts computed properties directly and will evaluate them during SSR
 useSeoMeta({
   title: seoTitle,
   description: seoDescription,
