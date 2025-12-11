@@ -463,66 +463,44 @@ const updateTrackStatus = async (trackId: number, statusId: number | null) => {
   }
 }
 
-// Set SEO meta tags - use initialTrackData for SSR, then trackData for updates
+// Set SEO meta tags with actual values during SSR (not computed properties)
+// This ensures the SEO is set correctly during server-side rendering
 const usernameParam = route.params.username as string
+const trackForSEO = initialTrackData || trackData.value
 
-// Use initialTrackData (available during SSR) or trackData (for client updates)
-// This pattern ensures SEO has data during SSR
-const trackForSEO = computed(() => {
-  // During SSR, initialTrackData should be available
-  // On client, trackData.value will be reactive
-  return initialTrackData || trackData.value
-})
+// Calculate SEO values directly from the data (available during SSR)
+const trackTitle = trackForSEO?.title || 'Untitled'
+const artist = trackForSEO?.artist || usernameParam || 'Unknown Artist'
+const seoTitleValue = `${trackTitle} by ${artist} | Beatbox`
 
-const seoTitle = computed(() => {
-  if (!trackForSEO.value) {
-    return `Track by ${usernameParam} | Beatbox`
-  }
-  const trackTitle = trackForSEO.value.title || 'Untitled'
-  const artist = trackForSEO.value.artist || usernameParam || 'Unknown Artist'
-  return `${trackTitle} by ${artist} | Beatbox`
-})
+const details = []
+if (trackForSEO?.genre) details.push(trackForSEO.genre)
+if (trackForSEO?.bpm) details.push(`${trackForSEO.bpm} BPM`)
+if (trackForSEO?.key) details.push(trackForSEO.key)
+const detailsStr = details.length > 0 ? ` - ${details.join(', ')}` : ''
+const seoDescriptionValue = `Listen to ${trackTitle} by ${artist} on Beatbox${detailsStr}`
 
-const seoDescription = computed(() => {
-  if (!trackForSEO.value) {
-    return `Listen to music by ${usernameParam} on Beatbox`
-  }
-  const trackTitle = trackForSEO.value.title || 'Untitled'
-  const artist = trackForSEO.value.artist || usernameParam || 'Unknown Artist'
-  
-  const details = []
-  if (trackForSEO.value.genre) details.push(trackForSEO.value.genre)
-  if (trackForSEO.value.bpm) details.push(`${trackForSEO.value.bpm} BPM`)
-  if (trackForSEO.value.key) details.push(trackForSEO.value.key)
-  const detailsStr = details.length > 0 ? ` - ${details.join(', ')}` : ''
-  
-  return `Listen to ${trackTitle} by ${artist} on Beatbox${detailsStr}`
-})
+const seoUrlValue = `${siteUrl}/u/${usernameParam}/t/${route.params.track}`
 
-const seoUrl = computed(() => `${siteUrl}/u/${usernameParam}/t/${route.params.track}`)
-
-// Set SEO meta tags using useHead to ensure they're evaluated during SSR
-// Since useAsyncData with await ensures data is available during SSR, the computed properties
-// will have the correct values when useHead is called
-// Use key properties to ensure these override defaults from nuxt.config.ts
+// Set SEO meta tags with actual values (not computed) to ensure SSR works correctly
 useHead({
-  title: seoTitle,
+  title: seoTitleValue,
   meta: [
-    { name: 'description', content: seoDescription, key: 'description' },
-    { property: 'og:title', content: seoTitle, key: 'og:title' },
-    { property: 'og:description', content: seoDescription, key: 'og:description' },
-    { property: 'og:url', content: seoUrl, key: 'og:url' },
+    { name: 'description', content: seoDescriptionValue, key: 'description' },
+    { property: 'og:title', content: seoTitleValue, key: 'og:title' },
+    { property: 'og:description', content: seoDescriptionValue, key: 'og:description' },
+    { property: 'og:url', content: seoUrlValue, key: 'og:url' },
     { property: 'og:type', content: 'music.song', key: 'og:type' },
     { property: 'og:image', content: `${siteUrl}/img/og-image.jpg`, key: 'og:image' },
     { property: 'og:image:width', content: '1200', key: 'og:image:width' },
     { property: 'og:image:height', content: '630', key: 'og:image:height' },
     { name: 'twitter:card', content: 'summary_large_image', key: 'twitter:card' },
-    { name: 'twitter:title', content: seoTitle, key: 'twitter:title' },
-    { name: 'twitter:description', content: seoDescription, key: 'twitter:description' },
+    { name: 'twitter:title', content: seoTitleValue, key: 'twitter:title' },
+    { name: 'twitter:description', content: seoDescriptionValue, key: 'twitter:description' },
     { name: 'twitter:image', content: `${siteUrl}/img/og-image.jpg`, key: 'twitter:image' }
   ],
   link: [
-    { rel: 'canonical', href: seoUrl, key: 'canonical' }
+    { rel: 'canonical', href: seoUrlValue, key: 'canonical' }
   ]
 })
 

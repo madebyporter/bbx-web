@@ -1423,53 +1423,39 @@ const handleSearch = (query: string) => {
   searchQuery.value = query
 }
 
-// Set SEO meta tags - use initialData for SSR, then reactive values for updates
-// Prioritize initialData.value which is available during SSR
-const profileForSEO = computed(() => initialData.value?.profile)
-const tracksForSEO = computed(() => initialData.value?.tracks || tracks.value)
+// Set SEO meta tags with actual values during SSR (not computed properties)
+// This ensures the SEO is set correctly during server-side rendering
+const profileForSEO = initialData.value?.profile
+const tracksForSEO = initialData.value?.tracks || tracks.value
 
-const seoTitle = computed(() => {
-  // Prioritize initialData first (available during SSR), then fallback to reactive values
-  const name = profileForSEO.value?.display_name || profileForSEO.value?.username || profileName.value || route.params.id
-  return name 
-    ? `${name}'s Music Library | Beatbox`
-    : 'Music Library | Beatbox'
-})
+// Calculate SEO values directly from the data (available during SSR)
+const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
+const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
+const seoTitleValue = name ? `${name}'s Music Library | Beatbox` : 'Music Library | Beatbox'
+const seoDescriptionValue = name
+  ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
+  : 'Explore music collection on Beatbox'
+const seoUrlValue = `${siteUrl}/u/${profileForSEO?.username || username.value || route.params.id}`
 
-const seoDescription = computed(() => {
-  const trackCount = tracksForSEO.value.length > 0 ? `${tracksForSEO.value.length}+ tracks` : 'Music collection'
-  // Prioritize initialData first (available during SSR), then fallback to reactive values
-  const name = profileForSEO.value?.display_name || profileForSEO.value?.username || profileName.value || route.params.id
-  return name
-    ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
-    : 'Explore music collection on Beatbox'
-})
-
-const seoUrl = computed(() => {
-  const usernameValue = profileForSEO.value?.username || username.value || route.params.id
-  return `${siteUrl}/u/${usernameValue}`
-})
-
-// Set SEO meta tags using useHead to ensure they're evaluated during SSR
-// Use key properties to ensure these override defaults from nuxt.config.ts
+// Set SEO meta tags with actual values (not computed) to ensure SSR works correctly
 useHead({
-  title: seoTitle,
+  title: seoTitleValue,
   meta: [
-    { name: 'description', content: seoDescription, key: 'description' },
-    { property: 'og:title', content: seoTitle, key: 'og:title' },
-    { property: 'og:description', content: seoDescription, key: 'og:description' },
-    { property: 'og:url', content: seoUrl, key: 'og:url' },
+    { name: 'description', content: seoDescriptionValue, key: 'description' },
+    { property: 'og:title', content: seoTitleValue, key: 'og:title' },
+    { property: 'og:description', content: seoDescriptionValue, key: 'og:description' },
+    { property: 'og:url', content: seoUrlValue, key: 'og:url' },
     { property: 'og:type', content: 'profile', key: 'og:type' },
     { property: 'og:image', content: `${siteUrl}/img/og-image.jpg`, key: 'og:image' },
     { property: 'og:image:width', content: '1200', key: 'og:image:width' },
     { property: 'og:image:height', content: '630', key: 'og:image:height' },
     { name: 'twitter:card', content: 'summary_large_image', key: 'twitter:card' },
-    { name: 'twitter:title', content: seoTitle, key: 'twitter:title' },
-    { name: 'twitter:description', content: seoDescription, key: 'twitter:description' },
+    { name: 'twitter:title', content: seoTitleValue, key: 'twitter:title' },
+    { name: 'twitter:description', content: seoDescriptionValue, key: 'twitter:description' },
     { name: 'twitter:image', content: `${siteUrl}/img/og-image.jpg`, key: 'twitter:image' }
   ],
   link: [
-    { rel: 'canonical', href: seoUrl, key: 'canonical' }
+    { rel: 'canonical', href: seoUrlValue, key: 'canonical' }
   ]
 })
 

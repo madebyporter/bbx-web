@@ -353,52 +353,45 @@ const handleSearch = (query: string) => {
   searchQuery.value = query
 }
 
-// Set SEO meta tags - use initialData for SSR, then reactive collection for updates
+// Set SEO meta tags with actual values during SSR (not computed properties)
+// This ensures the SEO is set correctly during server-side rendering
 const username = route.params.username as string
+const collectionForSEO = initialData.value?.collection || collection.value
 
-// Get collection data from initialData (available during SSR) or reactive collection
-const collectionForSEO = computed(() => initialData.value?.collection || collection.value)
+// Calculate SEO values directly from the data (available during SSR)
+const seoTitleValue = collectionForSEO 
+  ? `${collectionForSEO.name} by ${username} | Beatbox`
+  : `Collection by ${username} | Beatbox`
 
-const seoTitle = computed(() => 
-  collectionForSEO.value 
-    ? `${collectionForSEO.value.name} by ${username} | Beatbox`
-    : `Collection by ${username} | Beatbox`
-)
+const seoDescriptionValue = collectionForSEO?.description 
+  ? collectionForSEO.description
+  : collectionForSEO
+    ? `Browse ${collectionForSEO.name} by ${username} on Beatbox`
+    : `Browse music collection by ${username} on Beatbox`
 
-const seoDescription = computed(() => 
-  collectionForSEO.value?.description 
-    ? collectionForSEO.value.description
-    : collectionForSEO.value
-      ? `Browse ${collectionForSEO.value.name} by ${username} on Beatbox`
-      : `Browse music collection by ${username} on Beatbox`
-)
+const seoUrlValue = collectionForSEO 
+  ? `${siteUrl}/u/${username}/c/${collectionForSEO.slug}`
+  : `${siteUrl}/u/${username}/c/${route.params.collection}`
 
-const seoUrl = computed(() => 
-  collectionForSEO.value 
-    ? `${siteUrl}/u/${username}/c/${collectionForSEO.value.slug}`
-    : `${siteUrl}/u/${username}/c/${route.params.collection}`
-)
-
-// Set SEO meta tags using useHead to ensure they're evaluated during SSR
-// Use key properties to ensure these override defaults from nuxt.config.ts
+// Set SEO meta tags with actual values (not computed) to ensure SSR works correctly
 useHead({
-  title: seoTitle,
+  title: seoTitleValue,
   meta: [
-    { name: 'description', content: seoDescription, key: 'description' },
-    { property: 'og:title', content: seoTitle, key: 'og:title' },
-    { property: 'og:description', content: seoDescription, key: 'og:description' },
-    { property: 'og:url', content: seoUrl, key: 'og:url' },
+    { name: 'description', content: seoDescriptionValue, key: 'description' },
+    { property: 'og:title', content: seoTitleValue, key: 'og:title' },
+    { property: 'og:description', content: seoDescriptionValue, key: 'og:description' },
+    { property: 'og:url', content: seoUrlValue, key: 'og:url' },
     { property: 'og:type', content: 'music.playlist', key: 'og:type' },
     { property: 'og:image', content: `${siteUrl}/img/og-image.jpg`, key: 'og:image' },
     { property: 'og:image:width', content: '1200', key: 'og:image:width' },
     { property: 'og:image:height', content: '630', key: 'og:image:height' },
     { name: 'twitter:card', content: 'summary_large_image', key: 'twitter:card' },
-    { name: 'twitter:title', content: seoTitle, key: 'twitter:title' },
-    { name: 'twitter:description', content: seoDescription, key: 'twitter:description' },
+    { name: 'twitter:title', content: seoTitleValue, key: 'twitter:title' },
+    { name: 'twitter:description', content: seoDescriptionValue, key: 'twitter:description' },
     { name: 'twitter:image', content: `${siteUrl}/img/og-image.jpg`, key: 'twitter:image' }
   ],
   link: [
-    { rel: 'canonical', href: seoUrl, key: 'canonical' }
+    { rel: 'canonical', href: seoUrlValue, key: 'canonical' }
   ]
 })
 

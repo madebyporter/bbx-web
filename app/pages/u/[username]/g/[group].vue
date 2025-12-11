@@ -248,53 +248,44 @@ const handleEdit = (track: any) => {
   window.dispatchEvent(event)
 }
 
-// Set SEO meta tags - use initialData for SSR, then reactive values for updates
-const groupForSEO = computed(() => ({
+// Set SEO meta tags with actual values during SSR (not computed properties)
+// This ensures the SEO is set correctly during server-side rendering
+const groupForSEO = {
   username: initialData.value?.username || username.value,
   groupName: initialData.value?.groupName || groupName.value,
   trackCount: initialData.value?.tracks?.length || tracks.value.length
-}))
+}
 
-const seoTitle = computed(() => 
-  groupForSEO.value.groupName && groupForSEO.value.username
-    ? `${groupForSEO.value.groupName} by ${groupForSEO.value.username} | Beatbox`
-    : 'Track Group | Beatbox'
-)
+// Calculate SEO values directly from the data (available during SSR)
+const seoTitleValue = groupForSEO.groupName && groupForSEO.username
+  ? `${groupForSEO.groupName} by ${groupForSEO.username} | Beatbox`
+  : 'Track Group | Beatbox'
 
-const seoDescription = computed(() => {
-  if (!groupForSEO.value.groupName || !groupForSEO.value.username) {
-    return 'View track group on Beatbox'
-  }
-  const trackCount = groupForSEO.value.trackCount
-  return `View different versions of ${groupForSEO.value.groupName} by ${groupForSEO.value.username} on Beatbox${trackCount > 0 ? ` - ${trackCount} tracks` : ''}`
-})
+const seoDescriptionValue = !groupForSEO.groupName || !groupForSEO.username
+  ? 'View track group on Beatbox'
+  : `View different versions of ${groupForSEO.groupName} by ${groupForSEO.username} on Beatbox${groupForSEO.trackCount > 0 ? ` - ${groupForSEO.trackCount} tracks` : ''}`
 
-const seoUrl = computed(() => {
-  const usernameValue = groupForSEO.value.username || route.params.username
-  const groupValue = groupForSEO.value.groupName || route.params.group
-  return `${siteUrl}/u/${usernameValue}/g/${groupValue}`
-})
+const seoUrlValue = `${siteUrl}/u/${groupForSEO.username || route.params.username}/g/${groupForSEO.groupName || route.params.group}`
 
-// Set SEO meta tags using useHead to ensure they're evaluated during SSR
-// Use key properties to ensure these override defaults from nuxt.config.ts
+// Set SEO meta tags with actual values (not computed) to ensure SSR works correctly
 useHead({
-  title: seoTitle,
+  title: seoTitleValue,
   meta: [
-    { name: 'description', content: seoDescription, key: 'description' },
-    { property: 'og:title', content: seoTitle, key: 'og:title' },
-    { property: 'og:description', content: seoDescription, key: 'og:description' },
-    { property: 'og:url', content: seoUrl, key: 'og:url' },
+    { name: 'description', content: seoDescriptionValue, key: 'description' },
+    { property: 'og:title', content: seoTitleValue, key: 'og:title' },
+    { property: 'og:description', content: seoDescriptionValue, key: 'og:description' },
+    { property: 'og:url', content: seoUrlValue, key: 'og:url' },
     { property: 'og:type', content: 'music.playlist', key: 'og:type' },
     { property: 'og:image', content: `${siteUrl}/img/og-image.jpg`, key: 'og:image' },
     { property: 'og:image:width', content: '1200', key: 'og:image:width' },
     { property: 'og:image:height', content: '630', key: 'og:image:height' },
     { name: 'twitter:card', content: 'summary_large_image', key: 'twitter:card' },
-    { name: 'twitter:title', content: seoTitle, key: 'twitter:title' },
-    { name: 'twitter:description', content: seoDescription, key: 'twitter:description' },
+    { name: 'twitter:title', content: seoTitleValue, key: 'twitter:title' },
+    { name: 'twitter:description', content: seoDescriptionValue, key: 'twitter:description' },
     { name: 'twitter:image', content: `${siteUrl}/img/og-image.jpg`, key: 'twitter:image' }
   ],
   link: [
-    { rel: 'canonical', href: seoUrl, key: 'canonical' }
+    { rel: 'canonical', href: seoUrlValue, key: 'canonical' }
   ]
 })
 
