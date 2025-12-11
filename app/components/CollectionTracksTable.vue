@@ -9,15 +9,16 @@
     </div>
 
     <div class="w-fit md:w-full" v-else>
-      <!-- Confirm Dialog -->
-      <ConfirmDialog
-        v-model:show="showConfirmDialog"
-        title="Remove Tracks"
-        :message="`Remove ${selectedTrackIds.size} track${selectedTrackIds.size > 1 ? 's' : ''} from this collection?`"
-        confirm-text="Remove"
-        cancel-text="Cancel"
-        :confirm-danger="true"
-        @confirm="handleBulkRemove"
+      <!-- Bulk Actions Drawer -->
+      <BulkActionsDrawer
+        v-model:show="showBulkActionsDrawer"
+        :selected-tracks="selectedTracksArray"
+        :selected-count="selectedTrackIds.size"
+        :collection-id="collectionId"
+        :is-collection-context="true"
+        @tracks-deleted="handleTracksRemoved"
+        @tracks-updated="handleTracksUpdated"
+        @close="handleBulkActionsClose"
       />
       
       <!-- Header -->
@@ -51,14 +52,14 @@
         <div>BPM</div>
         <div>Duration</div>
         <div v-if="isOwnProfile && viewMode === 'all'">Visible</div>
-        <div v-if="isOwnProfile">Status</div>
+        <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
         <div v-if="isOwnProfile" class="flex items-center justify-start">
           <button
             v-if="hasSelections"
-            @click="showConfirmDialog = true"
-            class="px-3 py-0.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors cursor-pointer"
+            @click="showBulkActionsDrawer = true"
+            class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded transition-colors cursor-pointer"
           >
-            Remove
+            Bulk ({{ selectedTrackIds.size }})
           </button>
         </div>
       </div>
@@ -98,19 +99,20 @@
             </svg>
           </button>
         </div>
-        <div class="overflow-hidden truncate">
-          <NuxtLink :to="`/u/${username}/t/${generateTrackSlug(track)}`"
-            :class="['hover:text-white transition-colors hover:underline'] + (isCurrentlyPlaying(track) ? ' font-bold text-white' : '')">
-            {{ track.title || 'Untitled' }}
+        <div class="overflow-hidden">
+          <NuxtLink :to="`/u/${getTrackOwnerUsername(track)}/t/${generateTrackSlug(track)}`"
+            :class="['flex items-center justify-between gap-2 hover:text-white transition-colors hover:underline'] + (isCurrentlyPlaying(track) ? ' font-bold text-white' : '')">
+            <span class="truncate">{{ track.title || 'Untitled' }}</span>
+            <span v-if="track.is_public === false" class="text-xs text-neutral-500 flex-shrink-0">[private]</span>
           </NuxtLink>
         </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
         <div v-if="user" class="text-neutral-400 overflow-hidden">
-          <template v-if="track.collections && track.collections.length > 0">
+          <template v-if="getOwnerCollectionsForTrack(track).length > 0">
             <div class="flex flex-wrap gap-1">
               <NuxtLink 
-                v-for="collection in track.collections" 
+                v-for="collection in getOwnerCollectionsForTrack(track)" 
                 :key="collection.slug"
                 :to="`/u/${username}/c/${collection.slug}`" 
                 class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white transition-colors whitespace-nowrap"
@@ -125,7 +127,7 @@
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
         <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>
         <div v-if="isOwnProfile && viewMode === 'all'" class="flex items-center justify-center">
-          <button @click="$emit('toggle-hidden', track.id, track.hidden)"
+          <button @click="$emit('toggle-hidden', track.id)"
             class="text-neutral-400 hover:text-white transition-colors cursor-pointer"
             :title="track.hidden ? 'Hidden from final (click to show)' : 'Visible in final (click to hide)'">
             <!-- Eye open (visible) -->
@@ -142,7 +144,7 @@
             </svg>
           </button>
         </div>
-        <div v-if="isOwnProfile" class="text-neutral-400 overflow-hidden">
+        <div v-if="isOwnProfile && profileUserType === 'audio_pro'" class="text-neutral-400 overflow-hidden">
           <select 
             v-if="statuses.length > 0"
             :value="track.status_id || ''"
@@ -157,9 +159,21 @@
           <div v-else class="text-xs px-2 py-1">Loading...</div>
         </div>
         <div v-if="isOwnProfile">
-          <button @click="$emit('edit-track', track)" class="text-neutral-500 hover:text-amber-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5"
+          <!-- Edit button for audio_pro owners -->
+          <button 
+            v-if="profileUserType === 'audio_pro'"
+            @click="$emit('edit-track', track)" 
+            class="text-neutral-500 hover:text-amber-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5"
             title="Edit track">
             Edit
+          </button>
+          <!-- Remove button for creators (remove from collection) -->
+          <button 
+            v-else-if="profileUserType === 'creator' && collectionId"
+            @click="handleRemoveFromCollection(track.id)" 
+            class="text-neutral-500 hover:text-red-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5"
+            title="Remove from collection">
+            Remove
           </button>
         </div>
       </div>
@@ -174,7 +188,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import { useToast } from '~/composables/useToast'
 import LoadingLogo from '~/components/LoadingLogo.vue'
-import ConfirmDialog from '~/components/ConfirmDialog.vue'
+import BulkActionsDrawer from '~/components/BulkActionsDrawer.vue'
 
 const props = defineProps<{
   tracks: any[]
@@ -184,12 +198,15 @@ const props = defineProps<{
   username: string
   viewMode: 'final' | 'all'
   collectionId?: number
+  viewerUserType?: 'creator' | 'audio_pro' | null
+  profileUserType?: 'creator' | 'audio_pro' | null
 }>()
 
 const emit = defineEmits<{
   'edit-track': [track: any]
   'toggle-hidden': [trackId: number]
   'tracks-removed': []
+  'track-removed-from-collection': [trackId: number]
 }>()
 
 const { loadQueue, currentTrack, isPlaying } = usePlayer()
@@ -203,9 +220,14 @@ const statuses = ref<Array<{ id: number; name: string }>>([])
 const bulkSelectionMode = ref(false)
 const selectedTrackIds = ref(new Set<number>())
 const clickCount = ref(0)
-const showConfirmDialog = ref(false)
+const showBulkActionsDrawer = ref(false)
 
 const hasSelections = computed(() => selectedTrackIds.value.size > 0)
+
+// Get selected tracks as array
+const selectedTracksArray = computed(() => {
+  return props.tracks.filter(track => selectedTrackIds.value.has(track.id))
+})
 
 // Handle scroll-to-track event
 const handleScrollToTrack = (event: CustomEvent) => {
@@ -311,6 +333,18 @@ const handlePlayClick = (track: any, index: number) => {
   loadQueue(visibleTracks, props.sourceId, visibleIndex >= 0 ? visibleIndex : 0)
 }
 
+// Get the track owner's username
+// For shortlisted tracks, use original_owner.username
+// For regular tracks, use the profile username prop
+const getTrackOwnerUsername = (track: any): string => {
+  // Shortlisted tracks have original_owner with username
+  if (track.original_owner?.username) {
+    return track.original_owner.username
+  }
+  // Regular tracks use the profile username
+  return props.username
+}
+
 const generateTrackSlug = (track: any): string => {
   if (track.title) {
     const slug = track.title
@@ -359,44 +393,64 @@ const toggleTrackSelection = (trackId: number) => {
   }
 }
 
-const handleBulkRemove = async () => {
-  if (!supabase || selectedTrackIds.value.size === 0 || !props.collectionId) return
+// Handle tracks removed from bulk actions drawer
+const handleTracksRemoved = () => {
+  // Clear selection and exit bulk mode
+  bulkSelectionMode.value = false
+  selectedTrackIds.value.clear()
+  clickCount.value = 0
+  showBulkActionsDrawer.value = false
   
-  const selectedIds = Array.from(selectedTrackIds.value)
-  const count = selectedIds.length
+  // Notify parent to refetch
+  emit('tracks-removed')
+}
+
+// Handle tracks updated from bulk actions drawer
+const handleTracksUpdated = () => {
+  // Clear selection and exit bulk mode
+  bulkSelectionMode.value = false
+  selectedTrackIds.value.clear()
+  clickCount.value = 0
+  showBulkActionsDrawer.value = false
   
-  let toastId: string | undefined
+  // Notify parent to refetch
+  emit('tracks-removed') // Reuse same event to trigger refetch
+}
+
+// Handle bulk actions drawer close
+const handleBulkActionsClose = () => {
+  showBulkActionsDrawer.value = false
+}
+
+// Filter collections to only show owner's collections for a track
+// The parent component already filters collections by user_id, so we just return them
+const getOwnerCollectionsForTrack = (track: any) => {
+  return track.collections || []
+}
+
+// Remove track from collection
+const handleRemoveFromCollection = async (trackId: number) => {
+  if (!supabase || !user.value || !props.collectionId) return
+  
+  const toastId = showProcessing('Removing track from collection...')
   
   try {
-    toastId = showProcessing(`Removing ${count} track${count > 1 ? 's' : ''}...`)
-    
-    // Remove tracks from collection via junction table
     const { error } = await supabase
       .from('collections_sounds')
       .delete()
-      .in('sound_id', selectedIds)
       .eq('collection_id', props.collectionId)
+      .eq('sound_id', trackId)
     
-    if (toastId) removeToast(toastId)
+    if (error) throw error
     
-    if (error) {
-      showError('Failed to remove tracks from collection')
-      console.error('Remove error:', error)
-    } else {
-      showSuccess(`Successfully removed ${count} track${count > 1 ? 's' : ''} from collection`)
-      
-      // Clear selection and exit bulk mode
-      bulkSelectionMode.value = false
-      selectedTrackIds.value.clear()
-      clickCount.value = 0
-      
-      // Notify parent to refetch
-      emit('tracks-removed')
-    }
+    removeToast(toastId)
+    showSuccess('Track removed from collection')
+    emit('track-removed-from-collection', trackId)
+    emit('tracks-removed') // Trigger refetch
   } catch (error) {
-    if (toastId) removeToast(toastId)
-    showError('Failed to remove tracks from collection')
-    console.error('Bulk remove error:', error)
+    removeToast(toastId)
+    showError('Failed to remove track from collection')
+    console.error('Error removing track from collection:', error)
   }
 }
 </script>

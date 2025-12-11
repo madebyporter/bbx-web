@@ -79,6 +79,24 @@
             </div>
           </div>
         </div>
+        <!-- Download Sample Button -->
+        <div class="mt-4">
+          <button 
+            @click="handleDownloadSample"
+            :disabled="isDownloading"
+            class="btn w-full md:w-auto flex items-center gap-2"
+            :class="{ 'opacity-50 cursor-not-allowed': isDownloading }"
+          >
+            <svg v-if="!isDownloading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ isDownloading ? 'Generating Sample...' : 'Download Sample' }}
+          </button>
+        </div>
       </div>
 
       <!-- Edit Section (if own profile) -->
@@ -116,7 +134,7 @@ import LoadingLogo from '~/components/LoadingLogo.vue'
 const route = useRoute()
 const { user } = useAuth()
 const { supabase } = useSupabase()
-const { loadQueue, currentTrack, isPlaying } = usePlayer()
+const { loadQueue, currentTrack, isPlaying, togglePlayPause } = usePlayer()
 const { showSuccess, showError } = useToast()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
@@ -126,6 +144,7 @@ const groupTracks = ref<any[]>([])
 const collections = ref<any[]>([])
 const profileUserId = ref<string | null>(null)
 const statuses = ref<Array<{ id: number; name: string }>>([])
+const isDownloading = ref(false)
 
 // Fetch track data server-side for SEO
 const { data: trackData, pending: loading } = await useAsyncData(
@@ -155,18 +174,57 @@ const { data: trackData, pending: loading } = await useAsyncData(
       // Store profile ID
       profileUserId.value = profileData.id as string
       
+      // Check if current user is the profile owner (only available on client)
+      const isProfileOwner = process.client && user.value && user.value.id === profileData.id
+      
       // Fetch the specific track
+      // Always filter by user_id to ensure we get tracks from this profile
+      // RLS will handle visibility (public tracks visible to all, private only to owner/members)
       const { data: trackData, error: trackError } = await supabase
         .from('sounds')
-        .select(`
-          *,
-          track_statuses!status_id(id, name)
-        `)
+        .select('*')
         .eq('id', trackId)
         .eq('user_id', profileData.id)
-        .single()
+        .maybeSingle() // Use maybeSingle() instead of single() to avoid errors if not found
       
-      if (trackError || !trackData) return null
+      if (trackError) {
+        console.error('Error fetching track:', trackError)
+        return null
+      }
+      
+      if (!trackData) {
+        return null // Track not found
+      }
+      
+      // Initialize track_statuses as null
+      trackData.track_statuses = null
+      
+      // Only fetch track_statuses if the current user is the track owner
+      // Non-owners should not see track statuses
+      // Only try to fetch on client-side where user context is available
+      if (process.client && isProfileOwner && trackData.status_id) {
+        try {
+          // Fetch track_status only for the owner
+          // Wrap in try-catch to handle RLS gracefully
+          const { data: statusData, error: statusError } = await supabase
+            .from('track_statuses')
+            .select('id, name')
+            .eq('id', trackData.status_id)
+            .single()
+          
+          if (!statusError && statusData) {
+            trackData.track_statuses = statusData
+          }
+        } catch (error) {
+          // Silently fail - track_statuses will remain null
+          console.debug('Could not fetch track_status (expected for non-owners):', error)
+        }
+      }
+      
+      // Hide status_id from non-owners
+      if (!isProfileOwner) {
+        trackData.status_id = null
+      }
       
       return trackData
     } catch (error) {
@@ -187,7 +245,13 @@ const fetchCollectionsAndGroup = async () => {
   if (!supabase || !track.value) return
   
   try {
-    // Fetch collections
+    // Only show collections if user is logged in
+    if (!user.value) {
+      collections.value = []
+      return
+    }
+    
+    // Fetch collections that contain this track AND are owned by the logged-in user
     const { data: junctionData } = await supabase
       .from('collections_sounds')
       .select('collection_id')
@@ -199,9 +263,12 @@ const fetchCollectionsAndGroup = async () => {
         .from('collections')
         .select('id, name, slug')
         .in('id', collectionIds)
+        .eq('user_id', user.value.id) // Only show collections owned by logged-in user
         .order('name')
       
       collections.value = colData || []
+    } else {
+      collections.value = []
     }
     
     // Fetch other tracks in the same group
@@ -220,10 +287,23 @@ const fetchCollectionsAndGroup = async () => {
   }
 }
 
-const handlePlay = () => {
-  if (track.value) {
-    loadQueue([track.value], `track-${track.value.id}`, 0)
+const handlePlay = async () => {
+  if (!track.value) return
+  
+  // If this track is already playing, toggle play/pause
+  if (currentTrack.value?.id === track.value.id && isPlaying.value) {
+    togglePlayPause()
+    return
   }
+  
+  // If this track is loaded but paused, just resume
+  if (currentTrack.value?.id === track.value.id && !isPlaying.value) {
+    await togglePlayPause()
+    return
+  }
+  
+  // Otherwise, load and play the track
+  await loadQueue([track.value], `track-${track.value.id}`, 0)
 }
 
 const handleEdit = () => {
@@ -233,6 +313,66 @@ const handleEdit = () => {
     composed: true
   })
   window.dispatchEvent(event)
+}
+
+const handleDownloadSample = async () => {
+  if (!track.value || isDownloading.value) return
+  
+  isDownloading.value = true
+  
+  try {
+    const trackId = track.value.id
+    const storagePath = track.value.storage_path
+    const usernameParam = username.value
+    
+    if (!trackId || !storagePath) {
+      showError('Track information missing')
+      return
+    }
+    
+    // Call Netlify function - use absolute URL to bypass Vue Router
+    // Add cache-busting parameter to prevent browser caching
+    const baseUrl = window.location.origin
+    const timestamp = Date.now()
+    const functionUrl = `${baseUrl}/.netlify/functions/download-sample?trackId=${trackId}&storagePath=${encodeURIComponent(storagePath)}&username=${encodeURIComponent(usernameParam)}&_t=${timestamp}`
+    
+    const response = await fetch(functionUrl, {
+      cache: 'no-store' // Prevent browser caching
+    })
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Failed to generate sample' }))
+      throw new Error(error.error || 'Failed to generate sample')
+    }
+    
+    // Get filename from Content-Disposition header or use default
+    const contentDisposition = response.headers.get('Content-Disposition')
+    let filename = `sample-${trackId}.mp3`
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/i)
+      if (filenameMatch) {
+        filename = filenameMatch[1]
+      }
+    }
+    
+    // Download the file
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    
+    showSuccess('Sample downloaded successfully')
+  } catch (error: any) {
+    console.error('Error downloading sample:', error)
+    showError(error.message || 'Failed to download sample')
+  } finally {
+    isDownloading.value = false
+  }
 }
 
 function generateTrackSlug(t: any): string {

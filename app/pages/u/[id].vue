@@ -1,19 +1,143 @@
 <template>
   <div class="flex flex-col gap-0 text-neutral-300 grow">
     <!-- Profile Header -->
-    <LibraryHeader :title="profileName" :count="filteredTracks.length" />
+    <div class="flex flex-row justify-between items-center gap-4 py-2 px-4 lg:py-4 border-b border-neutral-800">
+      <div class="flex flex-col overflow-auto">
+        <!-- Display Name and Username -->
+        <div class="flex flex-row gap-2 items-end flex-wrap">
+          <!-- Display Name Section -->
+          <div class="flex flex-row gap-2 items-center">
+            <!-- Editing Display Name -->
+            <div v-if="editingDisplayName"
+              class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
+              <input ref="displayNameInputRef" v-model="newDisplayNameValue" type="text"
+                class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]"
+                @keyup.enter="saveDisplayName" @keyup.esc="cancelEditingDisplayName" />
+              <button @click="cancelEditingDisplayName"
+                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+                <Xmark class="w-[10px] h-[10px]" />
+              </button>
+              <button @click="saveDisplayName"
+                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
+                <Check class="w-[10px] h-[10px]" />
+              </button>
+            </div>
+            <!-- Display Name (not editing) -->
+            <template v-else>
+              <div v-if="profileName" class="flex flex-row gap-1 items-center group">
+                <h1 class="text-xl lg:text-3xl font-bold truncate">{{ profileName }}</h1>
+                <button v-if="isOwnProfile" @click="startEditingDisplayName"
+                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer opacity-0 group-hover:opacity-100" title="Edit Display Name">
+                  <EditPencil class="w-[10px] h-[10px]" />
+                </button>
+              </div>
+              <h1 v-else-if="isOwnProfile" @click="startEditingDisplayName"
+                class="text-xl lg:text-3xl font-bold text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer truncate">
+                Add a Display Name
+              </h1>
+            </template>
+          </div>
+          
+          <!-- Username Section -->
+          <div class="flex flex-row gap-1 items-end">
+            <!-- Editing Username -->
+            <div v-if="editingUsername"
+              class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
+              <span class="text-base lg:text-xl font-normal text-neutral-400">@</span>
+              <input ref="usernameInputRef" v-model="newUsernameValue" type="text"
+                class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[150px]"
+                @keyup.enter="saveUsername" @keyup.esc="cancelEditingUsername" />
+              <button @click="cancelEditingUsername"
+                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+                <Xmark class="w-[10px] h-[10px]" />
+              </button>
+              <button @click="saveUsername"
+                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
+                <Check class="w-[10px] h-[10px]" />
+              </button>
+            </div>
+            <!-- Username (not editing) -->
+            <template v-else>
+              <div v-if="username" class="flex flex-row gap-1 items-center group">
+                <span class="text-base lg:text-xl font-normal text-neutral-400">@{{ username }}</span>
+                <button v-if="isOwnProfile" @click="startEditingUsername"
+                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer opacity-0 group-hover:opacity-100" title="Edit Username">
+                  <EditPencil class="w-[10px] h-[10px]" />
+                </button>
+              </div>
+              <span v-else-if="isOwnProfile" @click="startEditingUsername"
+                class="text-sm lg:text-base font-normal text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer">
+                Add @username
+              </span>
+            </template>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <p class="text-sm text-neutral-500">
+          {{ filteredTracks.length }} {{ filteredTracks.length === 1 ? 'track' : 'tracks' }}
+        </p>
+      </div>
+    </div>
 
     <div class="flex flex-col md:flex-row gap-0 justify-between md:items-center border-b border-neutral-800">
 
       <!-- Profile Info -->
       <div class="flex flex-col gap-2 p-4">
         <div class="text-sm text-neutral-300 pt-1">
-          <span v-if="profileBio">{{ profileBio }}</span>
-          <span v-else class="text-neutral-500 italic">Something's supposed to be here</span>
+          <!-- Editing Bio -->
+          <div v-if="editingBio"
+            class="flex flex-row gap-1 items-start border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
+            <textarea ref="bioInputRef" v-model="newBioValue" 
+              class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[300px] min-h-[60px] resize-y"
+              @keyup.ctrl.enter="saveBio" @keyup.esc="cancelEditingBio"></textarea>
+            <div class="flex flex-col gap-1">
+              <button @click="cancelEditingBio"
+                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+                <Xmark class="w-[10px] h-[10px]" />
+              </button>
+              <button @click="saveBio"
+                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
+                <Check class="w-[10px] h-[10px]" />
+              </button>
+            </div>
+          </div>
+          <!-- Bio (not editing) -->
+          <template v-else>
+            <span v-if="profileBio">{{ profileBio }}</span>
+            <span v-else-if="isOwnProfile" @click="startEditingBio"
+              class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer italic">
+              Add a bio
+            </span>
+            <span v-else class="text-neutral-500 italic">Something's supposed to be here</span>
+          </template>
         </div>
-        <div v-if="profileWebsite || hasSocialLinks || isOwnProfile" class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap items-center">
-          <a v-if="profileWebsite" :href="profileWebsite" target="_blank" rel="noopener noreferrer"
-            class="hover:text-neutral-300 transition-colors">Website</a>
+        <div v-if="profileWebsite || hasSocialLinks || isOwnProfile"
+          class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap items-center">
+          <!-- Editing Website -->
+          <div v-if="editingWebsite"
+            class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
+            <input ref="websiteInputRef" v-model="newWebsiteValue" type="text"
+              class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]"
+              @keyup.enter="saveWebsite" @keyup.esc="cancelEditingWebsite" />
+            <button @click="cancelEditingWebsite"
+              class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+              <Xmark class="w-[10px] h-[10px]" />
+            </button>
+            <button @click="saveWebsite"
+              class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
+              <Check class="w-[10px] h-[10px]" />
+            </button>
+          </div>
+          <!-- Website (not editing) -->
+          <template v-else>
+            <a v-if="profileWebsite" :href="profileWebsite" target="_blank" rel="noopener noreferrer"
+              class="hover:text-neutral-300 transition-colors">Website</a>
+            <span v-else-if="isOwnProfile" @click="startEditingWebsite"
+              class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer">
+              Add Website
+            </span>
+          </template>
 
           <!-- Social Links -->
           <div class="flex flex-row gap-0">
@@ -76,15 +200,20 @@
       </div>
 
       <div class="flex flex-row gap-2 max-md:py-2 p-4 max-md:border-t max-md:border-neutral-800">
-        <div @click="toggleMusicSection"
-          class="rounded-full px-4 py-2 w-fit flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
-          :class="musicSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
-          Music
-        </div>
         <div @click="toggleSoftwareSection"
           class="rounded-full px-4 py-2 w-fit flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
           :class="softwareSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
           Software
+        </div>
+        <div v-if="isOwnProfile && isAudioPro" @click="toggleMembersSection"
+          class="rounded-full px-4 py-2 w-fit flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
+          :class="membersSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+          Members
+        </div>
+        <div @click="toggleMusicSection"
+          class="rounded-full px-4 py-2 w-fit flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
+          :class="musicSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+          Music
         </div>
       </div>
     </div>
@@ -92,7 +221,8 @@
 
     <!-- Software Section -->
     <div v-if="softwareSectionOpen" class="flex flex-col gap-0 border-b border-neutral-800">
-      <div v-if="!loadingSoftware && softwareList.length > 0" class="p-2 max-md:pb-0 flex flex-row gap-2 text-xs overflow-x-auto no-scrollbar">
+      <div v-if="!loadingSoftware && softwareList.length > 0"
+        class="p-2 max-md:pb-0 flex flex-row gap-2 text-xs overflow-x-auto no-scrollbar">
         <div @click="clearFilters" :class="[
             'rounded-full px-4 py-2 flex items-start justify-start whitespace-nowrap cursor-pointer transition-colors select-none',
             selectedTags.length === 0 
@@ -117,7 +247,8 @@
           </div>
           <div ref="softwareContainer" class="flex flex-row items-end w-fit *:p-4 *:last:pr-4 *:pr-0"
             v-else-if="softwareList.length > 0">
-            <div class="flex flex-col gap-2 items-start justify-start w-fit whitespace-nowrap max-md:snap-center snap-start snap-always"
+            <div
+              class="flex flex-col gap-2 items-start justify-start w-fit whitespace-nowrap max-md:snap-center snap-start snap-always"
               v-for="software in softwareList" :key="software.id">
               <img :src="getSoftwareImageUrl(software.image_url)" :alt="software.name"
                 class="software-image min-w-64 max-w-64 md:min-w-72 md:max-w-72 h-auto object-contain object-top-left rounded-[2px]"
@@ -138,10 +269,17 @@
         </div>
       </div>
     </div>
+    <!-- Members Section -->
+    <div v-if="isOwnProfile && isAudioPro && membersSectionOpen && profileUserId" class="grow border-b border-neutral-800">
+      <div class="p-4">
+        <ManageMembers :profile-id="profileUserId" />
+      </div>
+    </div>
     <!-- Tracks Section -->
     <div v-if="musicSectionOpen" class="grow">
       <TracksTable :tracks="filteredTracks" :source-id="`profile-${profileUserId}`" :is-own-profile="isOwnProfile"
-        :loading="loading" :username="username" @edit-track="handleEdit" @tracks-deleted="fetchTracks" />
+        :loading="loading" :username="username" :viewer-user-type="viewerUserType" :profile-user-type="profileUserType"
+        @edit-track="handleEdit" @tracks-deleted="fetchTracks" @track-shortlisted="handleTrackShortlisted" @track-unshortlisted="handleTrackUnshortlisted" />
     </div>
   </div>
 </template>
@@ -151,8 +289,8 @@ import { ref, computed, onMounted, onUnmounted, inject, watch, nextTick } from '
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
-import LibraryHeader from '~/components/LibraryHeader.vue'
 import TracksTable from '~/components/TracksTable.vue'
+import ManageMembers from '~/components/ManageMembers.vue'
 import gsap from 'gsap'
 import { Plus, EditPencil, Trash, Check, Xmark } from '@iconoir/vue'
 const route = useRoute()
@@ -174,20 +312,50 @@ const { data: initialData } = await useAsyncData(
     const usernameOrId = route.params.id as string
     
     try {
-      // Try to fetch profile by username
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('id, username, display_name, bio, website, social_links')
-        .eq('username', usernameOrId)
-        .single()
+      // Check if it's a UUID (36 chars with hyphens) or username
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(usernameOrId)
+      
+      let data, error
+      
+      if (isUUID) {
+        // Try to fetch by ID first
+        const result = await supabase
+          .from('user_profiles')
+          .select('id, username, display_name, bio, website, social_links, user_type')
+          .eq('id', usernameOrId)
+          .single()
+        data = result.data
+        error = result.error
+      } else {
+        // Try to fetch by username
+        const result = await supabase
+          .from('user_profiles')
+          .select('id, username, display_name, bio, website, social_links, user_type')
+          .eq('username', usernameOrId)
+          .single()
+        data = result.data
+        error = result.error
+      }
+
+      // If username lookup failed and it's not a UUID, try by ID as fallback
+      if ((error || !data) && !isUUID) {
+        const result = await supabase
+          .from('user_profiles')
+          .select('id, username, display_name, bio, website, social_links, user_type')
+          .eq('id', usernameOrId)
+          .single()
+        data = result.data
+        error = result.error
+      }
 
       if (error || !data) return null
       
-      // Fetch initial tracks for SEO (just first 10)
+      // Fetch initial tracks for SEO (just first 10, only public tracks)
       const { data: tracksData } = await supabase
         .from('sounds')
         .select('*')
         .eq('user_id', data.id)
+        .eq('is_public', true)
         .order('created_at', { ascending: false })
         .limit(10)
       
@@ -272,9 +440,11 @@ const { data: softwareData, refresh: refreshSoftware } = await useAsyncData(
 )
 
 // State
-const profileName = ref(initialData.value?.profile?.display_name || initialData.value?.profile?.username || '')
-const username = ref(initialData.value?.profile?.username || '')
+const profileName = ref<string>(initialData.value?.profile?.display_name || initialData.value?.profile?.username || '')
+const username = ref<string>(initialData.value?.profile?.username || '')
 const profileUserId = ref<string | null>(initialData.value?.profile?.id || null)
+const profileUserType = ref<'creator' | 'audio_pro' | null>((initialData.value?.profile?.user_type as 'creator' | 'audio_pro') || null)
+const viewerUserType = ref<'creator' | 'audio_pro' | null>(null) // Logged-in user's type
 const profileBio = ref(initialData.value?.profile?.bio || '')
 const profileWebsite = ref(initialData.value?.profile?.website || '')
 const profileSocialLinks = ref<{
@@ -304,6 +474,9 @@ const softwareSectionOpen = computed(() => softwareSectionOpenState.value)
 
 // Music section visibility state (open by default)
 const musicSectionOpen = ref(true)
+
+// Members section visibility state (closed by default, only for own profile)
+const membersSectionOpen = ref(false)
 
 // Load software section state from localStorage
 const loadSoftwareSectionState = () => {
@@ -363,6 +536,11 @@ const saveMusicSectionState = () => {
 const toggleMusicSection = () => {
   musicSectionOpen.value = !musicSectionOpen.value
   saveMusicSectionState()
+}
+
+// Toggle members section
+const toggleMembersSection = () => {
+  membersSectionOpen.value = !membersSectionOpen.value
 }
 
 // Filter state
@@ -432,6 +610,20 @@ const hasSocialLinks = computed(() => {
 const editingSocialLink = ref<string | null>(null)
 const newSocialLinkValue = ref('')
 const socialLinkInputRef = ref<HTMLInputElement | null>(null)
+
+// Display name and username editing state
+const editingDisplayName = ref(false)
+const editingUsername = ref(false)
+const editingBio = ref(false)
+const editingWebsite = ref(false)
+const newDisplayNameValue = ref('')
+const newUsernameValue = ref('')
+const newBioValue = ref('')
+const newWebsiteValue = ref('')
+const displayNameInputRef = ref<HTMLInputElement | null>(null)
+const usernameInputRef = ref<HTMLInputElement | null>(null)
+const bioInputRef = ref<HTMLTextAreaElement | null>(null)
+const websiteInputRef = ref<HTMLInputElement | null>(null)
 
 // Available social link platforms
 const socialLinkPlatforms = ['twitter', 'instagram', 'soundcloud', 'spotify', 'youtube'] as const
@@ -520,6 +712,217 @@ const saveSocialLink = async (platform: string) => {
   }
 }
 
+// Start editing display name
+const startEditingDisplayName = () => {
+  editingDisplayName.value = true
+  newDisplayNameValue.value = profileName.value || ''
+}
+
+// Cancel editing display name
+const cancelEditingDisplayName = () => {
+  editingDisplayName.value = false
+  newDisplayNameValue.value = ''
+}
+
+// Save display name
+const saveDisplayName = async () => {
+  if (!supabase || !profileUserId.value || !user.value) return
+  
+  const displayName = newDisplayNameValue.value.trim()
+  
+  if (!displayName) {
+    alert('Display name cannot be empty')
+    return
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ display_name: displayName })
+      .eq('id', profileUserId.value)
+    
+    if (error) throw error
+    
+    // Update local state
+    profileName.value = displayName
+    editingDisplayName.value = false
+    newDisplayNameValue.value = ''
+    
+    // Refresh initial data
+    await refreshProfile()
+  } catch (error) {
+    console.error('Error saving display name:', error)
+    alert('Failed to save display name')
+  }
+}
+
+// Start editing username
+const startEditingUsername = () => {
+  editingUsername.value = true
+  newUsernameValue.value = username.value || ''
+}
+
+// Cancel editing username
+const cancelEditingUsername = () => {
+  editingUsername.value = false
+  newUsernameValue.value = ''
+}
+
+// Save username
+const saveUsername = async () => {
+  if (!supabase || !profileUserId.value || !user.value) return
+  
+  let newUsername = newUsernameValue.value.trim().toLowerCase()
+  
+  // Remove @ if user included it
+  if (newUsername.startsWith('@')) {
+    newUsername = newUsername.slice(1)
+  }
+  
+  if (!newUsername) {
+    alert('Username cannot be empty')
+    return
+  }
+  
+  // Validate username format (alphanumeric, underscore, hyphen)
+  if (!/^[a-z0-9_-]+$/.test(newUsername)) {
+    alert('Username can only contain letters, numbers, underscores, and hyphens')
+    return
+  }
+  
+  try {
+    // Check if username is already taken
+    const { data: existingUser, error: checkError } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('username', newUsername)
+      .neq('id', profileUserId.value)
+      .single()
+    
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      throw checkError
+    }
+    
+    if (existingUser) {
+      alert('This username is already taken')
+      return
+    }
+    
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ username: newUsername })
+      .eq('id', profileUserId.value)
+    
+    if (error) throw error
+    
+    // Update local state
+    username.value = newUsername
+    editingUsername.value = false
+    newUsernameValue.value = ''
+    
+    // Refresh initial data
+    await refreshProfile()
+  } catch (error) {
+    console.error('Error saving username:', error)
+    alert('Failed to save username')
+  }
+}
+
+// Start editing bio
+const startEditingBio = () => {
+  editingBio.value = true
+  newBioValue.value = profileBio.value || ''
+}
+
+// Cancel editing bio
+const cancelEditingBio = () => {
+  editingBio.value = false
+  newBioValue.value = ''
+}
+
+// Save bio
+const saveBio = async () => {
+  if (!supabase || !profileUserId.value || !user.value) return
+  
+  const bio = newBioValue.value.trim()
+  
+  try {
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ bio: bio || null })
+      .eq('id', profileUserId.value)
+    
+    if (error) throw error
+    
+    // Update local state
+    profileBio.value = bio
+    editingBio.value = false
+    newBioValue.value = ''
+    
+    // Refresh initial data
+    await refreshProfile()
+  } catch (error) {
+    console.error('Error saving bio:', error)
+    alert('Failed to save bio')
+  }
+}
+
+// Start editing website
+const startEditingWebsite = () => {
+  editingWebsite.value = true
+  newWebsiteValue.value = profileWebsite.value || 'https://'
+}
+
+// Cancel editing website
+const cancelEditingWebsite = () => {
+  editingWebsite.value = false
+  newWebsiteValue.value = ''
+}
+
+// Save website
+const saveWebsite = async () => {
+  if (!supabase || !profileUserId.value || !user.value) return
+  
+  let url = newWebsiteValue.value.trim()
+  
+  // Ensure URL starts with http:// or https://
+  if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url
+  }
+  
+  // Validate URL if provided
+  if (url && url !== 'https://') {
+    try {
+      new URL(url)
+    } catch (e) {
+      alert('Please enter a valid URL')
+      return
+    }
+  } else {
+    url = ''
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ website: url || null })
+      .eq('id', profileUserId.value)
+    
+    if (error) throw error
+    
+    // Update local state
+    profileWebsite.value = url
+    editingWebsite.value = false
+    newWebsiteValue.value = ''
+    
+    // Refresh initial data
+    await refreshProfile()
+  } catch (error) {
+    console.error('Error saving website:', error)
+    alert('Failed to save website')
+  }
+}
+
 // Delete social link
 const deleteSocialLink = async (platform: string) => {
   if (!supabase || !profileUserId.value || !user.value) return
@@ -557,15 +960,18 @@ const refreshProfile = async () => {
   try {
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('bio, website, social_links')
+      .select('display_name, username, bio, website, social_links, user_type')
       .eq('id', profileUserId.value)
       .single()
     
     if (error) throw error
     
     if (data) {
-      profileBio.value = data.bio || ''
-      profileWebsite.value = data.website || ''
+      profileName.value = (data.display_name as string) || (data.username as string) || ''
+      username.value = (data.username as string) || ''
+      profileUserType.value = (data.user_type as 'creator' | 'audio_pro' | null) || null
+      profileBio.value = (data.bio as string) || ''
+      profileWebsite.value = (data.website as string) || ''
       profileSocialLinks.value = (data.social_links as any) || {}
     }
   } catch (error) {
@@ -591,6 +997,82 @@ watch(editingSocialLink, async (newPlatform) => {
         if (socialLinkInputRef.value) {
           const len = newSocialLinkValue.value.length
           socialLinkInputRef.value.setSelectionRange(len, len)
+        }
+      }
+    }
+  }
+})
+
+// Watch for editingDisplayName changes to focus input
+watch(editingDisplayName, async (isEditing) => {
+  if (isEditing) {
+    await nextTick()
+    if (displayNameInputRef.value) {
+      displayNameInputRef.value.focus()
+      // Select all text if editing existing name
+      if (newDisplayNameValue.value) {
+        await nextTick()
+        if (displayNameInputRef.value) {
+          displayNameInputRef.value.select()
+        }
+      }
+    }
+  }
+})
+
+// Watch for editingUsername changes to focus input
+watch(editingUsername, async (isEditing) => {
+  if (isEditing) {
+    await nextTick()
+    if (usernameInputRef.value) {
+      usernameInputRef.value.focus()
+      // Select all text if editing existing username
+      if (newUsernameValue.value) {
+        await nextTick()
+        if (usernameInputRef.value) {
+          usernameInputRef.value.select()
+        }
+      }
+    }
+  }
+})
+
+// Watch for editingBio changes to focus textarea
+watch(editingBio, async (isEditing) => {
+  if (isEditing) {
+    await nextTick()
+    if (bioInputRef.value) {
+      bioInputRef.value.focus()
+      // Position cursor at end if editing existing bio
+      if (newBioValue.value) {
+        await nextTick()
+        if (bioInputRef.value) {
+          const len = newBioValue.value.length
+          bioInputRef.value.setSelectionRange(len, len)
+        }
+      }
+    }
+  }
+})
+
+// Watch for editingWebsite changes to focus input
+watch(editingWebsite, async (isEditing) => {
+  if (isEditing) {
+    await nextTick()
+    if (websiteInputRef.value) {
+      websiteInputRef.value.focus()
+      const httpsPrefix = 'https://'
+      if (newWebsiteValue.value === httpsPrefix || !newWebsiteValue.value.startsWith(httpsPrefix)) {
+        await nextTick()
+        if (websiteInputRef.value) {
+          websiteInputRef.value.setSelectionRange(httpsPrefix.length, httpsPrefix.length)
+        }
+      } else {
+        // If editing existing website, position cursor at end
+        await nextTick()
+        if (websiteInputRef.value) {
+          const len = newWebsiteValue.value.length
+          websiteInputRef.value.setSelectionRange(len, len)
         }
       }
     }
@@ -633,8 +1115,50 @@ watch(softwareList, async () => {
 
 // Computed
 const isOwnProfile = computed(() => {
-  return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
+  // Only return true if we have both user and profileUserId, and they match exactly
+  // This ensures we're comparing the actual profile owner, not just route params
+  // (route params could be username, not ID)
+  if (!user.value || !profileUserId.value) {
+    return false
+  }
+  // Explicit string comparison to ensure exact match
+  return String(user.value.id) === String(profileUserId.value)
 })
+
+// Check if current profile is audio_pro (for showing Members feature)
+const isAudioPro = computed(() => {
+  return profileUserType.value === 'audio_pro'
+})
+
+// Fetch viewer's user type when user is logged in
+const fetchViewerUserType = async () => {
+  if (!user.value || !supabase) return
+  
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('user_type')
+      .eq('id', user.value.id)
+      .single()
+    
+    if (error) throw error
+    
+    if (data) {
+      viewerUserType.value = (data.user_type as 'creator' | 'audio_pro') || null
+    }
+  } catch (error) {
+    console.error('Error fetching viewer user type:', error)
+  }
+}
+
+// Watch for user becoming available to fetch viewer user type
+watch(() => user.value, async (newUser) => {
+  if (newUser) {
+    await fetchViewerUserType()
+  } else {
+    viewerUserType.value = null
+  }
+}, { immediate: true })
 
 const filteredTracks = computed(() => {
   if (!searchQuery.value) return tracks.value
@@ -661,11 +1185,46 @@ const fetchProfile = async () => {
   // Profile already loaded server-side, just ensure values are set
   if (!profileUserId.value && initialData.value?.profile) {
     profileUserId.value = initialData.value.profile.id
-    profileName.value = initialData.value.profile.display_name || initialData.value.profile.username
-    username.value = initialData.value.profile.username
-    profileBio.value = initialData.value.profile.bio || ''
-    profileWebsite.value = initialData.value.profile.website || ''
-    profileSocialLinks.value = (initialData.value.profile.social_links as any) || {}
+      profileName.value = initialData.value.profile.display_name || initialData.value.profile.username || ''
+      username.value = initialData.value.profile.username || ''
+      profileUserType.value = (initialData.value.profile.user_type as 'creator' | 'audio_pro' | null) || null
+      profileBio.value = initialData.value.profile.bio || ''
+      profileWebsite.value = initialData.value.profile.website || ''
+      profileSocialLinks.value = (initialData.value.profile.social_links as any) || {}
+  } else if (!profileUserId.value && supabase && user.value) {
+    // If profile wasn't loaded server-side, try to fetch it client-side
+    // This handles cases where the route param is a UUID
+    const usernameOrId = route.params.id as string
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(usernameOrId)
+    
+    try {
+      let result
+      if (isUUID) {
+        result = await supabase
+          .from('user_profiles')
+          .select('id, username, display_name, bio, website, social_links, user_type')
+          .eq('id', usernameOrId)
+          .single()
+      } else {
+        result = await supabase
+          .from('user_profiles')
+          .select('id, username, display_name, bio, website, social_links, user_type')
+          .eq('username', usernameOrId)
+          .single()
+      }
+      
+      if (result.data && !result.error) {
+        profileUserId.value = result.data.id
+        profileName.value = result.data.display_name || result.data.username || ''
+        username.value = result.data.username || ''
+        profileUserType.value = (result.data.user_type as 'creator' | 'audio_pro') || null
+        profileBio.value = result.data.bio || ''
+        profileWebsite.value = result.data.website || ''
+        profileSocialLinks.value = (result.data.social_links as any) || {}
+      }
+    } catch (error) {
+      console.error('Error fetching profile client-side:', error)
+    }
   }
 }
 
@@ -679,6 +1238,12 @@ const fetchTracks = async () => {
   if (!supabase || !profileUserId.value) {
     console.log('fetchTracks: Missing supabase or profileUserId', { supabase: !!supabase, profileUserId: profileUserId.value })
     return
+  }
+  
+  // Ensure viewerUserType is fetched if user is logged in
+  if (user.value && !viewerUserType.value) {
+    console.log('fetchTracks: Fetching viewerUserType first')
+    await fetchViewerUserType()
   }
   
   // Only show loading state if we don't have any tracks yet (from initialData)
@@ -708,14 +1273,65 @@ const fetchTracks = async () => {
   }
   
   try {
-    const { data, error } = await supabase
-      .from('sounds')
-      .select(`
-        *,
-        track_statuses!status_id(id, name)
-      `)
-      .eq('user_id', profileUserId.value)
-      .order(sortBy, { ascending: sortDirection === 'asc' })
+    let data, error
+    
+    // If viewing own profile AND user is creator, fetch shortlisted tracks
+    console.log('fetchTracks: Checking conditions', { 
+      isOwnProfile: isOwnProfile.value, 
+      viewerUserType: viewerUserType.value, 
+      hasUser: !!user.value,
+      profileUserId: profileUserId.value,
+      userId: user.value?.id
+    })
+    
+    if (isOwnProfile.value && viewerUserType.value === 'creator' && user.value) {
+      console.log('fetchTracks: Fetching shortlisted tracks for creator')
+      const { getShortlistedTracks } = await import('~/utils/shortlist')
+      const result = await getShortlistedTracks(user.value.id)
+      
+      if (result.error) {
+        console.error('fetchTracks: Error fetching shortlisted tracks:', result.error)
+        throw result.error
+      }
+      
+      console.log('fetchTracks: Shortlisted tracks result', { count: result.data?.length, data: result.data })
+      data = result.data || []
+      error = null
+      
+      // Sort the data
+      if (sortBy === 'created_at') {
+        data.sort((a: any, b: any) => {
+          const aTime = new Date(a.shortlisted_at || a.created_at).getTime()
+          const bTime = new Date(b.shortlisted_at || b.created_at).getTime()
+          return sortDirection === 'asc' ? aTime - bTime : bTime - aTime
+        })
+      } else {
+        // For other sort fields, use the track's field
+        data.sort((a: any, b: any) => {
+          const aVal = a[sortBy] || ''
+          const bVal = b[sortBy] || ''
+          if (sortDirection === 'asc') {
+            return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+          } else {
+            return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+          }
+        })
+      }
+    } else {
+      // Normal query: fetch tracks from the profile owner
+      console.log('fetchTracks: Using normal query (not shortlist)')
+      const result = await supabase
+        .from('sounds')
+        .select(`
+          *,
+          track_statuses!status_id(id, name)
+        `)
+        .eq('user_id', profileUserId.value)
+        .order(sortBy, { ascending: sortDirection === 'asc' })
+      
+      data = result.data
+      error = result.error
+    }
 
     console.log('fetchTracks: Query result', { data, error, count: data?.length })
     
@@ -723,15 +1339,20 @@ const fetchTracks = async () => {
     
     // Fetch collection names and slugs for each track
     const tracksWithCollections = await Promise.all((data || []).map(async (track: any) => {
+      // For shortlisted tracks (when viewing own profile as creator), only show collections owned by the creator
+      // For own tracks, show all collections the track is in
+      const isShortlistedTrack = isOwnProfile.value && viewerUserType.value === 'creator' && user.value
+      const collectionOwnerId = isShortlistedTrack ? user.value!.id : null
+      
       // Get collection IDs for this track
       const { data: junctionData } = await supabase
         .from('collections_sounds')
         .select('collection_id')
         .eq('sound_id', track.id)
       
-      const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
+      const allCollectionIds = (junctionData || []).map((item: any) => item.collection_id)
       
-      if (collectionIds.length === 0) {
+      if (allCollectionIds.length === 0) {
         return {
           ...track,
           collections: [],
@@ -740,14 +1361,22 @@ const fetchTracks = async () => {
       }
       
       // Get collection names and slugs
-      const { data: collectionData } = await supabase
+      // For shortlisted tracks, filter to only collections owned by the creator
+      let collectionQuery = supabase
         .from('collections')
-        .select('name, slug')
-        .in('id', collectionIds)
+        .select('name, slug, user_id')
+        .in('id', allCollectionIds)
+      
+      const { data: collectionData } = await collectionQuery
+      
+      // Filter collections by owner if this is a shortlisted track
+      const filteredCollections = isShortlistedTrack && collectionOwnerId
+        ? (collectionData || []).filter((col: any) => col.user_id === collectionOwnerId).map((col: any) => ({ name: col.name, slug: col.slug }))
+        : (collectionData || []).map((col: any) => ({ name: col.name, slug: col.slug }))
       
       return {
         ...track,
-        collections: collectionData || [],
+        collections: filteredCollections,
         track_status: track.track_statuses
       }
     }))
@@ -769,6 +1398,22 @@ const handleEdit = (track: any) => {
     composed: true
   })
   window.dispatchEvent(event)
+}
+
+// Handle track shortlisted event
+const handleTrackShortlisted = () => {
+  // If viewing own profile as creator, refetch tracks to show the new shortlist
+  if (isOwnProfile.value && viewerUserType.value === 'creator') {
+    fetchTracks()
+  }
+}
+
+// Handle track unshortlisted event
+const handleTrackUnshortlisted = () => {
+  // If viewing own profile as creator, refetch tracks to remove from shortlist
+  if (isOwnProfile.value && viewerUserType.value === 'creator') {
+    fetchTracks()
+  }
 }
 
 const handleSearch = (query: string) => {

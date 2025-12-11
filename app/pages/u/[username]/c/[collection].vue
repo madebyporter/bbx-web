@@ -15,6 +15,7 @@
         :description="collection.description"
         :count="displayedTracksCount"
         :is-own-profile="isOwnProfile"
+        :show-view-mode-selector="profileUserType === 'audio_pro'"
         v-model:show-view-menu="showViewMenu"
         v-model:view-mode="viewMode"
       />
@@ -29,6 +30,8 @@
           :username="route.params.username as string"
           :view-mode="viewMode"
           :collection-id="collection?.id"
+          :viewer-user-type="viewerUserType"
+          :profile-user-type="profileUserType"
           @edit-track="handleEdit"
           @toggle-hidden="toggleHidden"
           @tracks-removed="fetchTracks"
@@ -108,6 +111,8 @@ const profileUserId = ref<string | null>(initialData.value?.profileUserId || nul
 const searchQuery = ref('')
 const viewMode = ref<'final' | 'all'>('final')
 const showViewMenu = ref(false)
+const viewerUserType = ref<'creator' | 'audio_pro' | null>(null)
+const profileUserType = ref<'creator' | 'audio_pro' | null>(null)
 
 // Computed
 const isOwnProfile = computed(() => {
@@ -169,6 +174,30 @@ const fetchCollection = async () => {
     }
     
     profileUserId.value = profileData.id as string
+    
+    // Fetch profile user type
+    const { data: profileTypeData } = await supabase
+      .from('user_profiles')
+      .select('user_type')
+      .eq('id', profileData.id)
+      .single()
+    
+    if (profileTypeData) {
+      profileUserType.value = profileTypeData.user_type as 'creator' | 'audio_pro' | null
+    }
+    
+    // Fetch viewer user type if logged in
+    if (user.value) {
+      const { data: viewerTypeData } = await supabase
+        .from('user_profiles')
+        .select('user_type')
+        .eq('id', user.value.id)
+        .single()
+      
+      if (viewerTypeData) {
+        viewerUserType.value = viewerTypeData.user_type as 'creator' | 'audio_pro' | null
+      }
+    }
     
     // Now fetch the collection by slug and user_id
     const { data: collectionData, error: collectionError } = await supabase
@@ -245,11 +274,12 @@ const fetchTracks = async () => {
         }
       }
       
-      // Get collection names and slugs
+      // Get collection names and slugs - only for collections owned by the profile owner
       const { data: collectionData } = await supabase
         .from('collections')
         .select('name, slug')
         .in('id', collectionIds)
+        .eq('user_id', profileUserId.value)
       
       return {
         ...track,

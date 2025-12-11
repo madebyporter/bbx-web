@@ -10,7 +10,7 @@
       <p class="text-sm text-neutral-500">
         {{ count }} {{ count === 1 ? itemLabel : itemLabel + 's' }}
       </p>
-      <div v-if="isOwnProfile" class="relative">
+      <div v-if="isOwnProfile && showViewModeSelector" class="relative">
         <button
           @click="emit('update:showViewMenu', !showViewMenu)"
           class="px-3 py-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded flex items-center gap-2 cursor-pointer"
@@ -55,8 +55,10 @@ withDefaults(defineProps<{
   isOwnProfile?: boolean
   showViewMenu?: boolean
   viewMode?: 'final' | 'all'
+  showViewModeSelector?: boolean
 }>(), {
-  itemLabel: 'track'
+  itemLabel: 'track',
+  showViewModeSelector: true
 })
 
 const emit = defineEmits<{

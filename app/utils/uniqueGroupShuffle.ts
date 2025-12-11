@@ -3,7 +3,7 @@
  * Functions for deduplicating tracks by group_name and selecting the most updated version
  */
 
-import type { Track } from '~/composables/usePlayer'
+import type { Track } from '~/types/track'
 
 /**
  * Parse version string to number for comparison

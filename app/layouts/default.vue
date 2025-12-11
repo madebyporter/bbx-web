@@ -15,7 +15,7 @@
           <SearchFilter @open-filter-modal="openFilterModal" @open-modal="openModal" @search="handleSearch"
             @toggle-nav="handleToggleNav" />
         </div>
-        <NuxtPage ref="pageRef" @edit-resource="handleEdit" @show-signup="handleShowSignup" />
+        <slot />
       </section>
     </main>
 
@@ -45,6 +45,14 @@
             <label class="block text-sm font-medium mb-1">Password</label>
             <input v-model="password" type="password" required
               class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500" />
+          </div>
+          <div v-if="isSignUp">
+            <label class="block text-sm font-medium mb-1">I am a</label>
+            <select v-model="userType" required
+              class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500">
+              <option value="creator">Creator (content creator, songwriter, music artist)</option>
+              <option value="audio_pro">Audio Pro (producer, engineer, etc.)</option>
+            </select>
           </div>
           <div v-if="isForgotPassword" class="text-sm text-neutral-400">
             Enter your email address and we'll send you a link to reset your password.
@@ -117,8 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, provide, nextTick } from 'vue'
 import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
@@ -197,17 +204,19 @@ interface Resource {
 const auth = useAuth()
 const { user, isAdmin } = auth
 const { showSuccess, showError, showProcessing, showInfo } = useToast()
+// Start as false on both server and client, set to true in onMounted
 const isInitialized = ref(false)
 const route = useRoute()
 
 // Determine which modal to show based on route
 const isUserProfilePage = computed(() => {
-  return route.path.startsWith('/u/')
+  return route?.path?.startsWith('/u/') || false
 })
 
 // Determine FilterSort context based on current route
 const filterSortContext = computed(() => {
-  const path = route.path
+  const path = route?.path
+  if (!path) return null
   if (path.includes('/software')) return 'software'
   if (path.includes('/kits')) return 'kits'
   if (path.startsWith('/u/') && !path.includes('/t/')) return 'music' // Exclude single track pages
@@ -221,6 +230,7 @@ const isSignUp = ref(false)
 const isForgotPassword = ref(false)
 const email = ref('')
 const password = ref('')
+const userType = ref<'creator' | 'audio_pro'>('creator')
 
 // Resource management state
 const showModal = ref(false)
@@ -293,7 +303,7 @@ const handleSubmit = async () => {
       password.value = ''
       isForgotPassword.value = false
     } else if (isSignUp.value) {
-      const result = await auth.signUp(email.value, password.value)
+      const result = await auth.signUp(email.value, password.value, userType.value)
       if (result.user && !result.session) {
         // User created but needs email confirmation
         showInfo('Account created! Please check your email and click the confirmation link to activate your account.', 8000)
@@ -304,6 +314,7 @@ const handleSubmit = async () => {
       showAuthModal.value = false
       email.value = ''
       password.value = ''
+      userType.value = 'creator'
     } else {
       await auth.signIn(email.value, password.value)
       showSuccess(`Welcome back, ${email.value}!`)
@@ -522,9 +533,21 @@ const testToast = () => {
 
 // Listen for edit-track events from profile page
 onMounted(async () => {
+  if (!process.client) return
+  
   console.log('Layout: Starting auth initialization...')
-  await auth.init()
+  try {
+    await auth.init()
+  } catch (error) {
+    console.error('Auth init error:', error)
+  }
+  
+  // Wait for next tick to ensure router is initialized
+  await nextTick()
+  
+  // Ensure initialized is true after router is ready
   isInitialized.value = true
+  console.log('Layout: Initialized, isInitialized =', isInitialized.value)
   
   // Test toast on page load (temporary)
   setTimeout(() => {

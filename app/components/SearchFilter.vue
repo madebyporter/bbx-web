@@ -21,17 +21,17 @@
     </div>
     <div class="flex flex-row gap-2 lg:gap-4 w-full justify-between lg:w-auto">
       <button @click="$emit('open-filter-modal')" class="btn w-full lg:w-fit">Filter & Sort</button>
-      <button v-if="hasUser" @click="$emit('open-modal')" class="btn w-full lg:w-fit">
+      <button v-if="hasUser && shouldShowUploadButton" @click="$emit('open-modal')" class="btn w-full lg:w-fit">
         {{ buttonText }}
       </button>
     </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useAuth } from '~/composables/useAuth'
-import { useRoute } from 'vue-router'
+import { useSupabase } from '~/utils/supabase'
 
 const searchQuery = ref('')
 const searchInput = ref(null)
@@ -41,9 +41,47 @@ const emit = defineEmits(['open-modal', 'open-filter-modal', 'search', 'toggle-n
 const auth = useAuth()
 const user = computed(() => auth.user.value)
 const isReady = computed(() => auth.isReady.value)
+const { supabase } = useSupabase()
 
-// Get current route
+// Get current route (Nuxt auto-imports useRoute)
 const route = useRoute()
+
+// User type state
+const userType = ref<'creator' | 'audio_pro' | null>(null)
+
+// Fetch user type when user is available
+const fetchUserType = async () => {
+  if (!user.value || !supabase) {
+    userType.value = null
+    return
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('user_type')
+      .eq('id', user.value.id)
+      .single()
+    
+    if (error) throw error
+    
+    if (data) {
+      userType.value = (data.user_type as 'creator' | 'audio_pro') || null
+    }
+  } catch (error) {
+    console.error('Error fetching user type:', error)
+    userType.value = null
+  }
+}
+
+// Watch for user changes to fetch user type
+watch(() => user.value, async (newUser) => {
+  if (newUser) {
+    await fetchUserType()
+  } else {
+    userType.value = null
+  }
+}, { immediate: true })
 
 // Add a computed property for user state
 const hasUser = computed(() => {
@@ -53,7 +91,25 @@ const hasUser = computed(() => {
 
 // Determine button text based on route
 const isUserProfilePage = computed(() => {
-  return route.path.startsWith('/u/')
+  return route?.path?.startsWith('/u/') || false
+})
+
+// Check if we should show the upload button
+// Hide it if user is a creator viewing their own profile
+const shouldShowUploadButton = computed(() => {
+  if (!hasUser.value) return false
+  if (!isUserProfilePage.value) return true // Always show "Submit" on non-profile pages
+  
+  // On profile pages, check if it's the user's own profile
+  const profileId = route?.params?.id as string
+  const isOwnProfile = user.value && profileId === user.value.id
+  
+  // Hide upload button if creator viewing own profile
+  if (isOwnProfile && userType.value === 'creator') {
+    return false
+  }
+  
+  return true
 })
 
 const buttonText = computed(() => {
@@ -61,8 +117,10 @@ const buttonText = computed(() => {
 })
 
 // Clear search when route changes
-watch(() => route.path, () => {
-  searchQuery.value = ''
+watch(() => route?.path, (newPath) => {
+  if (newPath) {
+    searchQuery.value = ''
+  }
 })
 
 onMounted(() => {

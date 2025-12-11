@@ -33,7 +33,7 @@ export interface UserProfile {
   bio: string
   website: string
   avatar_url: string
-  user_type: 'producer' | 'engineer' | 'writer' | 'performer' | 'other'
+  user_type: 'creator' | 'audio_pro'
   social_links: {
     twitter?: string
     instagram?: string
