@@ -1,4 +1,3 @@
-import { builder } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
 import ffmpeg from 'fluent-ffmpeg'
 import ffmpegStatic from 'ffmpeg-static'
@@ -273,5 +272,5 @@ const downloadSampleHandler = async (event, context) => {
   }
 }
 
-export const handler = builder(downloadSampleHandler)
+export const handler = downloadSampleHandler
 
