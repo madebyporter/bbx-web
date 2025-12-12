@@ -239,7 +239,13 @@ const { data: trackData, pending: loading } = await useAsyncData(
 )
 
 // Store initial data for SEO (available during SSR)
+// Ensure we have the data - trackData.value should be populated after await useAsyncData
 const initialTrackData = trackData.value
+
+// Debug: Log to verify data is available during SSR
+if (process.server) {
+  console.log('[SSR] Track data available:', !!initialTrackData, initialTrackData?.title)
+}
 
 const track = computed(() => trackData.value)
 
@@ -463,14 +469,18 @@ const updateTrackStatus = async (trackId: number, statusId: number | null) => {
   }
 }
 
-// Set SEO meta tags with actual values during SSR (not computed properties)
-// This ensures the SEO is set correctly during server-side rendering
+// Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
+// Calculate values directly from data available during SSR
 const usernameParam = route.params.username as string
-const trackForSEO = initialTrackData || trackData.value
+
+// Ensure we use the data that's definitely available (initialTrackData should be set after await)
+// Fallback to trackData.value if initialTrackData is null (shouldn't happen with proper SSR)
+const trackForSEO = initialTrackData ?? trackData.value
 
 // Calculate SEO values directly from the data (available during SSR)
-const trackTitle = trackForSEO?.title || 'Untitled'
-const artist = trackForSEO?.artist || usernameParam || 'Unknown Artist'
+// Always use route params as fallback to ensure SEO is set even if data isn't loaded
+const trackTitle = trackForSEO?.title || 'Track'
+const artist = trackForSEO?.artist || usernameParam || 'Artist'
 const seoTitleValue = `${trackTitle} by ${artist} | Beatbox`
 
 const details = []
@@ -478,29 +488,33 @@ if (trackForSEO?.genre) details.push(trackForSEO.genre)
 if (trackForSEO?.bpm) details.push(`${trackForSEO.bpm} BPM`)
 if (trackForSEO?.key) details.push(trackForSEO.key)
 const detailsStr = details.length > 0 ? ` - ${details.join(', ')}` : ''
-const seoDescriptionValue = `Listen to ${trackTitle} by ${artist} on Beatbox${detailsStr}`
+const seoDescriptionValue = trackForSEO
+  ? `Listen to ${trackTitle} by ${artist} on Beatbox${detailsStr}`
+  : `Listen to music by ${artist} on Beatbox`
 
 const seoUrlValue = `${siteUrl}/u/${usernameParam}/t/${route.params.track}`
 
-// Set SEO meta tags with actual values (not computed) to ensure SSR works correctly
-useHead({
+// Use useSeoMeta for better SSR support (as recommended by Nuxt docs)
+// This should be evaluated during SSR since we await useAsyncData above
+useSeoMeta({
   title: seoTitleValue,
-  meta: [
-    { name: 'description', content: seoDescriptionValue, key: 'description' },
-    { property: 'og:title', content: seoTitleValue, key: 'og:title' },
-    { property: 'og:description', content: seoDescriptionValue, key: 'og:description' },
-    { property: 'og:url', content: seoUrlValue, key: 'og:url' },
-    { property: 'og:type', content: 'music.song', key: 'og:type' },
-    { property: 'og:image', content: `${siteUrl}/img/og-image.jpg`, key: 'og:image' },
-    { property: 'og:image:width', content: '1200', key: 'og:image:width' },
-    { property: 'og:image:height', content: '630', key: 'og:image:height' },
-    { name: 'twitter:card', content: 'summary_large_image', key: 'twitter:card' },
-    { name: 'twitter:title', content: seoTitleValue, key: 'twitter:title' },
-    { name: 'twitter:description', content: seoDescriptionValue, key: 'twitter:description' },
-    { name: 'twitter:image', content: `${siteUrl}/img/og-image.jpg`, key: 'twitter:image' }
-  ],
+  description: seoDescriptionValue,
+  ogTitle: seoTitleValue,
+  ogDescription: seoDescriptionValue,
+  ogUrl: seoUrlValue,
+  ogType: 'music.song',
+  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitleValue,
+  twitterDescription: seoDescriptionValue,
+  twitterImage: `${siteUrl}/img/og-image.jpg`
+})
+
+useHead({
   link: [
-    { rel: 'canonical', href: seoUrlValue, key: 'canonical' }
+    { rel: 'canonical', href: seoUrlValue }
   ]
 })
 

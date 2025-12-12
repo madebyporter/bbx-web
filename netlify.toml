@@ -20,6 +20,10 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# Note: Content-Type headers removed for dev mode compatibility
+# Vite dev server handles MIME types automatically
+# These headers would interfere with Vite's module serving in development
+# Cache-Control headers are kept for production builds
 [[headers]]
   for = "/*.js"
   [headers.values]
@@ -30,10 +34,17 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# SPA fallback - redirect only non-file routes to index.html
+# Note: In dev mode, Nuxt handles routing, so this mainly applies to production
+# TEMPORARILY COMMENTED OUT TO TEST IF IT'S CAUSING MIME TYPE ISSUES IN DEV MODE
+# This should come AFTER the /_nuxt/* rule so it doesn't catch Nuxt assets
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200
+#   force = false
+#   # Exclude static assets - they should be served directly
+#   # Netlify will serve files before applying redirects, but we set force=false to be safe
 
 # Function configuration for download-sample
 [functions."download-sample"]
