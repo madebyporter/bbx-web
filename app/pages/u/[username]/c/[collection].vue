@@ -354,45 +354,56 @@ const handleSearch = (query: string) => {
 }
 
 // Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
-// Calculate values directly from data available during SSR
+// Use computed values to ensure reactivity and SSR compatibility
 const username = route.params.username as string
-const collectionForSEO = initialData.value?.collection || collection.value
 
-// Calculate SEO values directly from the data (available during SSR)
-const seoTitleValue = collectionForSEO 
-  ? `${collectionForSEO.name} by ${username} | Beatbox`
-  : `Collection by ${username} | Beatbox`
+// Calculate SEO values as computed properties
+// Note: titleTemplate in nuxt.config will add "| Beatbox" automatically
+const seoTitle = computed(() => {
+  const collectionForSEO = initialData.value?.collection || collection.value
+  return collectionForSEO 
+    ? `${collectionForSEO.name} by ${username}`
+    : `Collection by ${username}`
+})
 
-const seoDescriptionValue = collectionForSEO?.description 
-  ? collectionForSEO.description
-  : collectionForSEO
-    ? `Browse ${collectionForSEO.name} by ${username} on Beatbox`
-    : `Browse music collection by ${username} on Beatbox`
+const seoDescription = computed(() => {
+  const collectionForSEO = initialData.value?.collection || collection.value
+  if (collectionForSEO?.description) {
+    return collectionForSEO.description
+  }
+  if (collectionForSEO) {
+    return `Browse ${collectionForSEO.name} by ${username} on Beatbox`
+  }
+  return `Browse music collection by ${username} on Beatbox`
+})
 
-const seoUrlValue = collectionForSEO 
-  ? `${siteUrl}/u/${username}/c/${collectionForSEO.slug}`
-  : `${siteUrl}/u/${username}/c/${route.params.collection}`
+const seoUrl = computed(() => {
+  const collectionForSEO = initialData.value?.collection || collection.value
+  return collectionForSEO 
+    ? `${siteUrl}/u/${username}/c/${collectionForSEO.slug}`
+    : `${siteUrl}/u/${username}/c/${route.params.collection}`
+})
 
-// Use useSeoMeta for better SSR support (as recommended by Nuxt docs)
+// Use useSeoMeta with computed values for reactivity and SSR support
 useSeoMeta({
-  title: seoTitleValue,
-  description: seoDescriptionValue,
-  ogTitle: seoTitleValue,
-  ogDescription: seoDescriptionValue,
-  ogUrl: seoUrlValue,
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogUrl: seoUrl,
   ogType: 'music.playlist',
   ogImage: `${siteUrl}/img/og-image.jpg`,
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
-  twitterTitle: seoTitleValue,
-  twitterDescription: seoDescriptionValue,
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription,
   twitterImage: `${siteUrl}/img/og-image.jpg`
 })
 
 useHead({
   link: [
-    { rel: 'canonical', href: seoUrlValue }
+    { rel: 'canonical', href: seoUrl }
   ]
 })
 

@@ -1424,39 +1424,49 @@ const handleSearch = (query: string) => {
 }
 
 // Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
-// Calculate values directly from data available during SSR
-const profileForSEO = initialData.value?.profile
-const tracksForSEO = initialData.value?.tracks || tracks.value
+// Use computed values to ensure reactivity and SSR compatibility
+// Note: titleTemplate in nuxt.config will add "| Beatbox" automatically
+const seoTitle = computed(() => {
+  const profileForSEO = initialData.value?.profile
+  const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
+  return name ? `${name}'s Music Library` : 'Music Library'
+})
 
-// Calculate SEO values directly from the data (available during SSR)
-const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
-const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
-const seoTitleValue = name ? `${name}'s Music Library | Beatbox` : 'Music Library | Beatbox'
-const seoDescriptionValue = name
-  ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
-  : 'Explore music collection on Beatbox'
-const seoUrlValue = `${siteUrl}/u/${profileForSEO?.username || username.value || route.params.id}`
+const seoDescription = computed(() => {
+  const profileForSEO = initialData.value?.profile
+  const tracksForSEO = initialData.value?.tracks || tracks.value
+  const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
+  const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
+  return name
+    ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
+    : 'Explore music collection on Beatbox'
+})
 
-// Use useSeoMeta for better SSR support (as recommended by Nuxt docs)
+const seoUrl = computed(() => {
+  const profileForSEO = initialData.value?.profile
+  return `${siteUrl}/u/${profileForSEO?.username || username.value || route.params.id}`
+})
+
+// Use useSeoMeta with computed values for reactivity and SSR support
 useSeoMeta({
-  title: seoTitleValue,
-  description: seoDescriptionValue,
-  ogTitle: seoTitleValue,
-  ogDescription: seoDescriptionValue,
-  ogUrl: seoUrlValue,
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogUrl: seoUrl,
   ogType: 'profile',
   ogImage: `${siteUrl}/img/og-image.jpg`,
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
-  twitterTitle: seoTitleValue,
-  twitterDescription: seoDescriptionValue,
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription,
   twitterImage: `${siteUrl}/img/og-image.jpg`
 })
 
 useHead({
   link: [
-    { rel: 'canonical', href: seoUrlValue }
+    { rel: 'canonical', href: seoUrl }
   ]
 })
 

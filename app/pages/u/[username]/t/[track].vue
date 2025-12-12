@@ -131,6 +131,14 @@ import { usePlayer } from '~/composables/usePlayer'
 import { useToast } from '~/composables/useToast'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 
+// Debug: Log immediately to verify component is loading during SSR
+if (process.server) {
+  console.log('[SSR] Track page component is executing!', {
+    path: useRoute().path,
+    params: useRoute().params
+  })
+}
+
 const route = useRoute()
 const { user } = useAuth()
 const { supabase } = useSupabase()
@@ -239,14 +247,7 @@ const { data: trackData, pending: loading } = await useAsyncData(
 )
 
 // Store initial data for SEO (available during SSR)
-// Ensure we have the data - trackData.value should be populated after await useAsyncData
-const initialTrackData = trackData.value
-
-// Debug: Log to verify data is available during SSR
-if (process.server) {
-  console.log('[SSR] Track data available:', !!initialTrackData, initialTrackData?.title)
-}
-
+// Use trackData.value directly - it's populated after await useAsyncData
 const track = computed(() => trackData.value)
 
 const isOwnProfile = computed(() => {
@@ -469,19 +470,25 @@ const updateTrackStatus = async (trackId: number, statusId: number | null) => {
   }
 }
 
-// Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
-// Calculate values directly from data available during SSR
+// Set SEO meta tags - calculate values directly after data fetch for SSR compatibility
+// Note: titleTemplate in nuxt.config will add "| Beatbox" automatically
 const usernameParam = route.params.username as string
+const trackForSEO = trackData.value
 
-// Ensure we use the data that's definitely available (initialTrackData should be set after await)
-// Fallback to trackData.value if initialTrackData is null (shouldn't happen with proper SSR)
-const trackForSEO = initialTrackData ?? trackData.value
+// Debug: Log during SSR to verify data is available
+if (process.server) {
+  console.log('[SSR] Track data for SEO:', {
+    hasData: !!trackForSEO,
+    title: trackForSEO?.title,
+    artist: trackForSEO?.artist,
+    username: usernameParam
+  })
+}
 
-// Calculate SEO values directly from the data (available during SSR)
-// Always use route params as fallback to ensure SEO is set even if data isn't loaded
+// Calculate SEO values directly from data (available during SSR after await useAsyncData)
 const trackTitle = trackForSEO?.title || 'Track'
 const artist = trackForSEO?.artist || usernameParam || 'Artist'
-const seoTitleValue = `${trackTitle} by ${artist} | Beatbox`
+const seoTitleValue = `${trackTitle} by ${artist}`
 
 const details = []
 if (trackForSEO?.genre) details.push(trackForSEO.genre)
@@ -494,25 +501,24 @@ const seoDescriptionValue = trackForSEO
 
 const seoUrlValue = `${siteUrl}/u/${usernameParam}/t/${route.params.track}`
 
-// Use useSeoMeta for better SSR support (as recommended by Nuxt docs)
-// This should be evaluated during SSR since we await useAsyncData above
-useSeoMeta({
-  title: seoTitleValue,
-  description: seoDescriptionValue,
-  ogTitle: seoTitleValue,
-  ogDescription: seoDescriptionValue,
-  ogUrl: seoUrlValue,
-  ogType: 'music.song',
-  ogImage: `${siteUrl}/img/og-image.jpg`,
-  ogImageWidth: '1200',
-  ogImageHeight: '630',
-  twitterCard: 'summary_large_image',
-  twitterTitle: seoTitleValue,
-  twitterDescription: seoDescriptionValue,
-  twitterImage: `${siteUrl}/img/og-image.jpg`
-})
-
+// Use useHead with direct values - this pattern works reliably during SSR
+// The values are calculated after await useAsyncData, so they're available during SSR
 useHead({
+  title: seoTitleValue,
+  meta: [
+    { name: 'description', content: seoDescriptionValue },
+    { property: 'og:title', content: seoTitleValue },
+    { property: 'og:description', content: seoDescriptionValue },
+    { property: 'og:url', content: seoUrlValue },
+    { property: 'og:type', content: 'music.song' },
+    { property: 'og:image', content: `${siteUrl}/img/og-image.jpg` },
+    { property: 'og:image:width', content: '1200' },
+    { property: 'og:image:height', content: '630' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: seoTitleValue },
+    { name: 'twitter:description', content: seoDescriptionValue },
+    { name: 'twitter:image', content: `${siteUrl}/img/og-image.jpg` }
+  ],
   link: [
     { rel: 'canonical', href: seoUrlValue }
   ]

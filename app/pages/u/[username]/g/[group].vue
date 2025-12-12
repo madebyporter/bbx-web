@@ -249,44 +249,54 @@ const handleEdit = (track: any) => {
 }
 
 // Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
-// Calculate values directly from data available during SSR
-const groupForSEO = {
-  username: initialData.value?.username || username.value,
-  groupName: initialData.value?.groupName || groupName.value,
-  trackCount: initialData.value?.tracks?.length || tracks.value.length
-}
+// Use computed values to ensure reactivity and SSR compatibility
+// Note: titleTemplate in nuxt.config will add "| Beatbox" automatically
+const seoTitle = computed(() => {
+  const groupUsername = initialData.value?.username || username.value
+  const groupNameValue = initialData.value?.groupName || groupName.value
+  if (groupNameValue && groupUsername) {
+    return `${groupNameValue} by ${groupUsername}`
+  }
+  return 'Track Group'
+})
 
-// Calculate SEO values directly from the data (available during SSR)
-const seoTitleValue = groupForSEO.groupName && groupForSEO.username
-  ? `${groupForSEO.groupName} by ${groupForSEO.username} | Beatbox`
-  : 'Track Group | Beatbox'
+const seoDescription = computed(() => {
+  const groupUsername = initialData.value?.username || username.value
+  const groupNameValue = initialData.value?.groupName || groupName.value
+  const trackCount = initialData.value?.tracks?.length || tracks.value.length
+  if (!groupNameValue || !groupUsername) {
+    return 'View track group on Beatbox'
+  }
+  const countStr = trackCount > 0 ? ` - ${trackCount} tracks` : ''
+  return `View different versions of ${groupNameValue} by ${groupUsername} on Beatbox${countStr}`
+})
 
-const seoDescriptionValue = !groupForSEO.groupName || !groupForSEO.username
-  ? 'View track group on Beatbox'
-  : `View different versions of ${groupForSEO.groupName} by ${groupForSEO.username} on Beatbox${groupForSEO.trackCount > 0 ? ` - ${groupForSEO.trackCount} tracks` : ''}`
+const seoUrl = computed(() => {
+  const groupUsername = initialData.value?.username || username.value || route.params.username
+  const groupNameValue = initialData.value?.groupName || groupName.value || route.params.group
+  return `${siteUrl}/u/${groupUsername}/g/${groupNameValue}`
+})
 
-const seoUrlValue = `${siteUrl}/u/${groupForSEO.username || route.params.username}/g/${groupForSEO.groupName || route.params.group}`
-
-// Use useSeoMeta for better SSR support (as recommended by Nuxt docs)
+// Use useSeoMeta with computed values for reactivity and SSR support
 useSeoMeta({
-  title: seoTitleValue,
-  description: seoDescriptionValue,
-  ogTitle: seoTitleValue,
-  ogDescription: seoDescriptionValue,
-  ogUrl: seoUrlValue,
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogUrl: seoUrl,
   ogType: 'music.playlist',
   ogImage: `${siteUrl}/img/og-image.jpg`,
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
-  twitterTitle: seoTitleValue,
-  twitterDescription: seoDescriptionValue,
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription,
   twitterImage: `${siteUrl}/img/og-image.jpg`
 })
 
 useHead({
   link: [
-    { rel: 'canonical', href: seoUrlValue }
+    { rel: 'canonical', href: seoUrl }
   ]
 })
 
