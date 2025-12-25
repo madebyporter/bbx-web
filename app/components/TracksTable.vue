@@ -1,5 +1,5 @@
 <template>
-  <div class="overflow-x-auto lg:overflow-x-visible w-full h-full">
+  <div class="overflow-x-auto lg:overflow-x-visible w-full h-fit">
     <div v-if="loading" class="flex items-center justify-center p-8 h-full w-full grow">
       <LoadingLogo />
     </div>
@@ -165,7 +165,7 @@
           <!-- Existing Collections -->
           <template v-else>
             <template v-if="track.collections && track.collections.length > 0">
-              <div class="flex flex-wrap gap-1">
+              <div class="flex flex-nowrap gap-1">
                 <NuxtLink v-for="collection in track.collections" :key="collection.slug"
                   :to="`/u/${getTrackOwnerUsername(track)}/c/${collection.slug}`"
                   class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white transition-colors whitespace-nowrap">

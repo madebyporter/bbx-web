@@ -1,6 +1,6 @@
 <template>
   <div v-if="hasEverHadTrack" ref="playerRef"
-    class="w-full bg-neutral-900 border-t border-neutral-800 z-50 h-fit lg:h-fit relative"
+    class="w-full bg-neutral-900 border-t border-neutral-800 z-30 h-fit lg:h-fit relative"
     style="transform: translateY(100%)">
     
     <!-- Stem Player Active Overlay -->

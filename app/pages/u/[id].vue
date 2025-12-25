@@ -1,27 +1,8 @@
 <template>
   <div class="flex flex-col gap-0 text-neutral-300 grow">
 
-    <!-- Section Toggles -->
-    <div class="flex flex-row gap-2 max-md:py-2 p-4 max-md:border-t max-md:border-neutral-800 items-center border-b border-neutral-800">
-      <div @click="toggleSoftwareSection"
-        class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
-        :class="softwareSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
-        Software
-      </div>
-      <div v-if="isOwnProfile && isAudioPro" @click="toggleMembersSection"
-        class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
-        :class="membersSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
-        Members
-      </div>
-      <div @click="toggleMusicSection"
-        class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
-        :class="musicSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
-        Music
-      </div>
-    </div>
-
     <!-- Profile Header -->
-    <div class="flex flex-col lg:flex-row justify-start lg:justify-between items-stretch gap-4 py-2 px-4 lg:py-4 border-b border-neutral-800">
+    <div class="flex flex-col lg:flex-row justify-start lg:justify-between items-stretch gap-2 p-4">
       <div class="flex flex-col gap-2 overflow-auto">
         <!-- Display Name and Username -->
         <div class="flex flex-row gap-2 items-end flex-wrap">
@@ -31,14 +12,14 @@
             <div v-if="editingDisplayName"
               class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
               <input ref="displayNameInputRef" v-model="newDisplayNameValue" type="text"
-                class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]"
-                @keyup.enter="saveDisplayName" @keyup.esc="cancelEditingDisplayName" />
+                class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]" @keyup.enter="saveDisplayName"
+                @keyup.esc="cancelEditingDisplayName" />
               <button @click="cancelEditingDisplayName"
                 class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
                 <Xmark class="w-[10px] h-[10px]" />
               </button>
-              <button @click="saveDisplayName"
-                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
+              <button @click="saveDisplayName" class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer"
+                title="Save">
                 <Check class="w-[10px] h-[10px]" />
               </button>
             </div>
@@ -47,7 +28,8 @@
               <div v-if="profileName" class="flex flex-row gap-1 items-center group">
                 <h1 class="text-xl lg:text-3xl font-bold truncate">{{ profileName }}</h1>
                 <button v-if="isOwnProfile" @click="startEditingDisplayName"
-                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer opacity-0 group-hover:opacity-100" title="Edit Display Name">
+                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                  title="Edit Display Name">
                   <EditPencil class="w-[10px] h-[10px]" />
                 </button>
               </div>
@@ -64,14 +46,14 @@
               class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
               <span class="text-base lg:text-xl font-normal text-neutral-400">@</span>
               <input ref="usernameInputRef" v-model="newUsernameValue" type="text"
-                class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[150px]"
-                @keyup.enter="saveUsername" @keyup.esc="cancelEditingUsername" />
+                class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[150px]" @keyup.enter="saveUsername"
+                @keyup.esc="cancelEditingUsername" />
               <button @click="cancelEditingUsername"
                 class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
                 <Xmark class="w-[10px] h-[10px]" />
               </button>
-              <button @click="saveUsername"
-                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
+              <button @click="saveUsername" class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer"
+                title="Save">
                 <Check class="w-[10px] h-[10px]" />
               </button>
             </div>
@@ -80,7 +62,8 @@
               <div v-if="username" class="flex flex-row gap-1 items-center group">
                 <span class="text-base lg:text-xl font-normal text-neutral-400">@{{ username }}</span>
                 <button v-if="isOwnProfile" @click="startEditingUsername"
-                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer opacity-0 group-hover:opacity-100" title="Edit Username">
+                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                  title="Edit Username">
                   <EditPencil class="w-[10px] h-[10px]" />
                 </button>
               </div>
@@ -91,6 +74,39 @@
             </template>
           </div>
         </div>
+      </div>
+
+      <!-- Section Toggles -->
+      <div class="flex flex-row gap-2 items-center">
+        <div @click="toggleBioSection"
+          class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
+          :class="bioSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+          Bio
+        </div>
+        <div @click="toggleSoftwareSection"
+          class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
+          :class="softwareSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+          Software
+        </div>
+        <div v-if="isOwnProfile && isAudioPro" @click="toggleMembersSection"
+          class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
+          :class="membersSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+          Members
+        </div>
+        <div @click="toggleMusicSection"
+          class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
+          :class="musicSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+          Music
+        </div>
+      </div>
+    </div>
+
+    
+
+    <!-- Bio Section -->
+    <div v-if="bioSectionOpen" class="flex flex-col gap-0 p-4 border-t border-neutral-800">
+      <!-- Profile Info -->
+      <div class="flex flex-col gap-1">
         <!-- Bio -->
         <div class="text-sm text-neutral-400">
           <!-- Editing Bio -->
@@ -120,105 +136,97 @@
             <span v-else class="text-neutral-500 italic">Something's supposed to be here</span>
           </template>
         </div>
-      </div>
-      <div class="flex flex-col md:flex-row gap-0 justify-between md:items-center">
-        <!-- Profile Info -->
-        <div class="flex flex-col gap-2">
-          
-          <div v-if="profileWebsite || hasSocialLinks || isOwnProfile"
-            class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap items-center">
-            <!-- Editing Website -->
-            <div v-if="editingWebsite"
-              class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
-              <input ref="websiteInputRef" v-model="newWebsiteValue" type="text"
-                class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]" @keyup.enter="saveWebsite"
-                @keyup.esc="cancelEditingWebsite" />
-              <button @click="cancelEditingWebsite"
-                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
-                <Xmark class="w-[10px] h-[10px]" />
-              </button>
-              <button @click="saveWebsite" class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer"
-                title="Save">
-                <Check class="w-[10px] h-[10px]" />
-              </button>
-            </div>
-            <!-- Website (not editing) -->
-            <template v-else>
-              <a v-if="profileWebsite" :href="profileWebsite" target="_blank" rel="noopener noreferrer"
-                class="hover:text-neutral-300 transition-colors">Website</a>
-              <span v-else-if="isOwnProfile" @click="startEditingWebsite"
-                class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer">
-                Add Website
-              </span>
+        <div v-if="profileWebsite || hasSocialLinks || isOwnProfile"
+          class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap items-center">
+          <!-- Editing Website -->
+          <div v-if="editingWebsite"
+            class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
+            <input ref="websiteInputRef" v-model="newWebsiteValue" type="text"
+              class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]" @keyup.enter="saveWebsite"
+              @keyup.esc="cancelEditingWebsite" />
+            <button @click="cancelEditingWebsite"
+              class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+              <Xmark class="w-[10px] h-[10px]" />
+            </button>
+            <button @click="saveWebsite" class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer"
+              title="Save">
+              <Check class="w-[10px] h-[10px]" />
+            </button>
+          </div>
+          <!-- Website (not editing) -->
+          <template v-else>
+            <a v-if="profileWebsite" :href="profileWebsite" target="_blank" rel="noopener noreferrer"
+              class="hover:text-neutral-300 transition-colors">Website</a>
+            <span v-else-if="isOwnProfile" @click="startEditingWebsite"
+              class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer">
+              Add Website
+            </span>
+          </template>
+
+          <!-- Social Links -->
+          <div class="flex flex-row gap-0">
+            <template v-for="platform in socialLinkPlatforms" :key="platform">
+              <!-- Editing state -->
+              <div v-if="editingSocialLink === platform"
+                class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
+                <input ref="socialLinkInputRef" v-model="newSocialLinkValue" type="text"
+                  class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]"
+                  @keyup.enter="saveSocialLink(platform)" @keyup.esc="cancelEditingSocialLink" />
+                <button @click="cancelEditingSocialLink"
+                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+                  <Xmark class="w-[10px] h-[10px]" />
+                </button>
+                <button @click="saveSocialLink(platform)"
+                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
+                  <Check class="w-[10px] h-[10px]" />
+                </button>
+              </div>
+              <!-- Existing link with edit/delete buttons -->
+              <div v-else-if="profileSocialLinks[platform]"
+                class="flex flex-row gap-0 items-center border border-transparent hover:border-neutral-800 rounded-md p-1 hover:*:opacity-100">
+                <a :href="String(profileSocialLinks[platform])" target="_blank" rel="noopener noreferrer"
+                  class="hover:text-neutral-300 transition-colors px-1">
+                  {{ getDisplayNameFromUrl(String(profileSocialLinks[platform] || ''), platform) }}
+                </a>
+                <template v-if="isOwnProfile">
+                  <button @click="startEditingSocialLink(platform)"
+                    class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer opacity-30" title="Edit">
+                    <EditPencil class="w-[10px] h-[10px]" />
+                  </button>
+                  <button @click="deleteSocialLink(platform)"
+                    class="p-1 rounded hover:bg-red-900/20 transition-colors cursor-pointer opacity-30"
+                    title="Delete">
+                    <Trash class="w-2.5 h-2.5 max-w-2.5 max-h-2.5 text-red-500" />
+                  </button>
+                </template>
+              </div>
             </template>
 
-            <!-- Social Links -->
-            <div class="flex flex-row gap-0">
-              <template v-for="platform in socialLinkPlatforms" :key="platform">
-                <!-- Editing state -->
-                <div v-if="editingSocialLink === platform"
-                  class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
-                  <input ref="socialLinkInputRef" v-model="newSocialLinkValue" type="text"
-                    class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]"
-                    @keyup.enter="saveSocialLink(platform)" @keyup.esc="cancelEditingSocialLink" />
-                  <button @click="cancelEditingSocialLink"
-                    class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
-                    <Xmark class="w-[10px] h-[10px]" />
-                  </button>
-                  <button @click="saveSocialLink(platform)"
-                    class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
-                    <Check class="w-[10px] h-[10px]" />
-                  </button>
-                </div>
-                <!-- Existing link with edit/delete buttons -->
-                <div v-else-if="profileSocialLinks[platform]"
-                  class="flex flex-row gap-0 items-center border border-transparent hover:border-neutral-800 rounded-md p-1 hover:*:opacity-100">
-                  <a :href="profileSocialLinks[platform]" target="_blank" rel="noopener noreferrer"
-                    class="hover:text-neutral-300 transition-colors px-1">
-                    {{ getPlatformDisplayName(platform) }}
-                  </a>
-                  <template v-if="isOwnProfile">
-                    <button @click="startEditingSocialLink(platform)"
-                      class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer opacity-30" title="Edit">
-                      <EditPencil class="w-[10px] h-[10px]" />
-                    </button>
-                    <button @click="deleteSocialLink(platform)"
-                      class="p-1 rounded hover:bg-red-900/20 transition-colors cursor-pointer opacity-30"
-                      title="Delete">
-                      <Trash class="w-2.5 h-2.5 max-w-2.5 max-h-2.5 text-red-500" />
-                    </button>
-                  </template>
-                </div>
-              </template>
-
-            </div>
-
-            <!-- Single plus button to add another social link (only show if own profile, has links, and not all platforms are filled) -->
-            <div
-              v-if="isOwnProfile && hasSocialLinks && !editingSocialLink && socialLinkPlatforms.some(p => !profileSocialLinks[p])"
-              class="flex flex-row gap-1 items-center">
-              <button @click="startAddingSocialLink(getNextAvailablePlatform())"
-                class="p-1 bg-neutral-800 rounded hover:bg-neutral-700 transition-colors cursor-pointer"
-                title="Add Social Link">
-                <Plus class="w-2.5 h-2.5 max-w-2.5 max-h-2.5" />
-              </button>
-            </div>
-
-            <!-- Show "Add Social Links" text if no links exist and is own profile -->
-            <div v-if="isOwnProfile && !hasSocialLinks && !editingSocialLink" @click="startAddingSocialLink('twitter')"
-              class="hover:text-neutral-300 transition-colors cursor-pointer">
-              Add Social Links
-            </div>
-
           </div>
-        </div>
 
-        
+          <!-- Single plus button to add another social link (only show if own profile, has links, and not all platforms are filled) -->
+          <div
+            v-if="isOwnProfile && hasSocialLinks && !editingSocialLink && socialLinkPlatforms.some(p => !profileSocialLinks[p])"
+            class="flex flex-row gap-1 items-center">
+            <button @click="startAddingSocialLink(getNextAvailablePlatform())"
+              class="p-1 bg-neutral-800 rounded hover:bg-neutral-700 transition-colors cursor-pointer"
+              title="Add Social Link">
+              <Plus class="w-2.5 h-2.5 max-w-2.5 max-h-2.5" />
+            </button>
+          </div>
+
+          <!-- Show "Add Social Links" text if no links exist and is own profile -->
+          <div v-if="isOwnProfile && !hasSocialLinks && !editingSocialLink" @click="startAddingSocialLink('twitter')"
+            class="hover:text-neutral-300 transition-colors cursor-pointer">
+            Add Social Links
+          </div>
+
+        </div>
       </div>
     </div>
 
     <!-- Software Section -->
-    <div v-if="softwareSectionOpen" class="flex flex-col gap-0 border-b border-neutral-800">
+    <div v-if="softwareSectionOpen" class="flex flex-col gap-0 border-t border-neutral-800">
       <div v-if="!loadingSoftware && softwareList.length > 0"
         class="p-2 max-md:pb-0 flex flex-row gap-2 text-xs overflow-x-auto no-scrollbar">
         <div @click="clearFilters" :class="[
@@ -274,10 +282,10 @@
       </div>
     </div>
     <!-- Tracks Section -->
-    <div v-if="musicSectionOpen" class="grow">
-      <div class="flex flex-row justify-between items-center gap-4 py-2 px-4 lg:py-4 border-b border-neutral-800">
+    <div v-if="musicSectionOpen" class="grow border-t border-neutral-800">
+      <div class="flex flex-row justify-between items-center gap-4 p-4">
         <div class="flex flex-col overflow-auto">
-          <h2 class="text-lg lg:text-2xl font-bold truncate">Music</h2>
+          <h2 class="text-lg lg:text-xl font-bold truncate">Music</h2>
         </div>
         <div class="flex items-center gap-4">
           <p class="text-sm text-neutral-500">
@@ -471,6 +479,7 @@ const profileSocialLinks = ref<{
   soundcloud?: string
   spotify?: string
   youtube?: string
+  linkedin?: string
   [key: string]: string | undefined
 }>((initialData.value?.profile?.social_links as any) || {})
 const tracks = ref<any[]>(initialData.value?.tracks || [])
@@ -478,6 +487,43 @@ const loading = ref(false)
 // searchQuery removed - search is now handled by SearchModal
 const allSoftware = computed(() => softwareData.value || [])
 const loadingSoftware = computed(() => softwareData.value === null)
+
+// Bio section visibility state (closed by default)
+const bioSectionOpenState = ref(false)
+
+// Load bio section state from localStorage
+const loadBioSectionState = () => {
+  try {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('bioSectionOpen')
+      if (saved !== null) {
+        bioSectionOpenState.value = saved === 'true'
+      }
+    }
+  } catch (e) {
+    console.error('Error loading bio section state:', e)
+  }
+}
+
+// Save bio section state to localStorage
+const saveBioSectionState = () => {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bioSectionOpen', bioSectionOpenState.value.toString())
+    }
+  } catch (e) {
+    console.error('Error saving bio section state:', e)
+  }
+}
+
+// Toggle bio section
+const toggleBioSection = () => {
+  bioSectionOpenState.value = !bioSectionOpenState.value
+  saveBioSectionState()
+}
+
+// Bio section visibility
+const bioSectionOpen = computed(() => bioSectionOpenState.value)
 
 // Software section visibility state (closed by default)
 const softwareSectionOpenState = ref(false)
@@ -644,7 +690,7 @@ const bioInputRef = ref<HTMLTextAreaElement | null>(null)
 const websiteInputRef = ref<HTMLInputElement | null>(null)
 
 // Available social link platforms
-const socialLinkPlatforms = ['twitter', 'instagram', 'soundcloud', 'spotify', 'youtube'] as const
+const socialLinkPlatforms = ['twitter', 'instagram', 'soundcloud', 'spotify', 'youtube', 'linkedin'] as const
 type SocialLinkPlatform = typeof socialLinkPlatforms[number]
 
 // Get display name for platform
@@ -654,9 +700,44 @@ const getPlatformDisplayName = (platform: string): string => {
     instagram: 'Instagram',
     soundcloud: 'SoundCloud',
     spotify: 'Spotify',
-    youtube: 'YouTube'
+    youtube: 'YouTube',
+    linkedin: 'LinkedIn'
   }
   return names[platform] || platform
+}
+
+// Detect platform from URL
+const detectPlatformFromUrl = (url: string): string | null => {
+  try {
+    const urlObj = new URL(url)
+    const hostname = urlObj.hostname.toLowerCase()
+    
+    // Remove www. prefix
+    const domain = hostname.replace(/^www\./, '')
+    
+    // Map domains to platform keys
+    const domainMap: Record<string, string> = {
+      'twitter.com': 'twitter',
+      'x.com': 'twitter', // Twitter is now X
+      'instagram.com': 'instagram',
+      'soundcloud.com': 'soundcloud',
+      'spotify.com': 'spotify',
+      'youtube.com': 'youtube',
+      'youtu.be': 'youtube',
+      'linkedin.com': 'linkedin'
+    }
+    
+    return domainMap[domain] || null
+  } catch (e) {
+    return null
+  }
+}
+
+// Get display name for a URL (detects platform from URL)
+const getDisplayNameFromUrl = (url: string, fallbackPlatform?: string): string => {
+  const detectedPlatform = detectPlatformFromUrl(url)
+  const platform = detectedPlatform || fallbackPlatform
+  return platform ? getPlatformDisplayName(platform) : 'Link'
 }
 
 // Get the next available platform that doesn't have a link
@@ -1618,6 +1699,7 @@ onMounted(async () => {
   // Software is already loaded via useAsyncData (cached), no need to fetch again
   
   // Load section states from localStorage
+  loadBioSectionState()
   loadMusicSectionState()
   // Load software section state after checking if software is available
   // Use nextTick to ensure software data is loaded first
