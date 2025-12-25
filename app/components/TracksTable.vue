@@ -186,7 +186,7 @@
         <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>
         <div v-if="isOwnProfile && profileUserType === 'audio_pro'" class="text-neutral-400 overflow-hidden">
           <select v-if="statuses.length > 0" :value="track.status_id || ''"
-            @change="updateTrackStatus(track.id, $event.target.value ? parseInt($event.target.value) : null)"
+            @change="updateTrackStatus(track.id, ($event.target as HTMLSelectElement).value ? parseInt(($event.target as HTMLSelectElement).value) : null)"
             class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-xs text-neutral-200 cursor-pointer outline-none">
             <option value="">No Status</option>
             <option v-for="status in statuses" :key="status.id" :value="status.id">
@@ -338,9 +338,9 @@ const fetchStatuses = async () => {
         .select('id, name')
       
       if (insertError) throw insertError
-      statuses.value = newStatuses || []
+      statuses.value = (newStatuses as Array<{ id: number; name: string }>) || []
     } else {
-      statuses.value = data
+      statuses.value = (data as Array<{ id: number; name: string }>)
     }
   } catch (error) {
     console.error('Error fetching statuses:', error)

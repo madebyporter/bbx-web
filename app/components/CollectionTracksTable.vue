@@ -148,7 +148,7 @@
           <select 
             v-if="statuses.length > 0"
             :value="track.status_id || ''"
-            @change="updateTrackStatus(track.id, $event.target.value ? parseInt($event.target.value) : null)"
+            @change="updateTrackStatus(track.id, ($event.target as HTMLSelectElement).value ? parseInt(($event.target as HTMLSelectElement).value) : null)"
             class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-xs text-neutral-200 cursor-pointer outline-none"
           >
             <option value="">No Status</option>
@@ -265,9 +265,9 @@ const fetchStatuses = async () => {
         .eq('user_id', user.value.id)
         .order('name')
       
-      statuses.value = newData || []
+      statuses.value = (newData as Array<{ id: number; name: string }>) || []
     } else {
-      statuses.value = data
+      statuses.value = (data as Array<{ id: number; name: string }>)
     }
   } catch (error) {
     console.error('Error fetching statuses:', error)

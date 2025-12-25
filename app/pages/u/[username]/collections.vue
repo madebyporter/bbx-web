@@ -74,8 +74,6 @@ import LoadingLogo from '~/components/LoadingLogo.vue'
 const route = useRoute()
 const { user } = useAuth()
 const { supabase } = useSupabase()
-const config = useRuntimeConfig()
-const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 // Fetch initial profile data server-side for SEO
 const { data: initialData } = await useAsyncData(
@@ -113,34 +111,32 @@ const usernameParam = route.params.username as string
 const profileForSEO = initialData.value
 
 const seoTitleValue = profileForSEO?.username 
-  ? `${profileForSEO.username}'s Collections - Beatbox`
-  : `${usernameParam}'s Collections - Beatbox`
+  ? `${profileForSEO.username}'s Collections`
+  : `${usernameParam}'s Collections`
 const seoDescriptionValue = profileForSEO?.username
   ? `Browse ${profileForSEO.username}'s music collections on Beatbox`
   : `Browse music collections on Beatbox`
-const seoUrlValue = `${siteUrl}/u/${profileForSEO?.username || usernameParam}/collections`
+
+const currentUrl = useRequestURL().href
+const siteConfig = useSiteConfig()
+const ogImageUrl = `${siteConfig.url}/img/og-image.jpg`
 
 // Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
+// NuxtSEO module handles canonical URLs automatically
 useSeoMeta({
   title: seoTitleValue,
   description: seoDescriptionValue,
   ogTitle: seoTitleValue,
   ogDescription: seoDescriptionValue,
-  ogUrl: seoUrlValue,
+  ogUrl: currentUrl,
   ogType: 'website',
-  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImage: ogImageUrl,
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
   twitterTitle: seoTitleValue,
   twitterDescription: seoDescriptionValue,
-  twitterImage: `${siteUrl}/img/og-image.jpg`
-})
-
-useHead({
-  link: [
-    { rel: 'canonical', href: seoUrlValue }
-  ]
+  twitterImage: ogImageUrl
 })
 
 // Inject search handler registration functions

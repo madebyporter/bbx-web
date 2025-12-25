@@ -47,6 +47,19 @@ export default defineNuxtConfig({
       SITE_URL: process.env.SITE_URL
     }
   },
+
+  // NuxtSEO configuration
+  site: {
+    url: process.env.SITE_URL || 'https://beatbox.studio',
+    name: 'Beatbox',
+    description: 'A curated collection of music production tools',
+    defaultLocale: 'en'
+  },
+
+  seo: {
+    // Enable all SEO modules
+    enabled: true
+  },
   
   app: {
     head: {
@@ -58,20 +71,7 @@ export default defineNuxtConfig({
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'format-detection', content: 'telephone=no' },
-        { name: 'theme-color', content: '#000000' },
-        
-        // Static Open Graph defaults (pages will override specific values)
-        { property: 'og:site_name', content: 'Beatbox' },
-        { property: 'og:image', content: 'https://beatbox.studio/img/og-image.jpg' },
-        { property: 'og:image:width', content: '1200' },
-        { property: 'og:image:height', content: '630' },
-        { property: 'og:image:alt', content: 'Beatbox - A curated collection of music production tools' },
-        
-        // Static Twitter defaults (pages will override specific values)
-        { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'twitter:image', content: 'https://beatbox.studio/img/og-image.jpg' },
-        { name: 'twitter:image:alt', content: 'Beatbox - A curated collection of music production tools' },
-        { name: 'twitter:site', content: '@beatboxstudio' }
+        { name: 'theme-color', content: '#000000' }
       ],
       link: [
         
@@ -85,6 +85,10 @@ export default defineNuxtConfig({
     }
   },
   
+  modules: [
+    '@nuxtjs/seo'
+  ],
+
   plugins: [
     '~/plugins/supabase.client.ts',
     '~/plugins/google-analytics.client.ts',

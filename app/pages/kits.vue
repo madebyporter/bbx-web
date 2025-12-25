@@ -25,34 +25,29 @@ import { useAuth } from '~/composables/useAuth'
 import DatabaseGrid from '~/components/DatabaseGrid.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
 
-const config = useRuntimeConfig()
-const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
-
 // Set SEO meta tags - direct values for proper SSR
-const seoTitleValue = 'Music Production Kits - Beatbox'
+const seoTitleValue = 'Music Production Kits'
 const seoDescriptionValue = 'Browse music production kits, sample packs, and sound libraries on Beatbox'
-const seoUrlValue = `${siteUrl}/kits`
 
+const currentUrl = useRequestURL().href
+const siteConfig = useSiteConfig()
+const ogImageUrl = `${siteConfig.url}/img/og-image.jpg`
+
+// NuxtSEO module handles canonical URLs automatically
 useSeoMeta({
   title: seoTitleValue,
   description: seoDescriptionValue,
   ogTitle: seoTitleValue,
   ogDescription: seoDescriptionValue,
-  ogUrl: seoUrlValue,
+  ogUrl: currentUrl,
   ogType: 'website',
-  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImage: ogImageUrl,
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
   twitterTitle: seoTitleValue,
   twitterDescription: seoDescriptionValue,
-  twitterImage: `${siteUrl}/img/og-image.jpg`
-})
-
-useHead({
-  link: [
-    { rel: 'canonical', href: seoUrlValue }
-  ]
+  twitterImage: ogImageUrl
 })
 
 // Define interfaces for type safety

@@ -144,8 +144,6 @@ const { user } = useAuth()
 const { supabase } = useSupabase()
 const { loadQueue, currentTrack, isPlaying, togglePlayPause } = usePlayer()
 const { showSuccess, showError } = useToast()
-const config = useRuntimeConfig()
-const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 const username = ref(route.params.username as string)
 const groupTracks = ref<any[]>([])
@@ -477,7 +475,7 @@ const trackForSEO = trackData.value
 // Calculate SEO values directly from data (available during SSR after await useAsyncData)
 const trackTitle = trackForSEO?.title || 'Track'
 const artist = trackForSEO?.artist || usernameParam || 'Artist'
-const seoTitleValue = `${trackTitle} by ${artist} - Beatbox`
+const seoTitleValue = `${trackTitle} by ${artist}`
 
 const details = []
 if (trackForSEO?.genre) details.push(trackForSEO.genre)
@@ -488,29 +486,26 @@ const seoDescriptionValue = trackForSEO
   ? `Listen to ${trackTitle} by ${artist} on Beatbox${detailsStr}`
   : `Listen to music by ${artist} on Beatbox`
 
-const seoUrlValue = `${siteUrl}/u/${usernameParam}/t/${route.params.track}`
+const currentUrl = useRequestURL().href
+const siteConfig = useSiteConfig()
+const ogImageUrl = `${siteConfig.url}/img/og-image.jpg`
 
 // Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
+// NuxtSEO module handles canonical URLs automatically
 useSeoMeta({
   title: seoTitleValue,
   description: seoDescriptionValue,
   ogTitle: seoTitleValue,
   ogDescription: seoDescriptionValue,
-  ogUrl: seoUrlValue,
+  ogUrl: currentUrl,
   ogType: 'music.song',
-  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImage: ogImageUrl,
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
   twitterTitle: seoTitleValue,
   twitterDescription: seoDescriptionValue,
-  twitterImage: `${siteUrl}/img/og-image.jpg`
-})
-
-useHead({
-  link: [
-    { rel: 'canonical', href: seoUrlValue }
-  ]
+  twitterImage: ogImageUrl
 })
 
 // Listen for track update events (client-side only)

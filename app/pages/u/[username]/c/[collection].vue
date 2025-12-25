@@ -57,8 +57,6 @@ const router = useRouter()
 const { user } = useAuth()
 const { supabase } = useSupabase()
 const { updateQueue, queueSourceId } = usePlayer()
-const config = useRuntimeConfig()
-const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 // Inject search handler registration functions
 const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
@@ -363,8 +361,8 @@ const collectionForSEO = initialData.value?.collection
 // Calculate SEO values directly from data (available during SSR after await useAsyncData)
 const collectionName = collectionForSEO?.name || 'Collection'
 const seoTitleValue = collectionForSEO 
-  ? `${collectionName} by ${usernameParam} - Beatbox`
-  : `Collection by ${usernameParam} - Beatbox`
+  ? `${collectionName} by ${usernameParam}`
+  : `Collection by ${usernameParam}`
 
 let seoDescriptionValue: string
 if (collectionForSEO?.description) {
@@ -375,31 +373,26 @@ if (collectionForSEO?.description) {
   seoDescriptionValue = `Browse music collection by ${usernameParam} on Beatbox`
 }
 
-const seoUrlValue = collectionForSEO 
-  ? `${siteUrl}/u/${usernameParam}/c/${collectionForSEO.slug}`
-  : `${siteUrl}/u/${usernameParam}/c/${route.params.collection}`
+const currentUrl = useRequestURL().href
+const siteConfig = useSiteConfig()
+const ogImageUrl = `${siteConfig.url}/img/og-image.jpg`
 
 // Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
+// NuxtSEO module handles canonical URLs automatically
 useSeoMeta({
   title: seoTitleValue,
   description: seoDescriptionValue,
   ogTitle: seoTitleValue,
   ogDescription: seoDescriptionValue,
-  ogUrl: seoUrlValue,
+  ogUrl: currentUrl,
   ogType: 'music.playlist',
-  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImage: ogImageUrl,
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
   twitterTitle: seoTitleValue,
   twitterDescription: seoDescriptionValue,
-  twitterImage: `${siteUrl}/img/og-image.jpg`
-})
-
-useHead({
-  link: [
-    { rel: 'canonical', href: seoUrlValue }
-  ]
+  twitterImage: ogImageUrl
 })
 
 // Handle open filter/sort from LibraryHeader

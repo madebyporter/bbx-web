@@ -318,8 +318,6 @@ import { Plus, EditPencil, Trash, Check, Xmark } from '@iconoir/vue'
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
-const config = useRuntimeConfig()
-const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 // Inject context items registration functions
 const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
@@ -377,7 +375,7 @@ const { data: initialData } = await useAsyncData(
       const { data: tracksData } = await supabase
         .from('sounds')
         .select('*')
-        .eq('user_id', data.id)
+        .eq('user_id', (data as any).id)
         .eq('is_public', true)
         .order('created_at', { ascending: false })
         .limit(10)
@@ -395,6 +393,37 @@ const { data: initialData } = await useAsyncData(
     server: true // Ensure this runs on the server for SSR
   }
 )
+
+// Set SEO meta tags IMMEDIATELY after data fetch for SSR compatibility
+// This must be placed right after useAsyncData to ensure it runs during SSR
+const profileForSEO = initialData.value?.profile
+const tracksForSEO = initialData.value?.tracks || []
+const name = profileForSEO?.display_name || profileForSEO?.username || route.params.id
+const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
+
+const seoTitleValue = `${name}'s Music Library`
+const seoDescriptionValue = `Explore ${name}'s music collection on Beatbox - ${trackCount}`
+const currentUrl = useRequestURL().href
+const siteConfig = useSiteConfig()
+const ogImageUrl = `${siteConfig.url}/img/og-image.jpg`
+
+// Use useSeoMeta with direct values for proper SSR - MUST be synchronous
+// NuxtSEO module handles canonical URLs automatically
+useSeoMeta({
+  title: seoTitleValue,
+  description: seoDescriptionValue,
+  ogTitle: seoTitleValue,
+  ogDescription: seoDescriptionValue,
+  ogUrl: currentUrl,
+  ogType: 'profile',
+  ogImage: ogImageUrl,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitleValue,
+  twitterDescription: seoDescriptionValue,
+  twitterImage: ogImageUrl
+})
 
 // Fetch software data with caching
 // Wait for initialData to be available before fetching
@@ -438,7 +467,7 @@ const { data: softwareData, refresh: refreshSoftware } = await useAsyncData(
           )
         `)
         .eq('user_id', profileId)
-        .eq('resources.type_id', typeData.id)
+        .eq('resources.type_id', (typeData as any).id)
       
       if (error) throw error
       
@@ -466,13 +495,13 @@ const { data: softwareData, refresh: refreshSoftware } = await useAsyncData(
 )
 
 // State
-const profileName = ref<string>(initialData.value?.profile?.display_name || initialData.value?.profile?.username || '')
-const username = ref<string>(initialData.value?.profile?.username || '')
-const profileUserId = ref<string | null>(initialData.value?.profile?.id || null)
+const profileName = ref<string>((initialData.value?.profile as any)?.display_name || (initialData.value?.profile as any)?.username || '')
+const username = ref<string>((initialData.value?.profile as any)?.username || '')
+const profileUserId = ref<string | null>((initialData.value?.profile as any)?.id || null)
 const profileUserType = ref<'creator' | 'audio_pro' | null>((initialData.value?.profile?.user_type as 'creator' | 'audio_pro') || null)
 const viewerUserType = ref<'creator' | 'audio_pro' | null>(null) // Logged-in user's type
-const profileBio = ref(initialData.value?.profile?.bio || '')
-const profileWebsite = ref(initialData.value?.profile?.website || '')
+const profileBio = ref<string>((initialData.value?.profile as any)?.bio || '')
+const profileWebsite = ref<string>((initialData.value?.profile as any)?.website || '')
 const profileSocialLinks = ref<{
   twitter?: string
   instagram?: string
@@ -930,7 +959,7 @@ const saveUsername = async () => {
 // Start editing bio
 const startEditingBio = () => {
   editingBio.value = true
-  newBioValue.value = profileBio.value || ''
+  newBioValue.value = (profileBio.value as string) || ''
 }
 
 // Cancel editing bio
@@ -969,7 +998,7 @@ const saveBio = async () => {
 // Start editing website
 const startEditingWebsite = () => {
   editingWebsite.value = true
-  newWebsiteValue.value = profileWebsite.value || 'https://'
+  newWebsiteValue.value = (profileWebsite.value as string) || 'https://'
 }
 
 // Cancel editing website
@@ -1285,12 +1314,13 @@ const getSoftwareImageUrl = (imageUrl: string | null | undefined): string => {
 const fetchProfile = async () => {
   // Profile already loaded server-side, just ensure values are set
   if (!profileUserId.value && initialData.value?.profile) {
-    profileUserId.value = initialData.value.profile.id
-      profileName.value = initialData.value.profile.display_name || initialData.value.profile.username || ''
-      username.value = initialData.value.profile.username || ''
-      profileUserType.value = (initialData.value.profile.user_type as 'creator' | 'audio_pro' | null) || null
-      profileBio.value = initialData.value.profile.bio || ''
-      profileWebsite.value = initialData.value.profile.website || ''
+    const profile = initialData.value.profile as any
+    profileUserId.value = profile.id
+    profileName.value = profile.display_name || profile.username || ''
+    username.value = profile.username || ''
+    profileUserType.value = (profile.user_type as 'creator' | 'audio_pro' | null) || null
+    profileBio.value = profile.bio || ''
+    profileWebsite.value = profile.website || ''
       profileSocialLinks.value = (initialData.value.profile.social_links as any) || {}
   } else if (!profileUserId.value && supabase && user.value) {
     // If profile wasn't loaded server-side, try to fetch it client-side
@@ -1315,12 +1345,13 @@ const fetchProfile = async () => {
       }
       
       if (result.data && !result.error) {
-        profileUserId.value = result.data.id
-        profileName.value = result.data.display_name || result.data.username || ''
-        username.value = result.data.username || ''
-        profileUserType.value = (result.data.user_type as 'creator' | 'audio_pro') || null
-        profileBio.value = result.data.bio || ''
-        profileWebsite.value = result.data.website || ''
+        const data = result.data as any
+        profileUserId.value = data.id
+        profileName.value = data.display_name || data.username || ''
+        username.value = data.username || ''
+        profileUserType.value = (data.user_type as 'creator' | 'audio_pro') || null
+        profileBio.value = data.bio || ''
+        profileWebsite.value = data.website || ''
         profileSocialLinks.value = (result.data.social_links as any) || {}
       }
     } catch (error) {
@@ -1617,39 +1648,6 @@ const updateFiltersAndSort = async (params: any) => {
   }
 }
 
-// Set SEO meta tags - calculate values directly after data fetch for SSR compatibility
-// Ensure this runs synchronously after useAsyncData to be available in SSR HTML
-const profileForSEO = initialData.value?.profile
-const tracksForSEO = initialData.value?.tracks || []
-const name = profileForSEO?.display_name || profileForSEO?.username || route.params.id
-const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
-
-const seoTitleValue = `${name}'s Music Library - Beatbox`
-const seoDescriptionValue = `Explore ${name}'s music collection on Beatbox - ${trackCount}`
-const seoUrlValue = `${siteUrl}/u/${profileForSEO?.username || route.params.id}`
-
-// Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
-useSeoMeta({
-  title: seoTitleValue,
-  description: seoDescriptionValue,
-  ogTitle: seoTitleValue,
-  ogDescription: seoDescriptionValue,
-  ogUrl: seoUrlValue,
-  ogType: 'profile',
-  ogImage: `${siteUrl}/img/og-image.jpg`,
-  ogImageWidth: '1200',
-  ogImageHeight: '630',
-  twitterCard: 'summary_large_image',
-  twitterTitle: seoTitleValue,
-  twitterDescription: seoDescriptionValue,
-  twitterImage: `${siteUrl}/img/og-image.jpg`
-})
-
-useHead({
-  link: [
-    { rel: 'canonical', href: seoUrlValue }
-  ]
-})
 
 // Expose fetchTracks and updateFiltersAndSort for parent to call
 defineExpose({

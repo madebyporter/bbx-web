@@ -72,8 +72,6 @@ const route = useRoute()
 const router = useRouter()
 const { user } = useAuth()
 const { supabase } = useSupabase()
-const config = useRuntimeConfig()
-const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 // Inject functions from layout
 const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
@@ -272,37 +270,34 @@ const groupNameValue = initialData.value?.groupName || route.params.group as str
 const trackCount = initialData.value?.tracks?.length || 0
 
 const seoTitleValue = groupNameValue && groupUsername
-  ? `${groupNameValue} by ${groupUsername} - Beatbox`
-  : 'Track Group - Beatbox'
+  ? `${groupNameValue} by ${groupUsername}`
+  : 'Track Group'
 
 const countStr = trackCount > 0 ? ` - ${trackCount} tracks` : ''
 const seoDescriptionValue = groupNameValue && groupUsername
   ? `View different versions of ${groupNameValue} by ${groupUsername} on Beatbox${countStr}`
   : 'View track group on Beatbox'
 
-const seoUrlValue = `${siteUrl}/u/${groupUsername}/g/${groupNameValue}`
+const currentUrl = useRequestURL().href
+const siteConfig = useSiteConfig()
+const ogImageUrl = `${siteConfig.url}/img/og-image.jpg`
 
 // Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
+// NuxtSEO module handles canonical URLs automatically
 useSeoMeta({
   title: seoTitleValue,
   description: seoDescriptionValue,
   ogTitle: seoTitleValue,
   ogDescription: seoDescriptionValue,
-  ogUrl: seoUrlValue,
+  ogUrl: currentUrl,
   ogType: 'music.playlist',
-  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImage: ogImageUrl,
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
   twitterTitle: seoTitleValue,
   twitterDescription: seoDescriptionValue,
-  twitterImage: `${siteUrl}/img/og-image.jpg`
-})
-
-useHead({
-  link: [
-    { rel: 'canonical', href: seoUrlValue }
-  ]
+  twitterImage: ogImageUrl
 })
 
 // Apply filters and sort to tracks
