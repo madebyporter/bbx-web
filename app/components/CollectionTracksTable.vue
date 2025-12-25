@@ -23,7 +23,7 @@
       
       <!-- Header -->
       <div :class="[
-          'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 xl:sticky xl:top-20 bg-neutral-900 z-30',
+          'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 xl:sticky xl:top-20 bg-neutral-900 z-10',
           isOwnProfile 
             ? (viewMode === 'all' ? 'collectionTrackGrid-edit' : 'collectionTrackGrid-edit-no-visible')
             : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut')

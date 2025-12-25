@@ -558,12 +558,6 @@ provide('handleEdit', handleEdit)
 provide('handleShowSignup', handleShowSignup)
 provide('showModal', { value: showModal })
 
-// Test toast on mount (temporary for debugging)
-const testToast = () => {
-  console.log('Testing toast...')
-  showInfo('Toast system is working! 🎉')
-}
-
 // Listen for edit-track events from profile page
 onMounted(async () => {
   if (!process.client) return
@@ -581,11 +575,6 @@ onMounted(async () => {
   // Ensure initialized is true after router is ready
   isInitialized.value = true
   console.log('Layout: Initialized, isInitialized =', isInitialized.value)
-  
-  // Test toast on page load (temporary)
-  setTimeout(() => {
-    testToast()
-  }, 1000)
   
   // Listen for track edit events
   window.addEventListener('edit-track', ((event: CustomEvent) => {
