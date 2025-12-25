@@ -188,11 +188,6 @@ export async function searchCollections(query: string, limit: number = 20): Prom
       new Map(combinedData.map((item: any) => [item.id, item])).values()
     )
 
-    if (error) {
-      console.error('Error searching collections:', error)
-      return []
-    }
-
     return uniqueData.map((item: any) => ({
       type: 'collection' as const,
       id: item.id,
@@ -246,11 +241,7 @@ export async function searchUsers(query: string, limit: number = 20): Promise<Se
       new Map(combinedData.map((item: any) => [item.id, item])).values()
     )
 
-    if (error) {
-      console.error('Error searching users:', error)
-      return []
-    }
-
+    // Return all profiles (no privacy filtering since that feature doesn't exist yet)
     return uniqueData.map((item: any) => ({
       type: 'user' as const,
       id: item.id,
