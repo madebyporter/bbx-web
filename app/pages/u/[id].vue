@@ -318,8 +318,6 @@ import { Plus, EditPencil, Trash, Check, Xmark } from '@iconoir/vue'
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
-const config = useRuntimeConfig()
-const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 // Inject context items registration functions
 const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
@@ -408,7 +406,8 @@ const seoDescriptionValue = `Explore ${name}'s music collection on Beatbox - ${t
 
 // Use request URL for ogUrl to support deploy previews
 const currentUrl = useRequestURL().href
-const ogImageUrl = `${siteUrl}/img/og-image.jpg`
+const requestOrigin = useRequestURL().origin
+const ogImageUrl = `${requestOrigin}/img/og-image.jpg`
 
 // Use useSeoMeta with direct values for proper SSR - MUST be synchronous
 // NuxtSEO module handles canonical URLs automatically

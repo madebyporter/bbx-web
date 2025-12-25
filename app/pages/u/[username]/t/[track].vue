@@ -144,8 +144,6 @@ const { user } = useAuth()
 const { supabase } = useSupabase()
 const { loadQueue, currentTrack, isPlaying, togglePlayPause } = usePlayer()
 const { showSuccess, showError } = useToast()
-const config = useRuntimeConfig()
-const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 const username = ref(route.params.username as string)
 const groupTracks = ref<any[]>([])
@@ -489,7 +487,8 @@ const seoDescriptionValue = trackForSEO
   : `Listen to music by ${artist} on Beatbox`
 
 const currentUrl = useRequestURL().href
-const ogImageUrl = `${siteUrl}/img/og-image.jpg`
+const requestOrigin = useRequestURL().origin
+const ogImageUrl = `${requestOrigin}/img/og-image.jpg`
 
 // Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
 // NuxtSEO module handles canonical URLs automatically

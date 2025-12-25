@@ -78,8 +78,6 @@ import LoadingLogo from '~/components/LoadingLogo.vue'
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
-const config = useRuntimeConfig()
-const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 // Fetch initial profile data server-side for SEO
 const { data: initialData } = await useAsyncData(
@@ -125,7 +123,8 @@ const seoDescriptionValue = `Browse ${profileName}'s music collections on Beatbo
 
 // Use request URL for ogUrl to support deploy previews
 const currentUrl = useRequestURL().href
-const ogImageUrl = `${siteUrl}/img/og-image.jpg`
+const requestOrigin = useRequestURL().origin
+const ogImageUrl = `${requestOrigin}/img/og-image.jpg`
 
 // Use useSeoMeta with direct values for proper SSR - MUST be synchronous
 // NuxtSEO module handles canonical URLs automatically
