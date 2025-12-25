@@ -2,7 +2,7 @@
   <div class="flex flex-col gap-0 text-neutral-300 grow">
 
     <!-- Profile Header -->
-    <div class="flex flex-col lg:flex-row justify-start lg:justify-between items-stretch gap-2 p-4">
+    <div class="flex flex-col md:flex-row justify-start md:justify-between items-stretch gap-2 p-4">
       <div class="flex flex-col gap-2 overflow-auto">
         <!-- Display Name and Username -->
         <div class="flex flex-row gap-2 items-end flex-wrap">

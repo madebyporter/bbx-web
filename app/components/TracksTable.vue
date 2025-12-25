@@ -34,7 +34,7 @@
 
       <!-- Header -->
       <div :class="[
-          'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 lg:sticky lg:top-20 bg-neutral-900 z-40',
+          'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 lg:sticky lg:top-20 bg-neutral-900 z-10',
           isOwnProfile 
             ? 'trackGrid-edit' 
             : (viewerUserType === 'creator' && profileUserType === 'audio_pro')

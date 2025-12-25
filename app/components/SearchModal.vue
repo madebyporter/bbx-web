@@ -1,16 +1,16 @@
 <template>
   <div
     v-if="show"
-    class="absolute inset-x-0 top-full z-50"
+    class="absolute inset-x-0 top-full z-[1000]"
   >
     <!-- Results Drawer - Positioned absolutely relative to SearchFilter parent -->
     <div
       ref="modalRef"
-      class="relative bg-neutral-900 border-b border-neutral-800 shadow-xl overflow-hidden max-h-[calc(100vh-8rem)]"
+      class="relative bg-neutral-900 border-b border-neutral-800 shadow-xl overflow-auto max-h-[calc(100vh-80px-125px)] lg:max-h-[calc(100vh-8rem)]"
       @click.stop
     >
         <!-- Results -->
-        <div v-if="localQuery.trim()" class="flex flex-col lg:flex-row max-h-[calc(100vh-8rem)] overflow-y-auto">
+        <div v-if="localQuery.trim()" class="h-fit flex flex-col lg:flex-row">
           <!-- Site-wide Search Column -->
           <div class="flex-1 border-r border-neutral-800 min-h-[200px]">
             <div class="p-4 border-b border-neutral-800 bg-neutral-900/50">
@@ -30,8 +30,8 @@
                   @click="handleResultClick(result, 'site')"
                   @mouseenter="selectedIndex = { column: 'site', index }"
                   :class="[
-                    'p-3 rounded-md cursor-pointer transition-colors',
-                    isSelected('site', index) ? 'bg-amber-500/20 border border-amber-500/50' : 'hover:bg-neutral-800'
+                    'p-3 rounded-md cursor-pointer',
+                    isSelected('site', index) ? 'bg-neutral-900' : 'hover:bg-neutral-900'
                   ]"
                 >
                   <div class="flex items-start justify-between gap-2">
@@ -73,10 +73,7 @@
                   :key="`context-${result.type}-${result.id}`"
                   @click="handleResultClick(result, 'context')"
                   @mouseenter="selectedIndex = { column: 'context', index }"
-                  :class="[
-                    'p-3 rounded-md cursor-pointer transition-colors',
-                    isSelected('context', index) ? 'bg-amber-500/20 border border-amber-500/50' : 'hover:bg-neutral-800'
-                  ]"
+                  class="p-3 rounded-md cursor-pointer"
                 >
                   <div class="flex items-start justify-between gap-2">
                     <div class="flex-1 min-w-0">
