@@ -126,24 +126,26 @@ const currentUrl = useRequestURL().href
 const requestOrigin = useRequestURL().origin
 const ogImageUrl = `${requestOrigin}/img/og-image.jpg`
 
-// Use useSeoMeta with direct values for proper SSR - MUST be synchronous
-// NuxtSEO module handles canonical URLs automatically
-// Hide this page from SEO (noindex, nofollow) - only owners can access
-useSeoMeta({
+// Use useHead directly to ensure meta tags are set during SSR
+// NuxtSEO useSeoMeta may not work reliably for dynamic SSR
+useHead({
   title: seoTitleValue,
-  description: seoDescriptionValue,
-  robots: 'noindex, nofollow',
-  ogTitle: seoTitleValue,
-  ogDescription: seoDescriptionValue,
-  ogUrl: currentUrl,
-  ogType: 'website',
-  ogImage: ogImageUrl,
-  ogImageWidth: '1200',
-  ogImageHeight: '630',
-  twitterCard: 'summary_large_image',
-  twitterTitle: seoTitleValue,
-  twitterDescription: seoDescriptionValue,
-  twitterImage: ogImageUrl
+  meta: [
+    { name: 'description', content: seoDescriptionValue },
+    { name: 'robots', content: 'noindex, nofollow' },
+    { property: 'og:title', content: seoTitleValue },
+    { property: 'og:description', content: seoDescriptionValue },
+    { property: 'og:url', content: currentUrl },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:image', content: ogImageUrl },
+    { property: 'og:image:width', content: '1200' },
+    { property: 'og:image:height', content: '630' },
+    { property: 'og:image:alt', content: seoTitleValue },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: seoTitleValue },
+    { name: 'twitter:description', content: seoDescriptionValue },
+    { name: 'twitter:image', content: ogImageUrl }
+  ]
 })
 
 // Inject search handler registration functions

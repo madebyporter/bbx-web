@@ -282,22 +282,24 @@ const currentUrl = useRequestURL().href
 const requestOrigin = useRequestURL().origin
 const ogImageUrl = `${requestOrigin}/img/og-image.jpg`
 
-// Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
-// NuxtSEO module handles canonical URLs automatically
-useSeoMeta({
+// Use useHead directly to ensure meta tags are set during SSR
+useHead({
   title: seoTitleValue,
-  description: seoDescriptionValue,
-  ogTitle: seoTitleValue,
-  ogDescription: seoDescriptionValue,
-  ogUrl: currentUrl,
-  ogType: 'music.playlist',
-  ogImage: ogImageUrl,
-  ogImageWidth: '1200',
-  ogImageHeight: '630',
-  twitterCard: 'summary_large_image',
-  twitterTitle: seoTitleValue,
-  twitterDescription: seoDescriptionValue,
-  twitterImage: ogImageUrl
+  meta: [
+    { name: 'description', content: seoDescriptionValue },
+    { property: 'og:title', content: seoTitleValue },
+    { property: 'og:description', content: seoDescriptionValue },
+    { property: 'og:url', content: currentUrl },
+    { property: 'og:type', content: 'music.playlist' },
+    { property: 'og:image', content: ogImageUrl },
+    { property: 'og:image:width', content: '1200' },
+    { property: 'og:image:height', content: '630' },
+    { property: 'og:image:alt', content: seoTitleValue },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: seoTitleValue },
+    { name: 'twitter:description', content: seoDescriptionValue },
+    { name: 'twitter:image', content: ogImageUrl }
+  ]
 })
 
 // Apply filters and sort to tracks
