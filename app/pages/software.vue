@@ -4,6 +4,8 @@
       title="Music production software" 
       :count="resourceCount"
       item-label="item"
+      filter-context="software"
+      @open-filter-sort="handleOpenFilterSort"
     />
     <Database 
       ref="database" 
@@ -16,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, onMounted, onUnmounted, computed } from 'vue'
+import { ref, inject, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import Database from '~/components/Database.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
@@ -42,35 +44,47 @@ const resourceCount = computed(() => {
   return database.value?.resources?.length || 0
 })
 
-// Inject search handler registration functions from layout
-const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
-const unregisterSearchHandler = inject<() => void>('unregisterSearchHandler')
+// Inject context items registration functions from layout
+const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
+const unregisterContextItems = inject<() => void>('unregisterContextItems')
+const openFilterModal = inject<() => void>('openFilterModal')
 
 defineEmits(['edit-resource', 'show-signup'])
 
-// Search handler that forwards to database component
-const handleSearch = (query: string) => {
-  database.value?.handleSearch(query)
+// Handle open filter/sort from LibraryHeader
+const handleOpenFilterSort = () => {
+  if (openFilterModal) {
+    openFilterModal()
+  }
 }
 
-// Register search handler on mount
+// Watch resources to update context items for search
+watch(() => database.value?.resources, (resources) => {
+  if (registerContextItems && resources && resources.length > 0) {
+    // For software, search by name, creator, tags
+    // Note: type is an object, so we'll search name and creator primarily, tags as array
+    registerContextItems(resources, ['name', 'creator', 'tags'])
+  }
+}, { immediate: true, deep: true })
+
+// Register context items on mount
 onMounted(() => {
-  if (registerSearchHandler) {
-    registerSearchHandler(handleSearch)
+  // Register initial context items
+  if (registerContextItems && database.value?.resources) {
+    registerContextItems(database.value.resources, ['name', 'creator', 'tags'])
   }
 })
 
 // Unregister on unmount
 onUnmounted(() => {
-  if (unregisterSearchHandler) {
-    unregisterSearchHandler()
+  if (unregisterContextItems) {
+    unregisterContextItems()
   }
 })
 
 // Expose the database ref to parent
 defineExpose({
   database,
-  handleSearch,
   updateFiltersAndSort: (params: FilterSortParams) => {
     console.log('Software page: Forwarding updateFiltersAndSort to database component')
     if (database.value && typeof database.value.updateFiltersAndSort === 'function') {

@@ -66,6 +66,10 @@
   .pending-resource .btn {
     @apply bg-amber-600 text-amber-900;
   }
+  .search-highlight {
+    @apply bg-amber-500/20 transition-colors duration-300;
+    animation: search-highlight-pulse 2s ease-out;
+  }
   .trackGrid {
     @apply grid gap-4 grid-cols-[minmax(70px,auto)_150px_150px_100px_150px_120px_150px_100px] lg:grid-cols-[minmax(70px,auto)_2fr_1.5fr_1fr_1.5fr_1fr_1fr_80px];
   }
@@ -277,5 +281,14 @@
   100% {
     transform: scale(1.8);
     box-shadow: 0 0 80px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@keyframes search-highlight-pulse {
+  0% {
+    background-color: rgba(245, 158, 11, 0.4); /* amber-500/40 */
+  }
+  100% {
+    background-color: rgba(245, 158, 11, 0.2); /* amber-500/20 */
   }
 }

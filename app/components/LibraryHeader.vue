@@ -10,6 +10,13 @@
       <p class="text-sm text-neutral-500">
         {{ count }} {{ count === 1 ? itemLabel : itemLabel + 's' }}
       </p>
+      <button 
+        v-if="filterContext"
+        @click="emit('open-filter-sort')"
+        class="btn !px-3 !py-1.5 text-sm"
+      >
+        Filter & Sort
+      </button>
       <div v-if="isOwnProfile && showViewModeSelector" class="relative">
         <button
           @click="emit('update:showViewMenu', !showViewMenu)"
@@ -56,14 +63,17 @@ withDefaults(defineProps<{
   showViewMenu?: boolean
   viewMode?: 'final' | 'all'
   showViewModeSelector?: boolean
+  filterContext?: 'software' | 'kits' | 'music' | null
 }>(), {
   itemLabel: 'track',
-  showViewModeSelector: true
+  showViewModeSelector: true,
+  filterContext: null
 })
 
 const emit = defineEmits<{
   'update:showViewMenu': [value: boolean]
   'update:viewMode': [value: 'final' | 'all']
+  'open-filter-sort': []
 }>()
 
 const handleViewModeChange = (mode: 'final' | 'all') => {

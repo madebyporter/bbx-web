@@ -12,8 +12,16 @@
         @toggle-mobile-nav="handleMobileNavToggle" />
       <section id="content" class="gap-0 grow w-full flex flex-col overflow-y-auto">
         <div class="col-span-full sticky top-0 z-50">
-          <SearchFilter @open-filter-modal="openFilterModal" @open-modal="openModal" @search="handleSearch"
-            @toggle-nav="handleToggleNav" />
+          <SearchFilter 
+            v-model:show-search-modal="showSearchModal"
+            :context-items="searchContextItems"
+            :context-search-fields="searchContextFields"
+            @open-search-modal="openSearchModal" 
+            @update:search-query="searchQuery = $event" 
+            @open-modal="openModal" 
+            @search="handleSearch"
+            @toggle-nav="handleToggleNav" 
+          />
         </div>
         <slot />
       </section>
@@ -115,6 +123,7 @@
       :initial-filters="currentFilters"
       @apply-filters="handleFiltersAndSort" 
     />
+
 
     <!-- Toast Notifications -->
     <Toast />
@@ -235,6 +244,10 @@ const userType = ref<'creator' | 'audio_pro'>('creator')
 // Resource management state
 const showModal = ref(false)
 const showFilterSort = ref(false)
+const showSearchModal = ref(false)
+const searchQuery = ref('')
+const searchContextItems = ref<any[]>([])
+const searchContextFields = ref<string[]>([])
 const editingResource = ref<Resource | null>(null)
 const editingTrack = ref<any | null>(null)
 const modalKey = ref(0)
@@ -334,6 +347,10 @@ const handleSubmit = async () => {
 // Resource management handlers
 const openFilterModal = () => {
   showFilterSort.value = true
+}
+
+const openSearchModal = () => {
+  // This is handled by v-model on SearchFilter now
 }
 
 const openModal = () => {
@@ -479,6 +496,20 @@ const unregisterSearchHandler = () => {
   currentSearchHandler.value = null
 }
 
+// Function for pages to register their context items for search
+const registerContextItems = (items: any[], searchFields: string[]) => {
+  console.log('Layout: Context items registered', { count: items.length, fields: searchFields })
+  searchContextItems.value = items
+  searchContextFields.value = searchFields
+}
+
+// Function for pages to unregister their context items
+const unregisterContextItems = () => {
+  console.log('Layout: Context items unregistered')
+  searchContextItems.value = []
+  searchContextFields.value = []
+}
+
 const handleSearch = (query: string) => {
   console.log('Layout: handleSearch called with query:', query)
   
@@ -520,6 +551,8 @@ provide('openFilterModal', openFilterModal)
 provide('handleSearch', handleSearch)
 provide('registerSearchHandler', registerSearchHandler)
 provide('unregisterSearchHandler', unregisterSearchHandler)
+provide('registerContextItems', registerContextItems)
+provide('unregisterContextItems', unregisterContextItems)
 provide('handleToggleNav', handleToggleNav)
 provide('handleEdit', handleEdit)
 provide('handleShowSignup', handleShowSignup)

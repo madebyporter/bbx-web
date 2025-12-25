@@ -22,7 +22,7 @@
         </div>
 
         <!-- Resources -->
-        <div v-for="resource in resources" :key="resource.id" :class="[
+        <div v-for="resource in resources" :key="resource.id" :data-resource-id="resource.id" :class="[
           'text-sm border-b border-neutral-800/50 hover:bg-neutral-800/30 py-2',
           canEdit ? 'resourceGrid-edit' : 'resourceGrid',
           { 'pending-resource': resource.status === 'pending' }
@@ -182,7 +182,7 @@ const currentFilters = ref<ResourceFilters>({
   os: [],
   tags: []
 })
-const searchQuery = ref('')
+// searchQuery removed - search is now handled by SearchModal
 const useCounts = ref<{[key: number]: number}>({})
 const userUsedResources = ref<{[key: number]: boolean}>({})
 const isSupabaseReady = ref(false)
@@ -197,7 +197,6 @@ const fetchResources = async () => {
     console.log('Database: Fetching resources with:', {
       filters: currentFilters.value,
       sort: currentSort.value,
-      search: searchQuery.value,
       type: props.type
     })
 
@@ -334,10 +333,7 @@ const fetchResources = async () => {
       console.log('Database: Final tag filter query:', query);
     }
 
-    // Apply search
-    if (searchQuery.value) {
-      query = query.ilike('name', `%${searchQuery.value}%`)
-    }
+    // Search is now handled by SearchModal, not here
 
     // Apply sorting
     if (currentSort.value.sortBy) {
@@ -571,10 +567,7 @@ const toggleUse = async (resource: Resource) => {
   }
 }
 
-const handleSearch = async (query: string) => {
-  searchQuery.value = query
-  await fetchResources()
-}
+// handleSearch removed - search is now handled by SearchModal
 
 const updateFiltersAndSort = async (params: FilterSortParams) => {
   console.log('Database: Updating filters and sort:', params)
@@ -637,7 +630,6 @@ const extractNumericPrice = (priceStr: string): number => {
 // Expose methods and state for parent components
 defineExpose({
   fetchResources,
-  handleSearch,
   updateFiltersAndSort,
   resources
 })

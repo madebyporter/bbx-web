@@ -9,36 +9,42 @@
     </div>
 
     <template v-else>
-      <!-- Group Header with Edit -->
+      <!-- Group Header with Edit and Filter/Sort -->
       <div class="p-4 border-b border-neutral-800">
-        <div class="flex items-center justify-between">
-          <div v-if="!isEditingGroupName" class="flex items-center gap-3 justify-between">
-            <div class="overflow-auto w-4/5 lg:w-full">
-              <h1 class="text-lg lg:text-3xl font-bold truncate">{{ groupName }}</h1>
-            </div>
+        <div class="flex items-center justify-between mb-2">
+          <div v-if="!isEditingGroupName" class="flex items-center gap-3 flex-1">
+            <h1 class="text-lg lg:text-3xl font-bold truncate flex-1">{{ groupName }}</h1>
             <button v-if="isOwnProfile" @click="isEditingGroupName = true"
-              class="text-neutral-400 hover:text-white transition-colors text-sm" title="Rename group">
+              class="text-neutral-400 hover:text-white transition-colors text-sm flex-shrink-0" title="Rename group">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
             </button>
           </div>
-
-          <div v-else class="flex items-center gap-2 flex-1 max-w-md">
+          <div v-else class="flex items-center gap-2 flex-1">
             <input v-model="newGroupName" type="text" class="input flex-1" placeholder="Enter new group name"
               @keyup.enter="saveGroupName" @keyup.esc="isEditingGroupName = false" />
             <button @click="saveGroupName" class="btn-sm">Save</button>
             <button @click="isEditingGroupName = false" class="btn-secondary-sm">Cancel</button>
           </div>
-
-          <p class="text-sm text-neutral-500">
-            {{ tracks.length }} {{ tracks.length === 1 ? 'track' : 'tracks' }}
-          </p>
         </div>
-        <p class="text-neutral-400 mt-2 text-sm">
-          Grouped tracks/versions of similar recordings
-        </p>
+        <div class="flex items-center justify-between">
+          <p class="text-neutral-400 text-sm">
+            Grouped tracks/versions of similar recordings
+          </p>
+          <div class="flex items-center gap-4">
+            <p class="text-sm text-neutral-500">
+              {{ tracks.length }} {{ tracks.length === 1 ? 'track' : 'tracks' }}
+            </p>
+            <button 
+              @click="handleOpenFilterSort"
+              class="btn !px-3 !py-1.5 text-sm"
+            >
+              Filter & Sort
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Stem Player -->
@@ -60,6 +66,7 @@ import { useSupabase } from '~/utils/supabase'
 import TracksTable from '~/components/TracksTable.vue'
 import StemPlayer from '~/components/StemPlayer.vue'
 import LoadingLogo from '~/components/LoadingLogo.vue'
+import LibraryHeader from '~/components/LibraryHeader.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -67,6 +74,17 @@ const { user } = useAuth()
 const { supabase } = useSupabase()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
+
+// Inject functions from layout
+const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
+const unregisterContextItems = inject<() => void>('unregisterContextItems')
+const openFilterModal = inject<() => void>('openFilterModal')
+
+const handleOpenFilterSort = () => {
+  if (openFilterModal) {
+    openFilterModal()
+  }
+}
 
 // Fetch initial group data server-side for SEO
 const { data: initialData } = await useAsyncData(
@@ -404,14 +422,30 @@ const handleTrackUpdate = () => {
   fetchGroupTracks()
 }
 
+// Watch tracks to update context items for search
+watch(() => tracks.value, (tracksList) => {
+  if (registerContextItems && tracksList && tracksList.length > 0) {
+    // For tracks, search by title and artist
+    registerContextItems(tracksList, ['title', 'artist'])
+  }
+}, { immediate: true, deep: true })
+
 onMounted(async () => {
   await fetchGroupTracks()
+  
+  // Register initial context items
+  if (registerContextItems && tracks.value.length > 0) {
+    registerContextItems(tracks.value, ['title', 'artist'])
+  }
   
   // Listen for track updates
   window.addEventListener('track-updated', handleTrackUpdate)
 })
 
 onUnmounted(() => {
+  if (unregisterContextItems) {
+    unregisterContextItems()
+  }
   window.removeEventListener('track-updated', handleTrackUpdate)
 })
 </script>

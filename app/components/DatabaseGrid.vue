@@ -11,6 +11,7 @@
       v-else 
       v-for="resource in resources" 
       :key="resource.id" 
+      :data-resource-id="resource.id"
       class="relative border border-neutral-800 p-4 rounded-lg group"
       :class="{ 'pending-resource': resource.status === 'pending' }"
     >
@@ -155,7 +156,7 @@ const currentFilters = ref({
   os: [] as string[],
   tags: [] as string[]
 })
-const searchQuery = ref('')
+// searchQuery removed - search is now handled by SearchModal
 
 interface ResourceUseCount {
   resource_id: number
@@ -176,7 +177,6 @@ const fetchResources = async () => {
     console.log('DatabaseGrid: Fetching resources with:', {
       filters: currentFilters.value,
       sort: currentSort.value,
-      search: searchQuery.value,
       type: props.type
     })
 
@@ -313,10 +313,7 @@ const fetchResources = async () => {
       console.log('DatabaseGrid: Final tag filter query:', query);
     }
 
-    // Apply search
-    if (searchQuery.value) {
-      query = query.ilike('name', `%${searchQuery.value}%`)
-    }
+    // Search is now handled by SearchModal, not here
 
     // Apply sorting
     if (currentSort.value.sortBy) {
@@ -518,10 +515,7 @@ const confirmDelete = async (resource: Resource) => {
   }
 }
 
-const handleSearch = async (query: string) => {
-  searchQuery.value = query
-  await fetchResources()
-}
+// handleSearch removed - search is now handled by SearchModal
 
 const updateFiltersAndSort = async (params: FilterSortParams) => {
   console.log('DatabaseGrid: Updating filters and sort:', params)
@@ -597,7 +591,6 @@ watch(() => auth.user, async () => {
 // Expose methods for parent component
 defineExpose({
   fetchResources,
-  handleSearch,
   updateFiltersAndSort
 })
 </script> 

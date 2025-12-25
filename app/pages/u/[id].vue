@@ -277,6 +277,14 @@
     </div>
     <!-- Tracks Section -->
     <div v-if="musicSectionOpen" class="grow">
+      <LibraryHeader
+        title="Music"
+        :count="filteredTracks.length"
+        item-label="track"
+        :is-own-profile="isOwnProfile"
+        filter-context="music"
+        @open-filter-sort="handleOpenFilterSort"
+      />
       <TracksTable :tracks="filteredTracks" :source-id="`profile-${profileUserId}`" :is-own-profile="isOwnProfile"
         :loading="loading" :username="username" :viewer-user-type="viewerUserType" :profile-user-type="profileUserType"
         @edit-track="handleEdit" @tracks-deleted="fetchTracks" @track-shortlisted="handleTrackShortlisted" @track-unshortlisted="handleTrackUnshortlisted" />
@@ -291,6 +299,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import TracksTable from '~/components/TracksTable.vue'
 import ManageMembers from '~/components/ManageMembers.vue'
+import LibraryHeader from '~/components/LibraryHeader.vue'
 import gsap from 'gsap'
 import { Plus, EditPencil, Trash, Check, Xmark } from '@iconoir/vue'
 const route = useRoute()
@@ -299,9 +308,10 @@ const { supabase } = useSupabase()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
-// Inject search handler registration functions
-const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
-const unregisterSearchHandler = inject<() => void>('unregisterSearchHandler')
+// Inject context items registration functions
+const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
+const unregisterContextItems = inject<() => void>('unregisterContextItems')
+const openFilterModal = inject<() => void>('openFilterModal')
 
 // Fetch initial profile data server-side for SEO
 const { data: initialData } = await useAsyncData(
@@ -460,7 +470,7 @@ const profileSocialLinks = ref<{
 }>((initialData.value?.profile?.social_links as any) || {})
 const tracks = ref<any[]>(initialData.value?.tracks || [])
 const loading = ref(false)
-const searchQuery = ref('')
+// searchQuery removed - search is now handled by SearchModal
 const allSoftware = computed(() => softwareData.value || [])
 const loadingSoftware = computed(() => softwareData.value === null)
 
@@ -1163,16 +1173,18 @@ watch(() => user.value, async (newUser) => {
   }
 }, { immediate: true })
 
+// filteredTracks now just returns tracks (search is handled by SearchModal)
 const filteredTracks = computed(() => {
-  if (!searchQuery.value) return tracks.value
-  
-  const query = searchQuery.value.trim().toLowerCase()
-  return tracks.value.filter(track => {
-    const title = track.title?.toLowerCase() || ''
-    const artist = track.artist?.toLowerCase() || ''
-    return title.includes(query) || artist.includes(query)
-  })
+  return tracks.value
 })
+
+// Watch tracks to update context items for search
+watch(() => tracks.value, (tracksList) => {
+  if (registerContextItems && tracksList && tracksList.length > 0) {
+    // For tracks, search by title and artist
+    registerContextItems(tracksList, ['title', 'artist'])
+  }
+}, { immediate: true, deep: true })
 
 // Helper function to get image URL for software
 const getSoftwareImageUrl = (imageUrl: string | null | undefined): string => {
@@ -1419,60 +1431,17 @@ const handleTrackUnshortlisted = () => {
   }
 }
 
-const handleSearch = (query: string) => {
-  searchQuery.value = query
+// handleSearch removed - search is now handled by SearchModal
+
+const handleOpenFilterSort = () => {
+  if (openFilterModal) {
+    openFilterModal()
+  }
 }
-
-// Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
-// Use computed values to ensure reactivity and SSR compatibility
-// Note: titleTemplate in nuxt.config will add "| Beatbox" automatically
-const seoTitle = computed(() => {
-  const profileForSEO = initialData.value?.profile
-  const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
-  return name ? `${name}'s Music Library` : 'Music Library'
-})
-
-const seoDescription = computed(() => {
-  const profileForSEO = initialData.value?.profile
-  const tracksForSEO = initialData.value?.tracks || tracks.value
-  const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
-  const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
-  return name
-    ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
-    : 'Explore music collection on Beatbox'
-})
-
-const seoUrl = computed(() => {
-  const profileForSEO = initialData.value?.profile
-  return `${siteUrl}/u/${profileForSEO?.username || username.value || route.params.id}`
-})
-
-// Use useSeoMeta with computed values for reactivity and SSR support
-useSeoMeta({
-  title: seoTitle,
-  description: seoDescription,
-  ogTitle: seoTitle,
-  ogDescription: seoDescription,
-  ogUrl: seoUrl,
-  ogType: 'profile',
-  ogImage: `${siteUrl}/img/og-image.jpg`,
-  ogImageWidth: '1200',
-  ogImageHeight: '630',
-  twitterCard: 'summary_large_image',
-  twitterTitle: seoTitle,
-  twitterDescription: seoDescription,
-  twitterImage: `${siteUrl}/img/og-image.jpg`
-})
-
-useHead({
-  link: [
-    { rel: 'canonical', href: seoUrl }
-  ]
-})
 
 // Apply filters and sort to tracks
 const updateFiltersAndSort = async (params: any) => {
-  console.log('All Music page: Applying filters and sort:', params)
+  console.log('Profile page: Applying filters and sort:', params)
   
   if (!supabase || !profileUserId.value) return
   
@@ -1543,11 +1512,7 @@ const updateFiltersAndSort = async (params: any) => {
       const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
       
       if (collectionIds.length === 0) {
-        return {
-          ...track,
-          collections: [],
-          track_status: track.track_statuses
-        }
+        return { ...track, collections: [], track_status: track.track_statuses }
       }
       
       const { data: collectionData } = await supabase
@@ -1555,11 +1520,7 @@ const updateFiltersAndSort = async (params: any) => {
         .select('name, slug')
         .in('id', collectionIds)
       
-      return {
-        ...track,
-        collections: collectionData || [],
-        track_status: track.track_statuses
-      }
+      return { ...track, collections: collectionData || [], track_status: track.track_statuses }
     }))
     
     tracks.value = tracksWithCollections
@@ -1570,10 +1531,56 @@ const updateFiltersAndSort = async (params: any) => {
   }
 }
 
-// Expose fetchTracks, handleSearch, and updateFiltersAndSort for parent to call
+// Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
+// Use computed values to ensure reactivity and SSR compatibility
+// Note: titleTemplate in nuxt.config will add "| Beatbox" automatically
+const seoTitle = computed(() => {
+  const profileForSEO = initialData.value?.profile
+  const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
+  return name ? `${name}'s Music Library` : 'Music Library'
+})
+
+const seoDescription = computed(() => {
+  const profileForSEO = initialData.value?.profile
+  const tracksForSEO = initialData.value?.tracks || tracks.value
+  const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
+  const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
+  return name
+    ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
+    : 'Explore music collection on Beatbox'
+})
+
+const seoUrl = computed(() => {
+  const profileForSEO = initialData.value?.profile
+  return `${siteUrl}/u/${profileForSEO?.username || username.value || route.params.id}`
+})
+
+// Use useSeoMeta with computed values for reactivity and SSR support
+useSeoMeta({
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogUrl: seoUrl,
+  ogType: 'profile',
+  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription,
+  twitterImage: `${siteUrl}/img/og-image.jpg`
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: seoUrl }
+  ]
+})
+
+// Expose fetchTracks and updateFiltersAndSort for parent to call
 defineExpose({
   fetchTracks,
-  handleSearch,
   updateFiltersAndSort
 })
 
@@ -1612,9 +1619,9 @@ onMounted(async () => {
   await nextTick()
   loadSoftwareSectionState()
   
-  // Register search handler
-  if (registerSearchHandler) {
-    registerSearchHandler(handleSearch)
+  // Register initial context items
+  if (registerContextItems && tracks.value.length > 0) {
+    registerContextItems(tracks.value, ['title', 'artist'])
   }
   
   // Listen for track updates
@@ -1622,9 +1629,8 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  // Unregister search handler
-  if (unregisterSearchHandler) {
-    unregisterSearchHandler()
+  if (unregisterContextItems) {
+    unregisterContextItems()
   }
   
   window.removeEventListener('track-updated', handleTrackUpdate)

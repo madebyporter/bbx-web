@@ -18,6 +18,8 @@
         :show-view-mode-selector="profileUserType === 'audio_pro'"
         v-model:show-view-menu="showViewMenu"
         v-model:view-mode="viewMode"
+        filter-context="music"
+        @open-filter-sort="handleOpenFilterSort"
       />
 
       <!-- Tracks in Collection -->
@@ -61,6 +63,7 @@ const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 // Inject search handler registration functions
 const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
 const unregisterSearchHandler = inject<() => void>('unregisterSearchHandler')
+const openFilterModal = inject<() => void>('openFilterModal')
 
 // Fetch initial collection data server-side for SEO
 const { data: initialData } = await useAsyncData(
@@ -406,6 +409,13 @@ useHead({
     { rel: 'canonical', href: seoUrl }
   ]
 })
+
+// Handle open filter/sort from LibraryHeader
+const handleOpenFilterSort = () => {
+  if (openFilterModal) {
+    openFilterModal()
+  }
+}
 
 // Apply filters and sort to tracks
 const updateFiltersAndSort = async (params: any) => {

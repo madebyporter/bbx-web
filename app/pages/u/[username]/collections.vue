@@ -39,6 +39,7 @@
             <tr 
               v-for="collection in filteredCollections" 
               :key="collection.id"
+              :data-collection-id="collection.id"
               class="border-b border-neutral-800/50 hover:bg-neutral-800/30"
             >
               <td class="p-4">
