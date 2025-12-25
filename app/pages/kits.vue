@@ -29,9 +29,10 @@ import LibraryHeader from '~/components/LibraryHeader.vue'
 const seoTitleValue = 'Music Production Kits'
 const seoDescriptionValue = 'Browse music production kits, sample packs, and sound libraries on Beatbox'
 
+const config = useRuntimeConfig()
+const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 const currentUrl = useRequestURL().href
-const siteConfig = useSiteConfig()
-const ogImageUrl = `${siteConfig.url}/img/og-image.jpg`
+const ogImageUrl = `${siteUrl}/img/og-image.jpg`
 
 // NuxtSEO module handles canonical URLs automatically
 useSeoMeta({

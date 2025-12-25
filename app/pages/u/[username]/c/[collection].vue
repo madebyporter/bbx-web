@@ -57,6 +57,8 @@ const router = useRouter()
 const { user } = useAuth()
 const { supabase } = useSupabase()
 const { updateQueue, queueSourceId } = usePlayer()
+const config = useRuntimeConfig()
+const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 // Inject search handler registration functions
 const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
@@ -374,8 +376,7 @@ if (collectionForSEO?.description) {
 }
 
 const currentUrl = useRequestURL().href
-const siteConfig = useSiteConfig()
-const ogImageUrl = `${siteConfig.url}/img/og-image.jpg`
+const ogImageUrl = `${siteUrl}/img/og-image.jpg`
 
 // Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
 // NuxtSEO module handles canonical URLs automatically

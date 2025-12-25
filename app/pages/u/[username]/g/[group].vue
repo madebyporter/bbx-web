@@ -72,6 +72,8 @@ const route = useRoute()
 const router = useRouter()
 const { user } = useAuth()
 const { supabase } = useSupabase()
+const config = useRuntimeConfig()
+const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 // Inject functions from layout
 const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
@@ -279,8 +281,7 @@ const seoDescriptionValue = groupNameValue && groupUsername
   : 'View track group on Beatbox'
 
 const currentUrl = useRequestURL().href
-const siteConfig = useSiteConfig()
-const ogImageUrl = `${siteConfig.url}/img/og-image.jpg`
+const ogImageUrl = `${siteUrl}/img/og-image.jpg`
 
 // Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
 // NuxtSEO module handles canonical URLs automatically

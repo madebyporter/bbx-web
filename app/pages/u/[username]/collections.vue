@@ -78,6 +78,8 @@ import LoadingLogo from '~/components/LoadingLogo.vue'
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
+const config = useRuntimeConfig()
+const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 // Fetch initial profile data server-side for SEO
 const { data: initialData } = await useAsyncData(
@@ -99,7 +101,7 @@ const { data: initialData } = await useAsyncData(
       return {
         profileUserId: profileData.id,
         username: profileData.username,
-        displayName: profileData.display_name
+        display_name: profileData.display_name
       }
     } catch (error) {
       console.error('Error fetching profile:', error)
@@ -111,19 +113,21 @@ const { data: initialData } = await useAsyncData(
   }
 )
 
-// Set SEO meta tags - calculate values directly after data fetch for SSR compatibility
+// Set SEO meta tags IMMEDIATELY after data fetch for SSR compatibility
+// This must be placed right after useAsyncData to ensure it runs during SSR
 const usernameParam = route.params.username as string
 const profileForSEO = initialData.value
 
-const profileName = profileForSEO?.displayName || profileForSEO?.username || usernameParam
+// Calculate SEO values directly from data (available during SSR after await useAsyncData)
+const profileName = (profileForSEO as any)?.display_name || (profileForSEO as any)?.username || usernameParam
 const seoTitleValue = `${profileName}'s Collections`
 const seoDescriptionValue = `Browse ${profileName}'s music collections on Beatbox`
 
+// Use request URL for ogUrl to support deploy previews
 const currentUrl = useRequestURL().href
-const siteConfig = useSiteConfig()
-const ogImageUrl = `${siteConfig.url}/img/og-image.jpg`
+const ogImageUrl = `${siteUrl}/img/og-image.jpg`
 
-// Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
+// Use useSeoMeta with direct values for proper SSR - MUST be synchronous
 // NuxtSEO module handles canonical URLs automatically
 // Hide this page from SEO (noindex, nofollow) - only owners can access
 useSeoMeta({

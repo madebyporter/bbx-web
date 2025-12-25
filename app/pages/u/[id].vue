@@ -318,6 +318,8 @@ import { Plus, EditPencil, Trash, Check, Xmark } from '@iconoir/vue'
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
+const config = useRuntimeConfig()
+const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
 // Inject context items registration functions
 const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
@@ -396,16 +398,17 @@ const { data: initialData } = await useAsyncData(
 
 // Set SEO meta tags IMMEDIATELY after data fetch for SSR compatibility
 // This must be placed right after useAsyncData to ensure it runs during SSR
-const profileForSEO = initialData.value?.profile
+const profileForSEO = initialData.value?.profile as any
 const tracksForSEO = initialData.value?.tracks || []
 const name = profileForSEO?.display_name || profileForSEO?.username || route.params.id
 const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
 
 const seoTitleValue = `${name}'s Music Library`
 const seoDescriptionValue = `Explore ${name}'s music collection on Beatbox - ${trackCount}`
+
+// Use request URL for ogUrl to support deploy previews
 const currentUrl = useRequestURL().href
-const siteConfig = useSiteConfig()
-const ogImageUrl = `${siteConfig.url}/img/og-image.jpg`
+const ogImageUrl = `${siteUrl}/img/og-image.jpg`
 
 // Use useSeoMeta with direct values for proper SSR - MUST be synchronous
 // NuxtSEO module handles canonical URLs automatically
