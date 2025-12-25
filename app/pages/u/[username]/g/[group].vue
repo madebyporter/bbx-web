@@ -266,55 +266,42 @@ const handleEdit = (track: any) => {
   window.dispatchEvent(event)
 }
 
-// Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
-// Use computed values to ensure reactivity and SSR compatibility
-// Note: titleTemplate in nuxt.config will add "| Beatbox" automatically
-const seoTitle = computed(() => {
-  const groupUsername = initialData.value?.username || username.value
-  const groupNameValue = initialData.value?.groupName || groupName.value
-  if (groupNameValue && groupUsername) {
-    return `${groupNameValue} by ${groupUsername}`
-  }
-  return 'Track Group'
-})
+// Set SEO meta tags - calculate values directly after data fetch for SSR compatibility
+const groupUsername = initialData.value?.username || route.params.username as string
+const groupNameValue = initialData.value?.groupName || route.params.group as string
+const trackCount = initialData.value?.tracks?.length || 0
 
-const seoDescription = computed(() => {
-  const groupUsername = initialData.value?.username || username.value
-  const groupNameValue = initialData.value?.groupName || groupName.value
-  const trackCount = initialData.value?.tracks?.length || tracks.value.length
-  if (!groupNameValue || !groupUsername) {
-    return 'View track group on Beatbox'
-  }
-  const countStr = trackCount > 0 ? ` - ${trackCount} tracks` : ''
-  return `View different versions of ${groupNameValue} by ${groupUsername} on Beatbox${countStr}`
-})
+const seoTitleValue = groupNameValue && groupUsername
+  ? `${groupNameValue} by ${groupUsername} - Beatbox`
+  : 'Track Group - Beatbox'
 
-const seoUrl = computed(() => {
-  const groupUsername = initialData.value?.username || username.value || route.params.username
-  const groupNameValue = initialData.value?.groupName || groupName.value || route.params.group
-  return `${siteUrl}/u/${groupUsername}/g/${groupNameValue}`
-})
+const countStr = trackCount > 0 ? ` - ${trackCount} tracks` : ''
+const seoDescriptionValue = groupNameValue && groupUsername
+  ? `View different versions of ${groupNameValue} by ${groupUsername} on Beatbox${countStr}`
+  : 'View track group on Beatbox'
 
-// Use useSeoMeta with computed values for reactivity and SSR support
+const seoUrlValue = `${siteUrl}/u/${groupUsername}/g/${groupNameValue}`
+
+// Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
 useSeoMeta({
-  title: seoTitle,
-  description: seoDescription,
-  ogTitle: seoTitle,
-  ogDescription: seoDescription,
-  ogUrl: seoUrl,
+  title: seoTitleValue,
+  description: seoDescriptionValue,
+  ogTitle: seoTitleValue,
+  ogDescription: seoDescriptionValue,
+  ogUrl: seoUrlValue,
   ogType: 'music.playlist',
   ogImage: `${siteUrl}/img/og-image.jpg`,
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
-  twitterTitle: seoTitle,
-  twitterDescription: seoDescription,
+  twitterTitle: seoTitleValue,
+  twitterDescription: seoDescriptionValue,
   twitterImage: `${siteUrl}/img/og-image.jpg`
 })
 
 useHead({
   link: [
-    { rel: 'canonical', href: seoUrl }
+    { rel: 'canonical', href: seoUrlValue }
   ]
 })
 

@@ -471,24 +471,13 @@ const updateTrackStatus = async (trackId: number, statusId: number | null) => {
 }
 
 // Set SEO meta tags - calculate values directly after data fetch for SSR compatibility
-// Note: titleTemplate in nuxt.config will add "| Beatbox" automatically
 const usernameParam = route.params.username as string
 const trackForSEO = trackData.value
-
-// Debug: Log during SSR to verify data is available
-if (process.server) {
-  console.log('[SSR] Track data for SEO:', {
-    hasData: !!trackForSEO,
-    title: trackForSEO?.title,
-    artist: trackForSEO?.artist,
-    username: usernameParam
-  })
-}
 
 // Calculate SEO values directly from data (available during SSR after await useAsyncData)
 const trackTitle = trackForSEO?.title || 'Track'
 const artist = trackForSEO?.artist || usernameParam || 'Artist'
-const seoTitleValue = `${trackTitle} by ${artist}`
+const seoTitleValue = `${trackTitle} by ${artist} - Beatbox`
 
 const details = []
 if (trackForSEO?.genre) details.push(trackForSEO.genre)
@@ -501,24 +490,24 @@ const seoDescriptionValue = trackForSEO
 
 const seoUrlValue = `${siteUrl}/u/${usernameParam}/t/${route.params.track}`
 
-// Use useHead with direct values - this pattern works reliably during SSR
-// The values are calculated after await useAsyncData, so they're available during SSR
-useHead({
+// Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
+useSeoMeta({
   title: seoTitleValue,
-  meta: [
-    { name: 'description', content: seoDescriptionValue },
-    { property: 'og:title', content: seoTitleValue },
-    { property: 'og:description', content: seoDescriptionValue },
-    { property: 'og:url', content: seoUrlValue },
-    { property: 'og:type', content: 'music.song' },
-    { property: 'og:image', content: `${siteUrl}/img/og-image.jpg` },
-    { property: 'og:image:width', content: '1200' },
-    { property: 'og:image:height', content: '630' },
-    { name: 'twitter:card', content: 'summary_large_image' },
-    { name: 'twitter:title', content: seoTitleValue },
-    { name: 'twitter:description', content: seoDescriptionValue },
-    { name: 'twitter:image', content: `${siteUrl}/img/og-image.jpg` }
-  ],
+  description: seoDescriptionValue,
+  ogTitle: seoTitleValue,
+  ogDescription: seoDescriptionValue,
+  ogUrl: seoUrlValue,
+  ogType: 'music.song',
+  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitleValue,
+  twitterDescription: seoDescriptionValue,
+  twitterImage: `${siteUrl}/img/og-image.jpg`
+})
+
+useHead({
   link: [
     { rel: 'canonical', href: seoUrlValue }
   ]

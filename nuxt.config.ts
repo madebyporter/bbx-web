@@ -54,34 +54,26 @@ export default defineNuxtConfig({
         lang: 'en'
       },
       viewport: 'width=device-width, initial-scale=1.0',
-      // Use titleTemplate to allow pages to override title
-      titleTemplate: '%s | Beatbox',
-      title: 'Beatbox - A curated collection of music production tools.',
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        // Default description - pages should override this
-        { name: 'description', content: 'Beatbox - A curated collection of music production tools and resources.' },
         { name: 'format-detection', content: 'telephone=no' },
         { name: 'theme-color', content: '#000000' },
         
-        // Open Graph / Facebook - defaults that pages can override
-        { property: 'og:type', content: 'website' },
+        // Static Open Graph defaults (pages will override specific values)
         { property: 'og:site_name', content: 'Beatbox' },
         { property: 'og:image', content: 'https://beatbox.studio/img/og-image.jpg' },
         { property: 'og:image:width', content: '1200' },
         { property: 'og:image:height', content: '630' },
         { property: 'og:image:alt', content: 'Beatbox - A curated collection of music production tools' },
         
-        // Twitter - defaults that pages can override
+        // Static Twitter defaults (pages will override specific values)
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:image', content: 'https://beatbox.studio/img/og-image.jpg' },
         { name: 'twitter:image:alt', content: 'Beatbox - A curated collection of music production tools' },
         { name: 'twitter:site', content: '@beatboxstudio' }
       ],
       link: [
-        // Canonical URL
-        { rel: 'canonical', href: 'https://beatbox.studio' },
         
         // Favicons
         { rel: 'icon', type: 'image/png', href: '/favicons/favicon-96x96.png', sizes: '96x96' },

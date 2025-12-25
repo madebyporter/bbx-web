@@ -23,6 +23,36 @@ import { useAuth } from '~/composables/useAuth'
 import Database from '~/components/Database.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
 
+const config = useRuntimeConfig()
+const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
+
+// Set SEO meta tags - direct values for proper SSR
+const seoTitleValue = 'Music Production Software - Beatbox'
+const seoDescriptionValue = 'Discover music production software, plugins, and tools on Beatbox'
+const seoUrlValue = `${siteUrl}/software`
+
+useSeoMeta({
+  title: seoTitleValue,
+  description: seoDescriptionValue,
+  ogTitle: seoTitleValue,
+  ogDescription: seoDescriptionValue,
+  ogUrl: seoUrlValue,
+  ogType: 'website',
+  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitleValue,
+  twitterDescription: seoDescriptionValue,
+  twitterImage: `${siteUrl}/img/og-image.jpg`
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: seoUrlValue }
+  ]
+})
+
 // Define interfaces for type safety
 interface FilterSortParams {
   sort: {

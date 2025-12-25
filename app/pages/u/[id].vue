@@ -1617,50 +1617,38 @@ const updateFiltersAndSort = async (params: any) => {
   }
 }
 
-// Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
-// Use computed values to ensure reactivity and SSR compatibility
-// Note: titleTemplate in nuxt.config will add "| Beatbox" automatically
-const seoTitle = computed(() => {
-  const profileForSEO = initialData.value?.profile
-  const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
-  return name ? `${name}'s Music Library` : 'Music Library'
-})
+// Set SEO meta tags - calculate values directly after data fetch for SSR compatibility
+const profileForSEO = initialData.value?.profile
+const tracksForSEO = initialData.value?.tracks || []
+const name = profileForSEO?.display_name || profileForSEO?.username || route.params.id
+const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
 
-const seoDescription = computed(() => {
-  const profileForSEO = initialData.value?.profile
-  const tracksForSEO = initialData.value?.tracks || tracks.value
-  const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
-  const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
-  return name
-    ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
-    : 'Explore music collection on Beatbox'
-})
+const seoTitleValue = name ? `${name}'s Music Library - Beatbox` : 'Music Library - Beatbox'
+const seoDescriptionValue = name
+  ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
+  : 'Explore music collection on Beatbox'
+const seoUrlValue = `${siteUrl}/u/${profileForSEO?.username || route.params.id}`
 
-const seoUrl = computed(() => {
-  const profileForSEO = initialData.value?.profile
-  return `${siteUrl}/u/${profileForSEO?.username || username.value || route.params.id}`
-})
-
-// Use useSeoMeta with computed values for reactivity and SSR support
+// Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
 useSeoMeta({
-  title: seoTitle,
-  description: seoDescription,
-  ogTitle: seoTitle,
-  ogDescription: seoDescription,
-  ogUrl: seoUrl,
+  title: seoTitleValue,
+  description: seoDescriptionValue,
+  ogTitle: seoTitleValue,
+  ogDescription: seoDescriptionValue,
+  ogUrl: seoUrlValue,
   ogType: 'profile',
   ogImage: `${siteUrl}/img/og-image.jpg`,
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
-  twitterTitle: seoTitle,
-  twitterDescription: seoDescription,
+  twitterTitle: seoTitleValue,
+  twitterDescription: seoDescriptionValue,
   twitterImage: `${siteUrl}/img/og-image.jpg`
 })
 
 useHead({
   link: [
-    { rel: 'canonical', href: seoUrl }
+    { rel: 'canonical', href: seoUrlValue }
   ]
 })
 

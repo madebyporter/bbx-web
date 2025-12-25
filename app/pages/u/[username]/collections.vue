@@ -74,6 +74,74 @@ import LoadingLogo from '~/components/LoadingLogo.vue'
 const route = useRoute()
 const { user } = useAuth()
 const { supabase } = useSupabase()
+const config = useRuntimeConfig()
+const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
+
+// Fetch initial profile data server-side for SEO
+const { data: initialData } = await useAsyncData(
+  `profile-${route.params.username}-collections`,
+  async () => {
+    if (!supabase) return null
+    
+    const usernameParam = route.params.username as string
+    
+    try {
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('id, username')
+        .eq('username', usernameParam)
+        .single()
+      
+      if (profileError || !profileData) return null
+      
+      return {
+        profileUserId: profileData.id,
+        username: profileData.username
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+      return null
+    }
+  },
+  {
+    server: true // Ensure this runs on the server for SSR
+  }
+)
+
+// Set SEO meta tags - calculate values directly after data fetch for SSR compatibility
+const usernameParam = route.params.username as string
+const profileForSEO = initialData.value
+
+const seoTitleValue = profileForSEO?.username 
+  ? `${profileForSEO.username}'s Collections - Beatbox`
+  : `${usernameParam}'s Collections - Beatbox`
+const seoDescriptionValue = profileForSEO?.username
+  ? `Browse ${profileForSEO.username}'s music collections on Beatbox`
+  : `Browse music collections on Beatbox`
+const seoUrlValue = `${siteUrl}/u/${profileForSEO?.username || usernameParam}/collections`
+
+// Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
+useSeoMeta({
+  title: seoTitleValue,
+  description: seoDescriptionValue,
+  ogTitle: seoTitleValue,
+  ogDescription: seoDescriptionValue,
+  ogUrl: seoUrlValue,
+  ogType: 'website',
+  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitleValue,
+  twitterDescription: seoDescriptionValue,
+  twitterImage: `${siteUrl}/img/og-image.jpg`
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: seoUrlValue }
+  ]
+})
 
 // Inject search handler registration functions
 const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
@@ -82,8 +150,8 @@ const unregisterSearchHandler = inject<() => void>('unregisterSearchHandler')
 // State
 const collections = ref<any[]>([])
 const loading = ref(true)
-const profileUserId = ref<string | null>(null)
-const username = ref('')
+const profileUserId = ref<string | null>(initialData.value?.profileUserId || null)
+const username = ref(initialData.value?.username || usernameParam)
 const searchQuery = ref('')
 
 // Computed
@@ -182,7 +250,10 @@ defineExpose({
 
 // Lifecycle
 onMounted(async () => {
-  await fetchProfile()
+  // Only fetch profile if we don't have initialData (client-side navigation)
+  if (!initialData.value) {
+    await fetchProfile()
+  }
   await fetchCollections()
   
   // Register search handler

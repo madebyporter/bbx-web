@@ -356,57 +356,49 @@ const handleSearch = (query: string) => {
   searchQuery.value = query
 }
 
-// Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
-// Use computed values to ensure reactivity and SSR compatibility
-const username = route.params.username as string
+// Set SEO meta tags - calculate values directly after data fetch for SSR compatibility
+const usernameParam = route.params.username as string
+const collectionForSEO = initialData.value?.collection
 
-// Calculate SEO values as computed properties
-// Note: titleTemplate in nuxt.config will add "| Beatbox" automatically
-const seoTitle = computed(() => {
-  const collectionForSEO = initialData.value?.collection || collection.value
-  return collectionForSEO 
-    ? `${collectionForSEO.name} by ${username}`
-    : `Collection by ${username}`
-})
+// Calculate SEO values directly from data (available during SSR after await useAsyncData)
+const collectionName = collectionForSEO?.name || 'Collection'
+const seoTitleValue = collectionForSEO 
+  ? `${collectionName} by ${usernameParam} - Beatbox`
+  : `Collection by ${usernameParam} - Beatbox`
 
-const seoDescription = computed(() => {
-  const collectionForSEO = initialData.value?.collection || collection.value
-  if (collectionForSEO?.description) {
-    return collectionForSEO.description
-  }
-  if (collectionForSEO) {
-    return `Browse ${collectionForSEO.name} by ${username} on Beatbox`
-  }
-  return `Browse music collection by ${username} on Beatbox`
-})
+let seoDescriptionValue: string
+if (collectionForSEO?.description) {
+  seoDescriptionValue = collectionForSEO.description
+} else if (collectionForSEO) {
+  seoDescriptionValue = `Browse ${collectionName} by ${usernameParam} on Beatbox`
+} else {
+  seoDescriptionValue = `Browse music collection by ${usernameParam} on Beatbox`
+}
 
-const seoUrl = computed(() => {
-  const collectionForSEO = initialData.value?.collection || collection.value
-  return collectionForSEO 
-    ? `${siteUrl}/u/${username}/c/${collectionForSEO.slug}`
-    : `${siteUrl}/u/${username}/c/${route.params.collection}`
-})
+const seoUrlValue = collectionForSEO 
+  ? `${siteUrl}/u/${usernameParam}/c/${collectionForSEO.slug}`
+  : `${siteUrl}/u/${usernameParam}/c/${route.params.collection}`
 
-// Use useSeoMeta with computed values for reactivity and SSR support
+// Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
 useSeoMeta({
-  title: seoTitle,
-  description: seoDescription,
-  ogTitle: seoTitle,
-  ogDescription: seoDescription,
-  ogUrl: seoUrl,
+  title: seoTitleValue,
+  description: seoDescriptionValue,
+  ogTitle: seoTitleValue,
+  ogDescription: seoDescriptionValue,
+  ogUrl: seoUrlValue,
   ogType: 'music.playlist',
   ogImage: `${siteUrl}/img/og-image.jpg`,
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
-  twitterTitle: seoTitle,
-  twitterDescription: seoDescription,
+  twitterTitle: seoTitleValue,
+  twitterDescription: seoDescriptionValue,
   twitterImage: `${siteUrl}/img/og-image.jpg`
 })
 
 useHead({
   link: [
-    { rel: 'canonical', href: seoUrl }
+    { rel: 'canonical', href: seoUrlValue }
   ]
 })
 
