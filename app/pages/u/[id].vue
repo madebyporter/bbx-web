@@ -1618,15 +1618,14 @@ const updateFiltersAndSort = async (params: any) => {
 }
 
 // Set SEO meta tags - calculate values directly after data fetch for SSR compatibility
+// Ensure this runs synchronously after useAsyncData to be available in SSR HTML
 const profileForSEO = initialData.value?.profile
 const tracksForSEO = initialData.value?.tracks || []
 const name = profileForSEO?.display_name || profileForSEO?.username || route.params.id
 const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
 
-const seoTitleValue = name ? `${name}'s Music Library - Beatbox` : 'Music Library - Beatbox'
-const seoDescriptionValue = name
-  ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
-  : 'Explore music collection on Beatbox'
+const seoTitleValue = `${name}'s Music Library - Beatbox`
+const seoDescriptionValue = `Explore ${name}'s music collection on Beatbox - ${trackCount}`
 const seoUrlValue = `${siteUrl}/u/${profileForSEO?.username || route.params.id}`
 
 // Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
