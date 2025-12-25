@@ -1,6 +1,6 @@
 <template>
   <nav ref="mobileNav" id="navbar"
-    class="border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between overflow-auto shrink-0 min-w-[250px] lg:relative lg:translate-x-0 fixed inset-y-0 left-0 z-[100] lg:z-40 w-full lg:w-fit lg:max-w-none"
+    class="border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between overflow-auto shrink-0 min-w-[250px] lg:relative lg:translate-x-0 fixed inset-y-0 left-0 z-40 lg:z-40 w-full lg:w-fit lg:max-w-none"
     style="transform: translateX(-100%)">
     <div class="sticky top-0 p-4 flex justify-between items-center">
       <NuxtLink to="/" class="cursor-pointer">

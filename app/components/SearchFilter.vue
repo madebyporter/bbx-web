@@ -1,6 +1,12 @@
 <template>
   <div ref="searchFilterRef" class="relative lg:h-20 bg-neutral-900 flex flex-col lg:flex-row gap-2 lg:gap-4 p-4 border-b border-neutral-800">
-    <div class="flex flex-row gap-2 lg:gap-4 w-full justify-between lg:w-full">
+    <div class="flex flex-row gap-4 w-full justify-between lg:w-full">
+      <button @click="$emit('toggle-nav')" class="btn w-fit !px-2 flex items-center lg:hidden rounded-sm">
+        <svg viewBox="0 0 13 11" fill="none" xmlns="http://www.w3.org/2000/svg" class="min-w-4">
+          <path d="M0 0.5H12.25V2.25H0V0.5ZM0 4.875H12.25V6.625H0V4.875ZM12.25 9.25V11H0V9.25H12.25Z"
+            class="fill-neutral-400" />
+        </svg>
+      </button>
       <div class="grow flex relative">
         <div class="absolute z-10 top-[50%] translate-y-[-50%] px-4">
           <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -12,15 +18,9 @@
           class="font-semibold text-lg rounded-full bg-neutral-800 ring-1 ring-neutral-800 hover:ring-neutral-700 text-left p-2 lg:p-4 px-12 grow z-0 relative w-full lg:w-auto text-neutral-200 placeholder:text-neutral-500"
           placeholder="Search (CMD/CTRL+K)" />
       </div>
-      <button @click="$emit('toggle-nav')" class="btn w-fit !px-2 flex items-center lg:hidden">
-        <svg viewBox="0 0 13 11" fill="none" xmlns="http://www.w3.org/2000/svg" class="min-w-4">
-          <path d="M0 0.5H12.25V2.25H0V0.5ZM0 4.875H12.25V6.625H0V4.875ZM12.25 9.25V11H0V9.25H12.25Z" 
-            class="fill-neutral-400" />
-        </svg>
-      </button>
     </div>
-    <div class="flex flex-row gap-2 lg:gap-4 w-full justify-between lg:w-auto">
-      <button v-if="hasUser && shouldShowUploadButton" @click="$emit('open-modal')" class="btn w-full lg:w-fit">
+    <div v-if="hasUser && shouldShowUploadButton" class="flex flex-row gap-2 lg:gap-4 w-full justify-between lg:w-auto">
+      <button  @click="$emit('open-modal')" class="btn w-full lg:w-fit">
         {{ buttonText }}
       </button>
     </div>

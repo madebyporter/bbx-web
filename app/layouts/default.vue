@@ -11,7 +11,7 @@
       <Nav ref="navRef" @show-auth-modal="showAuthModal = true" @show-admin-modal="showAdminModal = true"
         @toggle-mobile-nav="handleMobileNavToggle" />
       <section id="content" class="gap-0 grow w-full flex flex-col overflow-y-auto">
-        <div class="col-span-full sticky top-0 z-50">
+        <div class="col-span-full sticky top-0 z-30">
           <SearchFilter 
             v-model:show-search-modal="showSearchModal"
             :context-items="searchContextItems"
