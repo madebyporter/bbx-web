@@ -7,8 +7,12 @@
     <div v-else-if="!profileUserId" class="text-neutral-500 p-4">
       User not found.
     </div>
+    
+    <div v-else-if="!isOwnProfile" class="text-neutral-500 p-4">
+      This page is only accessible to the profile owner.
+    </div>
 
-    <template v-else>
+    <template v-else-if="isOwnProfile">
       <!-- Header -->
       <div class="p-4">
         <h1 class="text-3xl font-bold mb-2">Collections</h1>
@@ -72,7 +76,7 @@ import { useSupabase } from '~/utils/supabase'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 
 const route = useRoute()
-const { user } = useAuth()
+const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
 
 // Fetch initial profile data server-side for SEO
@@ -86,7 +90,7 @@ const { data: initialData } = await useAsyncData(
     try {
       const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
-        .select('id, username')
+        .select('id, username, display_name')
         .eq('username', usernameParam)
         .single()
       
@@ -94,7 +98,8 @@ const { data: initialData } = await useAsyncData(
       
       return {
         profileUserId: profileData.id,
-        username: profileData.username
+        username: profileData.username,
+        displayName: profileData.display_name
       }
     } catch (error) {
       console.error('Error fetching profile:', error)
@@ -110,12 +115,9 @@ const { data: initialData } = await useAsyncData(
 const usernameParam = route.params.username as string
 const profileForSEO = initialData.value
 
-const seoTitleValue = profileForSEO?.username 
-  ? `${profileForSEO.username}'s Collections`
-  : `${usernameParam}'s Collections`
-const seoDescriptionValue = profileForSEO?.username
-  ? `Browse ${profileForSEO.username}'s music collections on Beatbox`
-  : `Browse music collections on Beatbox`
+const profileName = profileForSEO?.displayName || profileForSEO?.username || usernameParam
+const seoTitleValue = `${profileName}'s Collections`
+const seoDescriptionValue = `Browse ${profileName}'s music collections on Beatbox`
 
 const currentUrl = useRequestURL().href
 const siteConfig = useSiteConfig()
@@ -123,9 +125,11 @@ const ogImageUrl = `${siteConfig.url}/img/og-image.jpg`
 
 // Use useSeoMeta with direct values for proper SSR - calculated after await useAsyncData
 // NuxtSEO module handles canonical URLs automatically
+// Hide this page from SEO (noindex, nofollow) - only owners can access
 useSeoMeta({
   title: seoTitleValue,
   description: seoDescriptionValue,
+  robots: 'noindex, nofollow',
   ogTitle: seoTitleValue,
   ogDescription: seoDescriptionValue,
   ogUrl: currentUrl,
@@ -250,7 +254,14 @@ onMounted(async () => {
   if (!initialData.value) {
     await fetchProfile()
   }
-  await fetchCollections()
+  
+  // Only fetch collections if user is the owner
+  if (isOwnProfile.value) {
+    await fetchCollections()
+  } else {
+    // If not owner, ensure loading is set to false
+    loading.value = false
+  }
   
   // Register search handler
   if (registerSearchHandler) {
