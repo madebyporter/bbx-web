@@ -60,28 +60,32 @@ export default defineNuxtConfig({
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        // Default description - pages should override this
-        { name: 'description', content: 'Beatbox - A curated collection of music production tools and resources.' },
+        // NOTE: description removed from global defaults - pages must set their own
+        // This prevents duplicate descriptions when pages use useSeoMeta
         { name: 'format-detection', content: 'telephone=no' },
         { name: 'theme-color', content: '#000000' },
         
-        // Open Graph / Facebook - defaults that pages can override
-        { property: 'og:type', content: 'website' },
+        // Open Graph / Facebook - only truly global invariants
+        // NOTE: og:title, og:description removed - pages must set their own
         { property: 'og:site_name', content: 'Beatbox' },
-        { property: 'og:image', content: 'https://beatbox.studio/img/og-image.jpg' },
+        // og:image kept as fallback, but pages can override with same key
+        { property: 'og:image', content: 'https://beatbox.studio/img/og-image.jpg', key: 'og-image' },
         { property: 'og:image:width', content: '1200' },
         { property: 'og:image:height', content: '630' },
         { property: 'og:image:alt', content: 'Beatbox - A curated collection of music production tools' },
         
-        // Twitter - defaults that pages can override
+        // Twitter - only truly global invariants
+        // NOTE: twitter:title, twitter:description removed - pages must set their own
         { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'twitter:image', content: 'https://beatbox.studio/img/og-image.jpg' },
+        // twitter:image kept as fallback, but pages can override with same key
+        { name: 'twitter:image', content: 'https://beatbox.studio/img/og-image.jpg', key: 'twitter-image' },
         { name: 'twitter:image:alt', content: 'Beatbox - A curated collection of music production tools' },
         { name: 'twitter:site', content: '@beatboxstudio' }
       ],
       link: [
-        // Canonical URL
-        { rel: 'canonical', href: 'https://beatbox.studio' },
+        // NOTE: Canonical URL removed from global defaults
+        // Each page must set its own canonical URL to avoid conflicts
+        // Global canonical causes duplicate/incorrect canonicals on dynamic routes
         
         // Favicons
         { rel: 'icon', type: 'image/png', href: '/favicons/favicon-96x96.png', sizes: '96x96' },

@@ -396,6 +396,17 @@ const { data: initialData } = await useAsyncData(
   }
 )
 
+// PHASE 2: Server-side logging to verify data availability
+if (process.server) {
+  console.log('[SSR SEO] Profile data fetched:', {
+    hasData: !!initialData.value,
+    profileId: initialData.value?.profile?.id,
+    username: initialData.value?.profile?.username,
+    displayName: initialData.value?.profile?.display_name,
+    trackCount: initialData.value?.tracks?.length || 0
+  })
+}
+
 // Fetch software data with caching
 // Wait for initialData to be available before fetching
 const { data: softwareData, refresh: refreshSoftware } = await useAsyncData(
@@ -1618,30 +1629,32 @@ const updateFiltersAndSort = async (params: any) => {
 }
 
 // Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
-// Use computed values to ensure reactivity and SSR compatibility
-// Note: titleTemplate in nuxt.config will add "| Beatbox" automatically
-const seoTitle = computed(() => {
-  const profileForSEO = initialData.value?.profile
-  const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
-  return name ? `${name}'s Music Library` : 'Music Library'
-})
+// CRITICAL: Compute values AFTER initialData is available and use plain strings for SSR
+// Computed refs can evaluate before data is ready during SSR, so we compute once after await
+const profileForSEO = initialData.value?.profile
+const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
+const tracksForSEO = initialData.value?.tracks || tracks.value
+const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
 
-const seoDescription = computed(() => {
-  const profileForSEO = initialData.value?.profile
-  const tracksForSEO = initialData.value?.tracks || tracks.value
-  const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
-  const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
-  return name
-    ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
-    : 'Explore music collection on Beatbox'
-})
+// Compute SEO values as plain strings (not computed refs) to ensure SSR has correct values
+const seoTitle = name ? `${name}'s Music Library` : 'Music Library'
+const seoDescription = name
+  ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
+  : 'Explore music collection on Beatbox'
+const seoUrl = `${siteUrl}/u/${profileForSEO?.username || username.value || route.params.id}`
 
-const seoUrl = computed(() => {
-  const profileForSEO = initialData.value?.profile
-  return `${siteUrl}/u/${profileForSEO?.username || username.value || route.params.id}`
-})
+// PHASE 2: Log before setting SEO meta tags
+if (process.server) {
+  console.log('[SSR SEO] Setting meta tags:', {
+    title: seoTitle,
+    description: seoDescription.substring(0, 60) + '...',
+    url: seoUrl,
+    hasProfileData: !!profileForSEO
+  })
+}
 
-// Use useSeoMeta with computed values for reactivity and SSR support
+// Use useSeoMeta with plain strings and keys for proper deduplication
+// Keys ensure Unhead replaces defaults from nuxt.config.ts instead of duplicating
 useSeoMeta({
   title: seoTitle,
   description: seoDescription,
@@ -1658,9 +1671,10 @@ useSeoMeta({
   twitterImage: `${siteUrl}/img/og-image.jpg`
 })
 
+// Set canonical URL with key to replace default from nuxt.config.ts
 useHead({
   link: [
-    { rel: 'canonical', href: seoUrl }
+    { rel: 'canonical', href: seoUrl, key: 'canonical' }
   ]
 })
 

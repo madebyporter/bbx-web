@@ -11,7 +11,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "backfill:track-groups": "tsx scripts/backfill-track-groups.ts"
+    "backfill:track-groups": "tsx scripts/backfill-track-groups.ts",
+    "diagnose:seo": "node scripts/diagnose-seo.js"
   },
   "dependencies": {
     "@iconoir/vue": "^7.11.0",
