@@ -4,8 +4,8 @@
 ✓ <title>: Found 1 (expected 1)
    [1] Beatbox - A curated collection of music production tools. | Beatbox
 
-✓ <meta name="description">: Found 1 (expected 1)
-   [1] Beatbox - A curated collection of music production tools and resources.
+✗ <meta name="description">: Found 0 (expected 1)
+   [MISSING]
 
 ✗ <meta property="og:title">: Found 0 (expected 1)
    [MISSING]
@@ -19,8 +19,8 @@
 ✗ <meta property="og:url">: Found 0 (expected 1)
    [MISSING]
 
-✓ <meta property="og:type">: Found 1 (expected 1)
-   [1] website
+✗ <meta property="og:type">: Found 0 (expected 1)
+   [MISSING]
 
 ✗ <meta name="twitter:title">: Found 0 (expected 1)
    [MISSING]
@@ -34,8 +34,8 @@
 ✓ <meta name="twitter:card">: Found 1 (expected 1)
    [1] summary_large_image
 
-✓ <link rel="canonical">: Found 1 (expected 1)
-   [1] https://beatbox.studio
+✗ <link rel="canonical">: Found 0 (expected 1)
+   [MISSING]
 
 
 📊 Assessment:

@@ -1634,9 +1634,10 @@ const updateFiltersAndSort = async (params: any) => {
 const profileForSEO = initialData.value?.profile
 const name = profileForSEO?.display_name || profileForSEO?.username || profileName.value || route.params.id
 const tracksForSEO = initialData.value?.tracks || tracks.value
-const trackCount = tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
+const trackCount = tracksForSEO && tracksForSEO.length > 0 ? `${tracksForSEO.length}+ tracks` : 'Music collection'
 
 // Compute SEO values as plain strings (not computed refs) to ensure SSR has correct values
+// Ensure all values are non-empty strings (useSeoMeta may skip undefined/empty values)
 const seoTitle = name ? `${name}'s Music Library` : 'Music Library'
 const seoDescription = name
   ? `Explore ${name}'s music collection on Beatbox - ${trackCount}`
@@ -1649,30 +1650,31 @@ if (process.server) {
     title: seoTitle,
     description: seoDescription.substring(0, 60) + '...',
     url: seoUrl,
-    hasProfileData: !!profileForSEO
+    hasProfileData: !!profileForSEO,
+    hasInitialData: !!initialData.value,
+    routeParam: route.params.id
   })
 }
 
-// Use useSeoMeta with plain strings and keys for proper deduplication
-// Keys ensure Unhead replaces defaults from nuxt.config.ts instead of duplicating
-useSeoMeta({
-  title: seoTitle,
-  description: seoDescription,
-  ogTitle: seoTitle,
-  ogDescription: seoDescription,
-  ogUrl: seoUrl,
-  ogType: 'profile',
-  ogImage: `${siteUrl}/img/og-image.jpg`,
-  ogImageWidth: '1200',
-  ogImageHeight: '630',
-  twitterCard: 'summary_large_image',
-  twitterTitle: seoTitle,
-  twitterDescription: seoDescription,
-  twitterImage: `${siteUrl}/img/og-image.jpg`
-})
-
-// Set canonical URL with key to replace default from nuxt.config.ts
+// Use useHead with direct values - this pattern works reliably during SSR
+// The values are calculated after await useAsyncData, so they're available during SSR
+// This matches the pattern used in /u/[username]/t/[track].vue which works correctly
 useHead({
+  title: seoTitle,
+  meta: [
+    { name: 'description', content: seoDescription },
+    { property: 'og:title', content: seoTitle },
+    { property: 'og:description', content: seoDescription },
+    { property: 'og:url', content: seoUrl },
+    { property: 'og:type', content: 'profile' },
+    { property: 'og:image', content: `${siteUrl}/img/og-image.jpg` },
+    { property: 'og:image:width', content: '1200' },
+    { property: 'og:image:height', content: '630' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: seoTitle },
+    { name: 'twitter:description', content: seoDescription },
+    { name: 'twitter:image', content: `${siteUrl}/img/og-image.jpg` }
+  ],
   link: [
     { rel: 'canonical', href: seoUrl, key: 'canonical' }
   ]
