@@ -319,7 +319,7 @@ const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
 const config = useRuntimeConfig()
-const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
+const siteUrl = 'https://beatbox.studio'
 
 // Inject context items registration functions
 const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
