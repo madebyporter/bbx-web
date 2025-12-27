@@ -398,6 +398,13 @@ const isCurrentlyPlaying = (track: any): boolean => {
   return currentTrack.value?.id === track.id && isPlaying.value
 }
 
+// Check if track is the current track (regardless of playing state)
+const isCurrentTrack = (track: any): boolean => {
+  if (!currentTrack.value || !track) return false
+  // Use String() to ensure type-safe comparison (IDs might be numbers or strings)
+  return String(currentTrack.value.id) === String(track.id)
+}
+
 // Get stem track by ID for mute/solo state
 const getStemTrack = (trackId: number) => {
   return stemTracks.value.find(t => t.id === trackId)
@@ -407,11 +414,20 @@ const handlePlayClick = async (track: any, index: number) => {
   // Don't allow playback if stem player is active
   if (isStemPlayerActive.value) return
   
-  // If clicking the currently playing track, just toggle play/pause
-  if (currentTrack.value?.id === track.id) {
+  // If clicking the current track (regardless of play/pause state), just toggle play/pause
+  // This ensures pausing/resuming doesn't restart the track
+  if (isCurrentTrack(track)) {
+    console.log('handlePlayClick: Toggling play/pause for current track', { 
+      trackId: track.id, 
+      isPlaying: isPlaying.value
+    })
     await togglePlayPause()
   } else {
     // Load the queue and start playing from this track
+    console.log('handlePlayClick: Loading new queue', { 
+      trackId: track.id, 
+      currentTrackId: currentTrack.value?.id 
+    })
     await loadQueue(props.tracks, props.sourceId, index)
   }
 }

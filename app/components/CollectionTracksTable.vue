@@ -209,7 +209,7 @@ const emit = defineEmits<{
   'track-removed-from-collection': [trackId: number]
 }>()
 
-const { loadQueue, currentTrack, isPlaying } = usePlayer()
+const { loadQueue, currentTrack, isPlaying, togglePlayPause } = usePlayer()
 const { user } = useAuth()
 const { supabase } = useSupabase()
 const { showProcessing, showSuccess, showError, removeToast } = useToast()
@@ -325,12 +325,34 @@ const isCurrentlyPlaying = (track: any) => {
   return currentTrack.value?.id === track.id && isPlaying.value
 }
 
-const handlePlayClick = (track: any, index: number) => {
+// Check if track is the current track (regardless of playing state)
+const isCurrentTrack = (track: any): boolean => {
+  if (!currentTrack.value || !track) return false
+  // Use String() to ensure type-safe comparison (IDs might be numbers or strings)
+  return String(currentTrack.value.id) === String(track.id)
+}
+
+const handlePlayClick = async (track: any, index: number) => {
+  // If clicking the current track (regardless of play/pause state), just toggle play/pause
+  // This ensures pausing/resuming doesn't restart the track
+  if (isCurrentTrack(track)) {
+    console.log('CollectionTracksTable: Toggling play/pause for current track', { 
+      trackId: track.id, 
+      isPlaying: isPlaying.value
+    })
+    await togglePlayPause()
+    return
+  }
+  
   // Only include non-hidden tracks in the queue
   const visibleTracks = props.tracks.filter(t => !t.hidden)
   const visibleIndex = visibleTracks.findIndex(t => t.id === track.id)
   
-  loadQueue(visibleTracks, props.sourceId, visibleIndex >= 0 ? visibleIndex : 0)
+  console.log('CollectionTracksTable: Loading new queue', { 
+    trackId: track.id, 
+    currentTrackId: currentTrack.value?.id 
+  })
+  await loadQueue(visibleTracks, props.sourceId, visibleIndex >= 0 ? visibleIndex : 0)
 }
 
 // Get the track owner's username
