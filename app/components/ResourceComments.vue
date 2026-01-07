@@ -3,7 +3,7 @@
     <div class="col-span-2">
       <h2 class="text-lg font-bold text-neutral-200">Comments</h2>
     </div>
-    <div class="flex flex-col gap-2">
+    <div class="flex flex-col gap-2 col-span-2 md:col-span-1 order-last md:order-first">
 
       <!-- Comments List -->
       <div v-if="loading" class="text-sm text-neutral-400 py-4">
@@ -31,7 +31,7 @@
     </div>
     
     <!-- Comment Form -->
-    <div class="flex flex-col gap-2">
+    <div class="flex flex-col gap-2 col-span-2 md:col-span-1 order-first md:order-last">
       <div v-if="user" class="flex flex-col gap-2 md:sticky md:top-4">
         <textarea v-model="newComment" placeholder="Add a comment..."
           class="w-full p-3 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[100px]"
