@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { toggleResourceUse, getResourceUseStatus } from '~/utils/resourceQueries'
 
@@ -88,9 +88,5 @@ watch(() => user.value, async (newUser) => {
     isUsing.value = false
   }
 }, { immediate: true })
-
-onMounted(() => {
-  fetchUseStatus()
-})
 </script>
 

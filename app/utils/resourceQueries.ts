@@ -634,18 +634,17 @@ export const toggleResourceUse = async (resourceId: number): Promise<{ isUsing: 
 
   try {
     // Check if user is already using this resource
-    const { data: existing, error: checkError } = await supabase
+    // Use count/head to avoid PostgREST 406 noise from .single() when no rows exist
+    const { count: existingCount, error: checkError } = await supabase
       .from('user_resources')
-      .select('resource_id')
+      .select('resource_id', { count: 'exact', head: true })
       .eq('resource_id', resourceId)
       .eq('user_id', auth.user.value.id)
-      .single()
     
-    if (checkError && checkError.code !== 'PGRST116') {
-      throw checkError
-    }
+    if (checkError) throw checkError
+    const isExisting = (existingCount || 0) > 0
     
-    if (existing) {
+    if (isExisting) {
       // Remove use
       const { error: deleteError } = await supabase
         .from('user_resources')
@@ -676,7 +675,7 @@ export const toggleResourceUse = async (resourceId: number): Promise<{ isUsing: 
     const count = countData?.find((item: any) => item.resource_id === resourceId)?.count || 0
     
     return {
-      isUsing: !existing,
+      isUsing: !isExisting,
       count: parseInt(count) || 0
     }
   } catch (error) {
@@ -706,14 +705,14 @@ export const getResourceUseStatus = async (resourceId: number): Promise<{ count:
     // Get user's usage status if logged in
     let isUsing = false
     if (auth.user.value) {
-      const { data: userUse, error: userError } = await supabase
+      // Use count/head to avoid PostgREST 406 noise from .single() when no rows exist
+      const { count: userUseCount, error: userError } = await supabase
         .from('user_resources')
-        .select('resource_id')
+        .select('resource_id', { count: 'exact', head: true })
         .eq('resource_id', resourceId)
         .eq('user_id', auth.user.value.id)
-        .single()
       
-      if (!userError && userUse) {
+      if (!userError && (userUseCount || 0) > 0) {
         isUsing = true
       }
     }
