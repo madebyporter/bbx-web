@@ -30,7 +30,7 @@
     
     <!-- Comment Form -->
     <div class="flex flex-col gap-2">
-      <div v-if="user" class="flex flex-col gap-2">
+      <div v-if="user" class="flex flex-col gap-2 md:sticky md:top-4">
         <textarea v-model="newComment" placeholder="Add a comment..."
           class="w-full p-3 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[100px]"
           rows="4" />

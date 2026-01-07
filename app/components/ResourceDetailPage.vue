@@ -95,7 +95,7 @@
             </div>
           </div>
           <!-- Comments Section -->
-          <div class="p-4 border-b border-neutral-800">
+          <div class="p-4">
             <ResourceComments :resource-id="resource.id" />
           </div>
         </div>
