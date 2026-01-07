@@ -1,57 +1,54 @@
 <template>
-  <div class="flex flex-col gap-4">
-    <h3 class="text-lg font-bold text-neutral-200">Comments</h3>
-    
-    <!-- Comments List -->
-    <div v-if="loading" class="text-sm text-neutral-400 py-4">
-      Loading comments...
-    </div>
-    
-    <div v-else-if="comments.length === 0" class="text-sm text-neutral-500 py-4">
-      No comments yet. Be the first to comment!
-    </div>
-    
-    <div v-else class="flex flex-col gap-4">
-      <div v-for="comment in comments" :key="comment.id" class="flex flex-col gap-2 p-4 border border-neutral-800 rounded-md">
-        <div class="flex flex-row gap-2 items-center">
-          <span class="text-sm font-medium text-neutral-200">
-            {{ comment.user?.display_name || comment.user?.username || 'Anonymous' }}
-          </span>
-          <span class="text-xs text-neutral-500">
-            {{ formatDate(comment.created_at) }}
-          </span>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="flex flex-col gap-2">
+      <h3 class="text-lg font-bold text-neutral-200">Comments</h3>
+
+      <!-- Comments List -->
+      <div v-if="loading" class="text-sm text-neutral-400 py-4">
+        Loading comments...
+      </div>
+
+      <div v-else-if="comments.length === 0" class="text-sm text-neutral-500">
+        No comments yet. Be the first to comment!
+      </div>
+
+      <div v-else class="flex flex-col gap-4">
+        <div v-for="comment in comments" :key="comment.id"
+          class="flex flex-col gap-2 p-4 border border-neutral-800 rounded-md">
+          <div class="flex flex-row gap-2 items-center">
+            <span class="text-sm font-medium text-neutral-200">
+              {{ comment.user?.display_name || comment.user?.username || 'Anonymous' }}
+            </span>
+            <span class="text-xs text-neutral-500">
+              {{ formatDate(comment.created_at) }}
+            </span>
+          </div>
+          <p class="text-sm text-neutral-300 whitespace-pre-wrap">{{ comment.content }}</p>
         </div>
-        <p class="text-sm text-neutral-300 whitespace-pre-wrap">{{ comment.content }}</p>
       </div>
     </div>
     
     <!-- Comment Form -->
-    <div v-if="user" class="flex flex-col gap-2 mt-4">
-      <textarea
-        v-model="newComment"
-        placeholder="Add a comment..."
-        class="w-full p-3 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[100px]"
-        rows="4"
-      />
-      <button
-        @click="handleSubmitComment"
-        :disabled="!newComment.trim() || submitting"
-        class="self-start px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-neutral-700 disabled:text-neutral-500 disabled:cursor-not-allowed text-neutral-900 font-medium rounded transition-colors cursor-pointer"
-      >
-        {{ submitting ? 'Posting...' : 'Post Comment' }}
-      </button>
+    <div class="flex flex-col gap-2">
+      <div v-if="user" class="flex flex-col gap-2">
+        <textarea v-model="newComment" placeholder="Add a comment..."
+          class="w-full p-3 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[100px]"
+          rows="4" />
+        <button @click="handleSubmitComment" :disabled="!newComment.trim() || submitting"
+          class="self-start px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-neutral-700 disabled:text-neutral-500 disabled:cursor-not-allowed text-neutral-900 font-medium rounded transition-colors cursor-pointer">
+          {{ submitting ? 'Posting...' : 'Post Comment' }}
+        </button>
+      </div>
+
+      <div v-else class="p-4 border border-neutral-800 rounded-md text-sm text-neutral-400">
+        <button type="button" @click="() => openAuthModal && openAuthModal('signin')"
+          class="text-amber-400 hover:text-amber-500 transition-colors cursor-pointer">
+          Sign in
+        </button>
+        to leave a comment.
+      </div>
     </div>
     
-    <div v-else class="mt-4 p-4 border border-neutral-800 rounded-md text-sm text-neutral-400">
-      <button 
-        type="button"
-        @click="() => openAuthModal && openAuthModal('signin')"
-        class="text-amber-400 hover:text-amber-500 transition-colors cursor-pointer"
-      >
-        Sign in
-      </button>
-      to leave a comment.
-    </div>
   </div>
 </template>
 

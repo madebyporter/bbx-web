@@ -12,9 +12,7 @@
       <DatabaseGrid 
         ref="databaseGrid" 
         type="sounds"
-        @edit-resource="$emit('edit-resource', $event)"
         @show-signup="$emit('show-signup')"
-        :can-edit="isAdmin"
       />
     </div>
   </div>

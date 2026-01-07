@@ -18,7 +18,7 @@
         <div class="flex flex-col gap-0">
           <!-- Resource Header -->
           <div class="p-8 border-b border-neutral-800">
-            <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-16">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- Name -->
                 <div>
@@ -87,11 +87,11 @@
               
             </div>
           </div>
-          <div class="p-4 border-b border-neutral-800 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+          <div v-if="isAdmin" class="p-4 border-b border-neutral-800 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
             <div><h2 class="text-white text-lg font-bold">Admin</h2></div>
             <div class="flex flex-row gap-4">
-              <button class="btn">Edit</button>
-              <button class="btn bg-red-500 hover:bg-red-600">Delete</button>
+              <button class="btn" @click="onEdit">Edit</button>
+              <button class="btn bg-red-500 hover:bg-red-600" @click="onDelete">Delete</button>
             </div>
           </div>
           <!-- Comments Section -->
@@ -110,14 +110,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, watch, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSupabase } from '~/utils/supabase'
-import { fetchResourceBySlug } from '~/utils/resourceQueries'
+import { fetchResourceBySlug, deleteResource } from '~/utils/resourceQueries'
 import type { Resource } from '~/utils/resourceQueries'
 import ResourceComments from '~/components/ResourceComments.vue'
 import ResourceActionFooter from '~/components/ResourceActionFooter.vue'
 import LoadingLogo from '~/components/LoadingLogo.vue'
+import { useAuth } from '~/composables/useAuth'
+import { useToast } from '~/composables/useToast'
+import { navigateTo } from '#app'
 
 const props = defineProps<{
   typeSlug: string // 'software' or 'kits'
@@ -158,6 +161,9 @@ const typeConfig = computed(() => {
 
 const resourceTypeLabel = computed(() => typeConfig.value.label)
 const listPath = computed(() => typeConfig.value.listPath)
+const { isAdmin } = useAuth()
+const { showSuccess, showError } = useToast()
+const handleEdit = inject<(resource: Resource) => void>('handleEdit')
 
 // Fetch resource data server-side for SEO
 const { data: resourceData, pending: loading, refresh } = await useAsyncData(
@@ -235,6 +241,30 @@ watch(() => resource.value, (newResource) => {
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
   img.src = '/img/placeholder.png'
+}
+
+// Admin actions
+const onEdit = () => {
+  if (resource.value && handleEdit) {
+    handleEdit(resource.value as Resource)
+  }
+}
+
+const onDelete = async () => {
+  if (!resource.value) return
+  const ok = confirm('Are you sure you want to delete this resource?')
+  if (!ok) return
+  try {
+    const success = await deleteResource(resource.value.id)
+    if (success) {
+      showSuccess('Resource deleted.')
+      navigateTo(listPath.value)
+    } else {
+      showError('Failed to delete resource.')
+    }
+  } catch (e: any) {
+    showError(e?.message || 'Failed to delete resource.')
+  }
 }
 </script>
 

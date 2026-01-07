@@ -11,9 +11,7 @@
     <Database 
       ref="database" 
       type="software"
-      @edit-resource="$emit('edit-resource', $event)"
       @show-signup="$emit('show-signup')"
-      :can-edit="isAdmin"
     />
   </div>
   <!-- Render child routes (detail pages) -->
