@@ -1,5 +1,6 @@
 <template>
-  <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-0 text-neutral-300">
+  <!-- Only show list content when on /kits exactly, not on child routes -->
+  <div v-if="route.path === '/kits'" class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-0 text-neutral-300">
     <LibraryHeader 
       title="Music production kits" 
       :count="resourceCount"
@@ -17,13 +18,18 @@
       />
     </div>
   </div>
+  <!-- Render child routes (detail pages) -->
+  <NuxtPage v-else />
 </template>
 
 <script setup lang="ts">
 import { ref, inject, onMounted, onUnmounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import DatabaseGrid from '~/components/DatabaseGrid.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
+
+const route = useRoute()
 
 // Define interfaces for type safety
 interface FilterSortParams {

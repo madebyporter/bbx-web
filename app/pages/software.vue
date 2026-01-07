@@ -1,5 +1,6 @@
 <template>
-  <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-0 text-neutral-300">
+  <!-- Only show list content when on /software exactly, not on child routes -->
+  <div v-if="route.path === '/software'" class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-0 text-neutral-300">
     <LibraryHeader 
       title="Music production software" 
       :count="resourceCount"
@@ -15,13 +16,48 @@
       :can-edit="isAdmin"
     />
   </div>
+  <!-- Render child routes (detail pages) -->
+  <NuxtPage v-else />
 </template>
 
 <script setup lang="ts">
 import { ref, inject, onMounted, onUnmounted, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import Database from '~/components/Database.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
+
+// Define page meta to ensure this only matches /software exactly
+definePageMeta({
+  key: 'software-list'
+})
+
+const route = useRoute()
+
+// Debug logging
+console.log('[software.vue] Component mounted/updated', {
+  path: route.path,
+  params: route.params,
+  fullPath: route.fullPath
+})
+
+// Watch for route changes
+watch(() => route.path, (newPath, oldPath) => {
+  console.log('[software.vue] Route path changed', {
+    from: oldPath,
+    to: newPath,
+    params: route.params
+  })
+  
+  // If navigating to a detail page, this component should unmount
+  // If we're still here, Nuxt isn't recognizing the route change
+  if (newPath !== '/software' && newPath.startsWith('/software/')) {
+    console.warn('[software.vue] WARNING: Still mounted when navigating to detail page!', {
+      currentPath: newPath,
+      expected: 'Should unmount and mount software/[slug].vue'
+    })
+  }
+}, { immediate: true })
 
 // Define interfaces for type safety
 interface FilterSortParams {

@@ -13,6 +13,19 @@ export interface ProfileMember {
   created_at: string
 }
 
+export interface ResourceComment {
+  id: number
+  resource_id: number
+  user_id: string
+  content: string
+  created_at: string
+  updated_at: string
+  user?: {
+    username: string
+    display_name?: string
+  }
+}
+
 export interface Resource {
   id: number
   name: string

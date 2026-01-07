@@ -35,7 +35,20 @@
       </div>
 
       <!-- Resource Image -->
-      <div class="w-full aspect-square bg-neutral-200 rounded-md overflow-hidden mb-4">
+      <NuxtLink
+        v-if="resource.slug && resource.type?.slug"
+        :to="getResourceDetailUrl(resource)"
+        class="w-full aspect-square bg-neutral-200 rounded-md overflow-hidden mb-4 hover:opacity-80 transition-opacity cursor-pointer block"
+      >
+        <img 
+          v-if="resource.image_url" 
+          :src="getImageUrl(resource.image_url)" 
+          :alt="resource.name"
+          class="w-full h-full object-cover"
+          @error="handleImageError"
+        />
+      </NuxtLink>
+      <div v-else class="w-full aspect-square bg-neutral-200 rounded-md overflow-hidden mb-4">
         <img 
           v-if="resource.image_url" 
           :src="getImageUrl(resource.image_url)" 
@@ -48,7 +61,14 @@
       <!-- Resource Info -->
       <div class="flex flex-col gap-4">
         <div class="flex flex-col gap-1">
-          <h2 class="text-lg font-medium">{{ resource.name }}</h2>
+          <NuxtLink
+            v-if="resource.slug && resource.type?.slug"
+            :to="getResourceDetailUrl(resource)"
+            class="text-lg font-medium hover:text-amber-400 transition-colors"
+          >
+            {{ resource.name }}
+          </NuxtLink>
+          <h2 v-else class="text-lg font-medium">{{ resource.name }}</h2>
           <div class="flex items-center gap-2 text-sm text-neutral-400">
             <span>{{ resource.creator }}</span>
             <span>•</span>
@@ -186,6 +206,7 @@ const fetchResources = async () => {
       .select(`
         id,
         name,
+        slug,
         price,
         link,
         image_url,
@@ -362,9 +383,15 @@ const fetchResources = async () => {
         ?.map((rt: any) => rt.tags?.name)
         .filter(Boolean) || []
 
+      // Extract type - handle both array and single object formats
+      const resourceType = Array.isArray(typedItem.type) 
+        ? typedItem.type[0] 
+        : typedItem.type
+
       return {
         id: typedItem.id,
         name: typedItem.name,
+        slug: typedItem.slug,
         creator: typedItem.creator?.name || '',
         creator_id: typedItem.creator?.id,
         price: typedItem.price,
@@ -372,7 +399,7 @@ const fetchResources = async () => {
         image_url: typedItem.image_url,
         os: typedItem.os || [],
         tags,
-        type: typedItem.type,
+        type: resourceType,
         type_id: typedItem.type_id,
         created_at: typedItem.created_at
       } as Resource
@@ -495,6 +522,38 @@ const getImageUrl = (url: string) => {
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
   img.src = '/img/db/placeholder.png'
+}
+
+// Helper function to get resource detail URL
+const getResourceDetailUrl = (resource: Resource): string => {
+  // Debug logging
+  if (!resource.slug) {
+    console.log('Resource missing slug:', resource.name, resource)
+    return '#'
+  }
+  
+  if (!resource.type?.slug) {
+    console.log('Resource missing type slug:', resource.name, resource.type)
+    // Fallback: use props.type if available (for software/kits pages)
+    if (props.type) {
+      const typePathMap: Record<string, string> = {
+        'software': '/software',
+        'sounds': '/kits'
+      }
+      const basePath = typePathMap[props.type] || '/software'
+      return `${basePath}/${resource.slug}`
+    }
+    return '#'
+  }
+  
+  // Map type slugs to URL paths
+  const typePathMap: Record<string, string> = {
+    'software': '/software',
+    'sounds': '/kits'
+  }
+  
+  const basePath = typePathMap[resource.type.slug] || '/software'
+  return `${basePath}/${resource.slug}`
 }
 
 const emit = defineEmits(['edit-resource', 'show-signup'])

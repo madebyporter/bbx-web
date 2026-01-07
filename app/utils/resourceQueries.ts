@@ -11,6 +11,7 @@ export interface ResourceType {
 export interface Resource {
   id: number
   name: string
+  slug?: string
   creator: string
   creator_id?: number
   price: string
@@ -436,5 +437,284 @@ export const getUserCollection = async (): Promise<Resource[]> => {
   } catch (error) {
     console.error('Error fetching user collection:', error)
     return []
+  }
+}
+
+// Fetch a resource by slug
+export const fetchResourceBySlug = async (slug: string, typeSlug?: string): Promise<Resource | null> => {
+  const { supabase } = useSupabase()
+  
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+
+  try {
+    let query = supabase
+      .from('resources')
+      .select(`
+        id,
+        name,
+        slug,
+        price,
+        link,
+        image_url,
+        os,
+        status,
+        created_at,
+        type_id,
+        creator:creators(id, name),
+        type:resource_types(id, slug, display_name),
+        resource_tags(
+          tags(name)
+        )
+      `)
+      .eq('slug', slug)
+      .eq('status', 'approved')
+    
+    // Filter by type if specified
+    if (typeSlug) {
+      const { data: typeData, error: typeError } = await supabase
+        .from('resource_types')
+        .select('id')
+        .eq('slug', typeSlug)
+        .single()
+      
+      if (typeError || !typeData) {
+        return null
+      }
+      
+      query = query.eq('type_id', typeData.id)
+    }
+    
+    const { data, error } = await query.single()
+    
+    if (error || !data) return null
+    
+    // Transform the data to match Resource interface
+    return {
+      id: data.id,
+      name: data.name,
+      slug: data.slug,
+      creator: data.creator?.name || 'Unknown',
+      creator_id: data.creator?.id,
+      price: data.price,
+      link: data.link,
+      image_url: data.image_url,
+      os: data.os || [],
+      type_id: data.type_id,
+      type: data.type,
+      tags: data.resource_tags?.map((rt: any) => rt.tags?.name).filter(Boolean) || [],
+      created_at: data.created_at,
+      status: data.status
+    } as Resource
+  } catch (error) {
+    console.error('Error fetching resource by slug:', error)
+    return null
+  }
+}
+
+// Fetch comments for a resource
+export const fetchResourceComments = async (resourceId: number): Promise<any[]> => {
+  const { supabase } = useSupabase()
+  
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('resource_comments')
+      .select(`
+        id,
+        resource_id,
+        user_id,
+        content,
+        created_at,
+        updated_at,
+        user_profiles(
+          username,
+          display_name
+        )
+      `)
+      .eq('resource_id', resourceId)
+      .order('created_at', { ascending: true })
+    
+    if (error) throw error
+    
+    return (data || []).map((comment: any) => ({
+      id: comment.id,
+      resource_id: comment.resource_id,
+      user_id: comment.user_id,
+      content: comment.content,
+      created_at: comment.created_at,
+      updated_at: comment.updated_at,
+      user: comment.user_profiles ? {
+        username: comment.user_profiles.username,
+        display_name: comment.user_profiles.display_name
+      } : undefined
+    }))
+  } catch (error) {
+    console.error('Error fetching resource comments:', error)
+    return []
+  }
+}
+
+// Create a comment on a resource
+export const createResourceComment = async (resourceId: number, content: string): Promise<any | null> => {
+  const { supabase } = useSupabase()
+  const auth = useAuth()
+  
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+  
+  if (!auth.user.value) {
+    throw new Error('Must be logged in to create a comment')
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('resource_comments')
+      .insert([{
+        resource_id: resourceId,
+        user_id: auth.user.value.id,
+        content: content.trim()
+      }])
+      .select(`
+        id,
+        resource_id,
+        user_id,
+        content,
+        created_at,
+        updated_at,
+        user_profiles(
+          username,
+          display_name
+        )
+      `)
+      .single()
+    
+    if (error) throw error
+    
+    return {
+      id: data.id,
+      resource_id: data.resource_id,
+      user_id: data.user_id,
+      content: data.content,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      user: data.user_profiles ? {
+        username: data.user_profiles.username,
+        display_name: data.user_profiles.display_name
+      } : undefined
+    }
+  } catch (error) {
+    console.error('Error creating resource comment:', error)
+    throw error
+  }
+}
+
+// Toggle resource use (add/remove from user_resources)
+export const toggleResourceUse = async (resourceId: number): Promise<{ isUsing: boolean; count: number }> => {
+  const { supabase } = useSupabase()
+  const auth = useAuth()
+  
+  if (!supabase || !auth.user.value) {
+    throw new Error('Must be logged in to toggle resource use')
+  }
+
+  try {
+    // Check if user is already using this resource
+    const { data: existing, error: checkError } = await supabase
+      .from('user_resources')
+      .select('resource_id')
+      .eq('resource_id', resourceId)
+      .eq('user_id', auth.user.value.id)
+      .single()
+    
+    if (checkError && checkError.code !== 'PGRST116') {
+      throw checkError
+    }
+    
+    if (existing) {
+      // Remove use
+      const { error: deleteError } = await supabase
+        .from('user_resources')
+        .delete()
+        .eq('resource_id', resourceId)
+        .eq('user_id', auth.user.value.id)
+      
+      if (deleteError) throw deleteError
+    } else {
+      // Add use
+      const { error: insertError } = await supabase
+        .from('user_resources')
+        .insert({
+          user_id: auth.user.value.id,
+          resource_id: resourceId,
+          used_at: new Date().toISOString()
+        })
+      
+      if (insertError) throw insertError
+    }
+    
+    // Get updated count
+    const { data: countData, error: countError } = await supabase
+      .rpc('get_resource_use_counts')
+    
+    if (countError) throw countError
+    
+    const count = countData?.find((item: any) => item.resource_id === resourceId)?.count || 0
+    
+    return {
+      isUsing: !existing,
+      count: parseInt(count) || 0
+    }
+  } catch (error) {
+    console.error('Error toggling resource use:', error)
+    throw error
+  }
+}
+
+// Get resource use count and user's usage status
+export const getResourceUseStatus = async (resourceId: number): Promise<{ count: number; isUsing: boolean }> => {
+  const { supabase } = useSupabase()
+  const auth = useAuth()
+  
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+
+  try {
+    // Get total count
+    const { data: countData, error: countError } = await supabase
+      .rpc('get_resource_use_counts')
+    
+    if (countError) throw countError
+    
+    const count = countData?.find((item: any) => item.resource_id === resourceId)?.count || 0
+    
+    // Get user's usage status if logged in
+    let isUsing = false
+    if (auth.user.value) {
+      const { data: userUse, error: userError } = await supabase
+        .from('user_resources')
+        .select('resource_id')
+        .eq('resource_id', resourceId)
+        .eq('user_id', auth.user.value.id)
+        .single()
+      
+      if (!userError && userUse) {
+        isUsing = true
+      }
+    }
+    
+    return {
+      count: parseInt(count) || 0,
+      isUsing
+    }
+  } catch (error) {
+    console.error('Error getting resource use status:', error)
+    return { count: 0, isUsing: false }
   }
 } 

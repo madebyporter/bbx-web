@@ -40,11 +40,28 @@
                 <img src="/img/db/icon-delete.svg" alt="Delete" class="size-4" />
               </div>
             </div>
-            <div class="min-w-[111px] max-w-[111px] h-[61px] bg-neutral-200 rounded-md overflow-hidden shrink-0">
+            <NuxtLink
+              v-if="resource.slug && resource.type?.slug"
+              :to="getResourceDetailUrl(resource)"
+              class="min-w-[111px] max-w-[111px] h-[61px] bg-neutral-200 rounded-md overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
+              @click="(e) => { console.log('[Database.vue] Image clicked', { url: getResourceDetailUrl(resource), slug: resource.slug }) }"
+            >
+              <img v-if="resource.image_url" :src="getImageUrl(resource.image_url)" :alt="resource.name"
+                class="w-full h-full object-cover" @error="handleImageError" />
+            </NuxtLink>
+            <div v-else class="min-w-[111px] max-w-[111px] h-[61px] bg-neutral-200 rounded-md overflow-hidden shrink-0">
               <img v-if="resource.image_url" :src="getImageUrl(resource.image_url)" :alt="resource.name"
                 class="w-full h-full object-cover" @error="handleImageError" />
             </div>
-            <h2 class="overflow-hidden truncate">{{ resource.name }}</h2>
+            <NuxtLink
+              v-if="resource.slug && resource.type?.slug"
+              :to="getResourceDetailUrl(resource)"
+              class="overflow-hidden truncate hover:text-amber-400 transition-colors"
+              @click="(e) => { console.log('[Database.vue] Name clicked', { url: getResourceDetailUrl(resource), slug: resource.slug }) }"
+            >
+              {{ resource.name }}
+            </NuxtLink>
+            <h2 v-else class="overflow-hidden truncate">{{ resource.name }}</h2>
           </div>
 
           <!-- OS -->
@@ -155,6 +172,7 @@ interface FilterSortParams {
 interface Resource {
   id: number
   name: string
+  slug?: string
   creator: string
   creator_id?: number
   price: string
@@ -206,6 +224,7 @@ const fetchResources = async () => {
       .select(`
         id,
         name,
+        slug,
         price,
         link,
         image_url,
@@ -384,9 +403,15 @@ const fetchResources = async () => {
         ?.map((rt: any) => rt.tags?.name)
         .filter(Boolean) || []
 
+      // Extract type - handle both array and single object formats
+      const resourceType = Array.isArray(typedItem.type) 
+        ? typedItem.type[0] 
+        : typedItem.type
+
       return {
         id: typedItem.id,
         name: typedItem.name,
+        slug: typedItem.slug,
         creator: typedItem.creator?.name || '',
         creator_id: typedItem.creator?.id,
         price: typedItem.price,
@@ -394,7 +419,7 @@ const fetchResources = async () => {
         image_url: typedItem.image_url,
         os: typedItem.os || [],
         tags,
-        type: typedItem.type?.[0],
+        type: resourceType,
         type_id: typedItem.type_id,
         created_at: typedItem.created_at,
         status: typedItem.status
@@ -625,6 +650,38 @@ const extractNumericPrice = (priceStr: string): number => {
   }
   
   return 0;
+}
+
+// Helper function to get resource detail URL
+const getResourceDetailUrl = (resource: Resource): string => {
+  // Debug logging
+  if (!resource.slug) {
+    console.log('Resource missing slug:', resource.name, resource)
+    return '#'
+  }
+  
+  if (!resource.type?.slug) {
+    console.log('Resource missing type slug:', resource.name, resource.type)
+    // Fallback: use props.type if available (for software/kits pages)
+    if (props.type) {
+      const typePathMap: Record<string, string> = {
+        'software': '/software',
+        'sounds': '/kits'
+      }
+      const basePath = typePathMap[props.type] || '/software'
+      return `${basePath}/${resource.slug}`
+    }
+    return '#'
+  }
+  
+  // Map type slugs to URL paths
+  const typePathMap: Record<string, string> = {
+    'software': '/software',
+    'sounds': '/kits'
+  }
+  
+  const basePath = typePathMap[resource.type.slug] || '/software'
+  return `${basePath}/${resource.slug}`
 }
 
 // Expose methods and state for parent components
