@@ -1,7 +1,9 @@
 <template>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="col-span-2">
+      <h2 class="text-lg font-bold text-neutral-200">Comments</h2>
+    </div>
     <div class="flex flex-col gap-2">
-      <h3 class="text-lg font-bold text-neutral-200">Comments</h3>
 
       <!-- Comments List -->
       <div v-if="loading" class="text-sm text-neutral-400 py-4">
@@ -40,7 +42,7 @@
         </button>
       </div>
 
-      <div v-else class="p-4 border border-neutral-800 rounded-md text-sm text-neutral-400">
+      <div v-else class="p-4 border border-neutral-800 rounded-md text-sm text-neutral-400 md:sticky md:top-4">
         <button type="button" @click="() => openAuthModal && openAuthModal('signin')"
           class="text-amber-400 hover:text-amber-500 transition-colors cursor-pointer">
           Sign in
