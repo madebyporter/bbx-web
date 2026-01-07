@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-row gap-4 items-center justify-between p-2 border-t border-neutral-800 bg-neutral-900">
+  <div class="flex flex-row gap-2 items-stretch justify-between p-2 border-t border-neutral-800 bg-neutral-900">
     <!-- I Use This -->
-    <div class="group flex flex-row gap-0 items-center rounded-sm overflow-hidden w-fit border border-neutral-800 hover:border-neutral-700 p-2">
+    <div class="group flex flex-row gap-0 items-stretch justify-stretch rounded-sm overflow-hidden w-fit border border-neutral-800 hover:border-neutral-700 p-2">
       <div class="flex items-center justify-center bg-transparent text-white p-2 text-sm leading-snug">
         {{ useCount }}
       </div>
@@ -25,7 +25,7 @@
       :href="resourceLink"
       target="_blank"
       rel="noopener noreferrer"
-      class="btn"
+      class="btn grow flex items-center justify-center"
     >
       Download
     </a>

@@ -43,16 +43,20 @@
     </div>
     
     <div v-else class="mt-4 p-4 border border-neutral-800 rounded-md text-sm text-neutral-400">
-      <NuxtLink to="/" class="text-amber-400 hover:text-amber-500 transition-colors">
+      <button 
+        type="button"
+        @click="() => openAuthModal && openAuthModal('signin')"
+        class="text-amber-400 hover:text-amber-500 transition-colors cursor-pointer"
+      >
         Sign in
-      </NuxtLink>
+      </button>
       to leave a comment.
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, inject } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { fetchResourceComments, createResourceComment } from '~/utils/resourceQueries'
 import type { ResourceComment } from '~/types/resource'
@@ -62,6 +66,7 @@ const props = defineProps<{
 }>()
 
 const { user } = useAuth()
+const openAuthModal = inject<(mode?: 'signin' | 'signup' | 'forgot') => void>('openAuthModal')
 const comments = ref<ResourceComment[]>([])
 const loading = ref(false)
 const newComment = ref('')

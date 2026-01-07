@@ -522,36 +522,44 @@ export const fetchResourceComments = async (resourceId: number): Promise<any[]> 
   }
 
   try {
-    const { data, error } = await supabase
+    // 1) Fetch comments (without join to avoid FK/400 issues)
+    const { data: commentsData, error: commentsError } = await supabase
       .from('resource_comments')
-      .select(`
-        id,
-        resource_id,
-        user_id,
-        content,
-        created_at,
-        updated_at,
-        user_profiles(
-          username,
-          display_name
-        )
-      `)
+      .select('id, resource_id, user_id, content, created_at, updated_at')
       .eq('resource_id', resourceId)
       .order('created_at', { ascending: true })
     
-    if (error) throw error
-    
-    return (data || []).map((comment: any) => ({
+    if (commentsError) throw commentsError
+    const comments = commentsData || []
+
+    // 2) Batch-fetch user profiles for unique user_ids
+    const uniqueUserIds = Array.from(new Set(comments.map(c => c.user_id).filter(Boolean)))
+    let profilesById: Record<string, { username: string; display_name: string | null }> = {}
+    if (uniqueUserIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('user_profiles')
+        .select('id, username, display_name')
+        .in('id', uniqueUserIds as string[])
+      profilesById = (profilesData || []).reduce((acc: any, p: any) => {
+        acc[p.id] = { username: p.username, display_name: p.display_name }
+        return acc
+      }, {} as Record<string, { username: string; display_name: string | null }>)
+    }
+
+    // 3) Merge profiles into comments
+    return comments.map((comment: any) => ({
       id: comment.id,
       resource_id: comment.resource_id,
       user_id: comment.user_id,
       content: comment.content,
       created_at: comment.created_at,
       updated_at: comment.updated_at,
-      user: comment.user_profiles ? {
-        username: comment.user_profiles.username,
-        display_name: comment.user_profiles.display_name
-      } : undefined
+      user: profilesById[comment.user_id]
+        ? {
+            username: profilesById[comment.user_id].username,
+            display_name: profilesById[comment.user_id].display_name || undefined
+          }
+        : undefined
     }))
   } catch (error) {
     console.error('Error fetching resource comments:', error)
@@ -573,6 +581,7 @@ export const createResourceComment = async (resourceId: number, content: string)
   }
 
   try {
+    // 1) Insert comment (no join)
     const { data, error } = await supabase
       .from('resource_comments')
       .insert([{
@@ -580,22 +589,23 @@ export const createResourceComment = async (resourceId: number, content: string)
         user_id: auth.user.value.id,
         content: content.trim()
       }])
-      .select(`
-        id,
-        resource_id,
-        user_id,
-        content,
-        created_at,
-        updated_at,
-        user_profiles(
-          username,
-          display_name
-        )
-      `)
+      .select('id, resource_id, user_id, content, created_at, updated_at')
       .single()
     
     if (error) throw error
-    
+    if (!data) return null
+
+    // 2) Fetch author profile (lightweight)
+    let userProfile: { username: string; display_name: string | null } | undefined
+    const { data: profileData } = await supabase
+      .from('user_profiles')
+      .select('username, display_name')
+      .eq('id', data.user_id)
+      .single()
+    if (profileData) {
+      userProfile = { username: profileData.username, display_name: profileData.display_name }
+    }
+
     return {
       id: data.id,
       resource_id: data.resource_id,
@@ -603,10 +613,9 @@ export const createResourceComment = async (resourceId: number, content: string)
       content: data.content,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      user: data.user_profiles ? {
-        username: data.user_profiles.username,
-        display_name: data.user_profiles.display_name
-      } : undefined
+      user: userProfile
+        ? { username: userProfile.username, display_name: userProfile.display_name || undefined }
+        : undefined
     }
   } catch (error) {
     console.error('Error creating resource comment:', error)

@@ -85,7 +85,7 @@
           </div>
         </template>
         <template v-else>
-          <button @click="handleShowAuthModal" class="cursor-pointer text-sm p-2 w-full hover:bg-neutral-800/25 rounded-xs text-left">Login</button>
+          <button @click="handleShowAuthModal" class="cursor-pointer text-sm p-2 w-full hover:bg-neutral-800/25 rounded-xs text-left">Sign in</button>
         </template>
       </div>
     </div>

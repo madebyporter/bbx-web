@@ -546,6 +546,22 @@ const handleShowSignup = () => {
   }
 }
 
+// Generic auth modal opener
+const openAuthModal = (mode: 'signin' | 'signup' | 'forgot' = 'signin') => {
+  if (mode === 'forgot') {
+    isForgotPassword.value = true
+    isSignUp.value = false
+  } else if (mode === 'signup') {
+    isSignUp.value = true
+    isForgotPassword.value = false
+  } else {
+    // signin
+    isSignUp.value = false
+    isForgotPassword.value = false
+  }
+  showAuthModal.value = true
+}
+
 // Provide functions for child layouts
 provide('openFilterModal', openFilterModal)
 provide('handleSearch', handleSearch)
@@ -556,6 +572,7 @@ provide('unregisterContextItems', unregisterContextItems)
 provide('handleToggleNav', handleToggleNav)
 provide('handleEdit', handleEdit)
 provide('handleShowSignup', handleShowSignup)
+provide('openAuthModal', openAuthModal)
 provide('showModal', { value: showModal })
 
 // Listen for edit-track events from profile page
