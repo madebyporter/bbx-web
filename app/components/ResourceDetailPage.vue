@@ -84,10 +84,14 @@
                   No image
                 </div>
               </div>
-
-             
-
               
+            </div>
+          </div>
+          <div class="p-4 border-b border-neutral-800 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+            <div><h2 class="text-white text-lg font-bold">Admin</h2></div>
+            <div class="flex flex-row gap-4">
+              <button class="btn">Edit</button>
+              <button class="btn bg-red-500 hover:bg-red-600">Delete</button>
             </div>
           </div>
           <!-- Comments Section -->
