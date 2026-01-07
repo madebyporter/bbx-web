@@ -17,8 +17,8 @@
       <div class="overflow-y-auto">
         <div class="flex flex-col gap-0">
           <!-- Resource Header -->
-          <div class="p-8 border-b border-neutral-800">
-            <div class="flex flex-col gap-16">
+          <div class="p-4 md:p-8 border-b border-neutral-800">
+            <div class="flex flex-col gap-8 md:gap-16">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- Name -->
                 <div>
@@ -87,7 +87,7 @@
               
             </div>
           </div>
-          <div v-if="isAdmin" class="p-4 border-b border-neutral-800 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+          <div v-if="isAdmin" class="p-4 border-b border-neutral-800 grid grid-cols-2 gap-4 items-center">
             <div><h2 class="text-white text-lg font-bold">Admin</h2></div>
             <div class="flex flex-row gap-4">
               <button class="btn" @click="onEdit">Edit</button>

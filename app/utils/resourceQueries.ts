@@ -527,7 +527,7 @@ export const fetchResourceComments = async (resourceId: number): Promise<any[]> 
       .from('resource_comments')
       .select('id, resource_id, user_id, content, created_at, updated_at')
       .eq('resource_id', resourceId)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
     
     if (commentsError) throw commentsError
     const comments = commentsData || []
