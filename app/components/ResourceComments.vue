@@ -6,7 +6,7 @@
     <div class="flex flex-col gap-2 col-span-2 lg:col-span-1 order-3 lg:order-2">
 
       <!-- Comments List -->
-      <div v-if="loading" class="text-sm text-neutral-400 py-4">
+      <div v-if="commentsPending || loading" class="text-sm text-neutral-400 py-4">
         Loading comments...
       </div>
 
@@ -55,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, inject } from 'vue'
+import { ref, onMounted, inject, watch } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { fetchResourceComments, createResourceComment } from '~/utils/resourceQueries'
 import type { ResourceComment } from '~/types/resource'
@@ -66,15 +66,31 @@ const props = defineProps<{
 
 const { user } = useAuth()
 const openAuthModal = inject<(mode?: 'signin' | 'signup' | 'forgot') => void>('openAuthModal')
-const comments = ref<ResourceComment[]>([])
-const loading = ref(false)
 const newComment = ref('')
 const submitting = ref(false)
+
+// Fetch comments server-side for SSG/SEO
+const { data: commentsData, pending: commentsPending, refresh: refreshComments } = await useAsyncData(
+  `comments-${props.resourceId}`,
+  () => fetchResourceComments(props.resourceId),
+  { server: true }
+)
+
+const comments = ref(commentsData.value || [])
+const loading = ref(false)
+
+// Watch for server-side data updates
+watch(() => commentsData.value, (newComments) => {
+  if (newComments) {
+    comments.value = newComments
+  }
+}, { immediate: true })
 
 const fetchComments = async () => {
   loading.value = true
   try {
-    comments.value = await fetchResourceComments(props.resourceId)
+    const freshComments = await fetchResourceComments(props.resourceId)
+    comments.value = freshComments
   } catch (error) {
     console.error('Error fetching comments:', error)
   } finally {
@@ -89,8 +105,11 @@ const handleSubmitComment = async () => {
   try {
     const comment = await createResourceComment(props.resourceId, newComment.value)
     if (comment) {
-      comments.value.push(comment)
+      // Add new comment to list immediately (optimistic update)
+      comments.value = [comment, ...comments.value]
       newComment.value = ''
+      // Optionally refresh to get latest comments from server
+      await fetchComments()
     }
   } catch (error) {
     console.error('Error creating comment:', error)
