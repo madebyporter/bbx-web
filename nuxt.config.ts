@@ -114,7 +114,41 @@ export default defineNuxtConfig({
         maxAge: 0, // Service worker should not be cached
         baseURL: '/'
       }
-    ]
+    ],
+    prerender: {
+      // Use explicit route generation (not crawlLinks)
+      crawlLinks: false,
+      // Routes will be generated via hook
+    },
+    hooks: {
+      async 'prerender:routes'(ctx) {
+        // Import and use the route generator
+        // This runs at build time
+        try {
+          const { generatePrerenderRoutes } = await import('./server/utils/prerender-routes.js')
+          const routes = await generatePrerenderRoutes()
+          // Add routes to prerender context
+          routes.forEach(route => {
+            if (ctx.routes instanceof Set) {
+              ctx.routes.add(route)
+            } else if (Array.isArray(ctx.routes)) {
+              ctx.routes.push(route)
+            }
+          })
+        } catch (error) {
+          console.error('Error generating prerender routes:', error)
+          // Fallback to basic routes
+          const basicRoutes = ['/', '/software', '/kits']
+          basicRoutes.forEach(route => {
+            if (ctx.routes instanceof Set) {
+              ctx.routes.add(route)
+            } else if (Array.isArray(ctx.routes)) {
+              ctx.routes.push(route)
+            }
+          })
+        }
+      }
+    }
   },
 
   // Optimize build for caching

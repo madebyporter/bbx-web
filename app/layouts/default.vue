@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isInitialized" class="flex flex-col max-h-dvh min-h-dvh">
+  <div class="flex flex-col max-h-dvh min-h-dvh">
     <!-- Mobile Nav Backdrop -->
     <div 
       v-if="isMobileNavOpen" 
@@ -128,9 +128,6 @@
     <!-- Toast Notifications -->
     <Toast />
   </div>
-  <div v-else class="flex items-center justify-center min-h-screen">
-    <!-- No loading indicator -->
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -214,7 +211,10 @@ const auth = useAuth()
 const { user, isAdmin } = auth
 const { showSuccess, showError, showProcessing, showInfo } = useToast()
 // Start as false on both server and client, set to true in onMounted
-const isInitialized = ref(false)
+// Initialize to true on both server and client to prevent hydration mismatch
+// This ensures SSR works and client hydration matches server render
+// Auth initialization happens separately in onMounted without blocking layout
+const isInitialized = ref(true)
 const route = useRoute()
 
 // Determine which modal to show based on route
@@ -580,6 +580,10 @@ onMounted(async () => {
   if (!process.client) return
   
   console.log('Layout: Starting auth initialization...')
+  // isInitialized is already true (set in ref initialization above)
+  // This ensures layout always renders, preventing hydration mismatch
+  console.log('Layout: Initialized, isInitialized =', isInitialized.value)
+  
   try {
     await auth.init()
   } catch (error) {
@@ -588,10 +592,6 @@ onMounted(async () => {
   
   // Wait for next tick to ensure router is initialized
   await nextTick()
-  
-  // Ensure initialized is true after router is ready
-  isInitialized.value = true
-  console.log('Layout: Initialized, isInitialized =', isInitialized.value)
   
   // Listen for track edit events
   window.addEventListener('edit-track', ((event: CustomEvent) => {

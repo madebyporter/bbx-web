@@ -43,19 +43,30 @@ const props = defineProps<{
 }>()
 
 const { user } = useAuth()
-const useCount = ref(0)
-const isUsing = ref(false)
 const loading = ref(false)
 
-const fetchUseStatus = async () => {
-  try {
-    const status = await getResourceUseStatus(props.resourceId)
-    useCount.value = status.count
-    isUsing.value = status.isUsing
-  } catch (error) {
-    console.error('Error fetching use status:', error)
+// Fetch use status server-side for SSG/SEO
+// Note: Using a different key prefix to avoid conflicts with ResourceDetailPage's useAsyncData
+// Both components can coexist and share the same data via Supabase cache
+const { data: useStatusData, refresh: refreshUseStatus } = await useAsyncData(
+  `use-status-footer-${props.resourceId}`,
+  () => getResourceUseStatus(props.resourceId),
+  {
+    server: true,
+    default: () => ({ count: 0, isUsing: false })
   }
-}
+)
+
+const useCount = ref(useStatusData.value?.count || 0)
+const isUsing = ref(useStatusData.value?.isUsing || false)
+
+// Watch for server-side data updates
+watch(() => useStatusData.value, (newStatus) => {
+  if (newStatus) {
+    useCount.value = newStatus.count
+    isUsing.value = newStatus.isUsing
+  }
+}, { immediate: true })
 
 const handleToggleUse = async () => {
   if (!user.value) {
@@ -80,13 +91,13 @@ const handleToggleUse = async () => {
   }
 }
 
-// Watch for auth changes to update use status
+// Watch for auth changes to update use status (client-side after hydration)
 watch(() => user.value, async (newUser) => {
   if (newUser) {
-    await fetchUseStatus()
+    await refreshUseStatus() // Use refresh from useAsyncData for consistency
   } else {
     isUsing.value = false
   }
-}, { immediate: true })
+}, { immediate: false }) // Don't run immediately - use server-side data first
 </script>
 
