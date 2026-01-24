@@ -87,16 +87,16 @@
     animation: search-highlight-pulse 2s ease-out;
   }
   .trackGrid {
-    @apply grid gap-4 grid-cols-[minmax(70px,auto)_150px_150px_100px_150px_120px_150px_100px] lg:grid-cols-[minmax(70px,auto)_2fr_1.5fr_1fr_1.5fr_1fr_1fr_80px];
+    @apply grid gap-4 grid-cols-[minmax(70px,auto)_minmax(250px,1fr)_100px_70px_120px_70px_50px_70px] lg:grid-cols-[minmax(70px,auto)_4fr_1.5fr_1fr_1.5fr_70px_50px_80px];
   }
   .trackGrid-no-collection {
-    @apply grid gap-4 grid-cols-[minmax(70px,auto)_150px_150px_100px_120px_150px_100px_80px] lg:grid-cols-[minmax(70px,auto)_2fr_1.5fr_1fr_1fr_1fr_80px_80px];
+    @apply grid gap-4 grid-cols-[minmax(70px,auto)_minmax(250px,1fr)_100px_70px_70px_50px_70px_80px] lg:grid-cols-[minmax(70px,auto)_4fr_1.5fr_1fr_70px_50px_80px_80px];
   }
   .trackGrid-edit {
-    @apply grid gap-4 grid-cols-[minmax(70px,auto)_150px_150px_100px_150px_120px_150px_100px_100px_50px] lg:grid-cols-[minmax(70px,auto)_2fr_1.5fr_1fr_1.5fr_1fr_1fr_80px_100px_80px];
+    @apply grid gap-4 grid-cols-[minmax(70px,auto)_minmax(250px,1fr)_100px_70px_120px_70px_50px_70px_100px_50px] lg:grid-cols-[minmax(70px,auto)_4fr_1.5fr_1fr_1.5fr_70px_50px_80px_100px_80px];
   }
   .trackGrid-edit-no-collection {
-    @apply grid gap-4 grid-cols-[minmax(70px,auto)_150px_150px_100px_120px_150px_100px_50px] lg:grid-cols-[minmax(70px,auto)_2fr_1.5fr_1fr_1fr_1fr_80px_80px];
+    @apply grid gap-4 grid-cols-[minmax(70px,auto)_minmax(250px,1fr)_100px_70px_70px_50px_70px_50px] lg:grid-cols-[minmax(70px,auto)_4fr_1.5fr_1fr_70px_50px_80px_80px];
   }
   /* collectionTrackGrid: 8 columns for logged-in non-owner
    * 1. Play button (tiny - 60px)
@@ -111,7 +111,12 @@
   .collectionTrackGrid {
     display: grid;
     gap: 1rem;
-    grid-template-columns: 60px minmax(150px, 2fr) 127px 80px minmax(150px, max-content) 127px 60px 80px;
+    grid-template-columns: 60px minmax(250px, 1fr) 100px 70px minmax(120px, max-content) 70px 50px 70px;
+  }
+  @media (min-width: 1024px) {
+    .collectionTrackGrid {
+      grid-template-columns: 60px minmax(200px, 4fr) 127px 80px minmax(150px, max-content) 70px 50px 80px;
+    }
   }
   /* collectionTrackGrid-edit: 10 columns for owner
    * 1. Play/checkbox (tiny - 60px)
@@ -128,7 +133,12 @@
   .collectionTrackGrid-edit {
     display: grid;
     gap: 1rem;
-    grid-template-columns: 60px minmax(150px, 2fr) 127px 80px minmax(150px, max-content) 127px 60px 80px 127px 80px;
+    grid-template-columns: 60px minmax(250px, 1fr) 100px 70px minmax(120px, max-content) 70px 50px 70px 100px 70px;
+  }
+  @media (min-width: 1024px) {
+    .collectionTrackGrid-edit {
+      grid-template-columns: 60px minmax(200px, 4fr) 127px 80px minmax(150px, max-content) 70px 50px 80px 127px 80px;
+    }
   }
   /* collectionTrackGrid-edit-no-visible: 10 columns for owner (no Visible column)
    * Same as collectionTrackGrid-edit (kept for backwards compatibility)
@@ -136,7 +146,12 @@
   .collectionTrackGrid-edit-no-visible {
     display: grid;
     gap: 1rem;
-    grid-template-columns: 60px minmax(150px, 2fr) 127px 80px minmax(150px, max-content) 127px 60px 80px 127px 80px;
+    grid-template-columns: 60px minmax(250px, 1fr) 100px 70px minmax(120px, max-content) 70px 50px 70px 100px 70px;
+  }
+  @media (min-width: 1024px) {
+    .collectionTrackGrid-edit-no-visible {
+      grid-template-columns: 60px minmax(200px, 4fr) 127px 80px minmax(150px, max-content) 70px 50px 80px 127px 80px;
+    }
   }
   /* collectionTrackGrid-loggedOut: 7 columns (no Collection column)
    * 1. Play button (tiny - 60px)
@@ -150,7 +165,12 @@
   .collectionTrackGrid-loggedOut {
     display: grid;
     gap: 1rem;
-    grid-template-columns: 60px minmax(150px, 2fr) 127px 80px 127px 60px 80px;
+    grid-template-columns: 60px minmax(250px, 1fr) 100px 70px 70px 50px 70px;
+  }
+  @media (min-width: 1024px) {
+    .collectionTrackGrid-loggedOut {
+      grid-template-columns: 60px minmax(200px, 4fr) 127px 80px 70px 50px 80px;
+    }
   }
   .resourceGrid {
     @apply grid gap-4 items-center *:first:pl-4 grid-cols-[300px_127px_127px_127px_127px_127px_127px] lg:grid-cols-[320px_127px_127px_127px_1fr_127px_127px];

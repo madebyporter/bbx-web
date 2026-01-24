@@ -3,7 +3,7 @@
     class="border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between overflow-auto shrink-0 min-w-[250px] lg:relative lg:translate-x-0 fixed inset-y-0 left-0 z-40 lg:z-40 w-full lg:w-fit lg:max-w-none"
     style="transform: translateX(-100%)">
     <div class="sticky top-0 p-4 flex justify-between items-center">
-      <NuxtLink to="/" class="cursor-pointer">
+      <NuxtLink to="/" @click="closeMobileNavOnClick" class="cursor-pointer">
         <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-[44px] lg:size-12" />
       </NuxtLink>
       <button @click="toggleMobileNav" class="text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 rounded-md px-2 w-fit h-full lg:hidden cursor-pointer max-w-8 flex items-center justify-center">
@@ -15,20 +15,20 @@
     <div class="grow flex flex-col gap-16 p-4">
       <div v-if="user" class="flex flex-col gap-4">
         <span class="nav-header">Library</span>
-        <NuxtLink v-if="username" :to="`/u/${username}`" class="nav-link" active-class="!font-bold !text-white">
+        <NuxtLink v-if="username" :to="`/u/${username}`" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">
           All Music</NuxtLink>
-        <NuxtLink v-else :to="`/u/${user.id}`" class="nav-link" active-class="!font-bold !text-white">All Music
+        <NuxtLink v-else :to="`/u/${user.id}`" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">All Music
         </NuxtLink>
 
-        <NuxtLink v-if="username" :to="`/u/${username}/collections`" class="nav-link"
+        <NuxtLink v-if="username" :to="`/u/${username}/collections`" @click="closeMobileNavOnClick" class="nav-link"
           active-class="!font-bold !text-white">Collections</NuxtLink>
-        <NuxtLink v-else :to="`/u/${user.id}/collections`" class="nav-link" active-class="!font-bold !text-white">
+        <NuxtLink v-else :to="`/u/${user.id}/collections`" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">
           Collections</NuxtLink>
       </div>
       <div class="flex flex-col gap-4">
         <span class="nav-header">Resources</span>
-        <NuxtLink to="/software" class="nav-link" active-class="!font-bold !text-white">Software</NuxtLink>
-        <NuxtLink to="/kits" class="nav-link" active-class="!font-bold !text-white">Sounds & Kits</NuxtLink>
+        <NuxtLink to="/software" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">Software</NuxtLink>
+        <NuxtLink to="/kits" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">Sounds & Kits</NuxtLink>
         <NuxtLink to="#" class="nav-link-later">
           Hardware <span class="tag">Later</span>
         </NuxtLink>
@@ -145,6 +145,27 @@ const toggleMobileNav = () => {
   })
   
   emit('toggle-mobile-nav', showMobileNav.value)
+}
+
+const closeMobileNav = () => {
+  if (showMobileNav.value) {
+    showMobileNav.value = false
+    
+    gsap.to(mobileNav.value, {
+      duration: 0.3,
+      x: '-100%',
+      ease: 'power2.out'
+    })
+    
+    emit('toggle-mobile-nav', false)
+  }
+}
+
+const closeMobileNavOnClick = () => {
+  // Only close on mobile (screen width < 1024px)
+  if (window.innerWidth < 1024) {
+    closeMobileNav()
+  }
 }
 
 const fetchUsername = async () => {
