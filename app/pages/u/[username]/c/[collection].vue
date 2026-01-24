@@ -9,15 +9,13 @@
     </div>
 
     <template v-else>
-      <!-- Collection Header with View Toggle -->
+      <!-- Collection Header -->
       <LibraryHeader
         :title="collection.name"
         :description="collection.description"
         :count="displayedTracksCount"
         :is-own-profile="isOwnProfile"
-        :show-view-mode-selector="profileUserType === 'audio_pro'"
-        v-model:show-view-menu="showViewMenu"
-        v-model:view-mode="viewMode"
+        :show-view-mode-selector="false"
         filter-context="music"
         @open-filter-sort="handleOpenFilterSort"
       />
@@ -30,7 +28,6 @@
           :is-own-profile="isOwnProfile"
           :loading="tracksLoading"
           :username="route.params.username as string"
-          :view-mode="viewMode"
           :collection-id="collection?.id"
           :viewer-user-type="viewerUserType"
           :profile-user-type="profileUserType"
@@ -115,8 +112,6 @@ const loading = ref(false)
 const tracksLoading = ref(false)
 const profileUserId = ref<string | null>(initialData.value?.profileUserId || null)
 const searchQuery = ref('')
-const viewMode = ref<'final' | 'all'>('final')
-const showViewMenu = ref(false)
 const viewerUserType = ref<'creator' | 'audio_pro' | null>(null)
 const profileUserType = ref<'creator' | 'audio_pro' | null>(null)
 
@@ -126,16 +121,9 @@ const isOwnProfile = computed(() => {
 })
 
 const displayedTracks = computed(() => {
-  // First filter by view mode (hidden status)
+  // Filter by search query
   let filtered = tracks.value
   
-  if (viewMode.value === 'final') {
-    // Show only non-hidden tracks
-    filtered = tracks.value.filter(track => !track.hidden)
-  }
-  // If viewMode is 'all', show all tracks (including hidden)
-  
-  // Then filter by search query
   if (searchQuery.value) {
     const query = searchQuery.value.trim().toLowerCase()
     filtered = filtered.filter(track => {
@@ -149,9 +137,6 @@ const displayedTracks = computed(() => {
 })
 
 const displayedTracksCount = computed(() => {
-  if (viewMode.value === 'final') {
-    return tracks.value.filter(track => !track.hidden).length
-  }
   return tracks.value.length
 })
 

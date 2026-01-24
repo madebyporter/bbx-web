@@ -25,7 +25,7 @@
       <div :class="[
           'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 xl:sticky xl:top-20 bg-neutral-900 z-10',
           isOwnProfile 
-            ? (viewMode === 'all' ? 'collectionTrackGrid-edit' : 'collectionTrackGrid-edit-no-visible')
+            ? 'collectionTrackGrid-edit'
             : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut')
         ]">
         <div class="flex items-center justify-center">
@@ -51,7 +51,7 @@
         <div>Genre</div>
         <div>BPM</div>
         <div>Duration</div>
-        <div v-if="isOwnProfile && viewMode === 'all'">Visible</div>
+        <div v-if="isOwnProfile">Visible</div>
         <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
         <div v-if="isOwnProfile" class="flex items-center justify-start">
           <button
@@ -68,9 +68,9 @@
       <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
           'text-sm border-b border-neutral-800/50 py-3 transition-colors items-center',
           isOwnProfile 
-            ? (viewMode === 'all' ? 'collectionTrackGrid-edit' : 'collectionTrackGrid-edit-no-visible')
+            ? 'collectionTrackGrid-edit'
             : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut'),
-          { 'opacity-30': track.hidden && viewMode === 'all' },
+          { 'opacity-30': track.hidden },
           isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800/30'
         ]">
         <div class="px-2 flex items-center justify-center">
@@ -126,7 +126,7 @@
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.genre || '-' }}</div>
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
         <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>
-        <div v-if="isOwnProfile && viewMode === 'all'" class="flex items-center justify-center">
+        <div v-if="isOwnProfile" class="flex items-center justify-center">
           <button @click="$emit('toggle-hidden', track.id)"
             class="text-neutral-400 hover:text-white transition-colors cursor-pointer"
             :title="track.hidden ? 'Hidden from final (click to show)' : 'Visible in final (click to hide)'">
@@ -196,7 +196,6 @@ const props = defineProps<{
   isOwnProfile: boolean
   loading: boolean
   username: string
-  viewMode: 'final' | 'all'
   collectionId?: number
   viewerUserType?: 'creator' | 'audio_pro' | null
   profileUserType?: 'creator' | 'audio_pro' | null
