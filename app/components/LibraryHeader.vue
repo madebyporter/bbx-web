@@ -7,7 +7,7 @@
       </p>
     </div>
     <div class="flex items-center gap-4">
-      <p class="text-sm text-neutral-500">
+      <p class="text-sm text-neutral-500 hidden md:block">
         {{ count }} {{ count === 1 ? itemLabel : itemLabel + 's' }}
       </p>
       <button 

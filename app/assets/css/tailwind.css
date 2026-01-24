@@ -10,6 +10,22 @@
   .db-head {
     @apply text-left font-normal text-sm;
   }
+  /* Column width utilities */
+  .col-tiny {
+    @apply min-w-[60px] max-w-[60px];
+  }
+  .col-small {
+    @apply min-w-[80px] max-w-[80px];
+  }
+  .col-medium {
+    @apply min-w-[127px] lg:max-w-[127px];
+  }
+  .col-large {
+    @apply min-w-[270px] lg:max-w-[270px];
+  }
+  .col-auto {
+    @apply min-w-0 flex-1;
+  }
   .db-col-sm {
     @apply min-w-[127px] lg:max-w-[127px];
   }
@@ -83,51 +99,58 @@
     @apply grid gap-4 grid-cols-[minmax(70px,auto)_150px_150px_100px_120px_150px_100px_50px] lg:grid-cols-[minmax(70px,auto)_2fr_1.5fr_1fr_1fr_1fr_80px_80px];
   }
   /* collectionTrackGrid: 8 columns for logged-in non-owner
-   * 1. Play button (40px)
-   * 2. Title (3fr - fills space)
-   * 3. Artist (1fr)
-   * 4. Version (100px)
-   * 5. Collection (1fr)
-   * 6. Genre (100px)
-   * 7. BPM (100px)
-   * 8. Duration (80px)
+   * 1. Play button (tiny - 60px)
+   * 2. Title (auto - flexible)
+   * 3. Artist (medium - 127px)
+   * 4. Version (small - 80px)
+   * 5. Collection (auto - fits content, min 150px)
+   * 6. Genre (medium - 127px)
+   * 7. BPM (tiny - 60px)
+   * 8. Duration (small - 80px)
    */
   .collectionTrackGrid {
-    @apply grid gap-4 grid-cols-[40px_minmax(250px,1fr)_150px_100px_150px_120px_150px_100px] lg:grid-cols-[40px_3fr_1fr_100px_1fr_100px_100px_80px];
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 60px minmax(150px, 2fr) 127px 80px minmax(150px, max-content) 127px 60px 80px;
   }
-  /* collectionTrackGrid-edit: 11 columns for owner when viewMode === 'all' (includes Visible column)
-   * 1. Play/checkbox (40px)
-   * 2. Title (3fr - fills space)
-   * 3. Artist (1fr)
-   * 4. Version (100px)
-   * 5. Collection (1fr)
-   * 6. Genre (100px)
-   * 7. BPM (100px)
-   * 8. Duration (80px)
-   * 9. Visible (100px)
-   * 10. Status (100px)
-   * 11. Edit/Remove (80px)
+  /* collectionTrackGrid-edit: 10 columns for owner
+   * 1. Play/checkbox (tiny - 60px)
+   * 2. Title (auto - flexible)
+   * 3. Artist (medium - 127px)
+   * 4. Version (small - 80px)
+   * 5. Collection (auto - fits content, min 150px)
+   * 6. Genre (medium - 127px)
+   * 7. BPM (tiny - 60px)
+   * 8. Duration (small - 80px)
+   * 9. Status (medium - 127px)
+   * 10. Edit/Remove (small - 80px)
    */
   .collectionTrackGrid-edit {
-    @apply grid gap-4 grid-cols-[40px_minmax(250px,1fr)_150px_100px_150px_120px_150px_100px_100px_100px_50px] lg:grid-cols-[40px_3fr_1fr_100px_1fr_100px_100px_80px_100px_100px_80px];
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 60px minmax(150px, 2fr) 127px 80px minmax(150px, max-content) 127px 60px 80px 127px 80px;
   }
-  /* collectionTrackGrid-edit-no-visible: 10 columns for owner when viewMode !== 'all' (no Visible column)
-   * 1. Play/checkbox (40px)
-   * 2. Title (3fr - fills space)
-   * 3. Artist (1fr)
-   * 4. Version (100px)
-   * 5. Collection (1fr)
-   * 6. Genre (100px)
-   * 7. BPM (100px)
-   * 8. Duration (80px)
-   * 9. Status (100px)
-   * 10. Edit/Remove (80px)
+  /* collectionTrackGrid-edit-no-visible: 10 columns for owner (no Visible column)
+   * Same as collectionTrackGrid-edit (kept for backwards compatibility)
    */
   .collectionTrackGrid-edit-no-visible {
-    @apply grid gap-4 grid-cols-[40px_minmax(150px,1fr)_150px_100px_150px_120px_150px_100px_100px_50px] lg:grid-cols-[40px_3fr_1fr_100px_1fr_100px_100px_80px_100px_80px];
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 60px minmax(150px, 2fr) 127px 80px minmax(150px, max-content) 127px 60px 80px 127px 80px;
   }
+  /* collectionTrackGrid-loggedOut: 7 columns (no Collection column)
+   * 1. Play button (tiny - 60px)
+   * 2. Title (auto - flexible)
+   * 3. Artist (medium - 127px)
+   * 4. Version (small - 80px)
+   * 5. Genre (medium - 127px)
+   * 6. BPM (tiny - 60px)
+   * 7. Duration (small - 80px)
+   */
   .collectionTrackGrid-loggedOut {
-    @apply grid gap-4 grid-cols-[40px_minmax(150px,1fr)_150px_100px_120px_150px_100px] lg:grid-cols-[40px_3fr_1fr_100px_100px_100px_80px];
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 60px minmax(150px, 2fr) 127px 80px 127px 60px 80px;
   }
   .resourceGrid {
     @apply grid gap-4 items-center *:first:pl-4 grid-cols-[300px_127px_127px_127px_127px_127px_127px] lg:grid-cols-[320px_127px_127px_127px_1fr_127px_127px];

@@ -32,7 +32,6 @@
           :viewer-user-type="viewerUserType"
           :profile-user-type="profileUserType"
           @edit-track="handleEdit"
-          @toggle-hidden="toggleHidden"
           @tracks-removed="fetchTracks"
         />
       </div>
@@ -288,44 +287,6 @@ const fetchTracks = async () => {
   }
 }
 
-const toggleHidden = async (trackId: number, currentHiddenState: boolean) => {
-  if (!supabase || !collection.value) return
-  
-  try {
-    // Optimistically update local state first for instant feedback
-    const trackIndex = tracks.value.findIndex(t => t.id === trackId)
-    if (trackIndex !== -1) {
-      tracks.value[trackIndex].hidden = !currentHiddenState
-    }
-    
-    // Update the hidden status in the junction table
-    const { error } = await supabase
-      .from('collections_sounds')
-      .update({ hidden: !currentHiddenState })
-      .eq('collection_id', collection.value.id)
-      .eq('sound_id', trackId)
-    
-    if (error) {
-      // Revert on error
-      if (trackIndex !== -1) {
-        tracks.value[trackIndex].hidden = currentHiddenState
-      }
-      throw error
-    }
-    
-    // If the player's queue is from this collection, update it silently
-    const collectionSourceId = `collection-${collection.value.id}`
-    if (queueSourceId.value === collectionSourceId) {
-      // Get the updated list of visible tracks (non-hidden)
-      const visibleTracks = tracks.value.filter(t => !t.hidden)
-      
-      // Update the queue without triggering playback
-      updateQueue(visibleTracks, collectionSourceId)
-    }
-  } catch (error) {
-    console.error('Error toggling hidden status:', error)
-  }
-}
 
 const handleEdit = (track: any) => {
   // Emit event to parent layout to open modal in edit mode
