@@ -13,9 +13,16 @@
       <button 
         v-if="filterContext"
         @click="emit('open-filter-sort')"
-        class="btn !px-3 !py-1.5 text-sm"
+        class="btn px-3! py-1.5! text-sm"
       >
         Filter & Sort
+      </button>
+      <button 
+        v-if="showSettingsButton"
+        @click="emit('open-settings')"
+        class="btn px-3! py-1.5! text-sm"
+      >
+        Settings
       </button>
       <div v-if="isOwnProfile && showViewModeSelector" class="relative">
         <button
@@ -64,16 +71,19 @@ withDefaults(defineProps<{
   viewMode?: 'final' | 'all'
   showViewModeSelector?: boolean
   filterContext?: 'software' | 'kits' | 'music' | null
+  showSettingsButton?: boolean
 }>(), {
   itemLabel: 'track',
   showViewModeSelector: true,
-  filterContext: null
+  filterContext: null,
+  showSettingsButton: false
 })
 
 const emit = defineEmits<{
   'update:showViewMenu': [value: boolean]
   'update:viewMode': [value: 'final' | 'all']
   'open-filter-sort': []
+  'open-settings': []
 }>()
 
 const handleViewModeChange = (mode: 'final' | 'all') => {

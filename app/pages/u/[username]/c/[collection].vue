@@ -16,19 +16,11 @@
         :count="displayedTracksCount"
         :is-own-profile="isOwnProfile"
         :show-view-mode-selector="false"
+        :show-settings-button="isCollectionOwner"
         filter-context="music"
         @open-filter-sort="handleOpenFilterSort"
+        @open-settings="showSettingsDrawer = true"
       />
-
-      <!-- Invite Button (for collection owners) -->
-      <div v-if="isCollectionOwner && collection" class="px-4 pb-2">
-        <button
-          @click="showInviteDrawer = true"
-          class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded text-sm font-medium transition-colors"
-        >
-          Invite to Collection
-        </button>
-      </div>
 
       <!-- Tracks in Collection -->
       <div class="grow overflow-x-auto w-full">
@@ -47,12 +39,15 @@
       </div>
     </template>
 
-    <!-- Collection Invite Drawer -->
-    <CollectionInviteDrawer 
+    <!-- Collection Settings Drawer -->
+    <CollectionSettingsDrawer 
       v-if="collection"
-      v-model:show="showInviteDrawer" 
+      v-model:show="showSettingsDrawer" 
       :collection-id="collection.id"
-      @members-updated="fetchTracks"
+      :collection-name="collection.name"
+      :collection-slug="collection.slug"
+      @collection-updated="handleCollectionUpdated"
+      @collection-deleted="handleCollectionDeleted"
     />
   </div>
 </template>
@@ -65,7 +60,7 @@ import { useSupabase } from '~/utils/supabase'
 import { usePlayer } from '~/composables/usePlayer'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 import CollectionTracksTable from '~/components/CollectionTracksTable.vue'
-import CollectionInviteDrawer from '~/components/CollectionInviteDrawer.vue'
+import CollectionSettingsDrawer from '~/components/CollectionSettingsDrawer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -132,7 +127,7 @@ const profileUserId = ref<string | null>(initialData.value?.profileUserId || nul
 const searchQuery = ref('')
 const viewerUserType = ref<'creator' | 'audio_pro' | null>(null)
 const profileUserType = ref<'creator' | 'audio_pro' | null>(null)
-const showInviteDrawer = ref(false)
+const showSettingsDrawer = ref(false)
 
 // Computed
 const isOwnProfile = computed(() => {
@@ -556,6 +551,29 @@ defineExpose({
 const handleTrackUpdate = () => {
   console.log('[collection].vue: Received track update event, refetching tracks')
   fetchTracks()
+}
+
+// Handle collection updates
+const handleCollectionUpdated = async (newName: string, newSlug: string) => {
+  if (collection.value) {
+    collection.value.name = newName
+    collection.value.slug = newSlug
+    
+    // Update URL if slug changed
+    if (newSlug !== route.params.collection) {
+      await router.replace(`/u/${route.params.username}/c/${newSlug}`)
+    }
+    
+    // Refetch collection to ensure we have latest data
+    await fetchCollection()
+  }
+}
+
+// Handle collection deletion
+const handleCollectionDeleted = () => {
+  // Navigation is handled in the drawer component
+  // This is just for cleanup if needed
+  collection.value = null
 }
 
 // Lifecycle

@@ -22,7 +22,7 @@
       />
       
       <!-- Single Grid Container - wraps header and all rows -->
-      <div class="w-fit">
+      <div class="w-full">
         <!-- Header -->
         <div :class="[
             'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 bg-neutral-900',
