@@ -26,7 +26,7 @@
       </div>
     </div>
 
-    <div v-else class="w-fit lg:w-full">
+    <div v-else class="w-full overflow-x-auto">
       <!-- Bulk Actions Drawer -->
       <BulkActionsDrawer v-model:show="showBulkActionsDrawer" :selected-tracks="selectedTracksArray"
         :selected-count="selectedTrackIds.size" @tracks-deleted="handleTracksDeleted"
@@ -63,7 +63,10 @@
         <div>BPM</div>
         <div>Duration</div>
         <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
-        <div class="flex items-center justify-start">
+        <div :class="[
+          'flex items-center justify-start',
+          isOwnProfile ? 'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4' : ''
+        ]">
           <button v-if="isOwnProfile && hasSelections" @click="showBulkActionsDrawer = true"
             class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded transition-colors cursor-pointer">
             Bulk ({{ selectedTrackIds.size }})
@@ -196,7 +199,12 @@
           <div v-else class="text-xs px-2 py-1">Loading...</div>
         </div>
         <!-- Action Button: Edit / Add / Remove -->
-        <div>
+        <div :class="[
+          (isOwnProfile || (viewerUserType === 'creator' && profileUserType === 'audio_pro')) 
+            ? 'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4' 
+            : '',
+          isCurrentlyPlaying(track) ? 'bg-neutral-800/70' : ''
+        ]">
           <!-- Edit button for audio_pro owners -->
           <button v-if="isOwnProfile && profileUserType === 'audio_pro'" @click="$emit('edit-track', track)"
             class="text-neutral-500 hover:text-amber-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5"

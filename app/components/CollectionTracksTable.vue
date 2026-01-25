@@ -8,7 +8,7 @@
       {{ isOwnProfile ? 'No tracks in this collection yet.' : 'No tracks available.' }}
     </div>
 
-    <div class="w-fit md:w-full" v-else>
+    <div class="w-full overflow-x-auto" v-else>
       <!-- Bulk Actions Drawer -->
       <BulkActionsDrawer
         v-model:show="showBulkActionsDrawer"
@@ -52,7 +52,10 @@
         <div>BPM</div>
         <div>Duration</div>
         <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
-        <div v-if="isOwnProfile" class="flex items-center justify-start">
+        <div v-if="isOwnProfile" :class="[
+          'flex items-center justify-start',
+          'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4'
+        ]">
           <button
             v-if="hasSelections"
             @click="showBulkActionsDrawer = true"
@@ -138,7 +141,10 @@
           </select>
           <div v-else class="text-xs px-2 py-1">Loading...</div>
         </div>
-        <div v-if="isOwnProfile">
+        <div v-if="isOwnProfile" :class="[
+          'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4',
+          isCurrentlyPlaying(track) ? 'bg-neutral-800/70' : ''
+        ]">
           <!-- Edit button for audio_pro owners -->
           <button 
             v-if="profileUserType === 'audio_pro'"
