@@ -8,7 +8,7 @@
       {{ isOwnProfile ? 'No tracks in this collection yet.' : 'No tracks available.' }}
     </div>
 
-    <div class="w-full overflow-x-auto" v-else>
+    <div v-else class="w-full overflow-x-auto">
       <!-- Bulk Actions Drawer -->
       <BulkActionsDrawer
         v-model:show="showBulkActionsDrawer"
@@ -21,59 +21,61 @@
         @close="handleBulkActionsClose"
       />
       
-      <!-- Header -->
-      <div :class="[
-          'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 xl:sticky xl:top-20 bg-neutral-900 z-10',
-          isOwnProfile 
-            ? 'collectionTrackGrid-edit'
-            : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut')
-        ]">
-        <div class="flex items-center justify-center">
-          <button
-            v-if="isOwnProfile"
-            @click="handleHeaderCheckboxClick"
-            class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
-            :title="bulkSelectionMode ? (clickCount === 2 ? 'Deselect all' : 'Select all') : 'Select tracks'"
-          >
-            <svg v-if="bulkSelectionMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <rect v-if="clickCount !== 2" x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
-              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
-            </svg>
-          </button>
+      <!-- Single Grid Container - wraps header and all rows -->
+      <div class="w-fit">
+        <!-- Header -->
+        <div :class="[
+            'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 bg-neutral-900',
+            isOwnProfile 
+              ? 'collectionTrackGrid-edit'
+              : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut')
+          ]">
+          <div class="px-2 flex items-center justify-center">
+            <button
+              v-if="isOwnProfile"
+              @click="handleHeaderCheckboxClick"
+              class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+              :title="bulkSelectionMode ? (clickCount === 2 ? 'Deselect all' : 'Select all') : 'Select tracks'"
+            >
+              <svg v-if="bulkSelectionMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect v-if="clickCount !== 2" x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
+                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
+              </svg>
+            </button>
+          </div>
+          <div>Title</div>
+          <div>Artist</div>
+          <div>Version</div>
+          <div v-if="user">Collection</div>
+          <div>Genre</div>
+          <div>BPM</div>
+          <div>Duration</div>
+          <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
+          <div v-if="isOwnProfile" :class="[
+            'flex items-center justify-start',
+            'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[80px]'
+          ]">
+            <button
+              v-if="hasSelections"
+              @click="showBulkActionsDrawer = true"
+              class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded transition-colors cursor-pointer"
+            >
+              Bulk ({{ selectedTrackIds.size }})
+            </button>
+          </div>
         </div>
-        <div>Title</div>
-        <div>Artist</div>
-        <div>Version</div>
-        <div v-if="user">Collection</div>
-        <div>Genre</div>
-        <div>BPM</div>
-        <div>Duration</div>
-        <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
-        <div v-if="isOwnProfile" :class="[
-          'flex items-center justify-start',
-          'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4'
-        ]">
-          <button
-            v-if="hasSelections"
-            @click="showBulkActionsDrawer = true"
-            class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded transition-colors cursor-pointer"
-          >
-            Bulk ({{ selectedTrackIds.size }})
-          </button>
-        </div>
-      </div>
 
-      <!-- Tracks -->
-      <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
-          'text-sm border-b border-neutral-800/50 py-3 transition-colors items-center',
-          isOwnProfile 
-            ? 'collectionTrackGrid-edit'
-            : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut'),
-          isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800/30'
-        ]">
+        <!-- Tracks -->
+        <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
+            'text-sm border-b border-neutral-800/50 py-3 transition-colors items-center',
+            isOwnProfile 
+              ? 'collectionTrackGrid-edit'
+              : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut'),
+            isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800/30'
+          ]">
         <div class="px-2 flex items-center justify-center">
           <!-- Bulk Selection Mode: Show Checkbox -->
           <template v-if="bulkSelectionMode">
@@ -142,7 +144,7 @@
           <div v-else class="text-xs px-2 py-1">Loading...</div>
         </div>
         <div v-if="isOwnProfile" :class="[
-          'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4',
+          'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4 min-w-[80px]',
           isCurrentlyPlaying(track) ? 'bg-neutral-800/70' : ''
         ]">
           <!-- Edit button for audio_pro owners -->
@@ -161,6 +163,7 @@
             title="Remove from collection">
             Remove
           </button>
+        </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 <template>
-  <div class="overflow-x-auto lg:overflow-x-visible w-full h-fit">
+  <div class="overflow-x-auto w-full h-fit">
     <div v-if="loading" class="flex items-center justify-center p-8 h-full w-full grow">
       <LoadingLogo />
     </div>
@@ -32,57 +32,59 @@
         :selected-count="selectedTrackIds.size" @tracks-deleted="handleTracksDeleted"
         @tracks-updated="handleTracksUpdated" @close="handleBulkActionsClose" />
 
-      <!-- Header -->
-      <div :class="[
-          'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 lg:sticky lg:top-20 bg-neutral-900 z-10',
+      <!-- Single Grid Container - wraps header and all rows -->
+      <div class="w-fit">
+        <!-- Header -->
+        <div :class="[
+          'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2',
           isOwnProfile 
             ? 'trackGrid-edit' 
             : (viewerUserType === 'creator' && profileUserType === 'audio_pro')
               ? 'trackGrid-edit-no-collection'
               : 'trackGrid-no-collection'
         ]">
-        <div class="flex items-center justify-center">
-          <button v-if="isOwnProfile" @click="handleHeaderCheckboxClick"
-            class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
-            :title="bulkSelectionMode ? (clickCount === 2 ? 'Deselect all' : 'Select all') : 'Select tracks'">
-            <svg v-if="bulkSelectionMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <rect v-if="clickCount !== 2" x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
-              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
-            </svg>
-          </button>
+          <div class="px-2 flex items-center justify-center">
+            <button v-if="isOwnProfile" @click="handleHeaderCheckboxClick"
+              class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+              :title="bulkSelectionMode ? (clickCount === 2 ? 'Deselect all' : 'Select all') : 'Select tracks'">
+              <svg v-if="bulkSelectionMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect v-if="clickCount !== 2" x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
+                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
+              </svg>
+            </button>
+          </div>
+          <div>Title</div>
+          <div>Artist</div>
+          <div>Version</div>
+          <div v-if="isOwnProfile">Collection</div>
+          <div>Genre</div>
+          <div>BPM</div>
+          <div>Duration</div>
+          <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
+          <div :class="[
+            'flex items-center justify-start',
+            isOwnProfile ? 'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[80px]' : ''
+          ]">
+            <button v-if="isOwnProfile && hasSelections" @click="showBulkActionsDrawer = true"
+              class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded transition-colors cursor-pointer">
+              Bulk ({{ selectedTrackIds.size }})
+            </button>
+          </div>
         </div>
-        <div>Title</div>
-        <div>Artist</div>
-        <div>Version</div>
-        <div v-if="isOwnProfile">Collection</div>
-        <div>Genre</div>
-        <div>BPM</div>
-        <div>Duration</div>
-        <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
-        <div :class="[
-          'flex items-center justify-start',
-          isOwnProfile ? 'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4' : ''
-        ]">
-          <button v-if="isOwnProfile && hasSelections" @click="showBulkActionsDrawer = true"
-            class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded transition-colors cursor-pointer">
-            Bulk ({{ selectedTrackIds.size }})
-          </button>
-        </div>
-      </div>
 
-      <!-- Tracks -->
-      <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
+        <!-- Tracks -->
+        <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
           'text-sm border-b border-neutral-800/50 py-3 transition-colors items-center',
           isOwnProfile 
             ? 'trackGrid-edit' 
             : (viewerUserType === 'creator' && profileUserType === 'audio_pro')
               ? 'trackGrid-edit-no-collection'
               : 'trackGrid-no-collection',
-          isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800/30'
+          isCurrentlyPlaying(track) ? 'bg-neutral-800/70' : 'hover:bg-neutral-800/30'
         ]">
         <div class="px-2 flex items-center justify-center gap-1">
           <!-- Bulk Selection Mode: Show Checkbox -->
@@ -201,7 +203,7 @@
         <!-- Action Button: Edit / Add / Remove -->
         <div :class="[
           (isOwnProfile || (viewerUserType === 'creator' && profileUserType === 'audio_pro')) 
-            ? 'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4' 
+            ? 'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4 min-w-[80px]' 
             : '',
           isCurrentlyPlaying(track) ? 'bg-neutral-800/70' : ''
         ]">
@@ -234,6 +236,7 @@
             :title="shortlistLoading.has(track.id) ? 'Removing...' : 'Remove from shortlist'">
             {{ shortlistLoading.has(track.id) ? 'Removing...' : 'Remove' }}
           </button>
+        </div>
         </div>
       </div>
     </div>
