@@ -1249,15 +1249,21 @@ const fetchViewerUserType = async () => {
       .from('user_profiles')
       .select('user_type')
       .eq('id', user.value.id)
-      .single()
+      .maybeSingle()
     
-    if (error) throw error
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error fetching viewer user type:', error)
+      return
+    }
     
     if (data) {
       viewerUserType.value = (data.user_type as 'creator' | 'audio_pro') || null
+    } else {
+      viewerUserType.value = null
     }
   } catch (error) {
     console.error('Error fetching viewer user type:', error)
+    viewerUserType.value = null
   }
 }
 

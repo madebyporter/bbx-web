@@ -73,7 +73,13 @@
             </div>
             <div class="flex flex-col justify-start items-start gap-0 w-full divide-y divide-neutral-800">
               <div class="w-full flex items-center p-2">
-                <button v-if="isAdmin" @click="handleShowAdminModal"
+                <button @click="handleShowSettings"
+                  class="cursor-pointer text-xs hover:text-amber-400">
+                  Settings
+                </button>
+              </div>
+              <div v-if="isAdmin" class="w-full flex items-center p-2">
+                <button @click="handleShowAdminModal"
                   class="cursor-pointer text-xs hover:text-amber-400">
                   Admin
                 </button>
@@ -89,6 +95,12 @@
         </template>
       </div>
     </div>
+
+    <!-- Settings Drawer -->
+    <SettingsDrawer 
+      v-model:show="showSettingsDrawer" 
+      @profile-updated="handleProfileUpdated"
+    />
   </nav>
 </template>
 
@@ -98,6 +110,7 @@ import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import { useSupabase } from '~/utils/supabase'
+import SettingsDrawer from '~/components/SettingsDrawer.vue'
 
 
 const auth = useAuth()
@@ -109,6 +122,7 @@ const mobileNav = ref(null)
 const showMobileNav = ref(false)
 const username = ref<string | null>(null)
 const wasDesktop = ref(false)
+const showSettingsDrawer = ref(false)
 
 // Emit events to parent layout
 const emit = defineEmits(['show-auth-modal', 'show-admin-modal', 'toggle-mobile-nav'])
@@ -133,6 +147,15 @@ const handleShowAuthModal = () => {
 
 const handleShowAdminModal = () => {
   emit('show-admin-modal')
+}
+
+const handleShowSettings = () => {
+  showSettingsDrawer.value = true
+}
+
+const handleProfileUpdated = () => {
+  // Refresh username after profile update
+  fetchUsername()
 }
 
 const toggleMobileNav = () => {
@@ -182,7 +205,10 @@ const fetchUsername = async () => {
       .maybeSingle()
     
     if (data && !error) {
-      username.value = data.username as string
+      const profileData = data as { username: string | null } | null
+      if (profileData?.username) {
+        username.value = profileData.username
+      }
     } else if (error) {
       console.error('Error fetching username:', error)
     }
