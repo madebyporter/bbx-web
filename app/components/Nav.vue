@@ -1,6 +1,6 @@
 <template>
   <nav ref="mobileNav" id="navbar"
-    class="border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between overflow-auto shrink-0 min-w-[250px] lg:relative lg:translate-x-0 fixed inset-y-0 left-0 z-40 lg:z-40 w-full lg:w-fit lg:max-w-none"
+    class="border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between overflow-auto shrink-0 min-w-[250px] lg:max-w-[250px] lg:relative lg:translate-x-0 fixed inset-y-0 left-0 z-40 lg:z-40 w-full lg:w-fit"
     style="transform: translateX(-100%)">
     <div class="sticky top-0 p-4 flex justify-between items-center">
       <NuxtLink to="/" @click="closeMobileNavOnClick" class="cursor-pointer">
@@ -69,7 +69,7 @@
         <template v-if="user">
           <div class="flex flex-col gap-0 justify-start items-start w-full">
             <div class="w-full flex items-center overflow-auto text-ellipsis p-2 pt-3 bg-neutral-800">
-              <span class="block text-xs font-medium w-full text-neutral-400">{{ user.email }}</span>
+              <span class="block text-xs font-medium w-full text-neutral-400 truncate">{{ user.email }}</span>
             </div>
             <div class="flex flex-col justify-start items-start gap-0 w-full divide-y divide-neutral-800">
               <div class="w-full flex items-center p-2">

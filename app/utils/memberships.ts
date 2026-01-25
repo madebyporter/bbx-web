@@ -149,3 +149,70 @@ export async function getUserProfileByIdentifier(
   }
 }
 
+export interface UserSearchResult {
+  id: string
+  username: string | null
+  display_name: string | null
+  email?: string | null
+}
+
+/**
+ * Search users for member invitation
+ * Filters out the profile owner and existing members
+ */
+export async function searchUsersForInvite(
+  profileId: string,
+  query: string,
+  limit: number = 20
+): Promise<UserSearchResult[]> {
+  const { supabase } = useSupabase()
+  if (!supabase) return []
+  
+  const searchTerm = query.trim().toLowerCase()
+  if (!searchTerm) return []
+  
+  try {
+    // Get existing members to filter them out
+    const existingMembers = await getProfileMembers(profileId)
+    const existingMemberIds = existingMembers.map(m => m.member_id)
+    
+    // Search in username and display_name
+    const [usernameResults, displayNameResults] = await Promise.all([
+      supabase
+        .from('user_profiles')
+        .select('id, username, display_name')
+        .ilike('username', `%${searchTerm}%`)
+        .limit(limit),
+      supabase
+        .from('user_profiles')
+        .select('id, username, display_name')
+        .ilike('display_name', `%${searchTerm}%`)
+        .limit(limit)
+    ])
+    
+    if (usernameResults.error || displayNameResults.error) {
+      console.error('Error searching users:', usernameResults.error || displayNameResults.error)
+      return []
+    }
+    
+    // Combine and deduplicate results
+    const combinedData = [...(usernameResults.data || []), ...(displayNameResults.data || [])]
+    const uniqueData = Array.from(
+      new Map(combinedData.map((item: any) => [item.id, item])).values()
+    )
+    
+    // Filter out profile owner and existing members
+    const filtered = uniqueData.filter((item: any) => 
+      item.id !== profileId && !existingMemberIds.includes(item.id)
+    )
+    
+    return filtered.map((item: any) => ({
+      id: item.id,
+      username: item.username,
+      display_name: item.display_name
+    }))
+  } catch (error) {
+    console.error('Error searching users for invite:', error)
+    return []
+  }
+}

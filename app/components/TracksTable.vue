@@ -70,7 +70,7 @@
             isOwnProfile ? 'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[80px]' : ''
           ]">
             <button v-if="isOwnProfile && hasSelections" @click="showBulkActionsDrawer = true"
-              class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded transition-colors cursor-pointer">
+              class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded transition-colors cursor-pointer whitespace-nowrap">
               Bulk ({{ selectedTrackIds.size }})
             </button>
           </div>

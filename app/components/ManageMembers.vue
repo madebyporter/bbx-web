@@ -10,17 +10,66 @@
     <!-- Invite Member Form -->
     <div class="flex flex-col gap-2">
       <label class="text-sm text-neutral-400">Invite Member</label>
-      <div class="flex gap-2">
-        <input
-          v-model="inviteInput"
-          type="text"
-          placeholder="Enter username or email"
-          class="flex-1 p-2 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200"
-          @keyup.enter="handleInvite"
-        />
+      <div class="relative flex gap-2" ref="autocompleteContainer">
+        <div class="flex-1 relative">
+          <input
+            ref="searchInput"
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search by username or name..."
+            class="w-full p-2 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200"
+            :class="{ 'border-neutral-600': isDropdownOpen }"
+            @focus="openDropdown()"
+            @keydown.escape="closeDropdown()"
+            @keydown.enter.prevent="handleEnterKey"
+            @keydown.down.prevent="navigateDown"
+            @keydown.up.prevent="navigateUp"
+            @input="handleSearchInput"
+          />
+          
+          <!-- Dropdown -->
+          <div 
+            v-if="isDropdownOpen && (searchResults.length > 0 || isSearching || searchQuery.trim())" 
+            class="absolute z-10 mt-1 w-full bg-neutral-800 border border-neutral-700 rounded-md shadow-lg max-h-60 overflow-y-auto"
+          >
+            <!-- Loading state -->
+            <div v-if="isSearching" class="p-3 text-neutral-400 text-center text-sm">
+              Searching...
+            </div>
+            
+            <!-- Search results -->
+            <div 
+              v-else-if="searchResults.length > 0"
+              class="py-1"
+            >
+              <div 
+                v-for="(user, index) in searchResults" 
+                :key="user.id"
+                :class="[
+                  'flex flex-col gap-1 p-2 hover:bg-neutral-700 cursor-pointer',
+                  selectedIndex === index ? 'bg-neutral-700' : ''
+                ]"
+                @click="selectUser(user)"
+                @mouseenter="selectedIndex = index"
+              >
+                <div class="text-sm text-neutral-200">
+                  {{ user.display_name || user.username || 'Unknown User' }}
+                </div>
+                <div v-if="user.username" class="text-xs text-neutral-400">
+                  @{{ user.username }}
+                </div>
+              </div>
+            </div>
+            
+            <!-- No results -->
+            <div v-else-if="searchQuery.trim()" class="p-3 text-neutral-500 text-center text-sm">
+              No users found
+            </div>
+          </div>
+        </div>
         <button
           @click="handleInvite"
-          :disabled="isInviting || !inviteInput.trim()"
+          :disabled="isInviting || !selectedUser"
           class="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-neutral-900 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ isInviting ? 'Inviting...' : 'Invite' }}
@@ -62,10 +111,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
-import { getProfileMembers, inviteMember, removeMember, getUserProfileByIdentifier } from '~/utils/memberships'
+import { getProfileMembers, inviteMember, removeMember, searchUsersForInvite, type UserSearchResult } from '~/utils/memberships'
 
 interface Props {
   profileId: string
@@ -84,11 +133,21 @@ const members = ref<Array<{
   username?: string
 }>>([])
 const loading = ref(false)
-const inviteInput = ref('')
 const isInviting = ref(false)
 const inviteError = ref<string | null>(null)
 const inviteSuccess = ref<string | null>(null)
 const isRemoving = ref<string | null>(null)
+
+// Autocomplete state
+const searchQuery = ref('')
+const searchResults = ref<UserSearchResult[]>([])
+const isDropdownOpen = ref(false)
+const isSearching = ref(false)
+const selectedUser = ref<UserSearchResult | null>(null)
+const selectedIndex = ref(-1)
+const autocompleteContainer = ref<HTMLElement | null>(null)
+const searchInput = ref<HTMLInputElement | null>(null)
+let debounceTimer: NodeJS.Timeout | null = null
 
 const fetchMembers = async () => {
   if (!props.profileId) return
@@ -127,37 +186,110 @@ const fetchMembers = async () => {
   }
 }
 
+// Autocomplete functions
+const openDropdown = () => {
+  isDropdownOpen.value = true
+  if (searchQuery.value.trim()) {
+    performSearch()
+  }
+}
+
+const closeDropdown = () => {
+  isDropdownOpen.value = false
+  selectedIndex.value = -1
+}
+
+const handleSearchInput = () => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+  }
+  
+  if (!searchQuery.value.trim()) {
+    searchResults.value = []
+    selectedUser.value = null
+    closeDropdown()
+    return
+  }
+  
+  openDropdown()
+  
+  debounceTimer = setTimeout(() => {
+    performSearch()
+  }, 300)
+}
+
+const performSearch = async () => {
+  if (!searchQuery.value.trim() || !props.profileId) {
+    searchResults.value = []
+    return
+  }
+  
+  isSearching.value = true
+  try {
+    const results = await searchUsersForInvite(props.profileId, searchQuery.value, 20)
+    searchResults.value = results
+    selectedIndex.value = -1
+  } catch (error) {
+    console.error('Error searching users:', error)
+    searchResults.value = []
+  } finally {
+    isSearching.value = false
+  }
+}
+
+const selectUser = (user: UserSearchResult) => {
+  selectedUser.value = user
+  searchQuery.value = user.display_name || user.username || ''
+  closeDropdown()
+}
+
+const handleEnterKey = () => {
+  if (selectedIndex.value >= 0 && searchResults.value[selectedIndex.value]) {
+    selectUser(searchResults.value[selectedIndex.value])
+  } else if (searchResults.value.length === 1) {
+    selectUser(searchResults.value[0])
+  }
+}
+
+const navigateDown = () => {
+  if (searchResults.value.length === 0) return
+  selectedIndex.value = Math.min(selectedIndex.value + 1, searchResults.value.length - 1)
+}
+
+const navigateUp = () => {
+  if (searchResults.value.length === 0) return
+  selectedIndex.value = Math.max(selectedIndex.value - 1, -1)
+}
+
+const handleClickOutside = (event: Event) => {
+  if (!isDropdownOpen.value) return
+  
+  const target = event.target as Node
+  if (autocompleteContainer.value && !autocompleteContainer.value.contains(target)) {
+    nextTick(() => {
+      if (isDropdownOpen.value) {
+        closeDropdown()
+      }
+    })
+  }
+}
+
 const handleInvite = async () => {
-  if (!inviteInput.value.trim() || !user.value || !supabase) return
+  if (!selectedUser.value || !user.value) return
   
   isInviting.value = true
   inviteError.value = null
   inviteSuccess.value = null
   
   try {
-    // Find user by username or email
-    const userProfile = await getUserProfileByIdentifier(inviteInput.value.trim())
+    await inviteMember(props.profileId, selectedUser.value.id, user.value.id)
+    inviteSuccess.value = `${selectedUser.value.display_name || selectedUser.value.username} has been invited.`
     
-    if (!userProfile) {
-      inviteError.value = 'User not found. Please check the username or email.'
-      return
-    }
-    
-    if (userProfile.id === props.profileId) {
-      inviteError.value = 'You cannot invite yourself.'
-      return
-    }
-    
-    // Check if already a member
-    const existingMember = members.value.find(m => m.member_id === userProfile.id)
-    if (existingMember) {
-      inviteError.value = 'This user is already a member.'
-      return
-    }
-    
-    await inviteMember(props.profileId, userProfile.id, user.value.id)
-    inviteSuccess.value = `${userProfile.display_name || userProfile.username} has been invited.`
-    inviteInput.value = ''
+    // Clear search and selection
+    searchQuery.value = ''
+    selectedUser.value = null
+    searchResults.value = []
+    closeDropdown()
     
     // Refresh members list
     await fetchMembers()
@@ -194,6 +326,14 @@ const formatDate = (dateString: string) => {
 
 onMounted(() => {
   fetchMembers()
+  document.addEventListener('click', handleClickOutside, true)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside, true)
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+  }
 })
 </script>
 
