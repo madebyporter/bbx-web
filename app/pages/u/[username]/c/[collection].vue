@@ -20,6 +20,16 @@
         @open-filter-sort="handleOpenFilterSort"
       />
 
+      <!-- Invite Button (for collection owners) -->
+      <div v-if="isCollectionOwner && collection" class="px-4 pb-2">
+        <button
+          @click="showInviteDrawer = true"
+          class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded text-sm font-medium transition-colors"
+        >
+          Invite to Collection
+        </button>
+      </div>
+
       <!-- Tracks in Collection -->
       <div class="grow overflow-x-auto w-full">
         <CollectionTracksTable 
@@ -36,6 +46,14 @@
         />
       </div>
     </template>
+
+    <!-- Collection Invite Drawer -->
+    <CollectionInviteDrawer 
+      v-if="collection"
+      v-model:show="showInviteDrawer" 
+      :collection-id="collection.id"
+      @members-updated="fetchTracks"
+    />
   </div>
 </template>
 
@@ -47,6 +65,7 @@ import { useSupabase } from '~/utils/supabase'
 import { usePlayer } from '~/composables/usePlayer'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 import CollectionTracksTable from '~/components/CollectionTracksTable.vue'
+import CollectionInviteDrawer from '~/components/CollectionInviteDrawer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -113,10 +132,15 @@ const profileUserId = ref<string | null>(initialData.value?.profileUserId || nul
 const searchQuery = ref('')
 const viewerUserType = ref<'creator' | 'audio_pro' | null>(null)
 const profileUserType = ref<'creator' | 'audio_pro' | null>(null)
+const showInviteDrawer = ref(false)
 
 // Computed
 const isOwnProfile = computed(() => {
   return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
+})
+
+const isCollectionOwner = computed(() => {
+  return !!(user.value && collection.value && user.value.id === collection.value.user_id)
 })
 
 const displayedTracks = computed(() => {
@@ -189,13 +213,39 @@ const fetchCollection = async () => {
       }
     }
     
-    // Now fetch the collection by slug and user_id
-    const { data: collectionData, error: collectionError } = await supabase
+    // Try to fetch the collection by slug and user_id (owned collection)
+    let { data: collectionData, error: collectionError } = await supabase
       .from('collections')
       .select('*')
       .eq('slug', collectionSlug)
       .eq('user_id', profileData.id as string)
-      .single()
+      .maybeSingle()
+    
+    // If not found and user is logged in, check if they're a member of a collection with this slug
+    if ((collectionError || !collectionData) && user.value) {
+      // First get collection IDs where user is a member
+      const { data: memberCollections } = await supabase
+        .from('collection_members')
+        .select('collection_id')
+        .eq('member_id', user.value.id)
+      
+      if (memberCollections && memberCollections.length > 0) {
+        const memberCollectionIds = memberCollections.map((mc: any) => mc.collection_id)
+        
+        // Then fetch collections with matching slug and member collection IDs
+        const { data: sharedCollection } = await supabase
+          .from('collections')
+          .select('*')
+          .eq('slug', collectionSlug)
+          .in('id', memberCollectionIds)
+          .maybeSingle()
+        
+        if (sharedCollection) {
+          collectionData = sharedCollection
+          collectionError = null
+        }
+      }
+    }
     
     if (collectionError || !collectionData) {
       console.error('Collection not found:', collectionError)

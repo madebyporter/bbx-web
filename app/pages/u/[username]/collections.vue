@@ -18,12 +18,16 @@
       </div>
 
       <!-- Collections Table -->
-      <div v-if="filteredCollections.length === 0 && !searchQuery" class="text-neutral-500">
-        {{ isOwnProfile ? 'No collections yet. Create one when uploading or editing a track.' : 'No collections available.' }}
+      <div v-if="filteredCollections.length === 0 && !searchQuery" class="p-8 text-center">
+        <div class="text-neutral-500">
+          {{ isOwnProfile ? 'No collections yet. Create one when uploading or editing a track.' : 'No collections available.' }}
+        </div>
       </div>
       
-      <div v-else-if="filteredCollections.length === 0 && searchQuery" class="text-neutral-500">
-        No collections match your search.
+      <div v-else-if="filteredCollections.length === 0 && searchQuery" class="p-8 text-center">
+        <div class="text-neutral-500">
+          No collections match your search.
+        </div>
       </div>
 
       <div v-else class="overflow-x-auto">
@@ -43,12 +47,17 @@
               class="border-b border-neutral-800/50 hover:bg-neutral-800/30"
             >
               <td class="p-4">
-                <NuxtLink 
-                  :to="`/u/${username}/c/${collection.slug}`"
-                  class="text-amber-400 hover:text-amber-300"
-                >
-                  {{ collection.name }}
-                </NuxtLink>
+                <div class="flex items-center gap-2">
+                  <NuxtLink 
+                    :to="collection.is_shared ? `/u/${collection.owner_username || collection.user_id}/c/${collection.slug}` : `/u/${username}/c/${collection.slug}`"
+                    class="text-amber-400 hover:text-amber-300"
+                  >
+                    {{ collection.name }}
+                  </NuxtLink>
+                  <span v-if="collection.is_shared" class="text-xs px-2 py-0.5 bg-neutral-700 text-neutral-300 rounded">
+                    Shared with me
+                  </span>
+                </div>
               </td>
               <td class="p-4 text-neutral-400">
                 {{ collection.description || '-' }}
@@ -138,26 +147,75 @@ const fetchCollections = async () => {
   loading.value = true
   
   try {
-    // Fetch all collections for the user
-    const { data: collectionsData, error: collectionsError } = await supabase
+    // Fetch collections owned by the user
+    const { data: ownedCollections, error: ownedError } = await supabase
       .from('collections')
       .select('*')
       .eq('user_id', profileUserId.value)
       .order('created_at', { ascending: false })
     
-    if (collectionsError) throw collectionsError
+    if (ownedError) throw ownedError
     
-    // For each collection, count the tracks
+    // Fetch collections where user is a member (if viewing own profile or if logged in user is viewing)
+    let sharedCollections: any[] = []
+    if (user.value) {
+      const { data: memberCollections, error: memberError } = await supabase
+        .from('collection_members')
+        .select(`
+          collection_id,
+          collections(*)
+        `)
+        .eq('member_id', user.value.id)
+      
+      if (!memberError && memberCollections) {
+        sharedCollections = memberCollections
+          .map((mc: any) => mc.collections)
+          .filter((c: any) => c !== null && c.user_id !== profileUserId.value) // Exclude owned collections
+      }
+    }
+    
+    // Combine owned and shared collections, mark shared ones
+    const allCollections = [
+      ...(ownedCollections || []).map((c: any) => ({ ...c, is_shared: false })),
+      ...sharedCollections.map((c: any) => ({ ...c, is_shared: true }))
+    ]
+    
+    // Deduplicate by ID (in case of any overlap)
+    const uniqueCollections = Array.from(
+      new Map(allCollections.map((c: any) => [c.id, c])).values()
+    )
+    
+    // For each collection, count the tracks and fetch owner username if shared
     const collectionsWithCounts = await Promise.all(
-      (collectionsData || []).map(async (collection: any) => {
+      uniqueCollections.map(async (collection: any) => {
         const { count } = await supabase
           .from('collections_sounds')
           .select('*', { count: 'exact', head: true })
           .eq('collection_id', collection.id)
         
+        let ownerUsername = username.value
+        
+        // If shared collection, fetch owner username
+        if (collection.is_shared && collection.user_id) {
+          try {
+            const { data: ownerData } = await supabase
+              .from('user_profiles')
+              .select('username')
+              .eq('id', collection.user_id)
+              .maybeSingle()
+            
+            if (ownerData?.username) {
+              ownerUsername = ownerData.username
+            }
+          } catch (error) {
+            console.error('Error fetching collection owner:', error)
+          }
+        }
+        
         return {
           ...collection,
-          sound_count: count || 0
+          sound_count: count || 0,
+          owner_username: ownerUsername
         }
       })
     )
