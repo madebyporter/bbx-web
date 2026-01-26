@@ -548,8 +548,16 @@ defineExpose({
 })
 
 // Listen for track update events
-const handleTrackUpdate = () => {
+const { updateCurrentTrack } = usePlayer()
+
+const handleTrackUpdate = (event?: CustomEvent) => {
   console.log('[collection].vue: Received track update event, refetching tracks')
+  
+  // If event has track data, update the player if it's the current track
+  if (event?.detail?.track) {
+    updateCurrentTrack(event.detail.track)
+  }
+  
   fetchTracks()
 }
 
@@ -586,7 +594,9 @@ onMounted(async () => {
   }
   
   // Listen for track updates
-  window.addEventListener('track-updated', handleTrackUpdate)
+  window.addEventListener('track-updated', ((event: CustomEvent) => {
+    handleTrackUpdate(event)
+  }) as EventListener)
 })
 
 onUnmounted(() => {

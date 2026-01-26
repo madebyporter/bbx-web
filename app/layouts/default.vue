@@ -135,6 +135,7 @@ import { ref, computed, onMounted, onUnmounted, provide, nextTick } from 'vue'
 import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
+import { usePlayer } from '~/composables/usePlayer'
 import Player from '~/components/Player.vue'
 import Toast from '~/components/Toast.vue'
 
@@ -386,9 +387,16 @@ const refreshDatabase = (updatedTrack?: any) => {
   if (isUserProfilePage.value) {
     console.log('Layout: Dispatching track-updated event', updatedTrack ? 'with track data' : 'without data')
     const event = new CustomEvent('track-updated', { 
-      detail: updatedTrack ? { track: updatedTrack } : null 
+      detail: updatedTrack ? { track: updatedTrack } : null,
+      bubbles: true
     })
     window.dispatchEvent(event)
+    
+    // Also update player if track was updated
+    if (updatedTrack) {
+      const { updateCurrentTrack } = usePlayer()
+      updateCurrentTrack(updatedTrack)
+    }
   }
   // For resource pages, refresh database grid
   else if (databaseRef.value?.fetchResources) {

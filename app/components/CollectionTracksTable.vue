@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full">
+  <div class="w-full h-full">
     <div v-if="loading" class="flex items-center justify-center p-8">
       <LoadingLogo />
     </div>
@@ -8,7 +8,7 @@
       {{ isOwnProfile ? 'No tracks in this collection yet.' : 'No tracks available.' }}
     </div>
 
-    <div v-else class="w-full overflow-x-auto">
+    <div v-else class="w-full h-full overflow-x-auto">
       <!-- Bulk Actions Drawer -->
       <BulkActionsDrawer
         v-model:show="showBulkActionsDrawer"
@@ -22,7 +22,7 @@
       />
       
       <!-- Single Grid Container - wraps header and all rows -->
-      <div class="w-full">
+      <div class="w-fit md:w-full h-full">
         <!-- Header -->
         <div :class="[
             'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 bg-neutral-900',
@@ -34,7 +34,7 @@
             <button
               v-if="isOwnProfile"
               @click="handleHeaderCheckboxClick"
-              class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+              class="text-neutral-500 hover:text-neutral-300 cursor-pointer"
               :title="bulkSelectionMode ? (clickCount === 2 ? 'Deselect all' : 'Select all') : 'Select tracks'"
             >
               <svg v-if="bulkSelectionMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,7 +61,7 @@
             <button
               v-if="hasSelections"
               @click="showBulkActionsDrawer = true"
-              class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded transition-colors cursor-pointer whitespace-nowrap"
+              class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded cursor-pointer whitespace-nowrap"
             >
               Bulk ({{ selectedTrackIds.size }})
             </button>
@@ -70,18 +70,18 @@
 
         <!-- Tracks -->
         <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
-            'text-sm border-b border-neutral-800/50 py-3 transition-colors items-center',
+            'text-sm border-b border-neutral-900 *:py-4 items-center',
             isOwnProfile 
               ? 'collectionTrackGrid-edit'
               : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut'),
-            isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800/30'
+            isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
           ]">
         <div class="px-2 flex items-center justify-center">
           <!-- Bulk Selection Mode: Show Checkbox -->
           <template v-if="bulkSelectionMode">
             <button
               @click="toggleTrackSelection(track.id)"
-              class="text-neutral-400 hover:text-neutral-200 transition-colors cursor-pointer"
+              class="text-neutral-400 hover:text-neutral-200 cursor-pointer"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <rect v-if="!selectedTrackIds.has(track.id)" x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
@@ -92,7 +92,7 @@
           
           <!-- Normal Mode: Show Play Button -->
           <button v-else @click="handlePlayClick(track, index)"
-            :class="['text-neutral-400 hover:text-white transition-colors cursor-pointer'] + (isCurrentlyPlaying(track) ? ' text-orange-400' : '')"
+            :class="['text-neutral-400 hover:text-white cursor-pointer'] + (isCurrentlyPlaying(track) ? ' text-orange-400' : '')"
             :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'">
             <svg v-if="isCurrentlyPlaying(track)" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
@@ -104,7 +104,7 @@
         </div>
         <div class="overflow-hidden">
           <NuxtLink :to="`/u/${getTrackOwnerUsername(track)}/t/${generateTrackSlug(track)}`"
-            :class="['flex items-center justify-between gap-2 hover:text-white transition-colors hover:underline'] + (isCurrentlyPlaying(track) ? ' font-bold text-white' : '')">
+            :class="['flex items-center justify-between gap-2 hover:text-white hover:underline'] + (isCurrentlyPlaying(track) ? ' font-bold text-white' : '')">
             <span class="truncate">{{ track.title || 'Untitled' }}</span>
             <span v-if="track.is_public === false" class="text-xs text-neutral-500 flex-shrink-0">[private]</span>
           </NuxtLink>
@@ -118,7 +118,7 @@
                 v-for="collection in getOwnerCollectionsForTrack(track)" 
                 :key="collection.slug"
                 :to="`/u/${username}/c/${collection.slug}`" 
-                class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white transition-colors whitespace-nowrap"
+                class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white whitespace-nowrap"
               >
                 {{ collection.name }}
               </NuxtLink>
@@ -145,7 +145,7 @@
         </div>
         <div v-if="isOwnProfile" :class="[
           'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4 min-w-[80px]',
-          isCurrentlyPlaying(track) ? 'bg-neutral-800/70' : ''
+          isCurrentlyPlaying(track) ? '!bg-neutral-800' : ''
         ]">
           <!-- Edit button for audio_pro owners -->
           <button 

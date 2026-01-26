@@ -673,6 +673,77 @@ export function usePlayer() {
     return (currentTime.value / duration.value) * 100
   })
 
+  // Update current track if it matches the updated track
+  const updateCurrentTrack = async (updatedTrack: any) => {
+    if (!updatedTrack || !currentTrack.value) return
+    
+    // Check if the updated track is the current track
+    if (String(currentTrack.value.id) === String(updatedTrack.id)) {
+      const oldPath = currentTrack.value.storage_path
+      const newPath = updatedTrack.storage_path
+      
+      console.log('Player: Updating current track with new data', {
+        oldPath,
+        newPath,
+        pathChanged: oldPath !== newPath
+      })
+      
+      // Clear the signed URL cache for the old path
+      if (oldPath) {
+        signedUrlCache.value.delete(oldPath)
+      }
+      
+      // Update the current track with new data
+      currentTrack.value = {
+        ...currentTrack.value,
+        ...updatedTrack
+      }
+      
+      // If storage path changed and audio is loaded, reload with new URL
+      if (newPath && oldPath !== newPath && audioElement.value) {
+        const wasPlaying = isPlaying.value
+        const savedTime = audioElement.value.currentTime
+        
+        // Get new signed URL
+        const url = await getSignedUrl(newPath)
+        if (url) {
+          audioElement.value.src = url
+          audioElement.value.load()
+          
+          // Restore playback state
+          if (wasPlaying) {
+            audioElement.value.currentTime = Math.min(savedTime, updatedTrack.duration || 0)
+            await audioElement.value.play()
+          } else {
+            audioElement.value.currentTime = Math.min(savedTime, updatedTrack.duration || 0)
+          }
+        } else {
+          console.error('Player: Failed to get signed URL for updated track')
+        }
+      }
+      
+      // Update queue if this track is in it
+      const queueIndex = queue.value.findIndex(t => String(t.id) === String(updatedTrack.id))
+      if (queueIndex !== -1) {
+        queue.value[queueIndex] = {
+          ...queue.value[queueIndex],
+          ...updatedTrack
+        }
+      }
+      
+      // Update originalQueue as well
+      const originalQueueIndex = originalQueue.value.findIndex(t => String(t.id) === String(updatedTrack.id))
+      if (originalQueueIndex !== -1) {
+        originalQueue.value[originalQueueIndex] = {
+          ...originalQueue.value[originalQueueIndex],
+          ...updatedTrack
+        }
+      }
+      
+      saveState()
+    }
+  }
+
   return {
     // State
     currentTrack,
@@ -715,7 +786,8 @@ export function usePlayer() {
     setAudioElement,
     loadState,
     saveState,
-    clearPlayer
+    clearPlayer,
+    updateCurrentTrack
   }
 }
 

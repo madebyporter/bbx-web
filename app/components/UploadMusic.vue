@@ -226,7 +226,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { usePlayer } from '~/composables/usePlayer'
@@ -277,6 +278,7 @@ interface Collection {
   slug: string
 }
 
+const route = useRoute()
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const { addTrackToQueue, queueSourceId } = usePlayer()
@@ -292,6 +294,7 @@ const collections = ref<Collection[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const globalError = ref<string | null>(null)
 const pendingCollections = ref<Map<number, Array<{ tempId: number, name: string }>>>(new Map())
+const currentCollectionId = ref<number | null>(null)
 
 const errors = ref({
   files: ''
@@ -344,6 +347,75 @@ const queueCollectionCreation = (name: string, fileIndex: number) => {
   pendingCollections.value.set(fileIndex, existing)
 }
 
+// Fetch current collection from route if on collection page
+const fetchCurrentCollection = async () => {
+  if (!supabase || !user.value) {
+    currentCollectionId.value = null
+    return
+  }
+  
+  const path = route?.path || ''
+  // Check if we're on a collection page: /u/[username]/c/[collection]
+  if (!path.includes('/c/')) {
+    currentCollectionId.value = null
+    return
+  }
+  
+  try {
+    const username = route.params.username as string
+    const collectionSlug = route.params.collection as string
+    
+    if (!username || !collectionSlug) {
+      currentCollectionId.value = null
+      return
+    }
+    
+    // Get the profile user ID
+    const { data: profileData } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('username', username)
+      .maybeSingle()
+    
+    if (!profileData) {
+      currentCollectionId.value = null
+      return
+    }
+    
+    // Get the collection ID
+    const { data: collectionData } = await supabase
+      .from('collections')
+      .select('id')
+      .eq('slug', collectionSlug)
+      .eq('user_id', profileData.id)
+      .maybeSingle()
+    
+    if (collectionData) {
+      currentCollectionId.value = collectionData.id
+      
+      // Make sure this collection is in the collections list
+      const existsInList = collections.value.some(c => c.id === collectionData.id)
+      if (!existsInList) {
+        // Fetch full collection data
+        const { data: fullCollection } = await supabase
+          .from('collections')
+          .select('id, name, slug')
+          .eq('id', collectionData.id)
+          .single()
+        
+        if (fullCollection) {
+          collections.value.push(fullCollection)
+        }
+      }
+    } else {
+      currentCollectionId.value = null
+    }
+  } catch (error) {
+    console.error('Error fetching current collection:', error)
+    currentCollectionId.value = null
+  }
+}
+
 // Fetch collections on mount
 onMounted(async () => {
   if (!supabase || !user.value) return
@@ -354,7 +426,7 @@ onMounted(async () => {
       .from('user_profiles')
       .select('display_name')
       .eq('id', user.value.id)
-      .single()
+      .maybeSingle()
     
     if (profileData?.display_name) {
       userDisplayName.value = profileData.display_name
@@ -369,10 +441,20 @@ onMounted(async () => {
     
     if (error) throw error
     collections.value = data || []
+    
+    // Fetch current collection from route
+    await fetchCurrentCollection()
   } catch (error) {
     console.error('Error fetching data:', error)
     // Don't block upload if fetch fails
     collections.value = []
+  }
+})
+
+// Watch for drawer opening to fetch current collection
+watch(() => props.show, async (newVal) => {
+  if (newVal) {
+    await fetchCurrentCollection()
   }
 })
 
@@ -600,7 +682,14 @@ const processFiles = async (files: File[]) => {
         // Year: Similar track > MP3 tags > Null
         year: prefillData?.year || mp3Meta?.year || null
       },
-      selectedCollectionIds: prefillData?.collectionIds || [],
+      selectedCollectionIds: (() => {
+        const ids = prefillData?.collectionIds || []
+        // Add current collection if we're on a collection page and it's not already included
+        if (currentCollectionId.value && !ids.includes(currentCollectionId.value)) {
+          ids.push(currentCollectionId.value)
+        }
+        return ids
+      })(),
       duration,
       progress: 0,
       error: warningMessage, // Will show as warning in yellow

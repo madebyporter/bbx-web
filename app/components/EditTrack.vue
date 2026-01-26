@@ -30,6 +30,65 @@
           <div class="flex flex-col gap-4">
             <h3 class="font-semibold">Track Information</h3>
 
+            <!-- Replace MP3 File -->
+            <div class="col-span-2 border-b border-neutral-800 pb-4">
+              <label class="text-sm text-neutral-400 mb-2 block">Replace MP3 File</label>
+              <div class="flex flex-col gap-2">
+                <!-- Hidden File Input -->
+                <input
+                  ref="fileInput"
+                  type="file"
+                  accept="audio/mpeg,audio/mp3,.mp3"
+                  @change="handleFileSelect"
+                  class="hidden"
+                />
+                
+                <!-- Current File -->
+                <div v-if="props.trackToEdit?.storage_path && !newFile" class="flex items-center justify-between p-3 border border-neutral-700 rounded bg-neutral-900/50">
+                  <div class="flex flex-col gap-1">
+                    <span class="text-sm text-neutral-300">Current file:</span>
+                    <span class="text-xs text-neutral-400">{{ currentFileName }}</span>
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      @click="fileInput?.click()"
+                      :disabled="isUpdating"
+                      class="px-4 py-2 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Choose New MP3 File
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- New File Selected -->
+                <div v-if="newFile" class="flex items-center justify-between p-3 border border-neutral-700 rounded bg-neutral-900/50">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm text-neutral-300">New file:</span>
+                    <span class="text-sm text-amber-400">{{ newFile.name }}</span>
+                    <span class="text-xs text-neutral-500">({{ formatFileSize(newFile.size) }})</span>
+                  </div>
+                  <button
+                    @click="newFile = null"
+                    class="text-red-400 hover:text-red-300 text-sm"
+                  >
+                    Remove
+                  </button>
+                </div>
+                
+                <!-- Instructions -->
+                <div v-if="props.trackToEdit?.storage_path" class="flex flex-col gap-1">
+                  <p v-if="fileError" class="text-xs text-red-500">{{ fileError }}</p>
+                  <p v-else class="text-xs text-neutral-500">
+                    Upload a new MP3 file to replace the current one. The old file will be deleted.
+                  </p>
+                  <p class="text-xs text-neutral-500">
+                    Maximum 50MB
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <!-- Title (full width) -->
             <div class="col-span-2">
               <label class="text-sm text-neutral-400">Title <span class="text-red-500">*</span></label>
@@ -209,7 +268,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { analyzeBPM, analyzeKey } from '~/composables/useAudioAnalyzer'
@@ -287,6 +346,10 @@ const pendingCollections = ref<Array<{ tempId: number, name: string }>>([])
 const statuses = ref<TrackStatus[]>([])
 const showNewStatusInput = ref(false)
 const newStatusName = ref('')
+const newFile = ref<File | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
+const fileError = ref<string | null>(null)
+const newFileDuration = ref<number | null>(null)
 
 // Define functions before watch to avoid hoisting issues
 const loadTrackCollections = async (trackId: number) => {
@@ -354,6 +417,90 @@ const fetchStatuses = async () => {
   } catch (error) {
     console.error('Error fetching statuses:', error)
     statuses.value = []
+  }
+}
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+const currentFileName = computed(() => {
+  if (!props.trackToEdit?.storage_path) return 'No file'
+  
+  // Extract filename from storage_path (format: user_id/timestamp-filename.mp3)
+  const pathParts = props.trackToEdit.storage_path.split('/')
+  const filename = pathParts[pathParts.length - 1]
+  
+  // Remove timestamp prefix if present (format: timestamp-filename.mp3)
+  const timestampMatch = filename.match(/^\d+-(.+)$/)
+  if (timestampMatch) {
+    return timestampMatch[1]
+  }
+  
+  return filename
+})
+
+const validateFile = (file: File): string | null => {
+  // Check file type
+  if (!file.type.match(/audio\/(mpeg|mp3)/) && !file.name.toLowerCase().endsWith('.mp3')) {
+    return 'Only MP3 files are allowed'
+  }
+  
+  // Check file size (50MB)
+  if (file.size > 50 * 1024 * 1024) {
+    return 'File size must be less than 50MB'
+  }
+  
+  return null
+}
+
+const getDuration = (audio: HTMLAudioElement): Promise<number> => {
+  return new Promise((resolve) => {
+    audio.addEventListener('loadedmetadata', () => {
+      resolve(audio.duration)
+    })
+    audio.addEventListener('error', () => {
+      resolve(0)
+    })
+  })
+}
+
+const handleFileSelect = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (!file) {
+    newFile.value = null
+    fileError.value = null
+    newFileDuration.value = null
+    return
+  }
+  
+  // Validate file
+  const error = validateFile(file)
+  if (error) {
+    fileError.value = error
+    newFile.value = null
+    newFileDuration.value = null
+    return
+  }
+  
+  fileError.value = null
+  newFile.value = file
+  
+  // Extract duration
+  try {
+    const audio = new Audio(URL.createObjectURL(file))
+    const duration = await getDuration(audio)
+    URL.revokeObjectURL(audio.src)
+    newFileDuration.value = duration > 0 ? duration : null
+  } catch (error) {
+    console.error('Error extracting duration:', error)
+    newFileDuration.value = null
   }
 }
 
@@ -490,6 +637,14 @@ onMounted(async () => {
 
 // Watch for trackToEdit changes to populate form and load collections
 watch(() => props.trackToEdit, async (newTrack) => {
+  // Reset file selection when track changes
+  newFile.value = null
+  newFileDuration.value = null
+  fileError.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+  
   if (newTrack) {
     const moodString = Array.isArray(newTrack.mood) 
       ? newTrack.mood.join(', ') 
@@ -789,6 +944,45 @@ const onSubmit = async () => {
       // Clear pending collections
       pendingCollections.value = []
     }
+    // Handle file replacement if a new file was selected
+    let newStoragePath: string | null = null
+    let newFileSize: number | null = null
+    let newDuration: number | null = null
+    
+    if (newFile.value) {
+      // Generate new file path
+      const timestamp = Date.now()
+      const filePath = `${user.value.id}/${timestamp}-${newFile.value.name}`
+      
+      // Upload new file to storage
+      const { error: uploadError } = await supabase.storage
+        .from('sounds')
+        .upload(filePath, newFile.value, {
+          cacheControl: '3600',
+          upsert: false
+        })
+      
+      if (uploadError) {
+        throw new Error(`Failed to upload new file: ${uploadError.message}`)
+      }
+      
+      newStoragePath = filePath
+      newFileSize = newFile.value.size
+      newDuration = newFileDuration.value
+      
+      // Delete old file if it exists
+      if (props.trackToEdit.storage_path) {
+        const { error: deleteError } = await supabase.storage
+          .from('sounds')
+          .remove([props.trackToEdit.storage_path])
+        
+        // Don't fail if old file deletion fails (might already be deleted)
+        if (deleteError) {
+          console.warn('Failed to delete old file:', deleteError)
+        }
+      }
+    }
+    
     // Parse mood (comma-separated to array)
     const moodArray = metadata.value.mood 
       ? metadata.value.mood.split(',').map(m => m.trim()).filter(m => m)
@@ -799,24 +993,37 @@ const onSubmit = async () => {
       title: metadata.value.title,
       artist: metadata.value.artist,
       user_id: props.trackToEdit.user_id,
-      current_user_id: user.value.id
+      current_user_id: user.value.id,
+      replacingFile: !!newFile.value
     })
+    
+    // Build update object
+    const updateData: any = {
+      title: metadata.value.title || null,
+      artist: metadata.value.artist || null,
+      version: metadata.value.version || 'v1.0',
+      track_group_name: metadata.value.track_group_name || null,
+      genre: metadata.value.genre || null,
+      mood: moodArray,
+      bpm: metadata.value.bpm,
+      key: metadata.value.key,
+      year: metadata.value.year,
+      status_id: metadata.value.status_id,
+      is_public: metadata.value.is_public
+    }
+    
+    // Add file-related fields if file was replaced
+    if (newFile.value) {
+      updateData.storage_path = newStoragePath
+      updateData.file_size = newFileSize
+      if (newDuration !== null) {
+        updateData.duration = newDuration
+      }
+    }
     
     const { data, error: updateError } = await supabase
       .from('sounds')
-      .update({
-        title: metadata.value.title || null,
-        artist: metadata.value.artist || null,
-        version: metadata.value.version || 'v1.0',
-        track_group_name: metadata.value.track_group_name || null,
-        genre: metadata.value.genre || null,
-        mood: moodArray,
-        bpm: metadata.value.bpm,
-        key: metadata.value.key,
-        year: metadata.value.year,
-        status_id: metadata.value.status_id,
-        is_public: metadata.value.is_public
-      })
+      .update(updateData)
       .eq('id', props.trackToEdit.id)
       .select()
     
@@ -851,6 +1058,14 @@ const onSubmit = async () => {
       } else {
         updatedTrackData.collections = []
       }
+    }
+    
+    // Clear file selection after successful update
+    newFile.value = null
+    newFileDuration.value = null
+    fileError.value = null
+    if (fileInput.value) {
+      fileInput.value.value = ''
     }
     
     showSuccessMessage.value = true
