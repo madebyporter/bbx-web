@@ -84,7 +84,7 @@
             : (viewerUserType === 'creator' && profileUserType === 'audio_pro')
               ? 'trackGrid-edit-no-collection'
               : 'trackGrid-no-collection',
-          isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
+          isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
         ]">
         <div class="px-2 flex items-center justify-center gap-1">
           <!-- Bulk Selection Mode: Show Checkbox -->

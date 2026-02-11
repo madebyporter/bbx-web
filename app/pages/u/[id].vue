@@ -283,7 +283,7 @@
     </div>
     <!-- Tracks Section -->
     <div v-if="musicSectionOpen" class="grow border-t border-neutral-800">
-      <div class="flex flex-row justify-between items-center gap-4 p-4">
+      <div class="flex flex-row justify-between items-center gap-4 p-4 border-b border-neutral-800">
         <div class="flex flex-col overflow-auto">
           <h2 class="text-lg lg:text-xl font-bold truncate">Music</h2>
         </div>

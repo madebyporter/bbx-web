@@ -74,7 +74,7 @@
             isOwnProfile 
               ? 'collectionTrackGrid-edit'
               : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut'),
-            isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-[117px] lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
+            isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
           ]">
         <div class="px-2 flex items-center justify-center">
           <!-- Bulk Selection Mode: Show Checkbox -->
