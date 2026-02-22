@@ -136,9 +136,6 @@ export function usePlayer() {
     originalQueue.value = [...tracks]
     queueSourceId.value = sourceId
 
-    // Check if this is an "all music" queue (profile page)
-    const isAllMusicQueue = sourceId?.startsWith('profile-')
-
     // Find the current track in the new queue
     const currentTrackId = currentTrack.value?.id
     let newIndex = 0
@@ -160,13 +157,8 @@ export function usePlayer() {
 
     // Apply shuffle if enabled
     if (isShuffled.value) {
-      // For "all music" queues, first deduplicate by group name
-      let tracksToShuffle = tracks
-      if (isAllMusicQueue) {
-        console.log('updateQueue: Applying unique group shuffle for all music queue')
-        tracksToShuffle = shuffleUniqueGroups(tracks)
-        console.log(`updateQueue: After deduplication: ${tracks.length} → ${tracksToShuffle.length} tracks`)
-      }
+      const tracksToShuffle = shuffleUniqueGroups(tracks)
+      console.log(`updateQueue: After deduplication: ${tracks.length} → ${tracksToShuffle.length} tracks`)
       
       const trackToKeep = tracks[newIndex]
       
@@ -206,21 +198,13 @@ export function usePlayer() {
     originalQueue.value = [...tracks]
     queueSourceId.value = sourceId
 
-    // Check if this is an "all music" queue (profile page)
-    const isAllMusicQueue = sourceId?.startsWith('profile-')
-
     // Get the explicitly selected track (the one user clicked on)
     const explicitlySelectedTrack = tracks[autoPlayIndex]
     
     // Apply shuffle if enabled
     if (isShuffled.value) {
-      // For "all music" queues, first deduplicate by group name
-      let tracksToShuffle = tracks
-      if (isAllMusicQueue) {
-        console.log('loadQueue: Applying unique group shuffle for all music queue')
-        tracksToShuffle = shuffleUniqueGroups(tracks)
-        console.log(`loadQueue: After deduplication: ${tracks.length} → ${tracksToShuffle.length} tracks`)
-      }
+      const tracksToShuffle = shuffleUniqueGroups(tracks)
+      console.log(`loadQueue: After deduplication: ${tracks.length} → ${tracksToShuffle.length} tracks`)
       
       // Remove the explicitly selected track from the shuffled list
       const otherTracks = tracksToShuffle.filter(t => t.id !== explicitlySelectedTrack.id)
@@ -239,7 +223,7 @@ export function usePlayer() {
     console.log('loadQueue: Current track set', { title: currentTrack.value?.title, storage_path: currentTrack.value?.storage_path })
     
     // Log the queue order for debugging
-    if (isShuffled.value && isAllMusicQueue) {
+    if (isShuffled.value) {
       console.log('📋 QUEUE ORDER (Smart Shuffle):')
       queue.value.forEach((track, idx) => {
         console.log(`  ${idx + 1}. "${track.title}" [ID: ${track.id}] [Group: ${track.track_group_name || 'none'}]`)
@@ -345,10 +329,7 @@ export function usePlayer() {
     
     // Check if we've reached the end of the queue
     if (nextIndex >= queue.value.length) {
-      // Check if this is an "all music" queue with shuffle enabled
-      const isAllMusicQueue = queueSourceId.value?.startsWith('profile-')
-      
-      if (isShuffled.value && isAllMusicQueue && originalQueue.value.length > 0) {
+      if (isShuffled.value && originalQueue.value.length > 0) {
         console.log('🔄 End of queue reached - Re-shuffling!')
         
         // Re-shuffle the queue with smart shuffle
@@ -406,20 +387,11 @@ export function usePlayer() {
   const toggleShuffle = () => {
     isShuffled.value = !isShuffled.value
 
-    // Check if this is an "all music" queue (profile page)
-    const isAllMusicQueue = queueSourceId.value?.startsWith('profile-')
-
     if (isShuffled.value) {
       // Shuffle the queue, keeping current track at current position
       const currentTrackData = currentTrack.value
-      
-      // For "all music" queues, first deduplicate by group name
-      let tracksToShuffle = originalQueue.value
-      if (isAllMusicQueue) {
-        console.log('toggleShuffle: Applying unique group shuffle for all music queue')
-        tracksToShuffle = shuffleUniqueGroups(originalQueue.value)
-        console.log(`toggleShuffle: After deduplication: ${originalQueue.value.length} → ${tracksToShuffle.length} tracks`)
-      }
+      const tracksToShuffle = shuffleUniqueGroups(originalQueue.value)
+      console.log(`toggleShuffle: After deduplication: ${originalQueue.value.length} → ${tracksToShuffle.length} tracks`)
       
       // Check if current track is in the deduplicated list
       if (currentTrackData) {
