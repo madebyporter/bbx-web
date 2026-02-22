@@ -33,7 +33,7 @@
         @tracks-updated="handleTracksUpdated" @close="handleBulkActionsClose" />
 
       <!-- Single Grid Container - wraps header and all rows -->
-      <div class="w-fit md:w-full h-full">
+      <div class="w-fit md:w-full h-fit">
         <!-- Header -->
         <div :class="[
           'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 bg-neutral-900',
@@ -84,7 +84,7 @@
             : (viewerUserType === 'creator' && profileUserType === 'audio_pro')
               ? 'trackGrid-edit-no-collection'
               : 'trackGrid-no-collection',
-          isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
+          isCurrentlyPlaying(track) ? 'bg-neutral-800/70  lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
         ]">
         <div class="px-2 flex items-center justify-center gap-1">
           <!-- Bulk Selection Mode: Show Checkbox -->
@@ -141,7 +141,7 @@
         </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
-        <div v-if="isOwnProfile" class="text-neutral-400 overflow-hidden">
+        <div v-if="isOwnProfile" class="text-neutral-400 overflow-visible">
           <!-- Editing Collections -->
           <div v-if="editingCollectionTrackId === track.id"
             class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
@@ -169,21 +169,18 @@
           </div>
           <!-- Existing Collections -->
           <template v-else>
-            <template v-if="track.collections && track.collections.length > 0">
-              <div class="flex flex-nowrap gap-1">
-                <NuxtLink v-for="collection in track.collections" :key="collection.slug"
-                  :to="`/u/${getTrackOwnerUsername(track)}/c/${collection.slug}`"
-                  class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white whitespace-nowrap">
-                  {{ collection.name }}
-                </NuxtLink>
-              </div>
-            </template>
-            <!-- Empty state with + icon -->
-            <button v-else @click="startEditingCollection(track.id)"
-              class="p-1 bg-neutral-800 rounded hover:bg-neutral-700 transition-colors cursor-pointer border border-neutral-700"
-              title="Add to collection">
-              <Plus class="w-2.5 h-2.5 max-w-2.5 max-h-2.5" />
-            </button>
+            <CollectionTagsCell
+              :collections="track.collections"
+              :owner-username="getTrackOwnerUsername(track)"
+            >
+              <template #empty>
+                <button @click="startEditingCollection(track.id)"
+                  class="p-1 bg-neutral-800 rounded hover:bg-neutral-700 transition-colors cursor-pointer border border-neutral-700"
+                  title="Add to collection">
+                  <Plus class="w-2.5 h-2.5 max-w-2.5 max-h-2.5" />
+                </button>
+              </template>
+            </CollectionTagsCell>
           </template>
         </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.genre || '-' }}</div>

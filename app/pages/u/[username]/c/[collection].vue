@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-0 text-neutral-300 grow h-full">
+  <div class="flex flex-col gap-0 text-neutral-300 grow h-fit">
     <div v-if="loading" class="flex items-center justify-center p-8 w-full h-full grow">
       <LoadingLogo />
     </div>
@@ -23,7 +23,7 @@
       />
 
       <!-- Tracks in Collection -->
-      <div class="grow overflow-x-auto w-full">
+      <div class="grow overflow-x-auto overflow-y-hidden h-fit w-full">
         <CollectionTracksTable 
           :tracks="displayedTracks" 
           :source-id="`collection-${collection?.id}`" 

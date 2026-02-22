@@ -26,7 +26,7 @@
       </template>
     </div>
 
-    <div v-else class="w-full h-full overflow-x-auto">
+    <div v-else class="w-full h-fit overflow-x-auto overflow-y-hidden">
       <!-- Bulk Actions Drawer -->
       <BulkActionsDrawer
         v-model:show="showBulkActionsDrawer"
@@ -40,7 +40,7 @@
       />
       
       <!-- Single Grid Container - wraps header and all rows -->
-      <div class="w-fit md:w-full h-full">
+      <div class="w-fit md:w-full h-fit">
         <!-- Header -->
         <div :class="[
             'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 bg-neutral-900',
@@ -92,7 +92,7 @@
             isOwnProfile 
               ? 'collectionTrackGrid-edit'
               : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut'),
-            isCurrentlyPlaying(track) ? 'bg-neutral-800/70 lg:sticky lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
+            isCurrentlyPlaying(track) ? 'bg-neutral-800/70  lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
           ]">
         <div class="px-2 flex items-center justify-center">
           <!-- Bulk Selection Mode: Show Checkbox -->
@@ -129,20 +129,12 @@
         </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
-        <div v-if="user" class="text-neutral-400 overflow-hidden">
-          <template v-if="getOwnerCollectionsForTrack(track).length > 0">
-            <div class="flex flex-wrap gap-1">
-              <NuxtLink 
-                v-for="collection in getOwnerCollectionsForTrack(track)" 
-                :key="collection.slug"
-                :to="`/u/${username}/c/${collection.slug}`" 
-                class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white whitespace-nowrap"
-              >
-                {{ collection.name }}
-              </NuxtLink>
-            </div>
-          </template>
-          <template v-else>-</template>
+        <div v-if="user" class="text-neutral-400 overflow-visible">
+          <CollectionTagsCell
+            :collections="getOwnerCollectionsForTrack(track)"
+            :owner-username="username"
+            empty-text="-"
+          />
         </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.genre || '-' }}</div>
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>

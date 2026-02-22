@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-0 text-neutral-300 grow h-full">
+  <div class="flex flex-col gap-0 text-neutral-300 grow h-fit">
     <div v-if="loading" class="flex items-center justify-center p-8 h-full w-full grow">
       <LoadingLogo />
     </div>

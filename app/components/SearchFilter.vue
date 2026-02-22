@@ -1,5 +1,5 @@
 <template>
-  <div ref="searchFilterRef" class="relative lg:h-20 bg-neutral-900 flex flex-col lg:flex-row gap-2 lg:gap-4 p-4 border-b border-neutral-800">
+  <div ref="searchFilterRef" class="relative lg:h-20 bg-neutral-900 flex flex-col sm:flex-row gap-2 lg:gap-4 p-4 border-b border-neutral-800">
     <div class="flex flex-row gap-4 w-full justify-between lg:w-full">
       <button @click="$emit('toggle-nav')" class="btn w-fit !px-2 flex items-center lg:hidden rounded-sm">
         <svg viewBox="0 0 13 11" fill="none" xmlns="http://www.w3.org/2000/svg" class="min-w-4">
@@ -18,7 +18,7 @@
           placeholder="Search (CMD/CTRL+K)" />
       </div>
     </div>
-    <div v-if="hasUser && shouldShowUploadButton" class="flex flex-row gap-2 lg:gap-4 w-full justify-between lg:w-auto">
+    <div v-if="hasUser && shouldShowUploadButton" class="flex flex-row gap-2 lg:gap-4 w-full justify-between sm:w-auto">
       <button  @click="$emit('open-modal')" class="btn w-full lg:w-fit">
         {{ buttonText }}
       </button>
