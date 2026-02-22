@@ -4,7 +4,7 @@
       <h2 class="text-2xl">Filter & Sort</h2>
     </template>
 
-    <div class="grow overflow-y-auto flex flex-col gap-8">
+    <div class="grow overflow-y-auto flex flex-col gap-8 pb-8">
       <div class="grid lg:grid-cols-2 gap-4">
         <!-- Column 1: Sort By -->
         <div>
