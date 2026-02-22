@@ -4,8 +4,26 @@
       <LoadingLogo />
     </div>
 
-    <div v-else-if="tracks.length === 0" class="text-neutral-500 p-4">
-      {{ isOwnProfile ? 'No tracks in this collection yet.' : 'No tracks available.' }}
+    <div v-else-if="tracks.length === 0" class="text-neutral-500 p-4 flex flex-col gap-2">
+      <template v-if="noFilterResults && activeFilterChips.length > 0">
+        <p>Your filters match no results.</p>
+        <p class="flex flex-wrap items-center gap-x-1 gap-y-1">
+          <span>Remove:</span>
+          <template v-for="(chip, index) in activeFilterChips" :key="chip.id">
+            <button
+              type="button"
+              @click="chip.remove()"
+              class="text-amber-400 hover:text-amber-300 underline cursor-pointer"
+            >
+              {{ chip.label }}
+            </button>
+            <span v-if="index < activeFilterChips.length - 1">, </span>
+          </template>
+        </p>
+      </template>
+      <template v-else>
+        {{ isOwnProfile ? 'No tracks in this collection yet.' : 'No tracks available.' }}
+      </template>
     </div>
 
     <div v-else class="w-full h-full overflow-x-auto">
@@ -179,16 +197,30 @@ import { useToast } from '~/composables/useToast'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 import BulkActionsDrawer from '~/components/BulkActionsDrawer.vue'
 
-const props = defineProps<{
-  tracks: any[]
-  sourceId: string
-  isOwnProfile: boolean
-  loading: boolean
-  username: string
-  collectionId?: number
-  viewerUserType?: 'creator' | 'audio_pro' | null
-  profileUserType?: 'creator' | 'audio_pro' | null
-}>()
+interface ActiveFilterChip {
+  id: string
+  label: string
+  remove: () => void
+}
+
+const props = withDefaults(
+  defineProps<{
+    tracks: any[]
+    sourceId: string
+    isOwnProfile: boolean
+    loading: boolean
+    username: string
+    collectionId?: number
+    viewerUserType?: 'creator' | 'audio_pro' | null
+    profileUserType?: 'creator' | 'audio_pro' | null
+    noFilterResults?: boolean
+    activeFilterChips?: ActiveFilterChip[]
+  }>(),
+  {
+    noFilterResults: false,
+    activeFilterChips: () => []
+  }
+)
 
 const emit = defineEmits<{
   'edit-track': [track: any]
