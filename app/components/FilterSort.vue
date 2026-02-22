@@ -252,15 +252,26 @@
       </div>
     </div>
 
-    <!-- Apply and Clear Buttons -->
-    <div class="flex flex-col items-center gap-4">
-      <button @click="applyFiltersAndSort" class="btn w-full apply-filters-btn">
-        Apply Filters & Sort
-      </button>
-      <button @click="clearAll" class="text-neutral-500 hover:text-neutral-700 cursor-pointer">
+    <!-- CTA footer: secondary left, main right; row with wrap on mobile; buttons fill width -->
+    <div class="flex flex-row flex-wrap justify-between items-center gap-4">
+      <button @click="showClearAllConfirm = true" class="w-full text-neutral-500 hover:text-neutral-700 cursor-pointer md:flex-1 md:min-w-0">
         Clear All
       </button>
+      <button @click="applyFiltersAndSort" class="btn apply-filters-btn w-full md:flex-1 md:min-w-0 md:ml-0 ml-auto">
+        Apply Filters & Sort
+      </button>
     </div>
+
+    <!-- Clear All confirmation (verb labels: Keep All / Clear All) -->
+    <ConfirmDialog
+      v-model:show="showClearAllConfirm"
+      title="Clear all filters?"
+      message="This will reset all filters and sort options. You can change them again after."
+      cancel-text="Keep All"
+      confirm-text="Clear All"
+      :confirm-danger="true"
+      @confirm="performClearAll"
+    />
   </MasterDrawer>
 </template>
 
@@ -272,9 +283,11 @@ import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { ref, onMounted, reactive, computed, watch } from 'vue'
 import MasterDrawer from './MasterDrawer.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 // Reference to the MasterDrawer component
 const drawerRef = ref(null)
+const showClearAllConfirm = ref(false)
 
 const props = defineProps({
   show: {
@@ -626,8 +639,8 @@ const applyFiltersAndSort = () => {
   }
 }
 
-// Clear all filters and reset to defaults
-const clearAll = () => {
+// Clear all filters and reset to defaults (called after user confirms)
+const performClearAll = () => {
   sortBy.value = 'created_at'
   sortDirection.value = 'desc'
   // Software/Kits filters
@@ -644,7 +657,7 @@ const clearAll = () => {
   filters.year.min = null
   filters.year.max = null
   filters.status = []
-  
+
   // Save cleared state to localStorage
   saveFilters()
 }
