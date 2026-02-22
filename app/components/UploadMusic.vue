@@ -23,12 +23,12 @@
               'border-2 border-dashed rounded-lg p-2 text-center transition-colors min-h-[100px] flex items-center justify-center',
               isDragging ? 'border-blue-500 bg-blue-500/10' : 'border-neutral-700 hover:border-neutral-600'
             ]">
-            <input ref="fileInput" type="file" accept="audio/mpeg,audio/mp3,.mp3" multiple class="hidden"
+            <input ref="fileInput" type="file" accept="audio/mpeg,audio/mp3,.mp3,audio/mp4,audio/x-m4a,.m4a" multiple class="hidden"
               @change="handleFileSelect" />
             <div class="flex flex-row justify-between items-center gap-4 w-full">
 
               <div class="grow flex flex-col gap-1">
-                <p class="text-base font-medium">{{ isDragging ? 'Drop files here' : 'Drag & drop MP3 files here' }}</p>
+                <p class="text-base font-medium">{{ isDragging ? 'Drop files here' : 'Drag & drop MP3 or M4A files here' }}</p>
                 <p class="text-sm text-neutral-500">or <button type="button" @click="$refs.fileInput.click()"
                     class="text-amber-400 hover:text-amber-300 cursor-pointer">click to browse</button></p>
                 <p class="text-xs text-neutral-600">Maximum 50MB per file</p>
@@ -237,6 +237,7 @@ import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
 import { findOrCreateTrackGroup } from '~/utils/trackGroups'
+import { sanitizeStorageFilename } from '~/utils/sanitizeStorageFilename'
 
 interface Props {
   show: boolean
@@ -577,9 +578,11 @@ const getDuration = (audio: HTMLAudioElement): Promise<number> => {
 }
 
 const validateFile = (file: File): string | null => {
-  // Check file type
-  if (!file.type.match(/audio\/(mpeg|mp3)/) && !file.name.toLowerCase().endsWith('.mp3')) {
-    return 'Only MP3 files are allowed'
+  // Check file type (MP3 or M4A)
+  const isMp3 = file.type.match(/audio\/(mpeg|mp3)/) || file.name.toLowerCase().endsWith('.mp3')
+  const isM4a = file.type.match(/audio\/(mp4|x-m4a)/) || file.name.toLowerCase().endsWith('.m4a')
+  if (!isMp3 && !isM4a) {
+    return 'Only MP3 and M4A files are allowed'
   }
   
   // Check file size (50MB)
@@ -852,9 +855,10 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
   try {
     fileData.progress = 10
     
-    // Generate file path
+    // Generate file path (sanitize filename for Supabase Storage key rules)
     const timestamp = Date.now()
-    const filePath = `${user.value.id}/${timestamp}-${fileData.file.name}`
+    const safeName = sanitizeStorageFilename(fileData.file.name)
+    const filePath = `${user.value.id}/${timestamp}-${safeName}`
     
     // Upload to storage
     fileData.progress = 30

@@ -108,7 +108,9 @@ const downloadSampleHandler = async (event, context) => {
     const tempDir = path.join(tmpdir(), `sample-${Date.now()}`)
     fs.mkdirSync(tempDir, { recursive: true })
 
-    const originalPath = path.join(tempDir, 'original.mp3')
+    // Use source file extension so ffmpeg can handle m4a and other formats correctly
+    const sourceExt = (path.extname(storagePath) || '.mp3').toLowerCase()
+    const originalPath = path.join(tempDir, `original${sourceExt}`)
     const watermarkPath = path.join(tempDir, 'watermark.mp3')
     const outputPath = path.join(tempDir, 'sample.mp3')
 

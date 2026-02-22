@@ -38,7 +38,7 @@
                 <input
                   ref="fileInput"
                   type="file"
-                  accept="audio/mpeg,audio/mp3,.mp3"
+                  accept="audio/mpeg,audio/mp3,.mp3,audio/mp4,audio/x-m4a,.m4a"
                   @change="handleFileSelect"
                   class="hidden"
                 />
@@ -56,7 +56,7 @@
                       :disabled="isUpdating"
                       class="px-4 py-2 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Choose New MP3 File
+                      Choose New File
                     </button>
                   </div>
                 </div>
@@ -275,6 +275,7 @@ import { analyzeBPM, analyzeKey } from '~/composables/useAudioAnalyzer'
 import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
+import { sanitizeStorageFilename } from '~/utils/sanitizeStorageFilename'
 import { CircleSpark } from '@iconoir/vue'
 
 interface Props {
@@ -431,11 +432,11 @@ const formatFileSize = (bytes: number): string => {
 const currentFileName = computed(() => {
   if (!props.trackToEdit?.storage_path) return 'No file'
   
-  // Extract filename from storage_path (format: user_id/timestamp-filename.mp3)
+  // Extract filename from storage_path (format: user_id/timestamp-filename.ext)
   const pathParts = props.trackToEdit.storage_path.split('/')
   const filename = pathParts[pathParts.length - 1]
   
-  // Remove timestamp prefix if present (format: timestamp-filename.mp3)
+  // Remove timestamp prefix if present (format: timestamp-filename.ext)
   const timestampMatch = filename.match(/^\d+-(.+)$/)
   if (timestampMatch) {
     return timestampMatch[1]
@@ -445,9 +446,11 @@ const currentFileName = computed(() => {
 })
 
 const validateFile = (file: File): string | null => {
-  // Check file type
-  if (!file.type.match(/audio\/(mpeg|mp3)/) && !file.name.toLowerCase().endsWith('.mp3')) {
-    return 'Only MP3 files are allowed'
+  // Check file type (MP3 or M4A)
+  const isMp3 = file.type.match(/audio\/(mpeg|mp3)/) || file.name.toLowerCase().endsWith('.mp3')
+  const isM4a = file.type.match(/audio\/(mp4|x-m4a)/) || file.name.toLowerCase().endsWith('.m4a')
+  if (!isMp3 && !isM4a) {
+    return 'Only MP3 and M4A files are allowed'
   }
   
   // Check file size (50MB)
@@ -952,7 +955,8 @@ const onSubmit = async () => {
     if (newFile.value) {
       // Generate new file path
       const timestamp = Date.now()
-      const filePath = `${user.value.id}/${timestamp}-${newFile.value.name}`
+      const safeName = sanitizeStorageFilename(newFile.value.name)
+      const filePath = `${user.value.id}/${timestamp}-${safeName}`
       
       // Upload new file to storage
       const { error: uploadError } = await supabase.storage
