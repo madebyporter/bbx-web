@@ -70,9 +70,11 @@ const { updateQueue, queueSourceId } = usePlayer()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
-// Inject search handler registration functions
+// Inject search and filter/sort handler registration functions
 const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
 const unregisterSearchHandler = inject<() => void>('unregisterSearchHandler')
+const registerFiltersAndSortHandler = inject<(handler: (params: any) => void) => void>('registerFiltersAndSortHandler')
+const unregisterFiltersAndSortHandler = inject<() => void>('unregisterFiltersAndSortHandler')
 const openFilterModal = inject<() => void>('openFilterModal')
 
 // Fetch initial collection data server-side for SEO
@@ -155,7 +157,7 @@ const displayedTracks = computed(() => {
 })
 
 const displayedTracksCount = computed(() => {
-  return tracks.value.length
+  return displayedTracks.value.length
 })
 
 // Methods
@@ -322,7 +324,12 @@ const fetchTracks = async () => {
         track_status: track.track_statuses
       }
     }))
-    
+
+    // Default sort: latest upload first (created_at desc)
+    tracksWithCollections.sort((a: any, b: any) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+
     tracks.value = tracksWithCollections
   } catch (error) {
     console.error('Error fetching tracks:', error)
@@ -587,12 +594,32 @@ const handleCollectionDeleted = () => {
 // Lifecycle
 onMounted(async () => {
   await fetchCollection()
-  
+
   // Register search handler
   if (registerSearchHandler) {
     registerSearchHandler(handleSearch)
   }
-  
+
+  // Register filter/sort handler so layout can call updateFiltersAndSort when user applies
+  if (registerFiltersAndSortHandler) {
+    registerFiltersAndSortHandler(updateFiltersAndSort)
+  }
+
+  // Apply saved filter/sort from localStorage so initial view matches user preference
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('filterSort_music')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed && (parsed.sort || parsed.filters)) {
+          await updateFiltersAndSort(parsed)
+        }
+      }
+    } catch (e) {
+      console.error('Collection page: Error applying saved filter/sort:', e)
+    }
+  }
+
   // Listen for track updates
   window.addEventListener('track-updated', ((event: CustomEvent) => {
     handleTrackUpdate(event)
@@ -600,11 +627,12 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  // Unregister search handler
   if (unregisterSearchHandler) {
     unregisterSearchHandler()
   }
-  
+  if (unregisterFiltersAndSortHandler) {
+    unregisterFiltersAndSortHandler()
+  }
   window.removeEventListener('track-updated', handleTrackUpdate)
 })
 </script>

@@ -255,6 +255,7 @@ const modalKey = ref(0)
 const pageRef = ref<PageRef | null>(null)
 const databaseRef = ref<DatabaseRef | null>(null)
 const currentSearchHandler = ref<((query: string) => void) | null>(null)
+const currentFiltersAndSortHandler = ref<((params: FilterSortParams) => void) | null>(null)
 
 // Navigation
 const navRef = ref<NavRef | null>(null)
@@ -437,10 +438,20 @@ const handleFiltersAndSort = (params: FilterSortParams) => {
     }
   }
   
+  // For music pages, use registered handler first (collection, profile, group register on mount)
+  if (filterSortContext.value === 'music' && currentFiltersAndSortHandler.value) {
+    try {
+      currentFiltersAndSortHandler.value(params)
+      return
+    } catch (e) {
+      console.error('Layout: Error calling registered filtersAndSort handler:', e)
+    }
+  }
+
   // Nuxt 3 NuxtPage wraps the component, so we need to access the nested pageRef
   const actualPage = pageRef.value ? ((pageRef.value as any).pageRef || pageRef.value) : null
-  
-  // For music pages, call updateFiltersAndSort directly on the page
+
+  // Fallback: for music pages without registration, try actualPage
   if (filterSortContext.value === 'music' && actualPage) {
     try {
       if (typeof actualPage.updateFiltersAndSort === 'function') {
@@ -502,6 +513,18 @@ const registerSearchHandler = (handler: (query: string) => void) => {
 const unregisterSearchHandler = () => {
   console.log('Layout: Search handler unregistered')
   currentSearchHandler.value = null
+}
+
+// Function for music pages to register their filter/sort handler
+const registerFiltersAndSortHandler = (handler: (params: FilterSortParams) => void) => {
+  console.log('Layout: FiltersAndSort handler registered')
+  currentFiltersAndSortHandler.value = handler
+}
+
+// Function for music pages to unregister their filter/sort handler
+const unregisterFiltersAndSortHandler = () => {
+  console.log('Layout: FiltersAndSort handler unregistered')
+  currentFiltersAndSortHandler.value = null
 }
 
 // Function for pages to register their context items for search
@@ -575,6 +598,8 @@ provide('openFilterModal', openFilterModal)
 provide('handleSearch', handleSearch)
 provide('registerSearchHandler', registerSearchHandler)
 provide('unregisterSearchHandler', unregisterSearchHandler)
+provide('registerFiltersAndSortHandler', registerFiltersAndSortHandler)
+provide('unregisterFiltersAndSortHandler', unregisterFiltersAndSortHandler)
 provide('registerContextItems', registerContextItems)
 provide('unregisterContextItems', unregisterContextItems)
 provide('handleToggleNav', handleToggleNav)

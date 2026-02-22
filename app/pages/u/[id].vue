@@ -321,9 +321,11 @@ const { supabase } = useSupabase()
 const config = useRuntimeConfig()
 const siteUrl = 'https://beatbox.studio'
 
-// Inject context items registration functions
+// Inject context items and filter/sort handler registration functions
 const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
 const unregisterContextItems = inject<() => void>('unregisterContextItems')
+const registerFiltersAndSortHandler = inject<(handler: (params: any) => void) => void>('registerFiltersAndSortHandler')
+const unregisterFiltersAndSortHandler = inject<() => void>('unregisterFiltersAndSortHandler')
 const openFilterModal = inject<() => void>('openFilterModal')
 
 // Fetch initial profile data server-side for SEO
@@ -1732,7 +1734,12 @@ onMounted(async () => {
   if (registerContextItems && tracks.value.length > 0) {
     registerContextItems(tracks.value, ['title', 'artist'])
   }
-  
+
+  // Register filter/sort handler so layout can call updateFiltersAndSort when user applies
+  if (registerFiltersAndSortHandler) {
+    registerFiltersAndSortHandler(updateFiltersAndSort)
+  }
+
   // Listen for track updates
   window.addEventListener('track-updated', handleTrackUpdate)
 })
@@ -1741,7 +1748,9 @@ onUnmounted(() => {
   if (unregisterContextItems) {
     unregisterContextItems()
   }
-  
+  if (unregisterFiltersAndSortHandler) {
+    unregisterFiltersAndSortHandler()
+  }
   window.removeEventListener('track-updated', handleTrackUpdate)
 })
 </script>

@@ -78,6 +78,8 @@ const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 // Inject functions from layout
 const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
 const unregisterContextItems = inject<() => void>('unregisterContextItems')
+const registerFiltersAndSortHandler = inject<(handler: (params: any) => void) => void>('registerFiltersAndSortHandler')
+const unregisterFiltersAndSortHandler = inject<() => void>('unregisterFiltersAndSortHandler')
 const openFilterModal = inject<() => void>('openFilterModal')
 
 const handleOpenFilterSort = () => {
@@ -432,12 +434,17 @@ watch(() => tracks.value, (tracksList) => {
 
 onMounted(async () => {
   await fetchGroupTracks()
-  
+
   // Register initial context items
   if (registerContextItems && tracks.value.length > 0) {
     registerContextItems(tracks.value, ['title', 'artist'])
   }
-  
+
+  // Register filter/sort handler so layout can call updateFiltersAndSort when user applies
+  if (registerFiltersAndSortHandler) {
+    registerFiltersAndSortHandler(updateFiltersAndSort)
+  }
+
   // Listen for track updates
   window.addEventListener('track-updated', handleTrackUpdate)
 })
@@ -445,6 +452,9 @@ onMounted(async () => {
 onUnmounted(() => {
   if (unregisterContextItems) {
     unregisterContextItems()
+  }
+  if (unregisterFiltersAndSortHandler) {
+    unregisterFiltersAndSortHandler()
   }
   window.removeEventListener('track-updated', handleTrackUpdate)
 })
