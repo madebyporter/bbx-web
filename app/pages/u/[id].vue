@@ -311,6 +311,7 @@ import { ref, computed, onMounted, onUnmounted, inject, watch, nextTick } from '
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
+import { getTrackVisibilityCondition } from '~/utils/trackVisibility'
 import TracksTable from '~/components/TracksTable.vue'
 import ManageMembers from '~/components/ManageMembers.vue'
 import gsap from 'gsap'
@@ -1360,24 +1361,18 @@ const fetchTracks = async () => {
     return
   }
   
-  // Ensure viewerUserType is fetched if user is logged in
-  if (user.value && !viewerUserType.value) {
-    console.log('fetchTracks: Fetching viewerUserType first')
-    await fetchViewerUserType()
-  }
-  
+  // Start visibility check as early as possible (run in parallel, don't block)
+  getTrackVisibilityCondition(profileUserId.value, user.value?.id ?? null).catch(() => {})
+
   // Only show loading state if we don't have any tracks yet (from initialData)
-  // This prevents showing loading spinner when we already have cached data
   const hasInitialTracks = tracks.value.length > 0
   if (!hasInitialTracks) {
     loading.value = true
   }
-  console.log('fetchTracks: Querying sounds for user:', profileUserId.value)
-  
+
   // Load saved sort preferences from localStorage
   let sortBy = 'created_at'
   let sortDirection: 'asc' | 'desc' = 'desc'
-  
   try {
     const savedFilters = localStorage.getItem('filterSort_music')
     if (savedFilters) {
@@ -1385,62 +1380,18 @@ const fetchTracks = async () => {
       if (parsed.sort) {
         sortBy = parsed.sort.sortBy || 'created_at'
         sortDirection = parsed.sort.sortDirection || 'desc'
-        console.log('fetchTracks: Using saved sort:', sortBy, sortDirection)
       }
     }
   } catch (e) {
     console.error('fetchTracks: Error loading saved sort:', e)
   }
-  
+
   try {
-    let data, error
-    
-    // If viewing own profile AND user is creator, fetch shortlisted tracks
-    console.log('fetchTracks: Checking conditions', { 
-      isOwnProfile: isOwnProfile.value, 
-      viewerUserType: viewerUserType.value, 
-      hasUser: !!user.value,
-      profileUserId: profileUserId.value,
-      userId: user.value?.id
-    })
-    
-    if (isOwnProfile.value && viewerUserType.value === 'creator' && user.value) {
-      console.log('fetchTracks: Fetching shortlisted tracks for creator')
-      const { getShortlistedTracks } = await import('~/utils/shortlist')
-      const result = await getShortlistedTracks(user.value.id)
-      
-      if (result.error) {
-        console.error('fetchTracks: Error fetching shortlisted tracks:', result.error)
-        throw result.error
-      }
-      
-      console.log('fetchTracks: Shortlisted tracks result', { count: result.data?.length, data: result.data })
-      data = result.data || []
-      error = null
-      
-      // Sort the data
-      if (sortBy === 'created_at') {
-        data.sort((a: any, b: any) => {
-          const aTime = new Date(a.shortlisted_at || a.created_at).getTime()
-          const bTime = new Date(b.shortlisted_at || b.created_at).getTime()
-          return sortDirection === 'asc' ? aTime - bTime : bTime - aTime
-        })
-      } else {
-        // For other sort fields, use the track's field
-        data.sort((a: any, b: any) => {
-          const aVal = a[sortBy] || ''
-          const bVal = b[sortBy] || ''
-          if (sortDirection === 'asc') {
-            return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
-          } else {
-            return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
-          }
-        })
-      }
-    } else {
-      // Normal query: fetch tracks from the profile owner
-      console.log('fetchTracks: Using normal query (not shortlist)')
-      const result = await supabase
+    let data: any[] | null = null
+    let error: any = null
+
+    const runSoundsQuery = () =>
+      supabase
         .from('sounds')
         .select(`
           *,
@@ -1448,59 +1399,98 @@ const fetchTracks = async () => {
         `)
         .eq('user_id', profileUserId.value)
         .order(sortBy, { ascending: sortDirection === 'asc' })
-      
-      data = result.data
-      error = result.error
+
+    const applySort = (arr: any[]) => {
+      if (sortBy === 'created_at') {
+        arr.sort((a: any, b: any) => {
+          const aTime = new Date(a.shortlisted_at || a.created_at).getTime()
+          const bTime = new Date(b.shortlisted_at || b.created_at).getTime()
+          return sortDirection === 'asc' ? aTime - bTime : bTime - aTime
+        })
+      } else {
+        arr.sort((a: any, b: any) => {
+          const aVal = a[sortBy] || ''
+          const bVal = b[sortBy] || ''
+          if (sortDirection === 'asc') return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+          return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+        })
+      }
     }
 
-    console.log('fetchTracks: Query result', { data, error, count: data?.length })
-    
-    if (error) throw error
-    
-    // Fetch collection names and slugs for each track
-    const tracksWithCollections = await Promise.all((data || []).map(async (track: any) => {
-      // For shortlisted tracks (when viewing own profile as creator), only show collections owned by the creator
-      // For own tracks, show all collections the track is in
-      const isShortlistedTrack = isOwnProfile.value && viewerUserType.value === 'creator' && user.value
-      const collectionOwnerId = isShortlistedTrack ? user.value!.id : null
-      
-      // Get collection IDs for this track
-      const { data: junctionData } = await supabase
-        .from('collections_sounds')
-        .select('collection_id')
-        .eq('sound_id', track.id)
-      
-      const allCollectionIds = (junctionData || []).map((item: any) => item.collection_id)
-      
-      if (allCollectionIds.length === 0) {
-        return {
-          ...track,
-          collections: [],
-          track_status: track.track_statuses
-        }
+    if (isOwnProfile.value && viewerUserType.value === 'creator' && user.value) {
+      const { getShortlistedTracks } = await import('~/utils/shortlist')
+      const result = await getShortlistedTracks(user.value.id)
+      if (result.error) throw result.error
+      data = result.data || []
+      applySort(data)
+    } else if (isOwnProfile.value && user.value && !viewerUserType.value) {
+      const [_, soundsResult] = await Promise.all([fetchViewerUserType(), runSoundsQuery()])
+      data = soundsResult.data
+      error = soundsResult.error
+      if (!error && data && viewerUserType.value === 'creator') {
+        const { getShortlistedTracks } = await import('~/utils/shortlist')
+        const result = await getShortlistedTracks(user.value!.id)
+        if (result.error) throw result.error
+        data = result.data || []
+        applySort(data)
       }
-      
-      // Get collection names and slugs
-      // For shortlisted tracks, filter to only collections owned by the creator
-      let collectionQuery = supabase
+    } else {
+      if (user.value && !viewerUserType.value) fetchViewerUserType()
+      const soundsResult = await runSoundsQuery()
+      data = soundsResult.data
+      error = soundsResult.error
+    }
+
+    if (error) throw error
+
+    const rawTracks = data || []
+    if (rawTracks.length === 0) {
+      tracks.value = []
+      return
+    }
+
+    const soundIds = rawTracks.map((t: any) => t.id)
+    const { data: allJunctionData } = await supabase
+      .from('collections_sounds')
+      .select('sound_id, collection_id')
+      .in('sound_id', soundIds)
+
+    const collectionIdsBySoundId = new Map<number, number[]>()
+    const allCollectionIds = new Set<number>()
+    for (const row of allJunctionData || []) {
+      const sid = (row as any).sound_id
+      const cid = (row as any).collection_id
+      if (!collectionIdsBySoundId.has(sid)) collectionIdsBySoundId.set(sid, [])
+      collectionIdsBySoundId.get(sid)!.push(cid)
+      allCollectionIds.add(cid)
+    }
+
+    let collectionsList: { id: number; name: string; slug: string; user_id: string }[] = []
+    if (allCollectionIds.size > 0) {
+      const { data: collectionsData } = await supabase
         .from('collections')
-        .select('name, slug, user_id')
-        .in('id', allCollectionIds)
-      
-      const { data: collectionData } = await collectionQuery
-      
-      // Filter collections by owner if this is a shortlisted track
-      const filteredCollections = isShortlistedTrack && collectionOwnerId
-        ? (collectionData || []).filter((col: any) => col.user_id === collectionOwnerId).map((col: any) => ({ name: col.name, slug: col.slug }))
-        : (collectionData || []).map((col: any) => ({ name: col.name, slug: col.slug }))
-      
+        .select('id, name, slug, user_id')
+        .in('id', Array.from(allCollectionIds))
+      collectionsList = (collectionsData || []) as { id: number; name: string; slug: string; user_id: string }[]
+    }
+
+    const collectionMap = new Map(collectionsList.map(c => [c.id, c]))
+    const isShortlistedTrack = isOwnProfile.value && viewerUserType.value === 'creator' && user.value
+    const collectionOwnerId = isShortlistedTrack ? user.value!.id : null
+
+    const tracksWithCollections = rawTracks.map((track: any) => {
+      const collectionIds = collectionIdsBySoundId.get(track.id) || []
+      const cols = collectionIds.map(id => collectionMap.get(id)).filter(Boolean) as { name: string; slug: string; user_id: string }[]
+      const collections = collectionOwnerId
+        ? cols.filter(c => c.user_id === collectionOwnerId).map(c => ({ name: c.name, slug: c.slug }))
+        : cols.map(c => ({ name: c.name, slug: c.slug }))
       return {
         ...track,
-        collections: filteredCollections,
+        collections,
         track_status: track.track_statuses
       }
-    }))
-    
+    })
+
     tracks.value = tracksWithCollections
   } catch (error) {
     console.error('Error fetching tracks:', error)

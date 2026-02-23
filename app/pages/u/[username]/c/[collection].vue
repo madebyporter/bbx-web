@@ -59,6 +59,7 @@ import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
+import { getTrackVisibilityCondition } from '~/utils/trackVisibility'
 import { usePlayer } from '~/composables/usePlayer'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 import CollectionTracksTable from '~/components/CollectionTracksTable.vue'
@@ -292,6 +293,9 @@ const fetchCollection = async () => {
     }
     
     profileUserId.value = profileData.id as string
+
+    // Start visibility check as early as possible (run in parallel, don't block)
+    getTrackVisibilityCondition(profileData.id as string, user.value?.id ?? null).catch(() => {})
     
     // Fetch profile user type
     const { data: profileTypeData } = await supabase
@@ -371,8 +375,8 @@ const fetchCollection = async () => {
 }
 
 const fetchTracks = async () => {
-  if (!supabase || !collection.value) return
-  
+  if (!supabase || !collection.value || !profileUserId.value) return
+
   tracksLoading.value = true
   
   try {
@@ -400,42 +404,58 @@ const fetchTracks = async () => {
         junction_sound_id: item.sound_id,
         track_status: (item.sounds as any).track_statuses
       }))
-    
-    // Fetch collection names and slugs for each track
-    const tracksWithCollections = await Promise.all(soundsListWithHidden.map(async (track: any) => {
-      // Get collection IDs for this track
-      const { data: junctionData } = await supabase
+
+    const soundIds = soundsListWithHidden.map((t: any) => t.id)
+    let tracksWithCollections: any[]
+
+    if (soundIds.length === 0) {
+      tracksWithCollections = []
+    } else {
+      // Batch: get all (sound_id, collection_id) for these tracks in one query
+      const { data: allJunctionData } = await supabase
         .from('collections_sounds')
-        .select('collection_id')
-        .eq('sound_id', track.id)
-      
-      const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
-      
-      if (collectionIds.length === 0) {
+        .select('sound_id, collection_id')
+        .in('sound_id', soundIds)
+
+      const collectionIdsBySoundId = new Map<number, number[]>()
+      const allCollectionIds = new Set<number>()
+      for (const row of allJunctionData || []) {
+        const sid = (row as any).sound_id
+        const cid = (row as any).collection_id
+        if (!collectionIdsBySoundId.has(sid)) collectionIdsBySoundId.set(sid, [])
+        collectionIdsBySoundId.get(sid)!.push(cid)
+        allCollectionIds.add(cid)
+      }
+
+      let collectionsList: { id: number; name: string; slug: string }[] = []
+      if (allCollectionIds.size > 0) {
+        const { data: collectionsData } = await supabase
+          .from('collections')
+          .select('id, name, slug')
+          .in('id', Array.from(allCollectionIds))
+          .eq('user_id', profileUserId.value)
+        collectionsList = (collectionsData || []) as { id: number; name: string; slug: string }[]
+      }
+
+      const collectionMap = new Map(collectionsList.map(c => [c.id, { name: c.name, slug: c.slug }]))
+
+      tracksWithCollections = soundsListWithHidden.map((track: any) => {
+        const collectionIds = collectionIdsBySoundId.get(track.id) || []
+        const collections = collectionIds
+          .map(id => collectionMap.get(id))
+          .filter(Boolean) as { name: string; slug: string }[]
         return {
           ...track,
-          collections: []
+          collections,
+          track_status: track.track_statuses
         }
-      }
-      
-      // Get collection names and slugs - only for collections owned by the profile owner
-      const { data: collectionData } = await supabase
-        .from('collections')
-        .select('name, slug')
-        .in('id', collectionIds)
-        .eq('user_id', profileUserId.value)
-      
-      return {
-        ...track,
-        collections: collectionData || [],
-        track_status: track.track_statuses
-      }
-    }))
+      })
 
-    // Default sort: latest upload first (created_at desc)
-    tracksWithCollections.sort((a: any, b: any) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    )
+      // Default sort: latest upload first (created_at desc)
+      tracksWithCollections.sort((a: any, b: any) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+    }
 
     unfilteredTracks.value = tracksWithCollections
     tracks.value = tracksWithCollections
@@ -574,7 +594,7 @@ function applyFiltersAndSortToList(list: any[], params: { filters: any; sort: an
 const updateFiltersAndSort = async (params: any) => {
   console.log('Collection page: Applying filters and sort:', params)
 
-  if (!supabase || !collection.value) return
+  if (!supabase || !collection.value || !profileUserId.value) return
 
   tracksLoading.value = true
   lastAppliedParams.value = { filters: { ...params.filters }, sort: { ...params.sort } }
@@ -607,23 +627,42 @@ const updateFiltersAndSort = async (params: any) => {
           track_status: (item.sounds as any).track_statuses
         }))
 
-      const tracksWithCollections = await Promise.all(soundsListWithHidden.map(async (track: any) => {
-        const { data: junctionData } = await supabase
+      const soundIds = soundsListWithHidden.map((t: any) => t.id)
+      let tracksWithCollections: any[]
+      if (soundIds.length === 0) {
+        tracksWithCollections = []
+      } else {
+        const { data: allJunctionData } = await supabase
           .from('collections_sounds')
-          .select('collection_id')
-          .eq('sound_id', track.id)
-        const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
-        if (collectionIds.length === 0) return { ...track, collections: [] }
-        const { data: collectionData } = await supabase
-          .from('collections')
-          .select('name, slug')
-          .in('id', collectionIds)
-        return {
-          ...track,
-          collections: collectionData || [],
-          track_status: track.track_statuses
+          .select('sound_id, collection_id')
+          .in('sound_id', soundIds)
+        const collectionIdsBySoundId = new Map<number, number[]>()
+        const allCollectionIds = new Set<number>()
+        for (const row of allJunctionData || []) {
+          const sid = (row as any).sound_id
+          const cid = (row as any).collection_id
+          if (!collectionIdsBySoundId.has(sid)) collectionIdsBySoundId.set(sid, [])
+          collectionIdsBySoundId.get(sid)!.push(cid)
+          allCollectionIds.add(cid)
         }
-      }))
+        let collectionsList: { id: number; name: string; slug: string }[] = []
+        if (allCollectionIds.size > 0) {
+          const { data: collectionsData } = await supabase
+            .from('collections')
+            .select('id, name, slug')
+            .in('id', Array.from(allCollectionIds))
+            .eq('user_id', profileUserId.value)
+          collectionsList = (collectionsData || []) as { id: number; name: string; slug: string }[]
+        }
+        const collectionMap = new Map(collectionsList.map(c => [c.id, { name: c.name, slug: c.slug }]))
+        tracksWithCollections = soundsListWithHidden.map((track: any) => {
+          const collectionIds = collectionIdsBySoundId.get(track.id) || []
+          const collections = collectionIds
+            .map(id => collectionMap.get(id))
+            .filter(Boolean) as { name: string; slug: string }[]
+          return { ...track, collections, track_status: track.track_statuses }
+        })
+      }
 
       unfilteredTracks.value = tracksWithCollections
       tracks.value = applyFiltersAndSortToList(tracksWithCollections, params)

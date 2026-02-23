@@ -253,7 +253,7 @@
     </div>
 
     <!-- CTA footer: secondary left, main right; row with wrap on mobile; buttons fill width -->
-    <div class="flex flex-row flex-wrap justify-between items-center gap-4">
+    <div class="flex flex-row flex-wrap justify-between items-center gap-4 p-4 pb-0 border-t border-neutral-800">
       <button @click="showClearAllConfirm = true" class="w-full text-neutral-500 hover:text-neutral-700 cursor-pointer md:flex-1 md:min-w-0">
         Clear All
       </button>
