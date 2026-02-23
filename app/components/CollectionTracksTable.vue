@@ -129,7 +129,7 @@
         </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
-        <div v-if="user" class="text-neutral-400 overflow-visible">
+        <div v-if="user" class="text-neutral-400 overflow-visible flex justify-start items-center">
           <CollectionTagsCell
             :collections="getOwnerCollectionsForTrack(track)"
             :owner-username="username"

@@ -141,7 +141,7 @@
         </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
-        <div v-if="isOwnProfile" class="text-neutral-400 overflow-visible">
+        <div v-if="isOwnProfile" class="text-neutral-400 overflow-visible flex justify-start items-center">
           <!-- Editing Collections -->
           <div v-if="editingCollectionTrackId === track.id"
             class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
