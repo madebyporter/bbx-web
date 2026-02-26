@@ -64,7 +64,6 @@
           <div>Genre</div>
           <div>BPM</div>
           <div>Duration</div>
-          <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
           <div :class="[
             'flex items-center justify-start',
             isOwnProfile ? 'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[80px]' : ''
@@ -186,17 +185,6 @@
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.genre || '-' }}</div>
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
         <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>
-        <div v-if="isOwnProfile && profileUserType === 'audio_pro'" class="text-neutral-400 overflow-hidden">
-          <select v-if="statuses.length > 0" :value="track.status_id || ''"
-            @change="updateTrackStatus(track.id, $event.target.value ? parseInt($event.target.value) : null)"
-            class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-xs text-neutral-200 cursor-pointer outline-none">
-            <option value="">No Status</option>
-            <option v-for="status in statuses" :key="status.id" :value="status.id">
-              {{ status.name }}
-            </option>
-          </select>
-          <div v-else class="text-xs px-2 py-1">Loading...</div>
-        </div>
         <!-- Action Button: Edit / Add / Remove -->
         <div :class="[
           (isOwnProfile || (viewerUserType === 'creator' && profileUserType === 'audio_pro')) 
@@ -277,8 +265,6 @@ const { supabase } = useSupabase()
 const { user } = useAuth()
 const { showProcessing, showSuccess, showError, removeToast } = useToast()
 
-const statuses = ref<Array<{ id: number; name: string }>>([])
-
 // Bulk selection state
 const bulkSelectionMode = ref(false)
 const selectedTrackIds = ref(new Set<number>())
@@ -317,59 +303,13 @@ const handleScrollToTrack = (event: CustomEvent) => {
   }
 }
 
-// Fetch statuses for the current user
-const fetchStatuses = async () => {
-  if (!supabase || !user.value || !props.isOwnProfile) return
-  
-  try {
-    const { data, error } = await supabase
-      .from('track_statuses')
-      .select('id, name')
-      .eq('user_id', user.value.id)
-      .order('name')
-    
-    if (error) throw error
-    
-    // If user has no statuses, create defaults for them
-    if (!data || data.length === 0) {
-      const defaultStatuses = [
-        { name: 'Available' },
-        { name: 'Used' },
-        { name: 'Non-exclusive' },
-        { name: 'Exclusive' },
-        { name: 'Royalty Free' }
-      ]
-      
-      const { data: newStatuses, error: insertError } = await supabase
-        .from('track_statuses')
-        .insert(defaultStatuses.map(s => ({ ...s, user_id: user.value!.id })))
-        .select('id, name')
-      
-      if (insertError) throw insertError
-      statuses.value = newStatuses || []
-    } else {
-      statuses.value = data
-    }
-  } catch (error) {
-    console.error('Error fetching statuses:', error)
-  }
-}
-
 onMounted(async () => {
   window.addEventListener('scroll-to-track', handleScrollToTrack as EventListener)
-  await fetchStatuses()
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll-to-track', handleScrollToTrack as EventListener)
 })
-
-// Watch for user becoming available and refetch statuses
-watch([() => user.value, () => props.isOwnProfile], async ([newUser, newIsOwnProfile]) => {
-  if (newUser && newIsOwnProfile) {
-    await fetchStatuses()
-  }
-}, { immediate: true })
 
 // Get the track owner's username
 // For shortlisted tracks, use original_owner.username
@@ -444,36 +384,6 @@ const handleUploadClick = () => {
   // Dispatch event to open upload modal
   const event = new CustomEvent('open-upload-modal')
   window.dispatchEvent(event)
-}
-
-// Update track status immediately
-const updateTrackStatus = async (trackId: number, statusId: number | null) => {
-  if (!supabase) return
-  
-  try {
-    const { error } = await supabase
-      .from('sounds')
-      .update({ status_id: statusId })
-      .eq('id', trackId)
-    
-    if (error) throw error
-    
-    // Update local track data
-    const track = props.tracks.find(t => t.id === trackId)
-    if (track) {
-      track.status_id = statusId
-      if (statusId === null) {
-        track.track_statuses = null
-      } else {
-        const status = statuses.value.find(s => s.id === statusId)
-        if (status) {
-          track.track_statuses = { id: status.id, name: status.name }
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error updating track status:', error)
-  }
 }
 
 // Bulk selection handlers
