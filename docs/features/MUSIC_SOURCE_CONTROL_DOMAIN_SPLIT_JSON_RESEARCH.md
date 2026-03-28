@@ -214,6 +214,47 @@ When conflicts do occur, they are domain-local and easier to resolve.
 
 ---
 
+## Inspiration-aligned workflow: common base + metadata deltas + late merge
+
+Your added inspiration maps to a very practical model:
+
+1. Start from one shared base project state (common base).
+2. Each collaborator edits in their own branch/workspace.
+3. Track only metadata deltas (JSON domain changes), not full binary re-exports.
+4. Merge deltas later into the common base.
+
+For music production this means:
+
+- Keep the heavy audio assets immutable and addressable by hash.
+- Record timeline/mix/automation decisions as small JSON edits.
+- Merge at the domain/entity level at integration time.
+
+This is conceptually the same pattern described for modern video workflows, and it applies well to music sessions too.
+
+### Delta format options
+
+- **State snapshots in Git**: Commit full domain JSON files; Git computes diffs.
+- **Explicit patch objects**: Store operation logs (addClip, moveClip, setFader) and materialize state.
+
+For v1 implementation, state snapshots are simpler and already work well with Git tooling.
+
+### Example of a mergeable metadata delta
+
+```json
+{
+  "baseCommit": "abc123",
+  "domain": "mix/channels.json",
+  "changes": [
+    { "op": "set", "target": "channels[trk_kick].faderDb", "value": -4.5 },
+    { "op": "set", "target": "channels[trk_bass].plugins[1].state.drive", "value": 0.22 }
+  ]
+}
+```
+
+Even if one collaborator edits arrangement while another edits mix, these changes merge cleanly because they live in different domains.
+
+---
+
 ## Suggested migration path from current repo model
 
 1. **Keep existing fields** (`version`, `track_group_name`) for compatibility.
@@ -247,6 +288,7 @@ Best first implementation slice:
 2. Add one editable domain (`composition/arrangement.json`).
 3. Add canonical JSON serializer.
 4. Add diff summarizer script that emits human-readable change logs.
+5. Add branch-based collaboration docs: "start from common base -> commit metadata deltas -> merge at end."
 
 This delivers immediate value (real change history) without requiring full DAW parity on day one.
 
