@@ -10,6 +10,18 @@
 - [x] Incorporate additional inspiration: common base asset + metadata deltas + final merge workflow.
 - [x] Add usage walkthrough for branch-switch-commit-merge collaboration.
 - [x] Add release control board model (song-level readiness/status tracking).
+- [x] Add implementation plan for immutable song revision history in the existing Beatbox model.
+- [x] Implement database migration for `sound_revisions` with automatic snapshot+diff logging trigger.
+- [x] Backfill initial revision rows for existing `sounds`.
+- [x] Validate migration file structure and update review notes.
+
+## Implementation Plan: Song Revision History (DB-backed)
+
+- [x] Add Supabase migration for immutable `sound_revisions` ledger table.
+- [x] Add auto-capture trigger on `public.sounds` for insert/update snapshots + diffs.
+- [x] Add RLS policies so viewers follow existing sound visibility rules.
+- [x] Backfill baseline revision entries for existing sounds.
+- [x] Update docs with how to query and use revision history.
 
 ## Review
 
@@ -28,3 +40,16 @@ Additional refinement captured from inspiration:
 - Keep merges at metadata/domain level first; render/export artifacts remain derived outputs.
 - Document branch usage sequence clearly: commit on branch A, switch to branch B, commit more changes, merge both.
 - Add album-level release board metadata (BPM/key/sections/version + readiness gates) to coordinate final rollout.
+
+Implemented in this iteration:
+
+- Added migration `supabase/migrations/20260328080000_add_sound_revisions.sql`.
+- Creates `public.sound_revisions` as an immutable per-song revision ledger.
+- Adds trigger `trg_log_sound_revision` on `public.sounds` (INSERT/UPDATE) to auto-log:
+  - `revision_number`
+  - `changed_fields`
+  - `previous_snapshot`
+  - `current_snapshot`
+  - `metadata_diff` (field-level from/to map)
+- Backfills revision `1` for existing songs.
+- Added usage docs in `docs/development/SOUND_REVISIONS_LEDGER.md` with example queries for revision history and latest diff.
