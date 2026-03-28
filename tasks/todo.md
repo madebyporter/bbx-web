@@ -9,6 +9,7 @@
 - [x] Add a short review section with recommended next implementation steps.
 - [x] Incorporate additional inspiration: common base asset + metadata deltas + final merge workflow.
 - [x] Add usage walkthrough for branch-switch-commit-merge collaboration.
+- [x] Add release control board model (song-level readiness/status tracking).
 
 ## Review
 
@@ -26,3 +27,4 @@ Additional refinement captured from inspiration:
 - Emphasize "start from common base media and commit lightweight metadata edits."
 - Keep merges at metadata/domain level first; render/export artifacts remain derived outputs.
 - Document branch usage sequence clearly: commit on branch A, switch to branch B, commit more changes, merge both.
+- Add album-level release board metadata (BPM/key/sections/version + readiness gates) to coordinate final rollout.

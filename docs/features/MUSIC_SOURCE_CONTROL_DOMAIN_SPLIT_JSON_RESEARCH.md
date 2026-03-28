@@ -286,6 +286,72 @@ This gives the same operational benefits shown in modern editing workflows: mult
 
 ---
 
+## Inspiration-aligned release orchestration (album control board)
+
+The spreadsheet-style workflow in your latest inspiration points to a second layer above per-song editing:
+an **album release control board**.
+
+What it tracks well:
+
+- Song-level metadata (title, BPM, key, duration).
+- Section structure checkpoints (verse/chorus/bridge completion).
+- Mix iteration status (rough mix, mix, final mix).
+- Master and delivery status (mastered, DSP package ready, scheduled release).
+- Cross-song consistency checks (loudness target, key transitions, sequence order).
+
+This should be modeled as JSON too (Git-trackable), not only as an external spreadsheet.
+
+### Suggested project addition
+
+```text
+release/
+  album_board.json
+  sequence.json
+  delivery_checklist.json
+```
+
+### Example `release/album_board.json`
+
+```json
+{
+  "albumId": "album_bully_2026",
+  "title": "Bully",
+  "tracks": [
+    {
+      "trackId": "trk_king",
+      "title": "KING",
+      "bpm": 98,
+      "key": "Dbmin",
+      "durationSec": 127,
+      "sections": {
+        "verse1": "done",
+        "chorus1": "done",
+        "verse2": "in_progress",
+        "chorus2": "planned"
+      },
+      "mixStatus": "mix_final_candidate",
+      "masterStatus": "pending",
+      "releaseStatus": "hold",
+      "notes": "Waiting on vocal comp pass"
+    }
+  ],
+  "updatedAt": "2026-03-28T00:00:00Z"
+}
+```
+
+### Why this matters
+
+- Keeps creative production metadata and release operations in the same source-control graph.
+- Makes "what is ready to ship?" queryable and auditable.
+- Enables branch-based release planning:
+  - one branch for sequence/order decisions
+  - another for final mix tweaks
+  - merge both for release candidate tagging
+
+This mirrors how high-output teams coordinate many tracks simultaneously while still preserving per-track edit history.
+
+---
+
 ## Suggested migration path from current repo model
 
 1. **Keep existing fields** (`version`, `track_group_name`) for compatibility.
@@ -296,7 +362,8 @@ This gives the same operational benefits shown in modern editing workflows: mult
    - optional starter arrangement/mix docs
 4. Keep storing raw audio in current storage path pattern, but record hashes + metadata in `assets/index.json`.
 5. Build a "project diff view" using commit comparisons of domain JSON.
-6. Later, deprecate filename-only version semantics as primary source of truth.
+6. Add release-level metadata files (`release/album_board.json`, `release/sequence.json`) for multi-track orchestration.
+7. Later, deprecate filename-only version semantics as primary source of truth.
 
 ---
 
@@ -320,6 +387,7 @@ Best first implementation slice:
 3. Add canonical JSON serializer.
 4. Add diff summarizer script that emits human-readable change logs.
 5. Add branch-based collaboration docs: "start from common base -> commit metadata deltas -> merge at end."
+6. Add a minimal `release/album_board.json` schema for album-level readiness tracking.
 
 This delivers immediate value (real change history) without requiring full DAW parity on day one.
 
