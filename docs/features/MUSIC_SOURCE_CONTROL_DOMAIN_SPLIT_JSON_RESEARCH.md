@@ -255,6 +255,37 @@ Even if one collaborator edits arrangement while another edits mix, these change
 
 ---
 
+## Inspiration-aligned usage flow (branch, commit, merge)
+
+To mirror the workflow pattern you shared, define a simple operator flow:
+
+1. Open the project from a workspace script/tooling entry point.
+2. Start from a shared base revision (`main` or release branch).
+3. Commit the initial project metadata snapshot (`manifest.json` + domains).
+4. Create/switch to a feature branch for a focused change set.
+5. Make edits in one or more domains (`composition/*`, `mix/*`, `automation/*`).
+6. Commit metadata changes in small, reviewable commits.
+7. Switch branch again for other work if needed and repeat.
+8. Merge branches back after review; resolve only metadata/domain conflicts.
+9. Render/export artifacts after merge (derived outputs, not source-of-truth).
+
+### Merge policy for music projects
+
+- Prefer one concern per branch (arrangement branch, mix branch, automation branch).
+- Avoid rebasing binary assets frequently; treat assets as immutable pointers when possible.
+- If conflicts occur in the same JSON object, prefer semantic resolution:
+  - preserve stable IDs
+  - preserve chronology (`startTick` ordering)
+  - preserve explicit intent (e.g., keep both automation points unless mutually exclusive)
+- Require a post-merge validation pass:
+  - schema validation
+  - asset hash existence check
+  - timeline integrity check (no orphan clip references)
+
+This gives the same operational benefits shown in modern editing workflows: multiple contributors can commit independently and merge meaningful timeline/mix changes later.
+
+---
+
 ## Suggested migration path from current repo model
 
 1. **Keep existing fields** (`version`, `track_group_name`) for compatibility.

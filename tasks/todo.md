@@ -8,6 +8,7 @@
 - [x] Map a migration path from `v1/v2` filename versioning to manifest + structured metadata.
 - [x] Add a short review section with recommended next implementation steps.
 - [x] Incorporate additional inspiration: common base asset + metadata deltas + final merge workflow.
+- [x] Add usage walkthrough for branch-switch-commit-merge collaboration.
 
 ## Review
 
@@ -24,3 +25,4 @@ Additional refinement captured from inspiration:
 
 - Emphasize "start from common base media and commit lightweight metadata edits."
 - Keep merges at metadata/domain level first; render/export artifacts remain derived outputs.
+- Document branch usage sequence clearly: commit on branch A, switch to branch B, commit more changes, merge both.
