@@ -3,6 +3,7 @@
 This document describes the DB-backed song revision history introduced by:
 
 - `supabase/migrations/20260328080000_add_sound_revisions.sql`
+- `supabase/migrations/20260328093000_add_sound_lineage_and_studio_sync_fields.sql`
 
 ## What problem this solves
 
@@ -14,6 +15,8 @@ The new ledger records every tracked metadata change on `public.sounds` so teams
 - Who changed it?
 - In what order?
 - What was the previous value?
+
+It also adds lineage/sync fields so uploads from web now and BBX Studio later follow one version-control contract.
 
 ## Data model
 
@@ -46,6 +49,19 @@ Snapshot fields are built by `public.build_sound_snapshot(...)` and currently in
 - creative metadata: `title`, `artist`, `version`, `track_group_name`, `genre`, `mood`, `bpm`, `key`, `year`
 - visibility/workflow: `status_id`, `is_public`, `collection_names`
 - storage pointer: `storage_path`
+- lineage/sync fields: `parent_sound_id`, `lineage_root_sound_id`, `source_client`, `source_project_ref`, `source_revision_ref`
+
+## Upload lineage behavior (web + Studio-friendly)
+
+On `INSERT` into `public.sounds`, DB trigger `trg_prepare_sound_lineage` now:
+
+- auto-detects older versions by `(user_id, track_group_name)` first, then exact title fallback
+- links `parent_sound_id` to the most recent prior version
+- sets/normalizes `lineage_root_sound_id` for the whole chain
+- normalizes version and auto-suggests next when missing (`v1.0`, `v2.0`, ...)
+- normalizes `source_client` (`web`, `studio`, `api`)
+
+This means both web uploads and future BBX Studio sync inserts can rely on the same server-side lineage/versioning behavior.
 
 ## Backfill behavior
 

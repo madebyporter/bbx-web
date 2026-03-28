@@ -14,6 +14,8 @@
 - [x] Implement database migration for `sound_revisions` with automatic snapshot+diff logging trigger.
 - [x] Backfill initial revision rows for existing `sounds`.
 - [x] Validate migration file structure and update review notes.
+- [x] Add lineage + source-sync metadata for cross-client ingestion (web + BBX Studio).
+- [x] Wire upload flow to pass lineage/source hints and display auto version-chain warnings.
 
 ## Implementation Plan: Song Revision History (DB-backed)
 
@@ -53,3 +55,12 @@ Implemented in this iteration:
   - `metadata_diff` (field-level from/to map)
 - Backfills revision `1` for existing songs.
 - Added usage docs in `docs/development/SOUND_REVISIONS_LEDGER.md` with example queries for revision history and latest diff.
+- Added migration `supabase/migrations/20260328093000_add_sound_lineage_and_studio_sync_fields.sql`.
+- Adds `sounds` lineage fields:
+  - `parent_sound_id`
+  - `lineage_root_sound_id`
+  - `source_client`
+  - `source_project_ref`
+  - `source_revision_ref`
+- Adds `BEFORE INSERT` lineage trigger to auto-detect previous versions and suggest next version when missing.
+- Updated upload insert path to pass lineage/source fields and surface version-chain detection warnings.

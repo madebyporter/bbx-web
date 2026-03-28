@@ -250,6 +250,11 @@ interface FileMetadata {
   title: string
   artist: string
   version: string
+  lineage_root_sound_id: number | null
+  parent_sound_id: number | null
+  source_client: 'web' | 'studio' | 'api'
+  source_project_ref: string | null
+  source_revision_ref: string | null
   group_name: string
   collection_name: string
   genre: string
@@ -272,6 +277,23 @@ interface SelectedFile {
   isAnalyzingKey: boolean
   uploadedSoundId: number | null
 }
+
+interface SimilarTrackPrefill {
+  isDuplicate: boolean
+  duplicateTrack?: any
+  artist: string
+  genre: string
+  mood: string
+  bpm: number | null
+  key: string | null
+  year: number | null
+  version: string
+  collectionIds: number[]
+  lineageRootSoundId?: number | null
+  previousVersionId?: number | null
+}
+
+const SOURCE_APP: 'web' | 'studio' | 'api' = 'web'
 
 interface Collection {
   id: number
@@ -459,7 +481,7 @@ watch(() => props.show, async (newVal) => {
   }
 })
 
-const findSimilarTrackMetadata = async (title: string, duration: number | null) => {
+const findSimilarTrackMetadata = async (title: string, duration: number | null): Promise<SimilarTrackPrefill | null> => {
   if (!supabase || !user.value) return null
   
   try {
@@ -501,7 +523,9 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
           key: exactMatch.key || null,
           year: exactMatch.year || null,
           version: exactMatch.version || 'v1.0',
-          collectionIds: []
+          collectionIds: [],
+          lineageId: exactMatch.lineage_root_sound_id || null,
+          previousVersionId: exactMatch.id
         }
       }
     }
@@ -558,11 +582,62 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
       key: bestMatch.key || null,
       year: bestMatch.year || null,
       version: nextVersion,
-      collectionIds
+      collectionIds,
+      lineageId: bestMatch.lineage_root_sound_id || null,
+      previousVersionId: bestMatch.id
     }
   } catch (error) {
     console.error('Error finding similar track:', error)
     return null
+  }
+}
+
+const detectLineageFromExistingTracks = async (
+  title: string,
+  groupName: string | null
+): Promise<{ lineageRootSoundId: number | null; previousSoundId: number | null; suggestedVersion: string | null }> => {
+  if (!supabase || !user.value) {
+    return { lineageRootSoundId: null, previousSoundId: null, suggestedVersion: null }
+  }
+
+  const normalizedGroup = groupName?.trim() || null
+  const normalizedTitle = title.trim().toLowerCase()
+
+  let query = supabase
+    .from('sounds')
+    .select('id, version, lineage_root_sound_id, created_at')
+    .eq('user_id', user.value.id)
+    .order('created_at', { ascending: false })
+    .limit(25)
+
+  query = normalizedGroup
+    ? query.eq('track_group_name', normalizedGroup)
+    : query.ilike('title', title.trim())
+
+  const { data: candidates, error } = await query
+
+  if (error || !candidates || candidates.length === 0) {
+    return { lineageRootSoundId: null, previousSoundId: null, suggestedVersion: null }
+  }
+
+  const previous = candidates[0]
+  let maxVersion = 0
+
+  for (const candidate of candidates) {
+    if (!normalizedGroup && (candidate as any).title && String((candidate as any).title).toLowerCase() !== normalizedTitle) {
+      continue
+    }
+    const raw = String(candidate.version || '').toLowerCase().replace(/^v/, '').trim()
+    const parsed = Number.parseFloat(raw)
+    if (!Number.isNaN(parsed) && parsed > maxVersion) {
+      maxVersion = parsed
+    }
+  }
+
+  return {
+    lineageRootSoundId: previous.lineage_root_sound_id || previous.id,
+    previousSoundId: previous.id,
+    suggestedVersion: maxVersion > 0 ? `v${Math.floor(maxVersion) + 1}.0` : 'v1.0'
   }
 }
 
@@ -651,6 +726,14 @@ const processFiles = async (files: File[]) => {
       parsedData.title
     )
     
+    // Resolve lineage hints from existing catalog (works for web uploads now,
+    // and gives BBX Studio a stable contract when it syncs later).
+    const lineageHint = await detectLineageFromExistingTracks(
+      user.value!.id,
+      prefillData?.lineageId || autoGroupName,
+      parsedData.title
+    )
+
     // Merge all metadata sources
     // Priority: Similar track > MP3 ID3 tags > Filename parsing > User's display name > Empty
     selectedFiles.value.push({
@@ -663,7 +746,12 @@ const processFiles = async (files: File[]) => {
         artist: prefillData?.artist || mp3Meta?.artist || parsedData.artist || userDisplayName.value || '',
         
         // Version: Similar track > Filename > Default
-        version: prefillData?.version || parsedData.version || 'v1.0',
+        version: lineageHint?.suggestedVersion || prefillData?.version || parsedData.version || 'v1.0',
+        lineage_id: lineageHint?.lineageRootSoundId || prefillData?.lineageId || autoGroupName,
+        previous_version_id: lineageHint?.previousSoundId || prefillData?.previousVersionId || null,
+        source_app: SOURCE_APP,
+        source_project_id: null,
+        source_project_revision: null,
         
         // Group Name: Auto-generated (user can edit)
         group_name: autoGroupName,
@@ -887,6 +975,12 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
           fileData.metadata.title || fileData.file.name
         )
     
+    const lineageRootValue =
+      fileData.metadata.lineage_id &&
+      /^\d+$/.test(String(fileData.metadata.lineage_id))
+        ? Number(fileData.metadata.lineage_id)
+        : null
+
     // Save to sounds table and get the sound_id
     const { data: soundData, error: dbError } = await supabase
       .from('sounds')
@@ -903,15 +997,27 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         mood: moodArray,
         bpm: fileData.metadata.bpm,
         key: fileData.metadata.key,
-        year: fileData.metadata.year
+        year: fileData.metadata.year,
+        parent_sound_id: fileData.metadata.previous_version_id,
+        lineage_root_sound_id: lineageRootValue,
+        source_client: fileData.metadata.source_app,
+        source_project_ref: fileData.metadata.source_project_id,
+        source_revision_ref: fileData.metadata.source_project_revision
       })
-      .select('id')
+      .select('id, version, parent_sound_id, lineage_root_sound_id')
       .single()
     
     if (dbError) throw dbError
     
     // Store the sound ID for later use (e.g., BPM analysis)
     fileData.uploadedSoundId = soundData.id
+    fileData.metadata.version = soundData.version || fileData.metadata.version
+    if (soundData.parent_sound_id) {
+      fileData.metadata.previous_version_id = soundData.parent_sound_id
+    }
+    if (soundData.lineage_root_sound_id) {
+      fileData.metadata.lineage_id = String(soundData.lineage_root_sound_id)
+    }
     
     // Add to collections if any are selected
     let collectionNames = ''
@@ -952,7 +1058,10 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         artist: fileData.metadata.artist || 'Unknown',
         storage_path: filePath,
         duration: fileData.duration || 0,
-        version: fileData.metadata.version || 'v1.0',
+        version: soundData.version || fileData.metadata.version || 'v1.0',
+        parent_sound_id: soundData.parent_sound_id || fileData.metadata.previous_version_id || null,
+        lineage_root_sound_id: soundData.lineage_root_sound_id || lineageRootValue,
+        source_client: fileData.metadata.source_app,
         genre: fileData.metadata.genre || null,
         bpm: fileData.metadata.bpm,
         collection_names: collectionNames || '-'
