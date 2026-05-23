@@ -43,6 +43,27 @@
         <h2 class="text-xl font-bold mb-4">
           {{ isForgotPassword ? 'Reset Password' : isSignUp ? 'Sign Up' : 'Sign In' }}
         </h2>
+        <div
+          v-if="authError === 'unconfirmed'"
+          class="mb-4 p-3 rounded bg-amber-500/10 border border-amber-500/30 text-sm text-neutral-300"
+        >
+          <p class="mb-2">{{ authErrorMessage }}</p>
+          <button
+            type="button"
+            class="text-amber-400 hover:text-amber-300 underline mr-3"
+            :disabled="isResendingConfirmation"
+            @click="handleResendFromModal"
+          >
+            {{ isResendingConfirmation ? 'Sending...' : 'Resend confirmation email' }}
+          </button>
+          <button
+            type="button"
+            class="text-neutral-400 hover:text-neutral-300 underline"
+            @click="goToCheckEmail"
+          >
+            Check email instructions
+          </button>
+        </div>
         <form @submit.prevent="handleSubmit" class="space-y-4">
           <div>
             <label class="block text-sm font-medium mb-1">Email</label>
@@ -131,10 +152,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, provide, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, provide, nextTick, watch } from 'vue'
 import gsap from 'gsap'
-import { useAuth } from '~/composables/useAuth'
+import { useAuth, isEmailNotConfirmedError } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
+import { setPendingSignupEmail } from '~/utils/authStorage'
 import { usePlayer } from '~/composables/usePlayer'
 import Player from '~/components/Player.vue'
 import Toast from '~/components/Toast.vue'
@@ -241,6 +263,14 @@ const isForgotPassword = ref(false)
 const email = ref('')
 const password = ref('')
 const userType = ref<'creator' | 'audio_pro'>('creator')
+const authError = ref<'unconfirmed' | null>(null)
+const authErrorMessage = ref('')
+const isResendingConfirmation = ref(false)
+
+const clearAuthError = () => {
+  authError.value = null
+  authErrorMessage.value = ''
+}
 
 // Resource management state
 const showModal = ref(false)
@@ -296,19 +326,63 @@ const handleMobileNavToggle = (isOpen: boolean) => {
 const toggleAuthMode = () => {
   isSignUp.value = !isSignUp.value
   isForgotPassword.value = false
+  clearAuthError()
 }
 
 const showForgotPassword = () => {
   isForgotPassword.value = true
   isSignUp.value = false
+  clearAuthError()
 }
 
 const backToSignIn = () => {
   isForgotPassword.value = false
   isSignUp.value = false
+  clearAuthError()
+}
+
+const goToCheckEmail = async () => {
+  const signupEmail = email.value
+  if (signupEmail) {
+    setPendingSignupEmail(signupEmail)
+  }
+  showAuthModal.value = false
+  clearAuthError()
+  await navigateTo('/auth/check-email')
+}
+
+const handleResendFromModal = async () => {
+  if (!email.value || isResendingConfirmation.value) return
+  isResendingConfirmation.value = true
+  try {
+    await auth.resendConfirmation(email.value)
+    showInfo('Confirmation email sent. Check your inbox.', 8000)
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Could not resend email'
+    showError(message)
+  } finally {
+    isResendingConfirmation.value = false
+  }
+}
+
+const openAuthFromQuery = () => {
+  if (!process.client || user.value) return
+  const authMode = route.query.auth
+  if (authMode === 'signup') {
+    openAuthModal('signup')
+    const nextQuery = { ...route.query }
+    delete nextQuery.auth
+    navigateTo({ path: route.path, query: nextQuery }, { replace: true })
+  } else if (authMode === 'signin') {
+    openAuthModal('signin')
+    const nextQuery = { ...route.query }
+    delete nextQuery.auth
+    navigateTo({ path: route.path, query: nextQuery }, { replace: true })
+  }
 }
 
 const handleSubmit = async () => {
+  clearAuthError()
   try {
     if (isForgotPassword.value) {
       await auth.resetPassword(email.value)
@@ -318,31 +392,57 @@ const handleSubmit = async () => {
       password.value = ''
       isForgotPassword.value = false
     } else if (isSignUp.value) {
-      const result = await auth.signUp(email.value, password.value, userType.value)
+      const signupEmail = email.value
+      const result = await auth.signUp(signupEmail, password.value, userType.value)
       if (result.user && !result.session) {
-        // User created but needs email confirmation
-        showInfo('Account created! Please check your email and click the confirmation link to activate your account.', 8000)
-      } else {
-        // User created and signed in (email confirmation disabled)
-        showSuccess('Account created successfully!')
+        setPendingSignupEmail(signupEmail)
+        showAuthModal.value = false
+        email.value = ''
+        password.value = ''
+        userType.value = 'creator'
+        await navigateTo('/auth/check-email')
+        return
       }
+      showSuccess('Account created successfully!')
       showAuthModal.value = false
       email.value = ''
       password.value = ''
       userType.value = 'creator'
     } else {
-      await auth.signIn(email.value, password.value)
-      showSuccess(`Welcome back, ${email.value}!`)
+      const signInEmail = email.value
+      await auth.signIn(signInEmail, password.value)
+      showSuccess(`Welcome back, ${signInEmail}!`)
       showAuthModal.value = false
       email.value = ''
       password.value = ''
+      if (typeof window !== 'undefined') {
+        const redirect = sessionStorage.getItem('auth_redirect')
+        if (redirect) {
+          sessionStorage.removeItem('auth_redirect')
+          await navigateTo(redirect)
+          return
+        }
+      }
     }
   } catch (error: unknown) {
     console.error('Auth error:', error)
+    if (isEmailNotConfirmedError(error)) {
+      authError.value = 'unconfirmed'
+      authErrorMessage.value =
+        error instanceof Error ? error.message : 'Please confirm your email before signing in.'
+      return
+    }
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     showError(`Authentication failed: ${errorMessage}`)
   }
 }
+
+watch(
+  () => route.query.auth,
+  () => {
+    openAuthFromQuery()
+  }
+)
 
 // Auth handlers moved to Nav component
 
@@ -622,6 +722,8 @@ onMounted(async () => {
   } catch (error) {
     console.error('Auth init error:', error)
   }
+
+  openAuthFromQuery()
   
   // Wait for next tick to ensure router is initialized
   await nextTick()

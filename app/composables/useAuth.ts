@@ -1,7 +1,19 @@
 import { ref, computed } from 'vue'
 import { useSupabase } from '~/utils/supabase'
+import { PENDING_USER_TYPE_KEY, setPendingSignupEmail } from '~/utils/authStorage'
 import type { Subscription } from '@supabase/supabase-js'
 import type { AuthUser } from '~/types/auth'
+
+const EMAIL_NOT_CONFIRMED_MESSAGE =
+  'Please check your email and click the confirmation link before signing in.'
+
+export function isEmailNotConfirmedError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  return (
+    error.message === 'Email not confirmed' ||
+    error.message === EMAIL_NOT_CONFIRMED_MESSAGE
+  )
+}
 
 // Create a singleton instance
 let instance: ReturnType<typeof createAuth> | null = null
@@ -74,7 +86,7 @@ const createAuth = () => {
     if (error) {
       // Handle specific email confirmation error
       if (error.message === 'Email not confirmed') {
-        throw new Error('Please check your email and click the confirmation link before signing in.')
+        throw new Error(EMAIL_NOT_CONFIRMED_MESSAGE)
       }
       throw error
     }
@@ -87,7 +99,8 @@ const createAuth = () => {
     // Store userType in localStorage temporarily for confirm.vue to access
     // This avoids passing it in metadata which might cause database trigger issues
     if (typeof window !== 'undefined') {
-      localStorage.setItem('pending_user_type', userType)
+      localStorage.setItem(PENDING_USER_TYPE_KEY, userType)
+      setPendingSignupEmail(email)
     }
     
     const { data, error } = await supabase.auth.signUp({ 
@@ -127,7 +140,7 @@ const createAuth = () => {
           console.log('User profile created successfully with user_type:', userType)
           // Clear localStorage since profile is created
           if (typeof window !== 'undefined') {
-            localStorage.removeItem('pending_user_type')
+            localStorage.removeItem(PENDING_USER_TYPE_KEY)
           }
         }
       } catch (profileErr) {
@@ -146,6 +159,21 @@ const createAuth = () => {
     if (!supabase) throw new Error('Supabase not initialized')
     const { error } = await supabase.auth.signOut()
     if (error) throw error
+  }
+
+  const resendConfirmation = async (email: string) => {
+    if (!supabase) throw new Error('Supabase not initialized')
+    const redirectTo =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/auth/confirm`
+        : 'https://beatbox.studio/auth/confirm'
+    const { data, error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: redirectTo }
+    })
+    if (error) throw error
+    return data
   }
 
   const resetPassword = async (email: string) => {
@@ -201,6 +229,7 @@ const createAuth = () => {
     signIn,
     signUp,
     signOut,
+    resendConfirmation,
     resetPassword,
     updatePassword,
     handleEmailConfirmation,

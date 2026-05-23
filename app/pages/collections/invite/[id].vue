@@ -180,7 +180,10 @@ const handleAccept = async () => {
 }
 
 const goToSignIn = () => {
-  router.push(`/auth/signin?redirect=${encodeURIComponent(route.fullPath)}`)
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('auth_redirect', route.fullPath)
+  }
+  router.push(`/?auth=signin`)
 }
 
 const goHome = () => {

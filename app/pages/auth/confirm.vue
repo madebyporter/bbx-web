@@ -10,12 +10,19 @@
       <div v-else-if="isSuccess" class="text-center">
         <div class="text-green-500 text-4xl mb-4">✓</div>
         <h2 class="text-xl font-bold text-neutral-200 mb-2">Email Confirmed!</h2>
-        <p class="text-neutral-400 mb-4">Your email has been successfully confirmed. You can now sign in to your account.</p>
+        <p class="text-neutral-400 mb-4">
+          <template v-if="isSignedIn">
+            You're all set. Welcome to Beatbox Studio.
+          </template>
+          <template v-else>
+            Your email has been successfully confirmed. You can now sign in to your account.
+          </template>
+        </p>
         <button 
-          @click="goToSignIn"
+          @click="finishConfirmation"
           class="bg-amber-500 text-black px-4 py-2 rounded hover:bg-amber-600 transition-colors"
         >
-          Sign In
+          {{ isSignedIn ? 'Continue to Beatbox' : 'Sign In' }}
         </button>
       </div>
       
@@ -24,7 +31,7 @@
         <h2 class="text-xl font-bold text-neutral-200 mb-2">Confirmation Failed</h2>
         <p class="text-neutral-400 mb-4">{{ errorMessage }}</p>
         <button 
-          @click="goToSignIn"
+          @click="finishConfirmation"
           class="bg-neutral-600 text-neutral-200 px-4 py-2 rounded hover:bg-neutral-500 transition-colors"
         >
           Try Again
@@ -38,6 +45,7 @@
 import { ref, onMounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
+import { PENDING_USER_TYPE_KEY, clearPendingSignupEmail } from '~/utils/authStorage'
 
 const auth = useAuth()
 const { supabase } = useSupabase()
@@ -45,7 +53,15 @@ const { supabase } = useSupabase()
 const isLoading = ref(true)
 const isSuccess = ref(false)
 const isError = ref(false)
+const isSignedIn = ref(false)
 const errorMessage = ref('')
+
+const setSignedInFromSession = (hasSession: boolean) => {
+  isSignedIn.value = hasSession
+  if (hasSession) {
+    clearPendingSignupEmail()
+  }
+}
 
 onMounted(async () => {
   try {
@@ -67,7 +83,7 @@ onMounted(async () => {
       
       if (data.session?.user) {
         // Get user_type from localStorage (set during signup) or default to 'creator'
-        const userType = (typeof window !== 'undefined' && localStorage.getItem('pending_user_type')) || 
+        const userType = (typeof window !== 'undefined' && localStorage.getItem(PENDING_USER_TYPE_KEY)) || 
                         data.session.user.user_metadata?.user_type || 
                         'creator'
         try {
@@ -94,7 +110,7 @@ onMounted(async () => {
             console.log('User type set to:', userType)
             // Clear localStorage since profile is created
             if (typeof window !== 'undefined') {
-              localStorage.removeItem('pending_user_type')
+              localStorage.removeItem(PENDING_USER_TYPE_KEY)
             }
           }
         } catch (profileErr) {
@@ -102,6 +118,7 @@ onMounted(async () => {
           // Don't fail the confirmation if profile creation fails
         }
         
+        setSignedInFromSession(!!data.session)
         isSuccess.value = true
         console.log('Email confirmed successfully:', data.session.user.email)
       }
@@ -112,7 +129,7 @@ onMounted(async () => {
       
       if (session?.user) {
         // Get user_type from localStorage (set during signup) or default to 'creator'
-        const userType = (typeof window !== 'undefined' && localStorage.getItem('pending_user_type')) || 
+        const userType = (typeof window !== 'undefined' && localStorage.getItem(PENDING_USER_TYPE_KEY)) || 
                         session.user.user_metadata?.user_type || 
                         'creator'
         try {
@@ -146,7 +163,7 @@ onMounted(async () => {
               console.log('User type set to:', userType)
               // Clear localStorage since profile is created
               if (typeof window !== 'undefined') {
-                localStorage.removeItem('pending_user_type')
+                localStorage.removeItem(PENDING_USER_TYPE_KEY)
               }
             }
           } else {
@@ -168,6 +185,7 @@ onMounted(async () => {
           console.error('Error checking/creating user profile:', profileErr)
         }
         
+        setSignedInFromSession(true)
         isSuccess.value = true
       } else {
         throw new Error('No valid confirmation token found')
@@ -182,9 +200,12 @@ onMounted(async () => {
   }
 })
 
-const goToSignIn = () => {
-  // Clear URL parameters and redirect to home
+const finishConfirmation = () => {
   window.history.replaceState({}, document.title, '/')
-  navigateTo('/')
+  if (isSignedIn.value) {
+    navigateTo('/')
+    return
+  }
+  navigateTo('/?auth=signin')
 }
 </script>

@@ -48,4 +48,9 @@
 
 # Function configuration for download-sample
 [functions."download-sample"]
-  timeout = 60  # 60 seconds for audio processing 
+  timeout = 60  # 60 seconds for audio processing
+
+# Daily at 10:00 UTC — requires env in Netlify UI:
+# SUPABASE_SERVICE_KEY, RESEND_API_KEY, CRON_SECRET, RESEND_FROM_EMAIL
+[functions."send-onboarding-reminders"]
+  schedule = "0 10 * * *" 
