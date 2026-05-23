@@ -101,9 +101,9 @@
             <div class="flex flex-wrap gap-2 p-4 bg-neutral-900 ring-1 ring-neutral-800 rounded-lg min-h-[56px]">
               <div v-for="tag in selectedTags" :key="tag" class="tag">
                 {{ tag }}
-                <button @click="removeTag(tag)" class="hover:text-neutral-600 cursor-pointer">
+                <Button variant="ghost" class="!p-0 hover:text-neutral-600" @click="removeTag(tag)">
                   ×
-                </button>
+                </Button>
               </div>
 
               <input v-model="tagInput" type="text" class="flex-grow bg-transparent outline-none"
@@ -254,12 +254,12 @@
 
     <!-- CTA footer: secondary left, main right; row with wrap on mobile; buttons fill width -->
     <div class="flex flex-row flex-wrap justify-between items-center gap-4 p-4 pb-0 border-t border-neutral-800">
-      <button @click="showClearAllConfirm = true" class="w-full text-neutral-500 hover:text-neutral-700 cursor-pointer md:flex-1 md:min-w-0">
+      <Button variant="link" class="w-full text-neutral-500 hover:text-neutral-700 no-underline md:flex-1 md:min-w-0 justify-center md:justify-start" @click="showClearAllConfirm = true">
         Clear All
-      </button>
-      <button @click="applyFiltersAndSort" class="btn apply-filters-btn w-full md:flex-1 md:min-w-0 md:ml-0 ml-auto">
+      </Button>
+      <Button variant="secondary" class="btn apply-filters-btn w-full md:flex-1 md:min-w-0 md:ml-0 ml-auto" @click="applyFiltersAndSort">
         Apply Filters & Sort
-      </button>
+      </Button>
     </div>
 
     <!-- Clear All confirmation (verb labels: Keep All / Clear All) -->

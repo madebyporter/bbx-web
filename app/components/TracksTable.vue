@@ -19,10 +19,9 @@
           : 'This user hasn\'t uploaded any tracks yet.'
           }}
         </p>
-        <button v-if="isOwnProfile && profileUserType === 'audio_pro'" @click="handleUploadClick"
-          class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-neutral-900 font-medium rounded transition-colors cursor-pointer">
+        <Button v-if="isOwnProfile && profileUserType === 'audio_pro'" @click="handleUploadClick">
           Upload Music
-        </button>
+        </Button>
       </div>
     </div>
 
@@ -44,9 +43,13 @@
               : 'trackGrid-no-collection'
         ]">
           <div class="px-2 flex items-center justify-center">
-            <button v-if="isOwnProfile" @click="handleHeaderCheckboxClick"
-              class="text-neutral-500 hover:text-neutral-300 cursor-pointer"
-              :title="bulkSelectionMode ? (clickCount === 2 ? 'Deselect all' : 'Select all') : 'Select tracks'">
+            <Button
+              v-if="isOwnProfile"
+              variant="ghost"
+              class="!p-0 text-neutral-500 hover:text-neutral-300"
+              :title="bulkSelectionMode ? (clickCount === 2 ? 'Deselect all' : 'Select all') : 'Select tracks'"
+              @click="handleHeaderCheckboxClick"
+            >
               <svg v-if="bulkSelectionMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <rect v-if="clickCount !== 2" x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
                 <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -55,7 +58,7 @@
               <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
               </svg>
-            </button>
+            </Button>
           </div>
           <div>Title</div>
           <div>Artist</div>
@@ -69,10 +72,15 @@
             'flex items-center justify-start',
             isOwnProfile ? 'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[80px]' : ''
           ]">
-            <button v-if="isOwnProfile && hasSelections" @click="showBulkActionsDrawer = true"
-              class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded cursor-pointer whitespace-nowrap">
+            <Button
+              v-if="isOwnProfile && hasSelections"
+              variant="primary"
+              size="sm"
+              class="!px-2 !py-0.5 !bg-amber-400 hover:!bg-amber-500 text-neutral-900 text-xs whitespace-nowrap"
+              @click="showBulkActionsDrawer = true"
+            >
               Bulk ({{ selectedTrackIds.size }})
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -89,48 +97,64 @@
         <div class="px-2 flex items-center justify-center gap-1">
           <!-- Bulk Selection Mode: Show Checkbox -->
           <template v-if="bulkSelectionMode">
-            <button @click="toggleTrackSelection(track.id)"
-              class="text-neutral-400 hover:text-neutral-200 cursor-pointer">
+            <Button variant="ghost" class="!p-0 text-neutral-400 hover:text-neutral-200" @click="toggleTrackSelection(track.id)">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <rect v-if="!selectedTrackIds.has(track.id)" x="4" y="4" width="16" height="16" rx="2"
                   stroke-width="2" />
                 <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-            </button>
+            </Button>
           </template>
 
           <!-- Stem Player Mode: Show Mute/Solo -->
           <template v-else-if="isStemPlayerActive">
-            <button @click="toggleMute(track.id)" :class="[
-                'px-2 py-1 text-xs rounded transition-colors cursor-pointer',
+            <Button
+              variant="ghost"
+              size="sm"
+              :class="[
+                '!px-2 !py-1 text-xs rounded transition-colors',
                 getStemTrack(track.id)?.isMuted
                   ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
                   : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-              ]" :title="getStemTrack(track.id)?.isMuted ? 'Unmute' : 'Mute'">
+              ]"
+              :title="getStemTrack(track.id)?.isMuted ? 'Unmute' : 'Mute'"
+              @click="toggleMute(track.id)"
+            >
               M
-            </button>
-            <button @click="toggleSolo(track.id)" :class="[
-                'px-2 py-1 text-xs rounded transition-colors cursor-pointer',
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              :class="[
+                '!px-2 !py-1 text-xs rounded transition-colors',
                 getStemTrack(track.id)?.isSolo
                   ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
                   : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-              ]" :title="getStemTrack(track.id)?.isSolo ? 'Unsolo' : 'Solo'">
+              ]"
+              :title="getStemTrack(track.id)?.isSolo ? 'Unsolo' : 'Solo'"
+              @click="toggleSolo(track.id)"
+            >
               S
-            </button>
+            </Button>
           </template>
 
           <!-- Normal Mode: Show Play Button -->
-          <button v-else @click="handlePlayClick(track, index)"
-            :class="['text-neutral-400 hover:text-white cursor-pointer', isCurrentlyPlaying(track) ? 'text-orange-400' : '']"
-            :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'">
+          <Button
+            v-else
+            variant="ghost"
+            class="!p-0"
+            :class="['text-neutral-400 hover:text-white', isCurrentlyPlaying(track) ? 'text-orange-400' : '']"
+            :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'"
+            @click="handlePlayClick(track, index)"
+          >
             <svg v-if="isCurrentlyPlaying(track)" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
             </svg>
             <svg v-else class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
-          </button>
+          </Button>
         </div>
         <div class="overflow-hidden">
           <NuxtLink :to="`/u/${getTrackOwnerUsername(track)}/t/${generateTrackSlug(track)}`"
@@ -158,14 +182,12 @@
               class="px-2 py-1 text-xs rounded text-neutral-200 outline-none bg-neutral-800 border border-neutral-700 min-w-[80px] w-auto"
               placeholder="Collection name" @keyup.enter="saveCollection" @keyup.esc="cancelEditingCollection"
               @input="adjustInputWidth" />
-            <button @click="cancelEditingCollection"
-              class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer flex-shrink-0" title="Cancel">
+            <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800 flex-shrink-0" title="Cancel" @click="cancelEditingCollection">
               <Xmark class="w-[10px] h-[10px]" />
-            </button>
-            <button @click="saveCollection"
-              class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer flex-shrink-0" title="Save">
+            </Button>
+            <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800 flex-shrink-0" title="Save" @click="saveCollection">
               <Check class="w-[10px] h-[10px]" />
-            </button>
+            </Button>
           </div>
           <!-- Existing Collections -->
           <template v-else>
@@ -174,11 +196,14 @@
               :owner-username="getTrackOwnerUsername(track)"
             >
               <template #empty>
-                <button @click="startEditingCollection(track.id)"
-                  class="p-1 bg-neutral-800 rounded hover:bg-neutral-700 transition-colors cursor-pointer border border-neutral-700"
-                  title="Add to collection">
+                <Button
+                  variant="ghost"
+                  class="!p-1 bg-neutral-800 rounded hover:bg-neutral-700 border border-neutral-700"
+                  title="Add to collection"
+                  @click="startEditingCollection(track.id)"
+                >
                   <Plus class="w-2.5 h-2.5 max-w-2.5 max-h-2.5" />
-                </button>
+                </Button>
               </template>
             </CollectionTagsCell>
           </template>
@@ -205,34 +230,51 @@
           isCurrentlyPlaying(track) ? '!bg-neutral-800' : ''
         ]">
           <!-- Edit button for audio_pro owners -->
-          <button v-if="isOwnProfile && profileUserType === 'audio_pro'" @click="$emit('edit-track', track)"
-            class="text-neutral-500 hover:text-amber-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5"
-            title="Edit track">
+          <Button
+            v-if="isOwnProfile && profileUserType === 'audio_pro'"
+            variant="ghost"
+            size="sm"
+            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2 !py-0.5"
+            title="Edit track"
+            @click="$emit('edit-track', track)"
+          >
             Edit
-          </button>
+          </Button>
           <!-- Add button for creators viewing audio_pro profiles -->
-          <button
+          <Button
             v-else-if="!isOwnProfile && viewerUserType === 'creator' && profileUserType === 'audio_pro' && !shortlistedTrackIds.has(track.id)"
-            @click="handleAddToShortlist(track.id)" :disabled="shortlistLoading.has(track.id)"
-            class="text-neutral-500 hover:text-green-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            :title="shortlistLoading.has(track.id) ? 'Adding...' : 'Add to shortlist'">
-            {{ shortlistLoading.has(track.id) ? 'Adding...' : 'Add' }}
-          </button>
-          <!-- Already added state -->
-          <button
-            v-else-if="!isOwnProfile && viewerUserType === 'creator' && profileUserType === 'audio_pro' && shortlistedTrackIds.has(track.id)"
-            disabled
-            class="text-green-400 text-sm cursor-not-allowed bg-neutral-800/50 rounded-md p-2 py-0.5 opacity-50"
-            title="Already in shortlist">
-            Added
-          </button>
-          <!-- Remove button for creators viewing their own shortlist -->
-          <button v-else-if="isOwnProfile && viewerUserType === 'creator'" @click="handleRemoveFromShortlist(track.id)"
+            variant="ghost"
+            size="sm"
+            class="text-neutral-500 hover:text-green-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2 !py-0.5"
             :disabled="shortlistLoading.has(track.id)"
-            class="text-neutral-500 hover:text-red-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            :title="shortlistLoading.has(track.id) ? 'Removing...' : 'Remove from shortlist'">
+            :title="shortlistLoading.has(track.id) ? 'Adding...' : 'Add to shortlist'"
+            @click="handleAddToShortlist(track.id)"
+          >
+            {{ shortlistLoading.has(track.id) ? 'Adding...' : 'Add' }}
+          </Button>
+          <!-- Already added state -->
+          <Button
+            v-else-if="!isOwnProfile && viewerUserType === 'creator' && profileUserType === 'audio_pro' && shortlistedTrackIds.has(track.id)"
+            variant="ghost"
+            size="sm"
+            class="text-green-400 bg-neutral-800/50 rounded-md !p-2 !py-0.5 opacity-50 cursor-not-allowed"
+            disabled
+            title="Already in shortlist"
+          >
+            Added
+          </Button>
+          <!-- Remove button for creators viewing their own shortlist -->
+          <Button
+            v-else-if="isOwnProfile && viewerUserType === 'creator'"
+            variant="ghost"
+            size="sm"
+            class="text-neutral-500 hover:text-red-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2 !py-0.5"
+            :disabled="shortlistLoading.has(track.id)"
+            :title="shortlistLoading.has(track.id) ? 'Removing...' : 'Remove from shortlist'"
+            @click="handleRemoveFromShortlist(track.id)"
+          >
             {{ shortlistLoading.has(track.id) ? 'Removing...' : 'Remove' }}
-          </button>
+          </Button>
         </div>
         </div>
       </div>

@@ -34,12 +34,12 @@
     <div v-if="showAuthModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       @click.self="showAuthModal = false">
       <div class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 p-6 rounded-lg w-96 relative">
-        <button @click="showAuthModal = false" class="absolute top-4 right-4 text-neutral-400 hover:text-neutral-300">
+        <Button variant="ghost" class="absolute top-4 right-4" @click="showAuthModal = false">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M6.75 17.25L12 12L17.25 17.25M17.25 6.75L12 12L6.75 6.75" stroke="currentColor" stroke-width="1.5"
               stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-        </button>
+        </Button>
         <h2 class="text-xl font-bold mb-4">
           {{ isForgotPassword ? 'Reset Password' : isSignUp ? 'Sign Up' : 'Sign In' }}
         </h2>
@@ -48,21 +48,18 @@
           class="mb-4 p-3 rounded bg-amber-500/10 border border-amber-500/30 text-sm text-neutral-300"
         >
           <p class="mb-2">{{ authErrorMessage }}</p>
-          <button
+          <Button
+            variant="link"
             type="button"
-            class="text-amber-400 hover:text-amber-300 underline mr-3"
+            class="text-amber-400 hover:text-amber-300 mr-3"
             :disabled="isResendingConfirmation"
             @click="handleResendFromModal"
           >
             {{ isResendingConfirmation ? 'Sending...' : 'Resend confirmation email' }}
-          </button>
-          <button
-            type="button"
-            class="text-neutral-400 hover:text-neutral-300 underline"
-            @click="goToCheckEmail"
-          >
+          </Button>
+          <Button variant="link" type="button" @click="goToCheckEmail">
             Check email instructions
-          </button>
+          </Button>
         </div>
         <form @submit.prevent="handleSubmit" class="space-y-4">
           <div>
@@ -87,21 +84,20 @@
             Enter your email address and we'll send you a link to reset your password.
           </div>
           <div v-if="!isForgotPassword && !isSignUp" class="flex justify-end">
-            <button type="button" @click="showForgotPassword" class="text-xs text-neutral-400 hover:text-neutral-300">
+            <Button variant="link" type="button" class="text-xs" @click="showForgotPassword">
               Forgot password?
-            </button>
+            </Button>
           </div>
           <div class="flex justify-between items-center">
-            <button type="submit"
-              class="bg-amber-500 text-black px-4 py-2 rounded hover:bg-amber-600 transition-colors">
+            <Button type="submit">
               {{ isForgotPassword ? 'Send Reset Link' : isSignUp ? 'Sign Up' : 'Sign In' }}
-            </button>
-            <button v-if="isForgotPassword" type="button" @click="backToSignIn" class="text-sm text-neutral-400 hover:text-neutral-300">
+            </Button>
+            <Button v-if="isForgotPassword" variant="link" type="button" class="text-sm" @click="backToSignIn">
               Back to Sign In
-            </button>
-            <button v-else type="button" @click="toggleAuthMode" class="text-sm text-neutral-400 hover:text-neutral-300">
+            </Button>
+            <Button v-else variant="link" type="button" class="text-sm" @click="toggleAuthMode">
               {{ isSignUp ? 'Already have an account?' : "Don't have an account?" }}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

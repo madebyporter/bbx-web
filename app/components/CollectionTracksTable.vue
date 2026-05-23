@@ -10,13 +10,14 @@
         <p class="flex flex-wrap items-center gap-x-1 gap-y-1">
           <span>Remove:</span>
           <template v-for="(chip, index) in activeFilterChips" :key="chip.id">
-            <button
+            <Button
+              variant="link"
               type="button"
+              class="text-amber-400 hover:text-amber-300"
               @click="chip.remove()"
-              class="text-amber-400 hover:text-amber-300 underline cursor-pointer"
             >
               {{ chip.label }}
-            </button>
+            </Button>
             <span v-if="index < activeFilterChips.length - 1">, </span>
           </template>
         </p>
@@ -49,11 +50,12 @@
               : (user ? 'collectionTrackGrid' : 'collectionTrackGrid-loggedOut')
           ]">
           <div class="px-2 flex items-center justify-center">
-            <button
+            <Button
               v-if="isOwnProfile"
-              @click="handleHeaderCheckboxClick"
-              class="text-neutral-500 hover:text-neutral-300 cursor-pointer"
+              variant="ghost"
+              class="!p-0 text-neutral-500 hover:text-neutral-300"
               :title="bulkSelectionMode ? (clickCount === 2 ? 'Deselect all' : 'Select all') : 'Select tracks'"
+              @click="handleHeaderCheckboxClick"
             >
               <svg v-if="bulkSelectionMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <rect v-if="clickCount !== 2" x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
@@ -62,7 +64,7 @@
               <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
               </svg>
-            </button>
+            </Button>
           </div>
           <div>Title</div>
           <div>Artist</div>
@@ -76,13 +78,15 @@
             'flex items-center justify-start',
             'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[80px]'
           ]">
-            <button
+            <Button
               v-if="hasSelections"
+              variant="primary"
+              size="sm"
+              class="!px-2 !py-0.5 !bg-amber-400 hover:!bg-amber-500 text-neutral-900 text-xs whitespace-nowrap"
               @click="showBulkActionsDrawer = true"
-              class="px-2 py-0.5 bg-amber-400 hover:bg-amber-500 text-neutral-900 text-xs font-medium rounded cursor-pointer whitespace-nowrap"
             >
               Bulk ({{ selectedTrackIds.size }})
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -97,28 +101,30 @@
         <div class="px-2 flex items-center justify-center">
           <!-- Bulk Selection Mode: Show Checkbox -->
           <template v-if="bulkSelectionMode">
-            <button
-              @click="toggleTrackSelection(track.id)"
-              class="text-neutral-400 hover:text-neutral-200 cursor-pointer"
-            >
+            <Button variant="ghost" class="!p-0 text-neutral-400 hover:text-neutral-200" @click="toggleTrackSelection(track.id)">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <rect v-if="!selectedTrackIds.has(track.id)" x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
                 <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-            </button>
+            </Button>
           </template>
           
           <!-- Normal Mode: Show Play Button -->
-          <button v-else @click="handlePlayClick(track, index)"
-            :class="['text-neutral-400 hover:text-white cursor-pointer'] + (isCurrentlyPlaying(track) ? ' text-orange-400' : '')"
-            :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'">
+          <Button
+            v-else
+            variant="ghost"
+            class="!p-0"
+            :class="['text-neutral-400 hover:text-white'] + (isCurrentlyPlaying(track) ? ' text-orange-400' : '')"
+            :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'"
+            @click="handlePlayClick(track, index)"
+          >
             <svg v-if="isCurrentlyPlaying(track)" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
             </svg>
             <svg v-else class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
-          </button>
+          </Button>
         </div>
         <div class="overflow-hidden">
           <NuxtLink :to="`/u/${getTrackOwnerUsername(track)}/t/${generateTrackSlug(track)}`"
@@ -158,21 +164,27 @@
           isCurrentlyPlaying(track) ? '!bg-neutral-800' : ''
         ]">
           <!-- Edit button for audio_pro owners -->
-          <button 
+          <Button
             v-if="profileUserType === 'audio_pro'"
-            @click="$emit('edit-track', track)" 
-            class="text-neutral-500 hover:text-amber-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5"
-            title="Edit track">
+            variant="ghost"
+            size="sm"
+            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2 !py-0.5"
+            title="Edit track"
+            @click="$emit('edit-track', track)"
+          >
             Edit
-          </button>
+          </Button>
           <!-- Remove button for creators (remove from collection) -->
-          <button 
+          <Button
             v-else-if="profileUserType === 'creator' && collectionId"
-            @click="handleRemoveFromCollection(track.id)" 
-            class="text-neutral-500 hover:text-red-300 text-sm cursor-pointer bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md p-2 py-0.5"
-            title="Remove from collection">
+            variant="ghost"
+            size="sm"
+            class="text-neutral-500 hover:text-red-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2 !py-0.5"
+            title="Remove from collection"
+            @click="handleRemoveFromCollection(track.id)"
+          >
             Remove
-          </button>
+          </Button>
         </div>
         </div>
       </div>

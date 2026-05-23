@@ -10,50 +10,57 @@
       <p class="text-sm text-neutral-500 hidden md:block">
         {{ count }} {{ count === 1 ? itemLabel : itemLabel + 's' }}
       </p>
-      <button 
+      <Button
         v-if="filterContext"
-        @click="emit('open-filter-sort')"
+        variant="secondary"
         class="btn px-3! py-1.5! text-sm"
+        @click="emit('open-filter-sort')"
       >
         Filter & Sort
-      </button>
-      <button 
+      </Button>
+      <Button
         v-if="showSettingsButton"
-        @click="emit('open-settings')"
+        variant="secondary"
         class="btn px-3! py-1.5! text-sm"
+        @click="emit('open-settings')"
       >
         Settings
-      </button>
+      </Button>
       <div v-if="isOwnProfile && showViewModeSelector" class="relative">
-        <button
+        <Button
+          variant="ghost"
+          class="!px-3 !py-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded gap-2"
           @click="emit('update:showViewMenu', !showViewMenu)"
-          class="px-3 py-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded flex items-center gap-2 cursor-pointer"
         >
           {{ viewMode === 'final' ? 'Show Final' : 'Show All Versions' }}
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
           </svg>
-        </button>
+        </Button>
         <div
           v-if="showViewMenu"
           class="absolute right-0 mt-2 w-56 bg-neutral-800 border border-neutral-700 rounded shadow-lg z-50"
         >
-          <button
-            @click="handleViewModeChange('final')"
-            class="w-full px-4 py-2 text-left text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
+          <Button
+            variant="ghost"
+            full-width
+            class="!px-4 !py-2 text-left text-sm hover:bg-neutral-700 justify-start rounded-none"
             :class="{ 'bg-neutral-700': viewMode === 'final' }"
+            @click="handleViewModeChange('final')"
           >
             Show Final
             <p class="text-xs text-neutral-500 mt-1">Curated selection only</p>
-          </button>
-          <button
-            @click="handleViewModeChange('all')"
-            class="w-full px-4 py-2 text-left text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
+          </Button>
+          <Button
+            variant="ghost"
+            full-width
+            class="!px-4 !py-2 text-left text-sm hover:bg-neutral-700 justify-start rounded-none"
             :class="{ 'bg-neutral-700': viewMode === 'all' }"
+            @click="handleViewModeChange('all')"
           >
             Show All Versions
             <p class="text-xs text-neutral-500 mt-1">Include hidden tracks</p>
-          </button>
+          </Button>
         </div>
       </div>
     </div>

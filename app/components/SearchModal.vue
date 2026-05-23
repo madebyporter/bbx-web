@@ -41,13 +41,15 @@
                       <div class="text-xs text-neutral-500 mt-1">{{ getTypeLabel(result.type) }}</div>
                     </div>
                     <div class="flex gap-2 flex-shrink-0">
-                      <button
+                      <Button
                         v-if="hasDetailPage(result)"
+                        variant="link"
+                        size="sm"
+                        class="!px-2 !py-1 text-xs text-amber-400 hover:text-amber-300"
                         @click.stop="navigateToDetail(result)"
-                        class="text-xs px-2 py-1 text-amber-400 hover:text-amber-300 hover:underline"
                       >
                         View Detail
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -82,19 +84,23 @@
                       <div class="text-xs text-neutral-500 mt-1">{{ getTypeLabel(result.type) }}</div>
                     </div>
                     <div class="flex gap-2 flex-shrink-0">
-                      <button
+                      <Button
+                        variant="link"
+                        size="sm"
+                        class="!px-2 !py-1 text-xs text-amber-400 hover:text-amber-300"
                         @click.stop="scrollToItem(result)"
-                        class="text-xs px-2 py-1 text-amber-400 hover:text-amber-300 hover:underline"
                       >
                         Scroll to
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         v-if="hasDetailPage(result)"
+                        variant="link"
+                        size="sm"
+                        class="!px-2 !py-1 text-xs text-amber-400 hover:text-amber-300"
                         @click.stop="navigateToDetail(result)"
-                        class="text-xs px-2 py-1 text-amber-400 hover:text-amber-300 hover:underline"
                       >
                         View Detail
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>

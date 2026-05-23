@@ -8,9 +8,13 @@
     <div v-if="showSuccessMessage" class="h-full flex flex-col items-center justify-center text-center gap-4">
       <h2 class="text-xl">Upload successful!</h2>
       <p class="text-neutral-600">{{ uploadedCount }} track(s) uploaded to your library.</p>
-      <button @click="resetAndShowForm" class="text-amber-300 hover:text-amber-400 underline mt-4 cursor-pointer">
+      <Button
+        variant="link"
+        class="mt-4 text-amber-300 hover:text-amber-400"
+        @click="resetAndShowForm"
+      >
         Upload more tracks
-      </button>
+      </Button>
     </div>
 
     <!-- Upload Form -->
@@ -29,8 +33,7 @@
 
               <div class="grow flex flex-col gap-1">
                 <p class="text-base font-medium">{{ isDragging ? 'Drop files here' : 'Drag & drop MP3 or M4A files here' }}</p>
-                <p class="text-sm text-neutral-500">or <button type="button" @click="$refs.fileInput.click()"
-                    class="text-amber-400 hover:text-amber-300 cursor-pointer">click to browse</button></p>
+                <p class="text-sm text-neutral-500">or <Button type="button" variant="link" class="text-amber-400 hover:text-amber-300 p-0" @click="fileInput?.click()">click to browse</Button></p>
                 <p class="text-xs text-neutral-600">Maximum 50MB per file</p>
               </div>
             </div>
@@ -57,12 +60,18 @@
             <div v-for="(file, index) in selectedFiles" :key="index" class="border border-neutral-800 bg-neutral-800 rounded-lg *:p-4">
               <div class="flex items-center justify-between bg-neutral-900/30">
                 <span class="font-medium text-sm truncate flex-1">{{ file.file.name }}</span>
-                <button type="button" @click="removeFile(index)" class="cursor-pointer text-red-500 hover:text-red-400 ml-2"
-                  :disabled="isUploading">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  class="p-0 min-w-0 text-red-500 hover:text-red-400 ml-2"
+                  :disabled="isUploading"
+                  @click="removeFile(index)"
+                >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                </button>
+                </Button>
               </div>
 
               <!-- Upload Progress -->
@@ -203,17 +212,14 @@
 
         <!-- Upload Button -->
         <div class="sticky bottom-0 flex justify-end bg-neutral-900">
-          <button 
-            type="submit" 
-            :class="[
-              'btn w-full',
-              selectedFiles.length === 0 
-                ? 'bg-neutral-500 text-neutral-700 cursor-not-allowed' 
-                : 'bg-amber-300 hover:bg-amber-400 text-neutral-900'
-            ]"
-            :disabled="isUploading || selectedFiles.length === 0">
+          <Button
+            type="submit"
+            full-width
+            class="btn w-full"
+            :disabled="isUploading || selectedFiles.length === 0"
+          >
             {{ uploadButtonText }}
-          </button>
+          </Button>
         </div>
 
         <!-- Global Errors -->

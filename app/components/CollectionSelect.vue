@@ -19,13 +19,14 @@
           class="inline-flex items-center gap-1 px-2 py-1 bg-neutral-700 rounded text-xs text-neutral-200"
         >
           {{ collection.name }}
-          <button 
-            @click.stop="removeCollection(collection.id)"
-            class="hover:text-red-400 text-neutral-400"
+          <Button
+            variant="ghost"
+            class="!p-0 hover:text-red-400 text-neutral-400"
             :disabled="disabled"
+            @click.stop="removeCollection(collection.id)"
           >
             ×
-          </button>
+          </Button>
         </span>
       </div>
       
@@ -67,16 +68,18 @@
       </div>
       
       <!-- Create button when no match -->
-      <button 
-        v-if="showCreateButton" 
+      <Button
+        v-if="showCreateButton"
+        variant="ghost"
+        full-width
+        class="!p-2 text-left text-amber-400 hover:bg-amber-600/10 border-t border-neutral-700 rounded-none justify-start gap-2"
         @click="handleCreate"
-        class="w-full text-left p-2 text-amber-400 hover:bg-amber-600/10 border-t border-neutral-700 flex items-center gap-2 cursor-pointer"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
         </svg>
         Create "{{ searchQuery }}"
-      </button>
+      </Button>
       
       <!-- No collections message -->
       <div v-if="filteredCollections.length === 0 && !showCreateButton" class="p-3 text-neutral-500 text-center text-sm">

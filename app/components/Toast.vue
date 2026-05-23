@@ -63,16 +63,17 @@
         </div>
         
         <!-- Close button (only for non-processing toasts or errors) -->
-        <button
+        <Button
           v-if="toast.type !== 'processing' || toast.type === 'error'"
-          @click="removeToast(toast.id)"
-          class="flex-shrink-0 hover:opacity-70 transition-opacity"
+          variant="ghost"
+          class="!p-0 flex-shrink-0 hover:opacity-70"
           :aria-label="'Close notification'"
+          @click="removeToast(toast.id)"
         >
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
-        </button>
+        </Button>
       </div>
     </TransitionGroup>
   </div>

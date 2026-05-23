@@ -8,14 +8,19 @@
       </div>
       
       <!-- Play All Button -->
-      <button v-else @click="handlePlayAll" :disabled="!isLoaded"
-        class="flex items-center gap-2 px-4 py-2 bg-white hover:bg-neutral-100 rounded-sm text-black text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        title="Play all tracks simultaneously">
+      <Button
+        v-else
+        variant="ghost"
+        class="gap-2 bg-white hover:bg-neutral-100 rounded-sm text-black text-sm font-medium disabled:opacity-50"
+        :disabled="!isLoaded"
+        title="Play all tracks simultaneously"
+        @click="handlePlayAll"
+      >
         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
           <path d="M8 5v14l11-7z" />
         </svg>
         Play All Stems
-      </button>
+      </Button>
     </div>
 
     <!-- Expanded State: Full Controls -->
@@ -23,16 +28,20 @@
       <!-- Master Controls -->
       <div class="p-4 flex items-center gap-4">
       <!-- Play/Pause -->
-      <button @click="togglePlayPause" :disabled="!isLoaded"
-        class="flex justify-center items-center w-10 h-10 bg-white hover:bg-neutral-100 rounded-sm text-black disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-        :title="isPlaying ? 'Pause All' : 'Play All'">
+      <Button
+        variant="ghost"
+        class="!p-0 w-10 h-10 bg-white hover:bg-neutral-100 rounded-sm text-black disabled:opacity-30"
+        :disabled="!isLoaded"
+        :title="isPlaying ? 'Pause All' : 'Play All'"
+        @click="togglePlayPause"
+      >
         <svg v-if="isPlaying" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
           <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
         </svg>
         <svg v-else class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
           <path d="M8 5v14l11-7z" />
         </svg>
-      </button>
+      </Button>
 
       <!-- Timeline -->
       <div class="flex-1 flex items-center gap-2">

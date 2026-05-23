@@ -40,6 +40,23 @@
         </div>
       </div>
 
+      <!-- User Type Field -->
+      <div class="flex flex-col gap-3">
+        <label class="font-semibold text-neutral-200">User Type</label>
+        <div class="flex flex-col gap-2">
+          <select
+            v-model="userType"
+            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
+          >
+            <option value="creator">Creator (content creator, songwriter, music artist)</option>
+            <option value="audio_pro">Audio Pro (producer, engineer, etc.)</option>
+          </select>
+          <p class="text-xs text-neutral-500">
+            Your user type determines how your profile works — creators shortlist tracks, audio pros upload and manage music.
+          </p>
+        </div>
+      </div>
+
       <!-- Email Field -->
       <div class="flex flex-col gap-3">
         <label class="font-semibold text-neutral-200">Email</label>
@@ -65,20 +82,20 @@
 
     <!-- Footer Actions -->
     <div class="flex flex-row gap-3 justify-end border-t border-neutral-800 pt-4 mt-auto">
-      <button
-        @click="handleCancel"
+      <Button
+        variant="ghost"
+        class="px-4 py-2 border border-neutral-700 hover:border-neutral-600 text-neutral-300 hover:text-white bg-transparent hover:bg-transparent"
         :disabled="isSaving"
-        class="px-4 py-2 border border-neutral-700 hover:border-neutral-600 text-neutral-300 hover:text-white font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        @click="handleCancel"
       >
         Cancel
-      </button>
-      <button
-        @click="handleSave"
+      </Button>
+      <Button
         :disabled="isSaving || !hasChanges"
-        class="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-neutral-900 font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        @click="handleSave"
       >
         {{ isSaving ? 'Saving...' : 'Save Changes' }}
-      </button>
+      </Button>
     </div>
   </MasterDrawer>
 </template>
@@ -109,9 +126,11 @@ const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
 // Form state
 const username = ref('')
 const displayName = ref('')
+const userType = ref<'creator' | 'audio_pro'>('creator')
 const email = ref('')
 const originalUsername = ref('')
 const originalDisplayName = ref('')
+const originalUserType = ref<'creator' | 'audio_pro'>('creator')
 const originalEmail = ref('')
 
 // UI state
@@ -125,6 +144,7 @@ const isLoading = ref(false)
 const hasChanges = computed(() => {
   return username.value !== originalUsername.value || 
          displayName.value !== originalDisplayName.value ||
+         userType.value !== originalUserType.value ||
          email.value !== originalEmail.value
 })
 
@@ -145,7 +165,7 @@ const fetchProfile = async () => {
   try {
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('username, display_name')
+      .select('username, display_name, user_type')
       .eq('id', user.value.id)
       .maybeSingle()
     
@@ -162,14 +182,18 @@ const fetchProfile = async () => {
     if (data) {
       username.value = data.username || ''
       displayName.value = data.display_name || ''
+      userType.value = (data.user_type as 'creator' | 'audio_pro') || 'creator'
       originalUsername.value = data.username || ''
       originalDisplayName.value = data.display_name || ''
+      originalUserType.value = (data.user_type as 'creator' | 'audio_pro') || 'creator'
     } else {
       // New user - initialize with empty values
       username.value = ''
       displayName.value = ''
+      userType.value = 'creator'
       originalUsername.value = ''
       originalDisplayName.value = ''
+      originalUserType.value = 'creator'
     }
     
     // Set email from auth user
@@ -269,9 +293,10 @@ const handleSave = async () => {
       id: string
       username?: string
       display_name?: string | null
-      user_type?: string
+      user_type: 'creator' | 'audio_pro'
     } = {
-      id: user.value.id
+      id: user.value.id,
+      user_type: userType.value
     }
     
     // Always set username (required for new profiles)
@@ -281,19 +306,6 @@ const handleSave = async () => {
     
     // Set display_name (can be null)
     profileData.display_name = displayName.value.trim() || null
-    
-    // For new profiles, set default user_type if not already set
-    // Check if profile exists first
-    const { data: existingProfile } = await supabase
-      .from('user_profiles')
-      .select('user_type')
-      .eq('id', user.value.id)
-      .maybeSingle()
-    
-    if (!existingProfile) {
-      // New profile - set default user_type
-      profileData.user_type = 'creator'
-    }
     
     // Use upsert to create or update profile
     const { error: profileError } = await supabase
@@ -322,6 +334,7 @@ const handleSave = async () => {
       // Update other original values
       originalUsername.value = username.value
       originalDisplayName.value = displayName.value
+      originalUserType.value = userType.value
       
       // Don't close drawer immediately - let user see the confirmation message
       // They can close it manually
@@ -329,6 +342,7 @@ const handleSave = async () => {
       // Update original values
       originalUsername.value = username.value
       originalDisplayName.value = displayName.value
+      originalUserType.value = userType.value
       
       showSuccess('Profile updated successfully')
       emit('profile-updated')
@@ -350,6 +364,7 @@ const handleCancel = () => {
   // Reset to original values
   username.value = originalUsername.value
   displayName.value = originalDisplayName.value
+  userType.value = originalUserType.value
   email.value = originalEmail.value
   usernameError.value = null
   emailError.value = null

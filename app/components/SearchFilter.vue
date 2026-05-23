@@ -1,12 +1,12 @@
 <template>
   <div ref="searchFilterRef" class="relative lg:h-20 bg-neutral-900 flex flex-col sm:flex-row gap-2 lg:gap-4 p-4 border-b border-neutral-800">
     <div class="flex flex-row gap-4 w-full justify-between lg:w-full">
-      <button @click="$emit('toggle-nav')" class="btn w-fit !px-2 flex items-center lg:hidden rounded-sm">
+      <Button variant="secondary" class="btn w-fit !px-2 flex items-center lg:hidden rounded-sm" @click="$emit('toggle-nav')">
         <svg viewBox="0 0 13 11" fill="none" xmlns="http://www.w3.org/2000/svg" class="min-w-4">
           <path d="M0 0.5H12.25V2.25H0V0.5ZM0 4.875H12.25V6.625H0V4.875ZM12.25 9.25V11H0V9.25H12.25Z"
             class="fill-neutral-400" />
         </svg>
-      </button>
+      </Button>
       <div class="grow flex relative">
         <div class="absolute z-10 top-[50%] translate-y-[-50%] px-4">
           <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -19,9 +19,9 @@
       </div>
     </div>
     <div v-if="hasUser && shouldShowUploadButton" class="flex flex-row gap-2 lg:gap-4 w-full justify-between sm:w-auto">
-      <button  @click="$emit('open-modal')" class="btn w-full lg:w-fit">
+      <Button variant="secondary" class="btn w-full lg:w-fit" @click="$emit('open-modal')">
         {{ buttonText }}
-      </button>
+      </Button>
     </div>
     
     <!-- Search Modal Drawer - Positioned absolutely relative to this container -->

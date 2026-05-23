@@ -84,18 +84,19 @@
 
             <!-- Submission Actions -->
             <div class="flex gap-3 p-4 bg-neutral-900 border-t border-neutral-800">
-              <button 
+              <Button
+                class="flex-1 bg-green-600 text-white hover:bg-green-700"
                 @click="approveResource(resource.id)"
-                class="flex-1 py-2 px-4 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
               >
                 Approve
-              </button>
-              <button 
+              </Button>
+              <Button
+                variant="danger"
+                class="flex-1"
                 @click="rejectResource(resource.id)"
-                class="flex-1 py-2 px-4 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
               >
                 Reject
-              </button>
+              </Button>
             </div>
           </div>
         </div>

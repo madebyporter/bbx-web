@@ -26,14 +26,16 @@
         >
           {{ collections[0].name }}
         </NuxtLink>
-        <button
+        <Button
           type="button"
-          class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white whitespace-nowrap no-underline cursor-pointer border-0"
+          variant="ghost"
+          size="sm"
+          class="!px-2 !py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white whitespace-nowrap border-0"
           :aria-expanded="dropdownOpen"
           @click.stop="toggleDropdown"
         >
           +{{ collections.length - 1 }}
-        </button>
+        </Button>
         <div
           v-if="dropdownOpen"
           :class="[

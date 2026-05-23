@@ -11,24 +11,18 @@
         <div class="text-green-500 text-4xl mb-4">✓</div>
         <h2 class="text-xl font-bold text-neutral-200 mb-2">Password Updated!</h2>
         <p class="text-neutral-400 mb-4">Your password has been successfully updated. You can now sign in with your new password.</p>
-        <button 
-          @click="goToSignIn"
-          class="bg-amber-500 text-black px-4 py-2 rounded hover:bg-amber-600 transition-colors"
-        >
+        <Button @click="goToSignIn">
           Sign In
-        </button>
+        </Button>
       </div>
       
       <div v-else-if="isError" class="text-center">
         <div class="text-red-500 text-4xl mb-4">✗</div>
         <h2 class="text-xl font-bold text-neutral-200 mb-2">Reset Failed</h2>
         <p class="text-neutral-400 mb-4">{{ errorMessage }}</p>
-        <button 
-          @click="goToSignIn"
-          class="bg-neutral-600 text-neutral-200 px-4 py-2 rounded hover:bg-neutral-500 transition-colors"
-        >
+        <Button variant="secondary" @click="goToSignIn">
           Back to Sign In
-        </button>
+        </Button>
       </div>
 
       <div v-else class="space-y-4">
@@ -60,20 +54,12 @@
             {{ passwordError }}
           </div>
           <div class="flex justify-between items-center">
-            <button 
-              type="submit"
-              :disabled="isSubmitting"
-              class="bg-amber-500 text-black px-4 py-2 rounded hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button type="submit" :disabled="isSubmitting">
               {{ isSubmitting ? 'Updating...' : 'Update Password' }}
-            </button>
-            <button 
-              type="button"
-              @click="goToSignIn"
-              class="text-sm text-neutral-400 hover:text-neutral-300"
-            >
+            </Button>
+            <Button variant="link" type="button" class="text-sm" @click="goToSignIn">
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       </div>

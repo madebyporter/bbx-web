@@ -14,24 +14,26 @@
               <input ref="displayNameInputRef" v-model="newDisplayNameValue" type="text"
                 class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]" @keyup.enter="saveDisplayName"
                 @keyup.esc="cancelEditingDisplayName" />
-              <button @click="cancelEditingDisplayName"
-                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+              <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Cancel" @click="cancelEditingDisplayName">
                 <Xmark class="w-[10px] h-[10px]" />
-              </button>
-              <button @click="saveDisplayName" class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer"
-                title="Save">
+              </Button>
+              <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Save" @click="saveDisplayName">
                 <Check class="w-[10px] h-[10px]" />
-              </button>
+              </Button>
             </div>
             <!-- Display Name (not editing) -->
             <template v-else>
               <div v-if="profileName" class="flex flex-row gap-1 items-center group">
                 <h1 class="text-xl lg:text-3xl font-bold truncate">{{ profileName }}</h1>
-                <button v-if="isOwnProfile" @click="startEditingDisplayName"
-                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
-                  title="Edit Display Name">
+                <Button
+                  v-if="isOwnProfile"
+                  variant="ghost"
+                  class="!p-1 rounded hover:bg-neutral-800 opacity-0 group-hover:opacity-100"
+                  title="Edit Display Name"
+                  @click="startEditingDisplayName"
+                >
                   <EditPencil class="w-[10px] h-[10px]" />
-                </button>
+                </Button>
               </div>
               <h1 v-else-if="isOwnProfile" @click="startEditingDisplayName"
                 class="text-xl lg:text-3xl font-bold text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer truncate">
@@ -48,24 +50,26 @@
               <input ref="usernameInputRef" v-model="newUsernameValue" type="text"
                 class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[150px]" @keyup.enter="saveUsername"
                 @keyup.esc="cancelEditingUsername" />
-              <button @click="cancelEditingUsername"
-                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+              <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Cancel" @click="cancelEditingUsername">
                 <Xmark class="w-[10px] h-[10px]" />
-              </button>
-              <button @click="saveUsername" class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer"
-                title="Save">
+              </Button>
+              <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Save" @click="saveUsername">
                 <Check class="w-[10px] h-[10px]" />
-              </button>
+              </Button>
             </div>
             <!-- Username (not editing) -->
             <template v-else>
               <div v-if="username" class="flex flex-row gap-1 items-center group">
                 <span class="text-base lg:text-xl font-normal text-neutral-400">@{{ username }}</span>
-                <button v-if="isOwnProfile" @click="startEditingUsername"
-                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
-                  title="Edit Username">
+                <Button
+                  v-if="isOwnProfile"
+                  variant="ghost"
+                  class="!p-1 rounded hover:bg-neutral-800 opacity-0 group-hover:opacity-100"
+                  title="Edit Username"
+                  @click="startEditingUsername"
+                >
                   <EditPencil class="w-[10px] h-[10px]" />
-                </button>
+                </Button>
               </div>
               <span v-else-if="isOwnProfile" @click="startEditingUsername"
                 class="text-sm lg:text-base font-normal text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer">
@@ -116,14 +120,12 @@
               class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[300px] min-h-[60px] resize-y"
               @keyup.ctrl.enter="saveBio" @keyup.esc="cancelEditingBio"></textarea>
             <div class="flex flex-col gap-1">
-              <button @click="cancelEditingBio"
-                class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+              <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Cancel" @click="cancelEditingBio">
                 <Xmark class="w-[10px] h-[10px]" />
-              </button>
-              <button @click="saveBio" class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer"
-                title="Save">
+              </Button>
+              <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Save" @click="saveBio">
                 <Check class="w-[10px] h-[10px]" />
-              </button>
+              </Button>
             </div>
           </div>
           <!-- Bio (not editing) -->
@@ -144,14 +146,12 @@
             <input ref="websiteInputRef" v-model="newWebsiteValue" type="text"
               class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]" @keyup.enter="saveWebsite"
               @keyup.esc="cancelEditingWebsite" />
-            <button @click="cancelEditingWebsite"
-              class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+            <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Cancel" @click="cancelEditingWebsite">
               <Xmark class="w-[10px] h-[10px]" />
-            </button>
-            <button @click="saveWebsite" class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer"
-              title="Save">
+            </Button>
+            <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Save" @click="saveWebsite">
               <Check class="w-[10px] h-[10px]" />
-            </button>
+            </Button>
           </div>
           <!-- Website (not editing) -->
           <template v-else>
@@ -172,14 +172,12 @@
                 <input ref="socialLinkInputRef" v-model="newSocialLinkValue" type="text"
                   class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]"
                   @keyup.enter="saveSocialLink(platform)" @keyup.esc="cancelEditingSocialLink" />
-                <button @click="cancelEditingSocialLink"
-                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Cancel">
+                <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Cancel" @click="cancelEditingSocialLink">
                   <Xmark class="w-[10px] h-[10px]" />
-                </button>
-                <button @click="saveSocialLink(platform)"
-                  class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer" title="Save">
+                </Button>
+                <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Save" @click="saveSocialLink(platform)">
                   <Check class="w-[10px] h-[10px]" />
-                </button>
+                </Button>
               </div>
               <!-- Existing link with edit/delete buttons -->
               <div v-else-if="profileSocialLinks[platform]"
@@ -189,15 +187,12 @@
                   {{ getDisplayNameFromUrl(String(profileSocialLinks[platform] || ''), platform) }}
                 </a>
                 <template v-if="isOwnProfile">
-                  <button @click="startEditingSocialLink(platform)"
-                    class="p-1 rounded hover:bg-neutral-800 transition-colors cursor-pointer opacity-30" title="Edit">
+                  <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800 opacity-30" title="Edit" @click="startEditingSocialLink(platform)">
                     <EditPencil class="w-[10px] h-[10px]" />
-                  </button>
-                  <button @click="deleteSocialLink(platform)"
-                    class="p-1 rounded hover:bg-red-900/20 transition-colors cursor-pointer opacity-30"
-                    title="Delete">
+                  </Button>
+                  <Button variant="ghost" class="!p-1 rounded hover:bg-red-900/20 opacity-30" title="Delete" @click="deleteSocialLink(platform)">
                     <Trash class="w-2.5 h-2.5 max-w-2.5 max-h-2.5 text-red-500" />
-                  </button>
+                  </Button>
                 </template>
               </div>
             </template>
@@ -208,11 +203,14 @@
           <div
             v-if="isOwnProfile && hasSocialLinks && !editingSocialLink && socialLinkPlatforms.some(p => !profileSocialLinks[p])"
             class="flex flex-row gap-1 items-center">
-            <button @click="startAddingSocialLink(getNextAvailablePlatform())"
-              class="p-1 bg-neutral-800 rounded hover:bg-neutral-700 transition-colors cursor-pointer"
-              title="Add Social Link">
+            <Button
+              variant="ghost"
+              class="!p-1 bg-neutral-800 rounded hover:bg-neutral-700"
+              title="Add Social Link"
+              @click="startAddingSocialLink(getNextAvailablePlatform())"
+            >
               <Plus class="w-2.5 h-2.5 max-w-2.5 max-h-2.5" />
-            </button>
+            </Button>
           </div>
 
           <!-- Show "Add Social Links" text if no links exist and is own profile -->
@@ -291,12 +289,9 @@
           <p class="text-sm text-neutral-500">
             {{ filteredTracks.length }} {{ filteredTracks.length === 1 ? 'track' : 'tracks' }}
           </p>
-          <button 
-            @click="handleOpenFilterSort"
-            class="btn !px-3 !py-1.5 text-sm"
-          >
+          <Button variant="secondary" class="btn !px-3 !py-1.5 text-sm" @click="handleOpenFilterSort">
             Filter & Sort
-          </button>
+          </Button>
         </div>
       </div>
       <TracksTable :tracks="filteredTracks" :source-id="`profile-${profileUserId}`" :is-own-profile="isOwnProfile"

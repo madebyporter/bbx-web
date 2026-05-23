@@ -11,12 +11,9 @@
         <div class="text-red-500 text-4xl mb-4">✗</div>
         <h2 class="text-xl font-bold text-neutral-200 mb-2">Collection Not Found</h2>
         <p class="text-neutral-400 mb-4">{{ errorMessage }}</p>
-        <button 
-          @click="goHome"
-          class="bg-neutral-600 text-neutral-200 px-4 py-2 rounded hover:bg-neutral-500 transition-colors"
-        >
+        <Button variant="secondary" @click="goHome">
           Go Home
-        </button>
+        </Button>
       </div>
       
       <div v-else-if="collection" class="text-center">
@@ -32,51 +29,38 @@
           
           <div v-if="!user" class="mb-6">
             <p class="text-neutral-400 mb-4">Please sign in to join this collection.</p>
-            <button 
-              @click="goToSignIn"
-              class="bg-amber-500 text-black px-4 py-2 rounded hover:bg-amber-600 transition-colors"
-            >
+            <Button @click="goToSignIn">
               Sign In
-            </button>
+            </Button>
           </div>
           
           <div v-else-if="isAlreadyMember" class="mb-6">
             <p class="text-neutral-400 mb-4">You're already a member of this collection.</p>
-            <NuxtLink
-              :to="`/u/${collectionOwnerUsername || collection.user_id}/c/${collection.slug}`"
-              class="inline-block bg-amber-500 text-black px-4 py-2 rounded hover:bg-amber-600 transition-colors"
-            >
+            <Button :to="`/u/${collectionOwnerUsername || collection.user_id}/c/${collection.slug}`">
               View Collection
-            </NuxtLink>
+            </Button>
           </div>
           
           <div v-else class="mb-6">
             <p class="text-neutral-400 mb-4">Would you like to join this collection?</p>
             <div class="flex gap-2 justify-center">
-              <button 
-                @click="handleAccept"
+              <Button
                 :disabled="isAccepting"
-                class="bg-amber-500 text-black px-4 py-2 rounded hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                @click="handleAccept"
               >
                 {{ isAccepting ? 'Joining...' : 'Join Collection' }}
-              </button>
-              <button 
-                @click="goHome"
-                class="bg-neutral-600 text-neutral-200 px-4 py-2 rounded hover:bg-neutral-500 transition-colors"
-              >
+              </Button>
+              <Button variant="secondary" @click="goHome">
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         </div>
         
         <div v-if="isSuccess || isAlreadyMember">
-          <NuxtLink
-            :to="`/u/${collectionOwnerUsername || collection.user_id}/c/${collection.slug}`"
-            class="inline-block bg-amber-500 text-black px-4 py-2 rounded hover:bg-amber-600 transition-colors"
-          >
+          <Button :to="`/u/${collectionOwnerUsername || collection.user_id}/c/${collection.slug}`">
             View Collection
-          </NuxtLink>
+          </Button>
         </div>
       </div>
     </div>

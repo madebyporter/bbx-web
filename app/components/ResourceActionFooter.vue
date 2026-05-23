@@ -5,11 +5,11 @@
       <div class="flex items-center justify-center bg-transparent text-white p-2 text-sm leading-snug">
         {{ useCount }}
       </div>
-      <button
-        @click="handleToggleUse"
+      <Button
+        variant="ghost"
+        class="!p-2 group"
         :disabled="loading"
-        class="group flex items-center justify-center p-2 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        :class="isUsing ? 'bg-transparent' : 'bg-transparent'"
+        @click="handleToggleUse"
       >
         <template v-if="isUsing">
           <img src="/img/db/icon-check.svg" alt="Remove from I Use This" class="min-w-4 min-h-4" />
@@ -17,7 +17,7 @@
         <template v-else>
           <div class="w-4 h-4 border border-neutral-800 rounded-full group-hover:border-neutral-700 hover:bg-neutral-700"></div>
         </template>
-      </button>
+      </Button>
     </div>
     
     <!-- Download Button -->

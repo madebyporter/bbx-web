@@ -90,8 +90,8 @@
           <div v-if="isAdmin" class="p-4 border-b border-neutral-800 grid grid-cols-2 gap-4 items-center">
             <div><h2 class="text-white text-lg font-bold">Admin</h2></div>
             <div class="flex flex-row gap-4">
-              <button class="btn" @click="onEdit">Edit</button>
-              <button class="btn bg-red-500 hover:bg-red-600" @click="onDelete">Delete</button>
+              <Button variant="secondary" class="btn" @click="onEdit">Edit</Button>
+              <Button variant="danger" @click="onDelete">Delete</Button>
             </div>
           </div>
           <!-- Comments Section -->

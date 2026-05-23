@@ -13,8 +13,11 @@
       <div class="p-4 border-b border-neutral-800">
         <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div class="flex items-center gap-4">
-            <button @click="handlePlay"
-              class="min-w-16 w-16 h-16 flex items-center justify-center bg-white hover:bg-neutral-100 rounded-full text-black transition-transform cursor-pointer">
+            <Button
+              variant="ghost"
+              class="!p-0 min-w-16 w-16 h-16 bg-white hover:bg-neutral-100 rounded-full text-black"
+              @click="handlePlay"
+            >
               <svg v-if="isPlaying && currentTrack?.id === track.id" class="w-8 h-8" fill="currentColor"
                 viewBox="0 0 24 24">
                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
@@ -22,7 +25,7 @@
               <svg v-else class="w-8 h-8 ml-1" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
               </svg>
-            </button>
+            </Button>
             <div class="flex flex-col gap-1">
               <h1 class="text-3xl font-bold">{{ track.title || 'Untitled' }}</h1>
               <p class="text-neutral-400">{{ track.artist || 'Unknown Artist' }}</p>
@@ -81,11 +84,11 @@
         </div>
         <!-- Download Sample Button -->
         <div class="mt-4">
-          <button 
-            @click="handleDownloadSample"
+          <Button
+            variant="secondary"
+            class="btn w-full md:w-auto gap-2"
             :disabled="isDownloading"
-            class="btn w-full md:w-auto flex items-center gap-2"
-            :class="{ 'opacity-50 cursor-not-allowed': isDownloading }"
+            @click="handleDownloadSample"
           >
             <svg v-if="!isDownloading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -95,15 +98,15 @@
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             {{ isDownloading ? 'Generating Sample...' : 'Download Sample' }}
-          </button>
+          </Button>
         </div>
       </div>
 
       <!-- Edit Section (if own profile) -->
       <div v-if="isOwnProfile" class="p-4 border-b border-neutral-800">
-        <button @click="handleEdit" class="btn w-full">
+        <Button variant="secondary" class="btn w-full" @click="handleEdit">
           Edit Track Metadata
-        </button>
+        </Button>
       </div>
 
       <!-- Other Tracks in Group -->

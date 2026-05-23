@@ -39,33 +39,33 @@
               Permanently delete {{ selectedCount }} track{{ selectedCount > 1 ? 's' : '' }} from your library. This action cannot be undone.
             </span>
           </p>
-          <button
-            @click="showDeleteConfirm = true"
+          <Button
+            variant="danger"
             :disabled="isProcessing"
-            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="showDeleteConfirm = true"
           >
             {{ isCollectionContext ? 'Remove from Collection' : 'Delete Tracks' }}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
 
     <!-- Footer Actions -->
     <div class="flex flex-row gap-3 justify-end border-t border-neutral-800 pt-4 mt-auto">
-      <button
-        @click="handleCancel"
+      <Button
+        variant="ghost"
+        class="px-4 py-2 border border-neutral-700 hover:border-neutral-600 text-neutral-300 hover:text-white bg-transparent hover:bg-transparent"
         :disabled="isProcessing"
-        class="px-4 py-2 border border-neutral-700 hover:border-neutral-600 text-neutral-300 hover:text-white font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        @click="handleCancel"
       >
         Cancel
-      </button>
-      <button
-        @click="handleApplyChanges"
+      </Button>
+      <Button
         :disabled="isProcessing || !hasChanges"
-        class="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-neutral-900 font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        @click="handleApplyChanges"
       >
         Apply Changes
-      </button>
+      </Button>
     </div>
 
     <!-- Delete/Remove Confirmation Dialog -->

@@ -11,14 +11,17 @@
         <p class="text-sm text-neutral-400">Your changes have been saved.</p>
       </div>
       <div class="flex gap-4 mt-4">
-        <button @click="showSuccessMessage = false"
-          class="text-amber-300 hover:text-amber-400 underline cursor-pointer">
+        <Button
+          variant="link"
+          class="text-amber-300 hover:text-amber-400"
+          @click="showSuccessMessage = false"
+        >
           Edit Again
-        </button>
+        </Button>
         <span class="text-neutral-600">|</span>
-        <button @click="handleClose" class="text-amber-300 hover:text-amber-400 underline cursor-pointer">
+        <Button variant="link" class="text-amber-300 hover:text-amber-400" @click="handleClose">
           Close
-        </button>
+        </Button>
       </div>
     </div>
 
@@ -50,14 +53,16 @@
                     <span class="text-xs text-neutral-400">{{ currentFileName }}</span>
                   </div>
                   <div>
-                    <button
+                    <Button
                       type="button"
-                      @click="fileInput?.click()"
+                      variant="ghost"
+                      size="sm"
+                      class="border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
                       :disabled="isUpdating"
-                      class="px-4 py-2 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      @click="fileInput?.click()"
                     >
                       Choose New File
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 
@@ -68,12 +73,14 @@
                     <span class="text-sm text-amber-400">{{ newFile.name }}</span>
                     <span class="text-xs text-neutral-500">({{ formatFileSize(newFile.size) }})</span>
                   </div>
-                  <button
+                  <Button
+                    type="button"
+                    variant="link"
+                    class="text-red-400 hover:text-red-300 text-sm p-0"
                     @click="newFile = null"
-                    class="text-red-400 hover:text-red-300 text-sm"
                   >
                     Remove
-                  </button>
+                  </Button>
                 </div>
                 
                 <!-- Instructions -->
@@ -133,10 +140,15 @@
                   <input v-model="newStatusName" type="text" placeholder="Enter status name"
                     class="flex-1 p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
                     @keydown.enter.prevent />
-                  <button type="button" @click="showNewStatusInput = false; newStatusName = ''"
-                    class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 rounded text-neutral-400 cursor-pointer">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    class="border border-neutral-700 hover:bg-neutral-800 text-neutral-400"
+                    @click="showNewStatusInput = false; newStatusName = ''"
+                  >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
                 <p class="text-xs text-neutral-500 mt-1">
                   {{ showNewStatusInput ? 'New status will be created when you save' : 'Label tracks with their licensing status' }}
@@ -176,18 +188,21 @@
                 <div class="flex gap-2">
                   <input v-model.number="metadata.bpm" type="number"
                     class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
-                  <button 
+                  <Button
                     type="button"
-                    @click="analyzeBPMForTrack"
+                    variant="ghost"
+                    size="sm"
+                    class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
                     :disabled="isAnalyzingBpm"
-                    class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 rounded text-neutral-500 hover:text-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                    title="Analyze BPM">
+                    title="Analyze BPM"
+                    @click="analyzeBPMForTrack"
+                  >
                     <CircleSpark v-if="!isAnalyzingBpm" width="20" height="20" stroke-width="1.5" />
                     <svg v-else class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                  </button>
+                  </Button>
                 </div>
                 <p v-if="bpmAnalysisError" class="text-xs text-red-500 mt-1">{{ bpmAnalysisError }}</p>
                 <p v-else-if="isAnalyzingBpm" class="text-xs text-amber-400 mt-1">Analyzing BPM...</p>
@@ -197,18 +212,21 @@
                 <div class="flex gap-2">
                   <input v-model="metadata.key" type="text" placeholder="e.g. C Major, A Minor"
                     class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
-                  <button 
+                  <Button
                     type="button"
-                    @click="analyzeKeyForTrack"
+                    variant="ghost"
+                    size="sm"
+                    class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
                     :disabled="isAnalyzingKey"
-                    class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 rounded text-neutral-500 hover:text-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                    title="Analyze Key">
+                    title="Analyze Key"
+                    @click="analyzeKeyForTrack"
+                  >
                     <CircleSpark v-if="!isAnalyzingKey" width="20" height="20" stroke-width="1.5" />
                     <svg v-else class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                  </button>
+                  </Button>
                 </div>
                 <p v-if="keyAnalysisError" class="text-xs text-red-500 mt-1">{{ keyAnalysisError }}</p>
                 <p v-else-if="isAnalyzingKey" class="text-xs text-amber-400 mt-1">Analyzing Key...</p>
@@ -227,14 +245,20 @@
 
               <!-- Copy Metadata Button -->
               <div v-if="metadata.track_group_name" class="col-span-2 border-t border-neutral-800 pt-4">
-                <button type="button" @click="copyMetadataFromGroup" :disabled="isCopyingMetadata"
-                  class="w-full p-2 border border-neutral-700 hover:bg-neutral-800 rounded text-neutral-500 hover:text-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  full-width
+                  class="p-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                  :disabled="isCopyingMetadata"
+                  @click="copyMetadataFromGroup"
+                >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
                   {{ isCopyingMetadata ? 'Copying...' : 'Copy Metadata from Group Versions' }}
-                </button>
+                </Button>
                 <p class="text-xs text-neutral-500 mt-2">
                   {{ copyMetadataMessage || 'Auto-fills empty fields from the most complete version in this group' }}
                 </p>
@@ -243,19 +267,30 @@
 
             <!-- Delete Button -->
             <div class="pt-4 border-t border-neutral-800">
-              <button type="button" @click="handleDelete"
-                class="border border-red-500 hover:bg-red-500/10 rounded p-2 text-red-500 hover:text-red-400 text-sm w-full cursor-pointer">
+              <Button
+                type="button"
+                variant="ghost"
+                full-width
+                class="border border-red-500 hover:bg-red-500/10 p-2 text-red-500 hover:text-red-400 text-sm"
+                @click="handleDelete"
+              >
                 Delete Track
-              </button>
+              </Button>
             </div>
           </div>
         </div>
 
         <!-- Update Button -->
         <div class="sticky bottom-0 flex justify-end bg-neutral-900">
-          <button @click="onSubmit" class="btn w-full" :disabled="isUpdating">
+          <Button
+            variant="secondary"
+            class="btn w-full"
+            full-width
+            :disabled="isUpdating"
+            @click="onSubmit"
+          >
             {{ isUpdating ? 'Updating...' : 'Update Track' }}
-          </button>
+          </Button>
         </div>
 
         <!-- Error Message -->

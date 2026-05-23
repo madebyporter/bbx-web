@@ -14,19 +14,24 @@
         <div class="flex items-center justify-between mb-2">
           <div v-if="!isEditingGroupName" class="flex items-center gap-3 flex-1">
             <h1 class="text-lg lg:text-3xl font-bold truncate flex-1">{{ groupName }}</h1>
-            <button v-if="isOwnProfile" @click="isEditingGroupName = true"
-              class="text-neutral-400 hover:text-white transition-colors text-sm flex-shrink-0" title="Rename group">
+            <Button
+              v-if="isOwnProfile"
+              variant="ghost"
+              class="!p-0 text-neutral-400 hover:text-white text-sm flex-shrink-0"
+              title="Rename group"
+              @click="isEditingGroupName = true"
+            >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
-            </button>
+            </Button>
           </div>
           <div v-else class="flex items-center gap-2 flex-1">
             <input v-model="newGroupName" type="text" class="input flex-1" placeholder="Enter new group name"
               @keyup.enter="saveGroupName" @keyup.esc="isEditingGroupName = false" />
-            <button @click="saveGroupName" class="btn-sm">Save</button>
-            <button @click="isEditingGroupName = false" class="btn-secondary-sm">Cancel</button>
+            <Button size="sm" @click="saveGroupName">Save</Button>
+            <Button variant="secondary" size="sm" @click="isEditingGroupName = false">Cancel</Button>
           </div>
         </div>
         <div class="flex items-center justify-between">
@@ -37,12 +42,9 @@
             <p class="text-sm text-neutral-500">
               {{ tracks.length }} {{ tracks.length === 1 ? 'track' : 'tracks' }}
             </p>
-            <button 
-              @click="handleOpenFilterSort"
-              class="btn !px-3 !py-1.5 text-sm"
-            >
+            <Button variant="secondary" class="btn !px-3 !py-1.5 text-sm" @click="handleOpenFilterSort">
               Filter & Sort
-            </button>
+            </Button>
           </div>
         </div>
       </div>

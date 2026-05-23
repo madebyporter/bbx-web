@@ -11,23 +11,15 @@
           <p class="text-neutral-300 mb-6">{{ message }}</p>
           
           <div class="flex gap-3 justify-end">
-            <button
-              @click="handleCancel"
-              class="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-neutral-200 rounded transition-colors cursor-pointer"
-            >
+            <Button variant="secondary" @click="handleCancel">
               {{ cancelText }}
-            </button>
-            <button
+            </Button>
+            <Button
+              :variant="confirmDanger ? 'danger' : 'primary'"
               @click="handleConfirm"
-              :class="[
-                'px-4 py-2 rounded transition-colors cursor-pointer',
-                confirmDanger 
-                  ? 'bg-red-600 hover:bg-red-700 text-white' 
-                  : 'bg-amber-500 hover:bg-amber-600 text-neutral-900'
-              ]"
             >
               {{ confirmText }}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -80,4 +72,3 @@ const handleCancel = () => {
   opacity: 0;
 }
 </style>
-

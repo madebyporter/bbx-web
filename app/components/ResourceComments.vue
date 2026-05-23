@@ -36,17 +36,24 @@
         <textarea v-model="newComment" placeholder="Add a comment..."
           class="w-full p-3 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[100px]"
           rows="4" />
-        <button @click="handleSubmitComment" :disabled="!newComment.trim() || submitting"
-          class="self-start px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-neutral-700 disabled:text-neutral-500 disabled:cursor-not-allowed text-neutral-900 font-medium rounded transition-colors cursor-pointer">
+        <Button
+          class="self-start"
+          :disabled="!newComment.trim() || submitting"
+          @click="handleSubmitComment"
+        >
           {{ submitting ? 'Posting...' : 'Post Comment' }}
-        </button>
+        </Button>
       </div>
 
       <div v-else class="p-4 border border-neutral-800 rounded-md text-sm text-neutral-400 md:sticky md:top-4">
-        <button type="button" @click="() => openAuthModal && openAuthModal('signin')"
-          class="text-amber-400 hover:text-amber-500 transition-colors cursor-pointer">
+        <Button
+          variant="link"
+          type="button"
+          class="text-amber-400 hover:text-amber-500 no-underline"
+          @click="() => openAuthModal && openAuthModal('signin')"
+        >
           Sign in
-        </button>
+        </Button>
         to leave a comment.
       </div>
     </div>

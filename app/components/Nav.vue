@@ -6,11 +6,15 @@
       <NuxtLink to="/" @click="closeMobileNavOnClick" class="cursor-pointer">
         <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-[44px] lg:size-12" />
       </NuxtLink>
-      <button @click="toggleMobileNav" class="text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 rounded-md px-2 w-fit h-full lg:hidden cursor-pointer max-w-8 flex items-center justify-center">
+      <Button
+        variant="ghost"
+        class="text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 rounded-md !px-2 w-fit h-full lg:hidden max-w-8"
+        @click="toggleMobileNav"
+      >
         <svg class="min-w-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M6.75 17.25L12 12L17.25 17.25M17.25 6.75L12 12L6.75 6.75" stroke="currentColor" stroke-width="2" />
         </svg>
-      </button>
+      </Button>
     </div>
     <div class="grow flex flex-col gap-16 p-4">
       <div v-if="user" class="flex flex-col gap-4">
@@ -73,25 +77,23 @@
             </div>
             <div class="flex flex-col justify-start items-start gap-0 w-full divide-y divide-neutral-800">
               <div class="w-full flex items-center p-2">
-                <button @click="handleShowSettings"
-                  class="cursor-pointer text-xs hover:text-amber-400">
+                <Button variant="link" class="!p-0 text-xs hover:text-amber-400 no-underline" @click="handleShowSettings">
                   Settings
-                </button>
+                </Button>
               </div>
               <div v-if="isAdmin" class="w-full flex items-center p-2">
-                <button @click="handleShowAdminModal"
-                  class="cursor-pointer text-xs hover:text-amber-400">
+                <Button variant="link" class="!p-0 text-xs hover:text-amber-400 no-underline" @click="handleShowAdminModal">
                   Admin
-                </button>
+                </Button>
               </div>
               <div class="w-full flex items-center p-2">
-                <button @click="handleAuth" class="cursor-pointer text-xs hover:text-amber-400">Logout</button>
+                <Button variant="link" class="!p-0 text-xs hover:text-amber-400 no-underline" @click="handleAuth">Logout</Button>
               </div>
             </div>
           </div>
         </template>
         <template v-else>
-          <button @click="handleShowAuthModal" class="cursor-pointer text-sm p-2 w-full hover:bg-neutral-800/25 rounded-xs text-left">Sign in</button>
+          <Button variant="ghost" class="!p-2 w-full hover:bg-neutral-800/25 rounded-xs text-left text-sm justify-start" @click="handleShowAuthModal">Sign in</Button>
         </template>
       </div>
     </div>

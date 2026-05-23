@@ -24,32 +24,25 @@
           {{ resendMessage }}
         </p>
 
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          full-width
+          class="mb-3"
           :disabled="isResending || cooldownSeconds > 0 || !displayEmail"
-          class="w-full bg-amber-500 text-black px-4 py-2 rounded hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-3"
           @click="handleResend"
         >
           <span v-if="isResending">Sending...</span>
           <span v-else-if="cooldownSeconds > 0">Resend available in {{ cooldownSeconds }}s</span>
           <span v-else>Resend confirmation email</span>
-        </button>
+        </Button>
 
-        <button
-          type="button"
-          class="w-full bg-neutral-700 text-neutral-200 px-4 py-2 rounded hover:bg-neutral-600 transition-colors mb-3"
-          @click="goHome"
-        >
+        <Button variant="secondary" full-width class="mb-3" @click="goHome">
           Back to Beatbox
-        </button>
+        </Button>
 
-        <button
-          type="button"
-          class="text-sm text-neutral-400 hover:text-neutral-300 underline"
-          @click="tryDifferentEmail"
-        >
+        <Button variant="link" class="text-sm" @click="tryDifferentEmail">
           Wrong email? Sign up again
-        </button>
+        </Button>
       </div>
     </div>
   </div>

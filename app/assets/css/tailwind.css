@@ -1,9 +1,19 @@
 @import "tailwindcss";
 
+@layer base {
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
 @layer components {
   body {
     @apply bg-neutral-900;
   }
+  /* Prefer <Button> for new code; .btn kept for legacy during migration */
   .btn {
     @apply bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-md px-4 p-2 cursor-pointer whitespace-nowrap font-bold;
   }

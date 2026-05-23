@@ -8,12 +8,13 @@
     <div v-if="showSuccessMessage" class="h-full flex flex-col items-center justify-center text-center gap-4">
       <h2 class="text-xl">Thanks for your submission.</h2>
       <p class="text-neutral-600">We will review and add this submission if it fits our criteria.</p>
-      <button 
-        @click="resetAndShowForm" 
-        class="text-amber-300 hover:text-amber-400 underline mt-4 cursor-pointer"
+      <Button
+        variant="link"
+        class="mt-4 text-amber-300 hover:text-amber-400"
+        @click="resetAndShowForm"
       >
         Submit another resource
-      </button>
+      </Button>
     </div>
 
     <!-- Submit Form -->
@@ -112,12 +113,15 @@
                 class="tag"
               >
                 {{ tag }}
-                <button 
-                  @click="removeTag(tag)" 
-                  class="hover:text-neutral-600 cursor-pointer"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  class="p-0 min-w-0 hover:text-neutral-600"
+                  @click="removeTag(tag)"
                 >
                   ×
-                </button>
+                </Button>
               </div>
               
               <!-- Tag input - hide when max tags reached -->
@@ -267,14 +271,15 @@
           <p v-if="imageError" class="text-red-500 text-sm mt-1">{{ imageError }}</p>
           <span v-if="errors.image" class="text-red-500 text-sm">{{ errors.image }}</span>
         </fieldset>
-        <button 
-          type="submit" 
-          class="btn"
+        <Button
+          type="submit"
+          variant="secondary"
+          class="btn w-full"
           :disabled="isSubmitting"
           @click="onSubmit"
         >
           {{ submitButtonText }}
-        </button>
+        </Button>
       </form>
     </template>
   </MasterDrawer>

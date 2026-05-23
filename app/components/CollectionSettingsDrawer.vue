@@ -16,13 +16,12 @@
           :disabled="isSaving"
         />
         <p v-if="nameError" class="text-xs text-red-500">{{ nameError }}</p>
-        <button
-          @click="handleSaveName"
+        <Button
           :disabled="isSaving || !hasNameChanges"
-          class="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-neutral-900 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="handleSaveName"
         >
           {{ isSaving ? 'Saving...' : 'Save Changes' }}
-        </button>
+        </Button>
       </div>
 
       <!-- Invite to Collection Section -->
@@ -38,12 +37,9 @@
               readonly
               class="flex-1 p-3 border border-neutral-700 rounded bg-neutral-900 text-neutral-200 text-sm"
             />
-            <button
-              @click="copyLink"
-              class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded font-medium transition-colors"
-            >
+            <Button variant="secondary" @click="copyLink">
               {{ linkCopied ? 'Copied!' : 'Copy' }}
-            </button>
+            </Button>
           </div>
           <p class="text-xs text-neutral-500">
             Share this link with others. They can click it to join this collection.
@@ -103,13 +99,12 @@
               </div>
             </div>
           </div>
-          <button
-            @click="handleInvite"
+          <Button
             :disabled="isInviting || !selectedUser"
-            class="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-neutral-900 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="handleInvite"
           >
             {{ isInviting ? 'Inviting...' : 'Invite' }}
-          </button>
+          </Button>
         </div>
         <p v-if="inviteError" class="text-xs text-red-500">{{ inviteError }}</p>
         <p v-if="inviteSuccess" class="text-xs text-green-400">{{ inviteSuccess }}</p>
@@ -134,13 +129,15 @@
                 Invited {{ formatDate(member.created_at) }}
               </div>
             </div>
-            <button
-              @click="handleRemove(member.member_id)"
+            <Button
+              variant="ghost"
+              size="sm"
+              class="px-3 py-1 text-xs text-red-400 hover:text-red-300 border border-red-900/50 hover:border-red-800 bg-transparent"
               :disabled="isRemoving === member.member_id"
-              class="px-3 py-1 text-xs text-red-400 hover:text-red-300 border border-red-900/50 hover:border-red-800 rounded transition-colors disabled:opacity-50"
+              @click="handleRemove(member.member_id)"
             >
               {{ isRemoving === member.member_id ? 'Removing...' : 'Remove' }}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -152,13 +149,13 @@
           <p class="text-sm text-neutral-300 mb-3">
             Deleting this collection will remove it permanently. This action cannot be undone.
           </p>
-          <button
-            @click="handleDelete"
+          <Button
+            variant="danger"
             :disabled="isDeleting"
-            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="handleDelete"
           >
             {{ isDeleting ? 'Deleting...' : 'Delete Collection' }}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
