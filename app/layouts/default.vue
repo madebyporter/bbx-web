@@ -48,18 +48,21 @@
           class="mb-4 p-3 rounded bg-amber-500/10 border border-amber-500/30 text-sm text-neutral-300"
         >
           <p class="mb-2">{{ authErrorMessage }}</p>
-          <Button
-            variant="link"
+          <button
             type="button"
-            class="text-amber-400 hover:text-amber-300 mr-3"
+            class="text-link text-amber-400 hover:text-amber-300 no-underline mr-3"
             :disabled="isResendingConfirmation"
             @click="handleResendFromModal"
           >
             {{ isResendingConfirmation ? 'Sending...' : 'Resend confirmation email' }}
-          </Button>
-          <Button variant="link" type="button" @click="goToCheckEmail">
+          </button>
+          <NuxtLink
+            to="/auth/check-email"
+            class="text-link text-amber-400 hover:text-amber-300 no-underline"
+            @click="prepareCheckEmailNavigation"
+          >
             Check email instructions
-          </Button>
+          </NuxtLink>
         </div>
         <form @submit.prevent="handleSubmit" class="space-y-4">
           <div>
@@ -84,20 +87,20 @@
             Enter your email address and we'll send you a link to reset your password.
           </div>
           <div v-if="!isForgotPassword && !isSignUp" class="flex justify-end">
-            <Button variant="link" type="button" class="text-xs" @click="showForgotPassword">
+            <button type="button" class="text-link text-xs no-underline" @click="showForgotPassword">
               Forgot password?
-            </Button>
+            </button>
           </div>
           <div class="flex justify-between items-center">
             <Button type="submit">
               {{ isForgotPassword ? 'Send Reset Link' : isSignUp ? 'Sign Up' : 'Sign In' }}
             </Button>
-            <Button v-if="isForgotPassword" variant="link" type="button" class="text-sm" @click="backToSignIn">
+            <button v-if="isForgotPassword" type="button" class="text-link text-sm no-underline" @click="backToSignIn">
               Back to Sign In
-            </Button>
-            <Button v-else variant="link" type="button" class="text-sm" @click="toggleAuthMode">
+            </button>
+            <button v-else type="button" class="text-link text-sm no-underline" @click="toggleAuthMode">
               {{ isSignUp ? 'Already have an account?' : "Don't have an account?" }}
-            </Button>
+            </button>
           </div>
         </form>
       </div>
@@ -337,13 +340,17 @@ const backToSignIn = () => {
   clearAuthError()
 }
 
-const goToCheckEmail = async () => {
+const prepareCheckEmailNavigation = () => {
   const signupEmail = email.value
   if (signupEmail) {
     setPendingSignupEmail(signupEmail)
   }
   showAuthModal.value = false
   clearAuthError()
+}
+
+const goToCheckEmail = async () => {
+  prepareCheckEmailNavigation()
   await navigateTo('/auth/check-email')
 }
 

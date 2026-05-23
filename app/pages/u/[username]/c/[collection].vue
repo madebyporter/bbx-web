@@ -17,10 +17,22 @@
         :is-own-profile="isOwnProfile"
         :show-view-mode-selector="false"
         :show-settings-button="isCollectionOwner"
+        :show-analytics-toggle="isOwnProfile && profileUserType === 'audio_pro'"
+        :analytics-mode="analyticsMode"
         filter-context="music"
         @open-filter-sort="handleOpenFilterSort"
         @open-settings="showSettingsDrawer = true"
+        @update:analytics-mode="analyticsMode = $event"
       />
+
+      <template v-if="analyticsMode && isOwnProfile && profileUserType === 'audio_pro'">
+        <TrackAnalyticsDateFilter v-model="analyticsRangeLabel" />
+        <TrackAnalyticsSummary
+          :summary="analyticsSummary"
+          :top-track-title="topTrackTitle"
+          :loading="analyticsLoading"
+        />
+      </template>
 
       <!-- Tracks in Collection -->
       <div class="grow overflow-x-auto overflow-y-hidden h-fit w-full">
@@ -33,6 +45,9 @@
           :collection-id="collection?.id"
           :viewer-user-type="viewerUserType"
           :profile-user-type="profileUserType"
+          :analytics-mode="analyticsMode"
+          :track-stats="trackStats"
+          :analytics-loading="analyticsLoading"
           :no-filter-results="showNoFilterResults"
           :active-filter-chips="activeFiltersForDisplay"
           @edit-track="handleEdit"
@@ -64,6 +79,13 @@ import { usePlayer } from '~/composables/usePlayer'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 import CollectionTracksTable from '~/components/CollectionTracksTable.vue'
 import CollectionSettingsDrawer from '~/components/CollectionSettingsDrawer.vue'
+import TrackAnalyticsDateFilter from '~/components/TrackAnalyticsDateFilter.vue'
+import TrackAnalyticsSummary from '~/components/TrackAnalyticsSummary.vue'
+import { recordPageView } from '~/composables/useTrackAnalytics'
+import {
+  loadStoredAnalyticsRangeLabel,
+  useTrackAnalyticsData,
+} from '~/composables/useTrackAnalyticsData'
 
 const route = useRoute()
 const router = useRouter()
@@ -163,6 +185,28 @@ const displayedTracks = computed(() => {
 
 const displayedTracksCount = computed(() => {
   return displayedTracks.value.length
+})
+
+const analyticsMode = ref(false)
+const analyticsRangeLabel = ref(loadStoredAnalyticsRangeLabel())
+const analyticsTrackIds = computed(() => displayedTracks.value.map(track => track.id))
+const analyticsCollectionId = computed(() => collection.value?.id ?? null)
+
+const {
+  loading: analyticsLoading,
+  trackStats,
+  summary: analyticsSummary,
+} = useTrackAnalyticsData({
+  trackIds: analyticsTrackIds,
+  enabled: computed(() => analyticsMode.value && isOwnProfile.value && profileUserType.value === 'audio_pro'),
+  rangeLabel: analyticsRangeLabel,
+  collectionId: analyticsCollectionId,
+})
+
+const topTrackTitle = computed(() => {
+  const topId = analyticsSummary.value.topTrackId
+  if (!topId) return null
+  return displayedTracks.value.find(track => track.id === topId)?.title ?? `Track #${topId}`
 })
 
 // Active filter chips for "no results" quick-remove (verb labels, clickable)
@@ -720,6 +764,14 @@ const handleCollectionDeleted = () => {
 // Lifecycle
 onMounted(async () => {
   await fetchCollection()
+
+  if (profileUserId.value && collection.value && !isOwnProfile.value) {
+    void recordPageView({
+      profileId: profileUserId.value,
+      pageType: 'collection',
+      resourceId: collection.value.id,
+    })
+  }
 
   // Register search handler
   if (registerSearchHandler) {

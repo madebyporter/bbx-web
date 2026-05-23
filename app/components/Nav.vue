@@ -77,17 +77,31 @@
             </div>
             <div class="flex flex-col justify-start items-start gap-0 w-full divide-y divide-neutral-800">
               <div class="w-full flex items-center p-2">
-                <Button variant="link" class="!p-0 text-xs hover:text-amber-400 no-underline" @click="handleShowSettings">
+                <button
+                  type="button"
+                  class="text-link text-xs hover:text-amber-400 no-underline"
+                  @click="handleShowSettings"
+                >
                   Settings
-                </Button>
+                </button>
               </div>
               <div v-if="isAdmin" class="w-full flex items-center p-2">
-                <Button variant="link" class="!p-0 text-xs hover:text-amber-400 no-underline" @click="handleShowAdminModal">
+                <button
+                  type="button"
+                  class="text-link text-xs hover:text-amber-400 no-underline"
+                  @click="handleShowAdminModal"
+                >
                   Admin
-                </Button>
+                </button>
               </div>
               <div class="w-full flex items-center p-2">
-                <Button variant="link" class="!p-0 text-xs hover:text-amber-400 no-underline" @click="handleAuth">Logout</Button>
+                <button
+                  type="button"
+                  class="text-link text-xs hover:text-amber-400 no-underline"
+                  @click="handleAuth"
+                >
+                  Logout
+                </button>
               </div>
             </div>
           </div>

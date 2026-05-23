@@ -40,9 +40,9 @@
           Back to Beatbox
         </Button>
 
-        <Button variant="link" class="text-sm" @click="tryDifferentEmail">
+        <button type="button" class="text-link text-sm no-underline" @click="tryDifferentEmail">
           Wrong email? Sign up again
-        </Button>
+        </button>
       </div>
     </div>
   </div>

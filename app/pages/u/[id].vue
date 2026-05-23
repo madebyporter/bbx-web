@@ -285,18 +285,57 @@
         <div class="flex flex-col overflow-auto">
           <h2 class="text-lg lg:text-xl font-bold truncate">Music</h2>
         </div>
-        <div class="flex items-center gap-4">
-          <p class="text-sm text-neutral-500">
+        <div class="flex items-stretch gap-4">
+          <p class="text-sm text-neutral-500 flex items-center">
             {{ filteredTracks.length }} {{ filteredTracks.length === 1 ? 'track' : 'tracks' }}
           </p>
-          <Button variant="secondary" class="btn !px-3 !py-1.5 text-sm" @click="handleOpenFilterSort">
+          <Button
+            variant="secondary"
+            size="sm"
+            class="btn px-3! py-1.5! text-sm h-full max-h-10 self-stretch"
+            @click="handleOpenFilterSort"
+          >
             Filter & Sort
+          </Button>
+          <Button
+            v-if="isOwnProfile && isAudioPro"
+            variant="secondary"
+            size="sm"
+            :class="[
+              'btn px-2.5! py-1.5! text-sm h-full max-h-10 self-stretch shrink-0',
+              analyticsMode ? 'border! border-amber-400/60! bg-amber-400/10! text-amber-300!' : ''
+            ]"
+            title="Analytics"
+            @click="analyticsMode = !analyticsMode"
+          >
+            <StatsReport class="w-4 h-4" />
           </Button>
         </div>
       </div>
-      <TracksTable :tracks="filteredTracks" :source-id="`profile-${profileUserId}`" :is-own-profile="isOwnProfile"
-        :loading="loading" :username="username" :viewer-user-type="viewerUserType" :profile-user-type="profileUserType"
-        @edit-track="handleEdit" @tracks-deleted="fetchTracks" @track-shortlisted="handleTrackShortlisted" @track-unshortlisted="handleTrackUnshortlisted" />
+      <template v-if="analyticsMode && isOwnProfile && isAudioPro">
+        <TrackAnalyticsDateFilter v-model="analyticsRangeLabel" />
+        <TrackAnalyticsSummary
+          :summary="analyticsSummary"
+          :top-track-title="topTrackTitle"
+          :loading="analyticsLoading"
+        />
+      </template>
+      <TracksTable
+        :tracks="filteredTracks"
+        :source-id="`profile-${profileUserId}`"
+        :is-own-profile="isOwnProfile"
+        :loading="loading"
+        :username="username"
+        :viewer-user-type="viewerUserType"
+        :profile-user-type="profileUserType"
+        :analytics-mode="analyticsMode"
+        :track-stats="trackStats"
+        :analytics-loading="analyticsLoading"
+        @edit-track="handleEdit"
+        @tracks-deleted="fetchTracks"
+        @track-shortlisted="handleTrackShortlisted"
+        @track-unshortlisted="handleTrackUnshortlisted"
+      />
     </div>
   </div>
 </template>
@@ -309,8 +348,15 @@ import { useSupabase } from '~/utils/supabase'
 import { getTrackVisibilityCondition } from '~/utils/trackVisibility'
 import TracksTable from '~/components/TracksTable.vue'
 import ManageMembers from '~/components/ManageMembers.vue'
+import TrackAnalyticsDateFilter from '~/components/TrackAnalyticsDateFilter.vue'
+import TrackAnalyticsSummary from '~/components/TrackAnalyticsSummary.vue'
+import { recordPageView } from '~/composables/useTrackAnalytics'
+import {
+  loadStoredAnalyticsRangeLabel,
+  useTrackAnalyticsData,
+} from '~/composables/useTrackAnalyticsData'
 import gsap from 'gsap'
-import { Plus, EditPencil, Trash, Check, Xmark } from '@iconoir/vue'
+import { Plus, EditPencil, Trash, Check, Xmark, StatsReport } from '@iconoir/vue'
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
@@ -1279,6 +1325,26 @@ const filteredTracks = computed(() => {
   return tracks.value
 })
 
+const analyticsMode = ref(false)
+const analyticsRangeLabel = ref(loadStoredAnalyticsRangeLabel())
+const analyticsTrackIds = computed(() => filteredTracks.value.map(track => track.id))
+
+const {
+  loading: analyticsLoading,
+  trackStats,
+  summary: analyticsSummary,
+} = useTrackAnalyticsData({
+  trackIds: analyticsTrackIds,
+  enabled: computed(() => analyticsMode.value && isOwnProfile.value && isAudioPro.value),
+  rangeLabel: analyticsRangeLabel,
+})
+
+const topTrackTitle = computed(() => {
+  const topId = analyticsSummary.value.topTrackId
+  if (!topId) return null
+  return filteredTracks.value.find(track => track.id === topId)?.title ?? `Track #${topId}`
+})
+
 // Watch tracks to update context items for search
 watch(() => tracks.value, (tracksList) => {
   if (registerContextItems && tracksList && tracksList.length > 0) {
@@ -1706,6 +1772,13 @@ onMounted(async () => {
   await fetchProfile()
   await fetchTracks()
   // Software is already loaded via useAsyncData (cached), no need to fetch again
+  
+  if (profileUserId.value && !isOwnProfile.value) {
+    void recordPageView({
+      profileId: profileUserId.value,
+      pageType: 'profile',
+    })
+  }
   
   // Load section states from localStorage
   loadBioSectionState()

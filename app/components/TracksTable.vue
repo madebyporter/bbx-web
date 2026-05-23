@@ -36,11 +36,7 @@
         <!-- Header -->
         <div :class="[
           'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 bg-neutral-900',
-          isOwnProfile 
-            ? 'trackGrid-edit' 
-            : (viewerUserType === 'creator' && profileUserType === 'audio_pro')
-              ? 'trackGrid-edit-no-collection'
-              : 'trackGrid-no-collection'
+          tableGridClass
         ]">
           <div class="px-2 flex items-center justify-center">
             <Button
@@ -63,11 +59,19 @@
           <div>Title</div>
           <div>Artist</div>
           <div>Version</div>
-          <div v-if="isOwnProfile">Collection</div>
+          <template v-if="analyticsMode && isOwnProfile">
+            <div>Plays</div>
+            <div>Listeners</div>
+            <div>Avg Listen</div>
+            <div>Completion</div>
+          </template>
+          <template v-else>
+            <div v-if="isOwnProfile">Collection</div>
           <div>Genre</div>
           <div>BPM</div>
           <div>Duration</div>
-          <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
+            <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
+          </template>
           <div :class="[
             'flex items-center justify-start',
             isOwnProfile ? 'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[80px]' : ''
@@ -87,11 +91,7 @@
         <!-- Tracks -->
         <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
           'text-sm border-b border-neutral-900 *:py-4 items-center',
-          isOwnProfile 
-            ? 'trackGrid-edit' 
-            : (viewerUserType === 'creator' && profileUserType === 'audio_pro')
-              ? 'trackGrid-edit-no-collection'
-              : 'trackGrid-no-collection',
+          tableGridClass,
           isCurrentlyPlaying(track) ? 'bg-neutral-800/70  lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
         ]">
         <div class="px-2 flex items-center justify-center gap-1">
@@ -157,14 +157,24 @@
           </Button>
         </div>
         <div class="overflow-hidden">
-          <NuxtLink :to="`/u/${getTrackOwnerUsername(track)}/t/${generateTrackSlug(track)}`"
-            :class="['flex items-center justify-between gap-2 hover:text-white hover:underline'] + (isCurrentlyPlaying(track) ? ' font-bold text-white' : '')">
+          <NuxtLink
+            :to="`/u/${getTrackOwnerUsername(track)}/t/${generateTrackSlug(track)}`"
+            class="flex min-w-0 w-full items-center justify-between gap-2 text-neutral-300 hover:text-white hover:underline"
+            :class="isCurrentlyPlaying(track) ? 'font-bold text-white' : ''"
+          >
             <span class="truncate">{{ track.title || 'Untitled' }}</span>
             <span v-if="track.is_public === false" class="text-xs text-neutral-500 flex-shrink-0">[private]</span>
           </NuxtLink>
         </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
+        <template v-if="analyticsMode && isOwnProfile">
+          <div class="text-neutral-300">{{ formatTrackStat(track.id, 'plays') }}</div>
+          <div class="text-neutral-300">{{ formatTrackStat(track.id, 'listeners') }}</div>
+          <div class="text-neutral-300">{{ formatTrackStat(track.id, 'avgListen') }}</div>
+          <div class="text-neutral-300">{{ formatTrackStat(track.id, 'completion') }}</div>
+        </template>
+        <template v-else>
         <div v-if="isOwnProfile" class="text-neutral-400 overflow-visible flex justify-start items-center">
           <!-- Editing Collections -->
           <div v-if="editingCollectionTrackId === track.id"
@@ -222,6 +232,7 @@
           </select>
           <div v-else class="text-xs px-2 py-1">Loading...</div>
         </div>
+        </template>
         <!-- Action Button: Edit / Add / Remove -->
         <div :class="[
           (isOwnProfile || (viewerUserType === 'creator' && profileUserType === 'audio_pro')) 
@@ -293,6 +304,11 @@ import LoadingLogo from '~/components/LoadingLogo.vue'
 import BulkActionsDrawer from '~/components/BulkActionsDrawer.vue'
 import { addTrackToShortlist, removeTrackFromShortlist, checkIfTracksAreShortlisted } from '~/utils/shortlist'
 import { generateUniqueSlug } from '~/utils/collections'
+import { setPlaybackContext } from '~/composables/useTrackAnalytics'
+import {
+  formatAnalyticsDuration,
+  type TrackAnalyticsRow,
+} from '~/composables/useTrackAnalyticsData'
 import { Plus, Check, Xmark } from '@iconoir/vue'
 
 interface Props {
@@ -303,9 +319,15 @@ interface Props {
   username: string
   viewerUserType?: 'creator' | 'audio_pro' | null
   profileUserType?: 'creator' | 'audio_pro' | null
+  analyticsMode?: boolean
+  trackStats?: Map<number, TrackAnalyticsRow>
+  analyticsLoading?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  analyticsMode: false,
+  analyticsLoading: false,
+})
 const emit = defineEmits<{
   'edit-track': [track: any]
   'tracks-deleted': []
@@ -341,6 +363,29 @@ const collectionSelectRef = ref<HTMLSelectElement | null>(null)
 const newCollectionInputRef = ref<HTMLInputElement | null>(null)
 
 const hasSelections = computed(() => selectedTrackIds.value.size > 0)
+
+const tableGridClass = computed(() => {
+  if (props.analyticsMode && props.isOwnProfile) {
+    return 'trackGrid-analytics-edit'
+  }
+  if (props.isOwnProfile) return 'trackGrid-edit'
+  if (props.viewerUserType === 'creator' && props.profileUserType === 'audio_pro') {
+    return 'trackGrid-edit-no-collection'
+  }
+  return 'trackGrid-no-collection'
+})
+
+function formatTrackStat(trackId: number, field: 'plays' | 'listeners' | 'avgListen' | 'completion'): string {
+  if (props.analyticsLoading) return '—'
+  const stat = props.trackStats?.get(trackId)
+  if (!stat) {
+    return field === 'avgListen' ? '0:00 (0%)' : field === 'completion' ? '0%' : '0'
+  }
+  if (field === 'plays') return stat.plays.toLocaleString()
+  if (field === 'listeners') return stat.listeners.toLocaleString()
+  if (field === 'avgListen') return `${formatAnalyticsDuration(stat.avgDuration)} (${stat.avgPercent}%)`
+  return `${stat.completionRate}%`
+}
 
 // Get selected tracks as array
 const selectedTracksArray = computed(() => {
@@ -478,6 +523,7 @@ const handlePlayClick = async (track: any, index: number) => {
       trackId: track.id, 
       currentTrackId: currentTrack.value?.id 
     })
+    setPlaybackContext({ source: 'library', collectionId: null })
     await loadQueue(props.tracks, props.sourceId, index)
   }
 }

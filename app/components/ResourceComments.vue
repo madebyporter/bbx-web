@@ -46,14 +46,13 @@
       </div>
 
       <div v-else class="p-4 border border-neutral-800 rounded-md text-sm text-neutral-400 md:sticky md:top-4">
-        <Button
-          variant="link"
+        <button
           type="button"
-          class="text-amber-400 hover:text-amber-500 no-underline"
+          class="text-link text-amber-400 hover:text-amber-500 no-underline"
           @click="() => openAuthModal && openAuthModal('signin')"
         >
           Sign in
-        </Button>
+        </button>
         to leave a comment.
       </div>
     </div>

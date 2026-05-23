@@ -11,17 +11,17 @@
         <p class="text-sm text-neutral-400">Your changes have been saved.</p>
       </div>
       <div class="flex gap-4 mt-4">
-        <Button
-          variant="link"
-          class="text-amber-300 hover:text-amber-400"
+        <button
+          type="button"
+          class="text-link text-amber-300 hover:text-amber-400 no-underline"
           @click="showSuccessMessage = false"
         >
           Edit Again
-        </Button>
+        </button>
         <span class="text-neutral-600">|</span>
-        <Button variant="link" class="text-amber-300 hover:text-amber-400" @click="handleClose">
+        <button type="button" class="text-link text-amber-300 hover:text-amber-400 no-underline" @click="handleClose">
           Close
-        </Button>
+        </button>
       </div>
     </div>
 
@@ -73,14 +73,13 @@
                     <span class="text-sm text-amber-400">{{ newFile.name }}</span>
                     <span class="text-xs text-neutral-500">({{ formatFileSize(newFile.size) }})</span>
                   </div>
-                  <Button
+                  <button
                     type="button"
-                    variant="link"
-                    class="text-red-400 hover:text-red-300 text-sm p-0"
+                    class="text-link text-sm text-red-400 hover:text-red-300 no-underline"
                     @click="newFile = null"
                   >
                     Remove
-                  </Button>
+                  </button>
                 </div>
                 
                 <!-- Instructions -->

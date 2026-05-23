@@ -1,6 +1,11 @@
 import { ref, computed, watch } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { shuffleUniqueGroups } from '~/utils/uniqueGroupShuffle'
+import {
+  beginListenSession,
+  endListenSession,
+  tickListenSession,
+} from '~/composables/useTrackAnalytics'
 import type { Track } from '~/types/track'
 
 interface PlayerState {
@@ -191,6 +196,8 @@ export function usePlayer() {
       return
     }
 
+    await endListenSession()
+
     // Mark that we've had a track loaded (for UI persistence)
     hasEverHadTrack.value = true
 
@@ -262,6 +269,7 @@ export function usePlayer() {
         console.log(`▶️ NOW PLAYING: "${currentTrack.value.title}" by ${currentTrack.value.artist} [ID: ${currentTrack.value.id}] [Group: ${currentTrack.value.track_group_name || 'none'}] [Version: ${currentTrack.value.version || 'N/A'}]`)
         await audioElement.value.play()
         isPlaying.value = true
+        beginListenSession(currentTrack.value)
         // Start frame-perfect loop check if loopOne is enabled
         if (loopOne.value) {
           startLoopCheck()
@@ -276,8 +284,9 @@ export function usePlayer() {
   }
 
   // Pause
-  const pause = () => {
+  const pause = async () => {
     if (audioElement.value) {
+      await endListenSession()
       audioElement.value.pause()
       isPlaying.value = false
       // Stop frame-perfect loop check
@@ -289,7 +298,7 @@ export function usePlayer() {
   // Toggle play/pause
   const togglePlayPause = async () => {
     if (isPlaying.value) {
-      pause()
+      await pause()
     } else {
       await play()
     }
@@ -298,6 +307,8 @@ export function usePlayer() {
   // Play track at specific index
   const playTrackAtIndex = async (index: number) => {
     if (index < 0 || index >= queue.value.length) return
+
+    await endListenSession()
 
     currentIndex.value = index
     currentTrack.value = queue.value[index]
@@ -476,6 +487,7 @@ export function usePlayer() {
 
   // Handle track end
   const handleTrackEnd = async () => {
+    await endListenSession()
     // If loopOne is enabled, checkLoopFrame should have already looped seamlessly
     // This is just a backup in case the ended event fires
     if (loopOne.value && audioElement.value) {
@@ -613,6 +625,7 @@ export function usePlayer() {
     if (audioElement.value) {
       const current = audioElement.value.currentTime
       currentTime.value = current
+      tickListenSession(current)
     }
   }
 

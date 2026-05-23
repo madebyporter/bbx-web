@@ -254,9 +254,13 @@
 
     <!-- CTA footer: secondary left, main right; row with wrap on mobile; buttons fill width -->
     <div class="flex flex-row flex-wrap justify-between items-center gap-4 p-4 pb-0 border-t border-neutral-800">
-      <Button variant="link" class="w-full text-neutral-500 hover:text-neutral-700 no-underline md:flex-1 md:min-w-0 justify-center md:justify-start" @click="showClearAllConfirm = true">
+      <button
+        type="button"
+        class="text-link w-full text-neutral-500 hover:text-neutral-700 no-underline md:flex-1 md:min-w-0 text-center md:text-left"
+        @click="showClearAllConfirm = true"
+      >
         Clear All
-      </Button>
+      </button>
       <Button variant="secondary" class="btn apply-filters-btn w-full md:flex-1 md:min-w-0 md:ml-0 ml-auto" @click="applyFiltersAndSort">
         Apply Filters & Sort
       </Button>

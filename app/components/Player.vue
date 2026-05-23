@@ -44,7 +44,7 @@
             <!-- Play/Pause -->
             <Button
               variant="ghost"
-              class="!p-0 w-10 h-10 lg:h-8 bg-white hover:bg-neutral-100 rounded-sm text-black disabled:opacity-30"
+              class="!p-0 w-10 h-10 lg:h-8 bg-white hover:bg-neutral-100 rounded-sm !text-black disabled:opacity-30"
               :disabled="!currentTrack"
               title="Play/Pause"
               @click="togglePlayPause"

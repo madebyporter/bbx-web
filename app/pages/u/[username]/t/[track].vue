@@ -133,6 +133,7 @@ import { useSupabase } from '~/utils/supabase'
 import { usePlayer } from '~/composables/usePlayer'
 import { useToast } from '~/composables/useToast'
 import LoadingLogo from '~/components/LoadingLogo.vue'
+import { recordPageView, setPlaybackContext } from '~/composables/useTrackAnalytics'
 
 // Debug: Log immediately to verify component is loading during SSR
 if (process.server) {
@@ -320,6 +321,7 @@ const handlePlay = async () => {
   }
   
   // Otherwise, load and play the track
+  setPlaybackContext({ source: 'track_page', collectionId: null })
   await loadQueue([track.value], `track-${track.value.id}`, 0)
 }
 
@@ -536,6 +538,14 @@ const handleTrackUpdate = () => {
 onMounted(async () => {
   // Fetch collections and group tracks (not critical for SEO)
   await fetchCollectionsAndGroup()
+  
+  if (profileUserId.value && track.value && !isOwnProfile.value) {
+    void recordPageView({
+      profileId: profileUserId.value,
+      pageType: 'track',
+      resourceId: track.value.id,
+    })
+  }
   
   // Fetch statuses if owner
   if (isOwnProfile.value) {

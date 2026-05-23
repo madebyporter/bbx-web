@@ -57,9 +57,9 @@
             <Button type="submit" :disabled="isSubmitting">
               {{ isSubmitting ? 'Updating...' : 'Update Password' }}
             </Button>
-            <Button variant="link" type="button" class="text-sm" @click="goToSignIn">
+            <button type="button" class="text-link text-sm no-underline" @click="goToSignIn">
               Cancel
-            </Button>
+            </button>
           </div>
         </form>
       </div>

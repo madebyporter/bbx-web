@@ -36,9 +36,12 @@
           
           <div v-else-if="isAlreadyMember" class="mb-6">
             <p class="text-neutral-400 mb-4">You're already a member of this collection.</p>
-            <Button :to="`/u/${collectionOwnerUsername || collection.user_id}/c/${collection.slug}`">
+            <NuxtLink
+              :to="`/u/${collectionOwnerUsername || collection.user_id}/c/${collection.slug}`"
+              class="inline-flex items-center justify-center font-medium transition-colors bg-amber-500 text-black hover:bg-amber-600 px-4 py-2 text-base rounded min-h-8"
+            >
               View Collection
-            </Button>
+            </NuxtLink>
           </div>
           
           <div v-else class="mb-6">
@@ -58,9 +61,12 @@
         </div>
         
         <div v-if="isSuccess || isAlreadyMember">
-          <Button :to="`/u/${collectionOwnerUsername || collection.user_id}/c/${collection.slug}`">
+          <NuxtLink
+            :to="`/u/${collectionOwnerUsername || collection.user_id}/c/${collection.slug}`"
+            class="inline-flex items-center justify-center font-medium transition-colors bg-amber-500 text-black hover:bg-amber-600 px-4 py-2 text-base rounded min-h-8"
+          >
             View Collection
-          </Button>
+          </NuxtLink>
         </div>
       </div>
     </div>

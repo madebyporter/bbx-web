@@ -8,13 +8,13 @@
     <div v-if="showSuccessMessage" class="h-full flex flex-col items-center justify-center text-center gap-4">
       <h2 class="text-xl">Upload successful!</h2>
       <p class="text-neutral-600">{{ uploadedCount }} track(s) uploaded to your library.</p>
-      <Button
-        variant="link"
-        class="mt-4 text-amber-300 hover:text-amber-400"
+      <button
+        type="button"
+        class="text-link mt-4 text-amber-300 hover:text-amber-400 no-underline"
         @click="resetAndShowForm"
       >
         Upload more tracks
-      </Button>
+      </button>
     </div>
 
     <!-- Upload Form -->
@@ -33,7 +33,7 @@
 
               <div class="grow flex flex-col gap-1">
                 <p class="text-base font-medium">{{ isDragging ? 'Drop files here' : 'Drag & drop MP3 or M4A files here' }}</p>
-                <p class="text-sm text-neutral-500">or <Button type="button" variant="link" class="text-amber-400 hover:text-amber-300 p-0" @click="fileInput?.click()">click to browse</Button></p>
+                <p class="text-sm text-neutral-500">or <button type="button" class="text-link text-amber-400 hover:text-amber-300 no-underline" @click="fileInput?.click()">click to browse</button></p>
                 <p class="text-xs text-neutral-600">Maximum 50MB per file</p>
               </div>
             </div>

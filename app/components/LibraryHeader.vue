@@ -6,22 +6,37 @@
         {{ description }}
       </p>
     </div>
-    <div class="flex items-center gap-4">
-      <p class="text-sm text-neutral-500 hidden md:block">
+    <div class="flex items-stretch gap-4">
+      <p class="text-sm text-neutral-500 hidden md:flex items-center">
         {{ count }} {{ count === 1 ? itemLabel : itemLabel + 's' }}
       </p>
       <Button
         v-if="filterContext"
         variant="secondary"
-        class="btn px-3! py-1.5! text-sm"
+        size="sm"
+        class="btn px-3! py-1.5! text-sm h-full max-h-10 self-stretch"
         @click="emit('open-filter-sort')"
       >
         Filter & Sort
       </Button>
       <Button
+        v-if="showAnalyticsToggle"
+        variant="secondary"
+        size="sm"
+        :class="[
+          'btn px-2.5! py-1.5! text-sm h-full max-h-10 self-stretch shrink-0',
+          analyticsMode ? 'border! border-amber-400/60! bg-amber-400/10! text-amber-300!' : ''
+        ]"
+        title="Analytics"
+        @click="emit('update:analyticsMode', !analyticsMode)"
+      >
+        <StatsReport class="w-4 h-4" />
+      </Button>
+      <Button
         v-if="showSettingsButton"
         variant="secondary"
-        class="btn px-3! py-1.5! text-sm"
+        size="sm"
+        class="btn px-3! py-1.5! text-sm h-full max-h-10 self-stretch"
         @click="emit('open-settings')"
       >
         Settings
@@ -68,6 +83,8 @@
 </template>
 
 <script setup lang="ts">
+import { StatsReport } from '@iconoir/vue'
+
 withDefaults(defineProps<{
   title: string
   description?: string
@@ -79,16 +96,21 @@ withDefaults(defineProps<{
   showViewModeSelector?: boolean
   filterContext?: 'software' | 'kits' | 'music' | null
   showSettingsButton?: boolean
+  showAnalyticsToggle?: boolean
+  analyticsMode?: boolean
 }>(), {
   itemLabel: 'track',
   showViewModeSelector: true,
   filterContext: null,
-  showSettingsButton: false
+  showSettingsButton: false,
+  showAnalyticsToggle: false,
+  analyticsMode: false,
 })
 
 const emit = defineEmits<{
   'update:showViewMenu': [value: boolean]
   'update:viewMode': [value: 'final' | 'all']
+  'update:analyticsMode': [value: boolean]
   'open-filter-sort': []
   'open-settings': []
 }>()

@@ -8,13 +8,13 @@
     <div v-if="showSuccessMessage" class="h-full flex flex-col items-center justify-center text-center gap-4">
       <h2 class="text-xl">Thanks for your submission.</h2>
       <p class="text-neutral-600">We will review and add this submission if it fits our criteria.</p>
-      <Button
-        variant="link"
-        class="mt-4 text-amber-300 hover:text-amber-400"
+      <button
+        type="button"
+        class="text-link mt-4 text-amber-300 hover:text-amber-400 no-underline"
         @click="resetAndShowForm"
       >
         Submit another resource
-      </Button>
+      </button>
     </div>
 
     <!-- Submit Form -->

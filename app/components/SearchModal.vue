@@ -41,15 +41,14 @@
                       <div class="text-xs text-neutral-500 mt-1">{{ getTypeLabel(result.type) }}</div>
                     </div>
                     <div class="flex gap-2 flex-shrink-0">
-                      <Button
+                      <NuxtLink
                         v-if="hasDetailPage(result)"
-                        variant="link"
-                        size="sm"
-                        class="!px-2 !py-1 text-xs text-amber-400 hover:text-amber-300"
-                        @click.stop="navigateToDetail(result)"
+                        :to="getItemUrl(result, 'detail')"
+                        class="text-link text-xs text-amber-400 hover:text-amber-300 no-underline"
+                        @click.stop="handleClose"
                       >
                         View Detail
-                      </Button>
+                      </NuxtLink>
                     </div>
                   </div>
                 </div>
@@ -84,23 +83,21 @@
                       <div class="text-xs text-neutral-500 mt-1">{{ getTypeLabel(result.type) }}</div>
                     </div>
                     <div class="flex gap-2 flex-shrink-0">
-                      <Button
-                        variant="link"
-                        size="sm"
-                        class="!px-2 !py-1 text-xs text-amber-400 hover:text-amber-300"
+                      <button
+                        type="button"
+                        class="text-link text-xs text-amber-400 hover:text-amber-300 no-underline"
                         @click.stop="scrollToItem(result)"
                       >
                         Scroll to
-                      </Button>
-                      <Button
+                      </button>
+                      <NuxtLink
                         v-if="hasDetailPage(result)"
-                        variant="link"
-                        size="sm"
-                        class="!px-2 !py-1 text-xs text-amber-400 hover:text-amber-300"
-                        @click.stop="navigateToDetail(result)"
+                        :to="getItemUrl(result, 'detail')"
+                        class="text-link text-xs text-amber-400 hover:text-amber-300 no-underline"
+                        @click.stop="handleClose"
                       >
                         View Detail
-                      </Button>
+                      </NuxtLink>
                     </div>
                   </div>
                 </div>
