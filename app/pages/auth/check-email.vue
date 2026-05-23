@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-neutral-900 flex items-center justify-center">
+  <div class="grow bg-neutral-900 flex items-center justify-center">
     <div class="bg-neutral-800 p-8 rounded-lg max-w-md w-full mx-4">
       <div class="text-center">
         <div class="text-amber-500 text-4xl mb-4" aria-hidden="true">✉</div>

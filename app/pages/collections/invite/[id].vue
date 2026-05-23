@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
+  <div class="grow bg-neutral-900 flex items-center justify-center p-4">
     <div class="bg-neutral-800 p-8 rounded-lg max-w-md w-full">
       <div v-if="isLoading" class="text-center">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto mb-4"></div>
