@@ -99,7 +99,7 @@ export async function endListenSession() {
   if (!supabase) return
 
   try {
-    await supabase.from('track_listen_sessions').insert({
+    const { error } = await supabase.from('track_listen_sessions').insert({
       track_id: session.trackId,
       owner_id: session.ownerId,
       listener_id: session.listenerId,
@@ -109,6 +109,10 @@ export async function endListenSession() {
       source: session.source,
       collection_id: session.collectionId,
     })
+
+    if (error) {
+      console.error('Failed to record listen session:', error)
+    }
   } catch (error) {
     console.error('Failed to record listen session:', error)
   }
@@ -128,12 +132,16 @@ export async function recordPageView(params: {
   if (!supabase) return
 
   try {
-    await supabase.from('profile_page_views').insert({
+    const { error } = await supabase.from('profile_page_views').insert({
       profile_id: params.profileId,
       viewer_id: viewerId,
       page_type: params.pageType,
       resource_id: params.resourceId ?? null,
     })
+
+    if (error) {
+      console.error('Failed to record page view:', error)
+    }
   } catch (error) {
     console.error('Failed to record page view:', error)
   }

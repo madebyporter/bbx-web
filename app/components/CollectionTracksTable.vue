@@ -26,7 +26,7 @@
       </template>
     </div>
 
-    <div v-else class="w-full h-fit overflow-x-auto overflow-y-hidden">
+    <div v-else class="w-full h-fit overflow-x-auto overflow-y-hidden no-scrollbar">
       <!-- Bulk Actions Drawer -->
       <BulkActionsDrawer
         v-model:show="showBulkActionsDrawer"
@@ -43,7 +43,7 @@
       <div class="w-fit md:w-full h-fit">
         <!-- Header -->
         <div :class="[
-            'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 bg-neutral-900',
+            'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 bg-neutral-900 *:flex *:items-center',
             tableGridClass
           ]">
           <div class="px-2 flex items-center justify-center">

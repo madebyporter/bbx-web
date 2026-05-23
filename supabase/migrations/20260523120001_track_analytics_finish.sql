@@ -1,10 +1,11 @@
--- Track analytics: listen sessions, page views, and owner-facing aggregates
+-- Idempotent finish script for track analytics (safe to re-run)
+-- Use this if 20260523120000_track_analytics.sql partially applied.
 
 -- ============================================================================
--- track_listen_sessions
+-- track_listen_sessions (skip if exists)
 -- ============================================================================
 
-CREATE TABLE public.track_listen_sessions (
+CREATE TABLE IF NOT EXISTS public.track_listen_sessions (
   id BIGSERIAL PRIMARY KEY,
   track_id BIGINT NOT NULL REFERENCES public.sounds(id) ON DELETE CASCADE,
   owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -19,19 +20,21 @@ CREATE TABLE public.track_listen_sessions (
     CHECK (source IN ('library', 'collection', 'track_page'))
 );
 
-CREATE INDEX idx_track_listen_sessions_owner_started
+CREATE INDEX IF NOT EXISTS idx_track_listen_sessions_owner_started
   ON public.track_listen_sessions (owner_id, started_at DESC);
 
-CREATE INDEX idx_track_listen_sessions_track_started
+CREATE INDEX IF NOT EXISTS idx_track_listen_sessions_track_started
   ON public.track_listen_sessions (track_id, started_at DESC);
 
 ALTER TABLE public.track_listen_sessions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Owners can read listen sessions" ON public.track_listen_sessions;
 CREATE POLICY "Owners can read listen sessions"
   ON public.track_listen_sessions
   FOR SELECT
   USING (owner_id = auth.uid());
 
+DROP POLICY IF EXISTS "Insert listen sessions excluding track owner" ON public.track_listen_sessions;
 CREATE POLICY "Insert listen sessions excluding track owner"
   ON public.track_listen_sessions
   FOR INSERT
@@ -51,7 +54,7 @@ GRANT USAGE, SELECT ON SEQUENCE public.track_listen_sessions_id_seq TO anon, aut
 -- profile_page_views
 -- ============================================================================
 
-CREATE TABLE public.profile_page_views (
+CREATE TABLE IF NOT EXISTS public.profile_page_views (
   id BIGSERIAL PRIMARY KEY,
   profile_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   viewer_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -62,16 +65,18 @@ CREATE TABLE public.profile_page_views (
     CHECK (page_type IN ('profile', 'collection', 'track'))
 );
 
-CREATE INDEX idx_profile_page_views_profile_viewed
+CREATE INDEX IF NOT EXISTS idx_profile_page_views_profile_viewed
   ON public.profile_page_views (profile_id, viewed_at DESC);
 
 ALTER TABLE public.profile_page_views ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Profile owners can read page views" ON public.profile_page_views;
 CREATE POLICY "Profile owners can read page views"
   ON public.profile_page_views
   FOR SELECT
   USING (profile_id = auth.uid());
 
+DROP POLICY IF EXISTS "Insert page views excluding profile owner" ON public.profile_page_views;
 CREATE POLICY "Insert page views excluding profile owner"
   ON public.profile_page_views
   FOR INSERT
@@ -100,7 +105,6 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_result JSONB;
   v_summary JSONB;
   v_tracks JSONB;
   v_page_views BIGINT;

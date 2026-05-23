@@ -156,6 +156,11 @@ export function useTrackAnalyticsData(options: {
       }
     } catch (error) {
       console.error('Failed to fetch track analytics:', error)
+      if (import.meta.dev) {
+        console.warn(
+          'Track analytics may be unavailable. Apply supabase/migrations/20260523120000_track_analytics.sql to your Supabase project.'
+        )
+      }
     } finally {
       loading.value = false
     }
