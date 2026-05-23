@@ -3,6 +3,8 @@
   
 [build.environment]
   NODE_VERSION = "20.19.0"
+  # SEO debug snapshots; omit from secrets scan if re-added accidentally
+  SECRETS_SCAN_OMIT_PATHS = "diagnosis-output/**"
 
 [dev]
   targetPort = 3000

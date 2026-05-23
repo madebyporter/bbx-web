@@ -25,3 +25,6 @@ logs
 
 # Local Netlify folder
 .netlify
+
+# SEO diagnose script output (may contain baked-in public env from scraped HTML)
+diagnosis-output/
