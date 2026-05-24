@@ -318,6 +318,7 @@ import BulkActionsDrawer from '~/components/BulkActionsDrawer.vue'
 import { addTrackToShortlist, removeTrackFromShortlist, checkIfTracksAreShortlisted } from '~/utils/shortlist'
 import { generateUniqueSlug } from '~/utils/collections'
 import { setPlaybackContext } from '~/composables/useTrackAnalytics'
+import { useAnalytics } from '~/composables/useAnalytics'
 import {
   formatAnalyticsDuration,
   type TrackAnalyticsRow,
@@ -353,6 +354,7 @@ const { isStemPlayerActive, stemTracks, toggleMute, toggleSolo } = useStemPlayer
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const { showProcessing, showSuccess, showError, removeToast } = useToast()
+const { capture } = useAnalytics()
 
 const statuses = ref<Array<{ id: number; name: string }>>([])
 
@@ -669,6 +671,11 @@ const handleAddToShortlist = async (trackId: number) => {
     
     if (result.success) {
       shortlistedTrackIds.value.add(trackId)
+      const track = props.tracks.find((t) => t.id === trackId)
+      capture('shortlist_added', {
+        track_id: trackId,
+        audio_pro_id: track?.user_id ?? track?.original_owner?.id ?? '',
+      })
       removeToast(toastId)
       showSuccess('Track added to shortlist')
       emit('track-shortlisted', trackId)
@@ -696,6 +703,7 @@ const handleRemoveFromShortlist = async (trackId: number) => {
     
     if (result.success) {
       shortlistedTrackIds.value.delete(trackId)
+      capture('shortlist_removed', { track_id: trackId })
       removeToast(toastId)
       showSuccess('Track removed from shortlist')
       emit('track-unshortlisted', trackId)

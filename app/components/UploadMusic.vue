@@ -238,6 +238,7 @@ import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { usePlayer } from '~/composables/usePlayer'
 import { useToast } from '~/composables/useToast'
+import { useAnalytics } from '~/composables/useAnalytics'
 import { analyzeBPM, analyzeKey } from '~/composables/useAudioAnalyzer'
 import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
@@ -288,6 +289,7 @@ interface Collection {
 const route = useRoute()
 const { supabase } = useSupabase()
 const { user } = useAuth()
+const { capture } = useAnalytics()
 const { addTrackToQueue, queueSourceId } = usePlayer()
 const { showProcessing, showError, showSuccess, removeToast, updateToast } = useToast()
 
@@ -1044,6 +1046,19 @@ const onSubmit = async () => {
       uploadedCount.value = successCount
       showSuccessMessage.value = true
       emit('music-uploaded')
+
+      const isBulk = successCount > 1
+      for (const fileData of selectedFiles.value) {
+        if (!fileData.uploadedSoundId) continue
+        const hasMetadata = Boolean(
+          fileData.metadata.title || fileData.metadata.artist || fileData.metadata.genre
+        )
+        capture('track_uploaded', {
+          track_id: fileData.uploadedSoundId,
+          has_metadata: hasMetadata,
+          bulk: isBulk,
+        })
+      }
       
       // Show success toast for uploads
       showSuccess(`Successfully uploaded ${successCount} track${successCount !== 1 ? 's' : ''}`)

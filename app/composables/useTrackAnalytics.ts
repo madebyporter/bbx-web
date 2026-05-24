@@ -1,6 +1,7 @@
 import type { Track } from '~/types/track'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
+import { useAnalytics } from '~/composables/useAnalytics'
 
 const PLAY_THRESHOLD_SECONDS = 3
 
@@ -47,6 +48,10 @@ export function setPlaybackContext(context: Partial<PlaybackContext>) {
   playbackContext = { ...playbackContext, ...context }
 }
 
+export function getPlaybackContext(): PlaybackContext {
+  return playbackContext
+}
+
 function shouldTrackListener(track: Track): boolean {
   const { user } = useAuth()
   return user.value?.id !== track.user_id
@@ -83,6 +88,19 @@ export function tickListenSession(currentTimeSeconds: number) {
 
   if (!activeSession.countedAsPlay && currentTimeSeconds >= PLAY_THRESHOLD_SECONDS) {
     activeSession.countedAsPlay = true
+
+    const { user } = useAuth()
+    const { capture } = useAnalytics()
+    const isOwnTrack = user.value?.id === activeSession.ownerId
+
+    capture('track_play_qualified', {
+      track_id: activeSession.trackId,
+      owner_id: activeSession.ownerId,
+      is_own_track: isOwnTrack,
+      source: activeSession.source,
+      collection_id: activeSession.collectionId,
+      duration_seconds: Math.floor(currentTimeSeconds),
+    })
   }
 }
 

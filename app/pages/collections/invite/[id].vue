@@ -79,6 +79,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import { useToast } from '~/composables/useToast'
+import { useAnalytics } from '~/composables/useAnalytics'
 import { acceptCollectionInvite, isCollectionMember } from '~/utils/collections'
 
 const route = useRoute()
@@ -86,6 +87,7 @@ const router = useRouter()
 const { user } = useAuth()
 const { supabase } = useSupabase()
 const { showSuccess, showError } = useToast()
+const { capture } = useAnalytics()
 
 const collectionId = parseInt(route.params.id as string)
 const collection = ref<any>(null)
@@ -158,6 +160,7 @@ const handleAccept = async () => {
   
   try {
     await acceptCollectionInvite(collectionId, user.value.id)
+    capture('collection_invite_accepted', { collection_id: collectionId })
     isSuccess.value = true
     isAlreadyMember.value = true
     showSuccess('Successfully joined the collection!')

@@ -116,6 +116,7 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { getProfileMembers, inviteMember, removeMember, searchUsersForInvite, type UserSearchResult } from '~/utils/memberships'
+import { useAnalytics } from '~/composables/useAnalytics'
 
 interface Props {
   profileId: string
@@ -125,6 +126,7 @@ const props = defineProps<Props>()
 
 const { supabase } = useSupabase()
 const { user } = useAuth()
+const { capture } = useAnalytics()
 
 const members = ref<Array<{
   id: number
@@ -284,6 +286,7 @@ const handleInvite = async () => {
   
   try {
     await inviteMember(props.profileId, selectedUser.value.id, user.value.id)
+    capture('profile_member_invited', { profile_id: props.profileId })
     inviteSuccess.value = `${selectedUser.value.display_name || selectedUser.value.username} has been invited.`
     
     // Clear search and selection

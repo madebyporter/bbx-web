@@ -44,7 +44,9 @@ export default defineNuxtConfig({
     public: {
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
       supabaseKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY,
-      SITE_URL: process.env.SITE_URL
+      SITE_URL: process.env.SITE_URL,
+      posthogKey: process.env.NUXT_PUBLIC_POSTHOG_KEY,
+      posthogHost: process.env.NUXT_PUBLIC_POSTHOG_HOST,
     }
   },
   
@@ -99,7 +101,7 @@ export default defineNuxtConfig({
   
   plugins: [
     '~/plugins/supabase.client.ts',
-    '~/plugins/google-analytics.client.ts',
+    '~/plugins/posthog.client.ts',
     '~/plugins/service-worker.client.ts'
   ],
 

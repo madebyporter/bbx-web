@@ -105,6 +105,7 @@ import { ref, computed, watch } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
+import { useAnalytics } from '~/composables/useAnalytics'
 import MasterDrawer from '~/components/MasterDrawer.vue'
 
 interface Props {
@@ -120,6 +121,7 @@ const emit = defineEmits<{
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const { showSuccess, showError } = useToast()
+const { capture, identify } = useAnalytics()
 
 const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
 
@@ -315,6 +317,17 @@ const handleSave = async () => {
       })
     
     if (profileError) throw profileError
+
+    if (userType.value !== originalUserType.value) {
+      capture('user_type_selected', { user_type: userType.value })
+      if (user.value) {
+        identify({
+          userId: user.value.id,
+          userType: userType.value,
+          username: username.value || null,
+        })
+      }
+    }
     
     // Handle email change if email was modified
     if (email.value !== originalEmail.value) {

@@ -96,21 +96,28 @@
           </div>
           <!-- Comments Section -->
           <div class="p-4">
-            <ResourceComments :resource-id="resource.id" />
+            <ResourceComments
+              :resource-id="resource.id"
+              :category="props.typeSlug === 'kits' ? 'kits' : 'software'"
+            />
           </div>
         </div>
       </div>
 
       <!-- Fixed Footer CTA -->
       <div class="shrink-0">
-        <ResourceActionFooter :resource-id="resource.id" :resource-link="resource.link" />
+        <ResourceActionFooter
+          :resource-id="resource.id"
+          :resource-link="resource.link"
+          :category="props.typeSlug === 'kits' ? 'kits' : 'software'"
+        />
       </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch, inject, onMounted } from 'vue'
+import { computed, watch, inject, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSupabase } from '~/utils/supabase'
 import { fetchResourceBySlug, deleteResource, getResourceUseStatus } from '~/utils/resourceQueries'
@@ -121,6 +128,7 @@ import LoadingLogo from '~/components/LoadingLogo.vue'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import { navigateTo } from '#app'
+import { useAnalytics } from '~/composables/useAnalytics'
 
 const props = defineProps<{
   typeSlug: string // 'software' or 'kits'
@@ -187,6 +195,8 @@ const resourceTypeLabel = computed(() => typeConfig.value.label)
 const listPath = computed(() => typeConfig.value.listPath)
 const { isAdmin } = useAuth()
 const { showSuccess, showError } = useToast()
+const { capture } = useAnalytics()
+const detailViewTracked = ref(false)
 const handleEdit = inject<(resource: Resource) => void>('handleEdit')
 
 // Fetch resource data server-side for SEO
@@ -221,6 +231,28 @@ const { data: resourceData, pending: loading, refresh } = await useAsyncData(
 )
 
 const resource = computed(() => resourceData.value)
+
+watch(
+  () => resource.value?.id,
+  (resourceId) => {
+    if (!import.meta.client || !resourceId || !resource.value || detailViewTracked.value) return
+    detailViewTracked.value = true
+    const category = props.typeSlug === 'kits' ? 'kits' : 'software'
+    capture('resource_detail_viewed', {
+      resource_id: resourceId,
+      slug: props.slug,
+      category,
+    })
+  },
+  { immediate: true }
+)
+
+watch(
+  () => props.slug,
+  () => {
+    detailViewTracked.value = false
+  }
+)
 
 // Fetch use count server-side for structured data
 // Note: Key must always be a string - use props for stability during navigation

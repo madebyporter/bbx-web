@@ -28,7 +28,7 @@
           analyticsMode ? 'border! border-amber-400/60! bg-amber-400/10! text-amber-300!' : ''
         ]"
         title="Analytics"
-        @click="emit('update:analyticsMode', !analyticsMode)"
+        @click="handleAnalyticsToggle"
       >
         <StatsReport class="w-4 h-4" />
       </Button>
@@ -84,8 +84,9 @@
 
 <script setup lang="ts">
 import { StatsReport } from '@iconoir/vue'
+import { useAnalytics } from '~/composables/useAnalytics'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   title: string
   description?: string
   count: number
@@ -98,6 +99,7 @@ withDefaults(defineProps<{
   showSettingsButton?: boolean
   showAnalyticsToggle?: boolean
   analyticsMode?: boolean
+  analyticsPage?: 'profile' | 'collection'
 }>(), {
   itemLabel: 'track',
   showViewModeSelector: true,
@@ -105,7 +107,10 @@ withDefaults(defineProps<{
   showSettingsButton: false,
   showAnalyticsToggle: false,
   analyticsMode: false,
+  analyticsPage: 'profile',
 })
+
+const { capture } = useAnalytics()
 
 const emit = defineEmits<{
   'update:showViewMenu': [value: boolean]
@@ -118,6 +123,12 @@ const emit = defineEmits<{
 const handleViewModeChange = (mode: 'final' | 'all') => {
   emit('update:viewMode', mode)
   emit('update:showViewMenu', false)
+}
+
+const handleAnalyticsToggle = () => {
+  const enabled = !props.analyticsMode
+  capture('analytics_mode_toggled', { enabled, page: props.analyticsPage })
+  emit('update:analyticsMode', enabled)
 }
 </script>
 

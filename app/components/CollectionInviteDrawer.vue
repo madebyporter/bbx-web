@@ -137,6 +137,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
+import { useAnalytics } from '~/composables/useAnalytics'
 import MasterDrawer from '~/components/MasterDrawer.vue'
 import { 
   searchUsersForCollectionInvite, 
@@ -162,6 +163,7 @@ const emit = defineEmits<{
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const { showSuccess, showError } = useToast()
+const { capture } = useAnalytics()
 
 const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
 
@@ -290,6 +292,10 @@ const handleInvite = async () => {
   
   try {
     await inviteCollectionMember(props.collectionId, selectedUser.value.id, user.value.id)
+    capture('collection_invite_sent', {
+      collection_id: props.collectionId,
+      method: 'user_search',
+    })
     inviteSuccess.value = `${selectedUser.value.display_name || selectedUser.value.username} has been invited.`
     
     // Clear search and selection
@@ -368,6 +374,7 @@ const copyLink = async () => {
   try {
     await navigator.clipboard.writeText(inviteLink.value)
     linkCopied.value = true
+    capture('collection_invite_link_copied', { collection_id: props.collectionId })
     showSuccess('Link copied to clipboard')
     setTimeout(() => {
       linkCopied.value = false

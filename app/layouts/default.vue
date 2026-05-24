@@ -160,6 +160,7 @@
 import { ref, computed, onMounted, onUnmounted, provide, nextTick, watch } from 'vue'
 import gsap from 'gsap'
 import { useAuth, isEmailNotConfirmedError } from '~/composables/useAuth'
+import { useAnalytics } from '~/composables/useAnalytics'
 import { useToast } from '~/composables/useToast'
 import { setPendingSignupEmail } from '~/utils/authStorage'
 import { usePlayer } from '~/composables/usePlayer'
@@ -238,6 +239,7 @@ interface Resource {
 
 const auth = useAuth()
 const { user, isAdmin } = auth
+const { capture } = useAnalytics()
 const { showSuccess, showError, showProcessing, showInfo } = useToast()
 // Start as false on both server and client, set to true in onMounted
 // Initialize to true on both server and client to prevent hydration mismatch
@@ -406,7 +408,9 @@ const handleSubmit = async () => {
       isForgotPassword.value = false
     } else if (isSignUp.value) {
       const signupEmail = email.value
-      const result = await auth.signUp(signupEmail, password.value, userType.value)
+      const signupUserType = userType.value
+      const result = await auth.signUp(signupEmail, password.value, signupUserType)
+      capture('signup_completed', { user_type: signupUserType, method: 'email' })
       if (result.user && !result.session) {
         setPendingSignupEmail(signupEmail)
         showAuthModal.value = false
@@ -424,6 +428,7 @@ const handleSubmit = async () => {
     } else {
       const signInEmail = email.value
       await auth.signIn(signInEmail, password.value)
+      capture('login_completed', {})
       showSuccess(`Welcome back, ${signInEmail}!`)
       showAuthModal.value = false
       email.value = ''
@@ -671,6 +676,13 @@ const unregisterContextItems = () => {
 
 const handleSearch = (query: string) => {
   console.log('Layout: handleSearch called with query:', query)
+
+  const path = route.path
+  if (path.includes('/software')) {
+    capture('resource_search', { query, category: 'software' })
+  } else if (path.includes('/kits')) {
+    capture('resource_search', { query, category: 'kits' })
+  }
   
   // Use registered search handler if available
   if (currentSearchHandler.value) {
@@ -700,8 +712,11 @@ const handleSearch = (query: string) => {
 const handleShowSignup = () => {
   console.log('Show signup called, current user:', user.value)
   if (!user.value) {
+    const sourcePage = route.path
+    capture('signup_cta_clicked', { source_page: sourcePage })
     showAuthModal.value = true
     isSignUp.value = true
+    capture('signup_started', { user_type: userType.value })
   }
 }
 
@@ -713,6 +728,7 @@ const openAuthModal = (mode: 'signin' | 'signup' | 'forgot' = 'signin') => {
   } else if (mode === 'signup') {
     isSignUp.value = true
     isForgotPassword.value = false
+    capture('signup_started', { user_type: userType.value })
   } else {
     // signin
     isSignUp.value = false

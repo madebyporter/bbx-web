@@ -61,17 +61,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, inject, watch } from 'vue'
+import { ref, onMounted, inject, watch, computed } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { fetchResourceComments, createResourceComment } from '~/utils/resourceQueries'
+import { useAnalytics } from '~/composables/useAnalytics'
+import type { ResourceCategory } from '~/types/analytics'
 import type { ResourceComment } from '~/types/resource'
 
 const props = defineProps<{
   resourceId: number
+  category?: ResourceCategory
 }>()
 
 const { user } = useAuth()
+const { capture } = useAnalytics()
+const route = useRoute()
 const openAuthModal = inject<(mode?: 'signin' | 'signup' | 'forgot') => void>('openAuthModal')
+
+const resourceCategory = computed((): ResourceCategory => {
+  if (props.category) return props.category
+  if (route.path.includes('/kits')) return 'kits'
+  return 'software'
+})
 const newComment = ref('')
 const submitting = ref(false)
 
@@ -111,6 +122,10 @@ const handleSubmitComment = async () => {
   try {
     const comment = await createResourceComment(props.resourceId, newComment.value)
     if (comment) {
+      capture('resource_comment_created', {
+        resource_id: props.resourceId,
+        category: resourceCategory.value,
+      })
       // Add new comment to list immediately (optimistic update)
       comments.value = [comment, ...comments.value]
       newComment.value = ''

@@ -285,6 +285,7 @@ import IconWindows from './IconWindows.vue'
 import IconLinux from './IconLinux.vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
+import { useAnalytics } from '~/composables/useAnalytics'
 import { ref, onMounted, reactive, computed, watch } from 'vue'
 import MasterDrawer from './MasterDrawer.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -596,7 +597,30 @@ const removeTag = (tag) => {
 }
 
 // Apply filters and sort
+const { capture } = useAnalytics()
+
 const applyFiltersAndSort = () => {
+  if (props.context === 'software' || props.context === 'kits') {
+    const category = props.context
+    if (filters.price.free) {
+      capture('resource_filter_applied', { filter_type: 'price', filter_value: 'free', category })
+    }
+    if (filters.price.paid) {
+      capture('resource_filter_applied', { filter_type: 'price', filter_value: 'paid', category })
+    }
+    for (const os of filters.os) {
+      capture('resource_filter_applied', { filter_type: 'os', filter_value: os, category })
+    }
+    for (const tag of filters.tags) {
+      capture('resource_filter_applied', { filter_type: 'tag', filter_value: tag, category })
+    }
+    capture('resource_filter_applied', {
+      filter_type: 'sort',
+      filter_value: `${sortBy.value}:${sortDirection.value}`,
+      category,
+    })
+  }
+
   const filterSortParams = {
     sort: {
       sortBy: sortBy.value,

@@ -1,4 +1,5 @@
 import { useAuth } from '~/composables/useAuth'
+import { useAnalytics } from '~/composables/useAnalytics'
 import { useSupabase } from '~/utils/supabase'
 import type { TrackComment } from '~/types/trackComment'
 
@@ -123,6 +124,13 @@ export async function createTrackComment(
 
     if (error) throw error
     if (!data) return null
+
+    const { capture } = useAnalytics()
+    capture('track_comment_created', {
+      track_id: trackId,
+      context: collectionId != null ? 'collection' : 'library',
+      collection_id: collectionId ?? null,
+    })
 
     const profilesById = await fetchProfilesForComments([data.user_id])
     return mergeProfilesIntoComments([data], profilesById)[0] ?? null

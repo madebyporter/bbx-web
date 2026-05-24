@@ -19,6 +19,7 @@
         :show-settings-button="isCollectionOwner"
         :show-analytics-toggle="isOwnProfile && profileUserType === 'audio_pro'"
         :analytics-mode="analyticsMode"
+        analytics-page="collection"
         filter-context="music"
         @open-filter-sort="handleOpenFilterSort"
         @open-settings="showSettingsDrawer = true"

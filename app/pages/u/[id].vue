@@ -306,7 +306,7 @@
               analyticsMode ? 'border! border-amber-400/60! bg-amber-400/10! text-amber-300!' : ''
             ]"
             title="Analytics"
-            @click="analyticsMode = !analyticsMode"
+            @click="toggleAnalyticsMode"
           >
             <StatsReport class="w-4 h-4" />
           </Button>
@@ -351,6 +351,7 @@ import ManageMembers from '~/components/ManageMembers.vue'
 import TrackAnalyticsDateFilter from '~/components/TrackAnalyticsDateFilter.vue'
 import TrackAnalyticsSummary from '~/components/TrackAnalyticsSummary.vue'
 import { recordPageView } from '~/composables/useTrackAnalytics'
+import { useAnalytics } from '~/composables/useAnalytics'
 import {
   loadStoredAnalyticsRangeLabel,
   useTrackAnalyticsData,
@@ -1326,6 +1327,13 @@ const filteredTracks = computed(() => {
 })
 
 const analyticsMode = ref(false)
+const { capture } = useAnalytics()
+
+const toggleAnalyticsMode = () => {
+  const enabled = !analyticsMode.value
+  analyticsMode.value = enabled
+  capture('analytics_mode_toggled', { enabled, page: 'profile' })
+}
 const analyticsRangeLabel = ref(loadStoredAnalyticsRangeLabel())
 const analyticsTrackIds = computed(() => filteredTracks.value.map(track => track.id))
 

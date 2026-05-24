@@ -289,6 +289,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { createResourceWithTags, fetchResourceTypes, type ResourceType } from '../utils/resourceQueries'
+import { useAnalytics } from '~/composables/useAnalytics'
 import MasterDrawer from './MasterDrawer.vue'
 
 interface Props {
@@ -337,6 +338,8 @@ interface Tag {
 }
 
 const { supabase } = useSupabase()
+const route = useRoute()
+const { capture } = useAnalytics()
 
 const showSuccessMessage = ref(false)
 const isSubmitting = ref(false)
@@ -745,6 +748,9 @@ const submitResource = async () => {
     }
 
     await createResourceWithTags(resourceData, selectedTags.value)
+
+    const category = route.path.includes('/kits') ? 'kits' : 'software'
+    capture('resource_submitted', { category, status: 'pending' })
 
     // Show success message
     showSuccessMessage.value = true

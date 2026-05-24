@@ -38,11 +38,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
+import { useAnalytics } from '~/composables/useAnalytics'
 import { useSupabase } from '~/utils/supabase'
 import { PENDING_USER_TYPE_KEY, clearPendingSignupEmail } from '~/utils/authStorage'
 
 const auth = useAuth()
 const { supabase } = useSupabase()
+const { capture } = useAnalytics()
 
 const isLoading = ref(true)
 const isSuccess = ref(false)
@@ -114,6 +116,7 @@ onMounted(async () => {
         
         setSignedInFromSession(!!data.session)
         isSuccess.value = true
+        capture('email_confirmed', {})
         console.log('Email confirmed successfully:', data.session.user.email)
       }
     } else {
@@ -181,6 +184,7 @@ onMounted(async () => {
         
         setSignedInFromSession(true)
         isSuccess.value = true
+        capture('email_confirmed', {})
       } else {
         throw new Error('No valid confirmation token found')
       }

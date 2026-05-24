@@ -5,7 +5,10 @@ import {
   beginListenSession,
   endListenSession,
   tickListenSession,
+  getPlaybackContext,
 } from '~/composables/useTrackAnalytics'
+import { useAuth } from '~/composables/useAuth'
+import { useAnalytics } from '~/composables/useAnalytics'
 import type { Track } from '~/types/track'
 
 interface PlayerState {
@@ -270,6 +273,18 @@ export function usePlayer() {
         await audioElement.value.play()
         isPlaying.value = true
         beginListenSession(currentTrack.value)
+
+        const track = currentTrack.value
+        const { user } = useAuth()
+        const { capture } = useAnalytics()
+        const ctx = getPlaybackContext()
+        capture('track_played', {
+          track_id: track.id,
+          owner_id: track.user_id,
+          is_own_track: user.value?.id === track.user_id,
+          source: ctx.source,
+          collection_id: ctx.collectionId,
+        })
         // Start frame-perfect loop check if loopOne is enabled
         if (loopOne.value) {
           startLoopCheck()

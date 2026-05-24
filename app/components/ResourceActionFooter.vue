@@ -33,17 +33,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { toggleResourceUse, getResourceUseStatus } from '~/utils/resourceQueries'
+import { useAnalytics } from '~/composables/useAnalytics'
+import type { ResourceCategory } from '~/types/analytics'
 
 const props = defineProps<{
   resourceId: number
   resourceLink: string
+  category?: ResourceCategory
 }>()
 
 const { user } = useAuth()
+const { capture } = useAnalytics()
+const route = useRoute()
 const loading = ref(false)
+
+const resourceCategory = computed((): ResourceCategory => {
+  if (props.category) return props.category
+  if (route.path.includes('/kits')) return 'kits'
+  return 'software'
+})
 
 // Fetch use status server-side for SSG/SEO
 // Note: Using a different key prefix to avoid conflicts with ResourceDetailPage's useAsyncData
@@ -70,7 +81,10 @@ watch(() => useStatusData.value, (newStatus) => {
 
 const handleToggleUse = async () => {
   if (!user.value) {
-    // Emit event to show signup modal
+    capture('signup_cta_clicked', {
+      source_page: route.path,
+      source_resource_id: props.resourceId,
+    })
     const event = new CustomEvent('show-signup', { bubbles: true })
     window.dispatchEvent(event)
     return
@@ -83,6 +97,11 @@ const handleToggleUse = async () => {
     const result = await toggleResourceUse(props.resourceId)
     useCount.value = result.count
     isUsing.value = result.isUsing
+    capture('resource_i_use_this', {
+      resource_id: props.resourceId,
+      action: result.isUsing ? 'add' : 'remove',
+      category: resourceCategory.value,
+    })
   } catch (error) {
     console.error('Error toggling resource use:', error)
     alert('Failed to update. Please try again.')
