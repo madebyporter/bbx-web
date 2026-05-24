@@ -74,7 +74,7 @@
           </template>
           <div :class="[
             'flex items-center justify-start',
-            isOwnProfile ? 'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[80px]' : ''
+            showActionsColumn ? 'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[88px]' : ''
           ]">
             <Button
               v-if="isOwnProfile && hasSelections"
@@ -233,27 +233,39 @@
           <div v-else class="text-xs px-2 py-1">Loading...</div>
         </div>
         </template>
-        <!-- Action Button: Edit / Add / Remove -->
+        <!-- Action Button: Edit / Comment / Add / Remove -->
         <div :class="[
-          (isOwnProfile || (viewerUserType === 'creator' && profileUserType === 'audio_pro')) 
-            ? 'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4 min-w-[80px]' 
+          showActionsColumn
+            ? 'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4 min-w-[88px]'
             : '',
           isCurrentlyPlaying(track) ? '!bg-neutral-800' : ''
         ]">
-          <!-- Edit button for audio_pro owners -->
+          <div class="flex flex-row items-center gap-1">
+          <!-- Edit for audio_pro owners -->
           <Button
             v-if="isOwnProfile && profileUserType === 'audio_pro'"
             variant="ghost"
             size="sm"
-            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2 !py-0.5"
+            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2"
             title="Edit track"
             @click="$emit('edit-track', track)"
           >
-            Edit
+            <EditPencil class="w-4 h-4" />
+          </Button>
+          <!-- Comments for logged-in users -->
+          <Button
+            v-if="user"
+            variant="ghost"
+            size="sm"
+            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2"
+            title="Comments"
+            @click="openTrackComments(track)"
+          >
+            <ChatBubble class="w-4 h-4" />
           </Button>
           <!-- Add button for creators viewing audio_pro profiles -->
           <Button
-            v-else-if="!isOwnProfile && viewerUserType === 'creator' && profileUserType === 'audio_pro' && !shortlistedTrackIds.has(track.id)"
+            v-if="!isOwnProfile && viewerUserType === 'creator' && profileUserType === 'audio_pro' && !shortlistedTrackIds.has(track.id)"
             variant="ghost"
             size="sm"
             class="text-neutral-500 hover:text-green-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2 !py-0.5"
@@ -291,6 +303,7 @@
       </div>
     </div>
   </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -309,7 +322,7 @@ import {
   formatAnalyticsDuration,
   type TrackAnalyticsRow,
 } from '~/composables/useTrackAnalyticsData'
-import { Plus, Check, Xmark } from '@iconoir/vue'
+import { Plus, Check, Xmark, EditPencil, ChatBubble } from '@iconoir/vue'
 
 interface Props {
   tracks: any[]
@@ -364,6 +377,14 @@ const newCollectionInputRef = ref<HTMLInputElement | null>(null)
 
 const hasSelections = computed(() => selectedTrackIds.value.size > 0)
 
+const showActionsColumn = computed(() => {
+  return !!(
+    user.value ||
+    props.isOwnProfile ||
+    (props.viewerUserType === 'creator' && props.profileUserType === 'audio_pro')
+  )
+})
+
 const tableGridClass = computed(() => {
   if (props.analyticsMode && props.isOwnProfile) {
     return 'trackGrid-analytics-edit'
@@ -372,8 +393,21 @@ const tableGridClass = computed(() => {
   if (props.viewerUserType === 'creator' && props.profileUserType === 'audio_pro') {
     return 'trackGrid-edit-no-collection'
   }
+  if (user.value) return 'trackGrid-with-actions'
   return 'trackGrid-no-collection'
 })
+
+const openTrackComments = (track: any) => {
+  const event = new CustomEvent('open-track-comments', {
+    detail: {
+      track: { id: track.id, title: track.title },
+      collectionId: null,
+    },
+    bubbles: true,
+    composed: true,
+  })
+  window.dispatchEvent(event)
+}
 
 function formatTrackStat(trackId: number, field: 'plays' | 'listeners' | 'avgListen' | 'completion'): string {
   if (props.analyticsLoading) return '—'

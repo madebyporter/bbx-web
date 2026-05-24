@@ -144,6 +144,12 @@
       @apply-filters="handleFiltersAndSort" 
     />
 
+    <!-- Track Comments Drawer -->
+    <TrackCommentsDrawer
+      v-model:show="showTrackCommentsDrawer"
+      :track="commentsTrack"
+      :collection-id="commentsCollectionId"
+    />
 
     <!-- Toast Notifications -->
     <Toast />
@@ -159,6 +165,7 @@ import { setPendingSignupEmail } from '~/utils/authStorage'
 import { usePlayer } from '~/composables/usePlayer'
 import Player from '~/components/Player.vue'
 import Toast from '~/components/Toast.vue'
+import TrackCommentsDrawer from '~/components/TrackCommentsDrawer.vue'
 
 // Define interfaces
 interface DatabaseComponent {
@@ -280,6 +287,9 @@ const searchContextItems = ref<any[]>([])
 const searchContextFields = ref<string[]>([])
 const editingResource = ref<Resource | null>(null)
 const editingTrack = ref<any | null>(null)
+const showTrackCommentsDrawer = ref(false)
+const commentsTrack = ref<{ id: number; title?: string } | null>(null)
+const commentsCollectionId = ref<number | null>(null)
 const modalKey = ref(0)
 const pageRef = ref<PageRef | null>(null)
 const databaseRef = ref<DatabaseRef | null>(null)
@@ -478,6 +488,21 @@ const handleEditTrack = (track: any) => {
   editingResource.value = null
   showModal.value = true
   modalKey.value++
+}
+
+interface OpenTrackCommentsDetail {
+  track: { id: number; title?: string }
+  collectionId?: number | null
+}
+
+const handleOpenTrackComments = (detail: OpenTrackCommentsDetail) => {
+  commentsTrack.value = detail.track
+  commentsCollectionId.value = detail.collectionId ?? null
+  showTrackCommentsDrawer.value = true
+}
+
+const onOpenTrackCommentsEvent = (event: Event) => {
+  handleOpenTrackComments((event as CustomEvent<OpenTrackCommentsDetail>).detail)
 }
 
 const closeModal = () => {
@@ -735,6 +760,8 @@ onMounted(async () => {
   window.addEventListener('edit-track', ((event: CustomEvent) => {
     handleEditTrack(event.detail)
   }) as EventListener)
+
+  window.addEventListener('open-track-comments', onOpenTrackCommentsEvent)
   
   // Listen for upload modal open events
   window.addEventListener('open-upload-modal', (() => {
@@ -746,6 +773,7 @@ onMounted(async () => {
 onUnmounted(() => {
   auth.cleanup()
   window.removeEventListener('edit-track', handleEditTrack as EventListener)
+  window.removeEventListener('open-track-comments', onOpenTrackCommentsEvent)
   window.removeEventListener('open-upload-modal', openModal as EventListener)
 })
 </script>

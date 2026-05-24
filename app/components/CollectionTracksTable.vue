@@ -79,12 +79,12 @@
             <div>Duration</div>
             <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
           </template>
-          <div v-if="isOwnProfile" :class="[
+          <div v-if="showActionsColumn" :class="[
             'flex items-center justify-start',
-            'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[80px]'
+            'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[88px]'
           ]">
             <Button
-              v-if="hasSelections"
+              v-if="isOwnProfile && hasSelections"
               variant="primary"
               size="sm"
               class="!px-2 !py-0.5 !bg-amber-400 hover:!bg-amber-500 text-neutral-900 text-xs whitespace-nowrap"
@@ -173,24 +173,36 @@
           <div v-else class="text-xs px-2 py-1">Loading...</div>
         </div>
         </template>
-        <div v-if="isOwnProfile" :class="[
-          'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4 min-w-[80px]',
+        <div v-if="showActionsColumn" :class="[
+          'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4 min-w-[88px]',
           isCurrentlyPlaying(track) ? '!bg-neutral-800' : ''
         ]">
-          <!-- Edit button for audio_pro owners -->
+          <div class="flex flex-row items-center gap-1">
+          <!-- Edit for audio_pro owners -->
           <Button
-            v-if="profileUserType === 'audio_pro'"
+            v-if="isOwnProfile && profileUserType === 'audio_pro'"
             variant="ghost"
             size="sm"
-            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2 !py-0.5"
+            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2"
             title="Edit track"
             @click="$emit('edit-track', track)"
           >
-            Edit
+            <EditPencil class="w-4 h-4" />
+          </Button>
+          <!-- Comments for logged-in users -->
+          <Button
+            v-if="user"
+            variant="ghost"
+            size="sm"
+            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2"
+            title="Comments"
+            @click="openTrackComments(track)"
+          >
+            <ChatBubble class="w-4 h-4" />
           </Button>
           <!-- Remove button for creators (remove from collection) -->
           <Button
-            v-else-if="profileUserType === 'creator' && collectionId"
+            v-if="profileUserType === 'creator' && collectionId && !isOwnProfile"
             variant="ghost"
             size="sm"
             class="text-neutral-500 hover:text-red-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2 !py-0.5"
@@ -203,6 +215,7 @@
         </div>
       </div>
     </div>
+  </div>
   </div>
 </template>
 
@@ -219,6 +232,7 @@ import {
   formatAnalyticsDuration,
   type TrackAnalyticsRow,
 } from '~/composables/useTrackAnalyticsData'
+import { EditPencil, ChatBubble } from '@iconoir/vue'
 
 interface ActiveFilterChip {
   id: string
@@ -271,14 +285,28 @@ const showBulkActionsDrawer = ref(false)
 
 const hasSelections = computed(() => selectedTrackIds.value.size > 0)
 
+const showActionsColumn = computed(() => !!(user.value || props.isOwnProfile))
+
 const tableGridClass = computed(() => {
   if (props.analyticsMode && props.isOwnProfile) {
     return 'collectionTrackGrid-analytics-edit'
   }
   if (props.isOwnProfile) return 'collectionTrackGrid-edit'
-  if (user.value) return 'collectionTrackGrid'
+  if (user.value) return 'collectionTrackGrid-with-actions'
   return 'collectionTrackGrid-loggedOut'
 })
+
+const openTrackComments = (track: any) => {
+  const event = new CustomEvent('open-track-comments', {
+    detail: {
+      track: { id: track.id, title: track.title },
+      collectionId: props.collectionId ?? null,
+    },
+    bubbles: true,
+    composed: true,
+  })
+  window.dispatchEvent(event)
+}
 
 function formatTrackStat(trackId: number, field: 'plays' | 'listeners' | 'avgListen' | 'completion'): string {
   if (props.analyticsLoading) return '—'
@@ -529,13 +557,19 @@ const handleRemoveFromCollection = async (trackId: number) => {
   const toastId = showProcessing('Removing track from collection...')
   
   try {
-    const { error } = await supabase
+    const { error: junctionError } = await supabase
       .from('collections_sounds')
       .delete()
       .eq('collection_id', props.collectionId)
       .eq('sound_id', trackId)
-    
-    if (error) throw error
+
+    if (junctionError) throw junctionError
+
+    await supabase
+      .from('track_comments')
+      .delete()
+      .eq('collection_id', props.collectionId)
+      .eq('track_id', trackId)
     
     removeToast(toastId)
     showSuccess('Track removed from collection')
