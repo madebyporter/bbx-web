@@ -7,15 +7,16 @@ import type { AnalyticsUserType } from '~/types/analytics'
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig()
   const apiKey = config.public.posthogKey as string | undefined
-  const apiHost = (config.public.posthogHost as string | undefined) || 'https://us.i.posthog.com'
+  const apiHost = config.public.posthogHost as string | undefined
 
   if (!apiKey) {
     console.warn('[PostHog] NUXT_PUBLIC_POSTHOG_KEY is not set — analytics disabled')
     return
   }
 
+  // api_host only when set via NUXT_PUBLIC_POSTHOG_HOST; otherwise posthog-js uses its default ingest URL
   posthog.init(apiKey, {
-    api_host: apiHost,
+    ...(apiHost ? { api_host: apiHost } : {}),
     capture_pageview: false,
     capture_pageleave: true,
     persistence: 'localStorage+cookie',
