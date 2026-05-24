@@ -341,7 +341,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, inject, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onActivated, onUnmounted, inject, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -372,7 +372,7 @@ const unregisterFiltersAndSortHandler = inject<() => void>('unregisterFiltersAnd
 const openFilterModal = inject<() => void>('openFilterModal')
 
 // Fetch initial profile data server-side for SEO
-const { data: initialData } = await useAsyncData(
+const { data: initialData, refresh: refreshInitialData } = await useAsyncData(
   `profile-${route.params.id}`,
   async () => {
     if (!supabase) return null
@@ -1370,6 +1370,18 @@ const getSoftwareImageUrl = (imageUrl: string | null | undefined): string => {
   return `${supabaseUrl}/storage/v1/object/public/resource-images/${imageUrl}`
 }
 
+// Keep profile state in sync when async data resolves after client navigation
+watch(initialData, (data) => {
+  if (!data?.profile) return
+  profileUserId.value = data.profile.id
+  profileName.value = data.profile.display_name || data.profile.username || ''
+  username.value = data.profile.username || ''
+  profileUserType.value = (data.profile.user_type as 'creator' | 'audio_pro') || null
+  profileBio.value = data.profile.bio || ''
+  profileWebsite.value = data.profile.website || ''
+  profileSocialLinks.value = (data.profile.social_links as any) || {}
+}, { deep: true })
+
 // Methods - Keep fetchProfile for backwards compatibility but simplified
 const fetchProfile = async () => {
   // Profile already loaded server-side, just ensure values are set
@@ -1424,11 +1436,20 @@ const fetchSoftware = async () => {
   await refreshSoftware()
 }
 
+let fetchTracksRequestId = 0
+
 const fetchTracks = async () => {
   if (!supabase || !profileUserId.value) {
     console.log('fetchTracks: Missing supabase or profileUserId', { supabase: !!supabase, profileUserId: profileUserId.value })
     return
   }
+
+  // Wait for auth to settle so isOwnProfile and RLS-backed queries are correct
+  if (!isReady.value) {
+    return
+  }
+
+  const requestId = ++fetchTracksRequestId
   
   // Start visibility check as early as possible (run in parallel, don't block)
   getTrackVisibilityCondition(profileUserId.value, user.value?.id ?? null).catch(() => {})
@@ -1512,6 +1533,11 @@ const fetchTracks = async () => {
 
     if (error) throw error
 
+    // Ignore stale responses when navigating quickly between pages
+    if (requestId !== fetchTracksRequestId) {
+      return
+    }
+
     const rawTracks = data || []
     if (rawTracks.length === 0) {
       tracks.value = []
@@ -1562,12 +1588,43 @@ const fetchTracks = async () => {
 
     tracks.value = tracksWithCollections
   } catch (error) {
+    if (requestId !== fetchTracksRequestId) {
+      return
+    }
     console.error('Error fetching tracks:', error)
     alert('Failed to load tracks: ' + (error as any).message)
   } finally {
-    loading.value = false
+    if (requestId === fetchTracksRequestId) {
+      loading.value = false
+    }
   }
 }
+
+// Refetch when auth becomes ready or profile id is resolved (fixes empty library after nav)
+watch(
+  [() => isReady.value, () => profileUserId.value, () => user.value?.id],
+  ([ready, profileId]) => {
+    if (ready && profileId) {
+      fetchTracks()
+    }
+  }
+)
+
+// Refetch when returning to this page (e.g. All Music after Collections)
+watch(
+  () => route.params.id as string,
+  (id, previousId) => {
+    if (id && id !== previousId && isReady.value && profileUserId.value) {
+      fetchTracks()
+    }
+  }
+)
+
+onActivated(() => {
+  if (isReady.value && profileUserId.value) {
+    fetchTracks()
+  }
+})
 
 const handleEdit = (track: any) => {
   // Emit event to parent layout to open modal in edit mode
@@ -1778,7 +1835,12 @@ const handleTrackUpdate = async (event: any) => {
 // Lifecycle
 onMounted(async () => {
   await fetchProfile()
-  await fetchTracks()
+  if (!initialData.value?.profile) {
+    await refreshInitialData()
+  }
+  if (isReady.value && profileUserId.value) {
+    await fetchTracks()
+  }
   // Software is already loaded via useAsyncData (cached), no need to fetch again
   
   if (profileUserId.value && !isOwnProfile.value) {
@@ -1811,6 +1873,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  fetchTracksRequestId++
   if (unregisterContextItems) {
     unregisterContextItems()
   }
