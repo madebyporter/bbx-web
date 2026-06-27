@@ -145,9 +145,9 @@ import {
   removeCollectionMember, 
   getCollectionMembers,
   generateCollectionInviteLink,
-  type UserSearchResult,
   type CollectionMember
 } from '~/utils/collections'
+import type { UserSearchResult } from '~/types/userSearch'
 
 interface Props {
   show: boolean

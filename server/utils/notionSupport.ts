@@ -71,6 +71,11 @@ export async function createNotionSupportPage(
 
   if (!response.ok || !json?.id) {
     const detail = json?.message || response.statusText
+    if (detail.includes('shared with your integration')) {
+      throw new Error(
+        'Notion database is not connected to the BBX Support integration. In Notion, open Beatbox Bugs and Features → ⋯ → Connections → add BBX Support.'
+      )
+    }
     throw new Error(`Notion API error: ${detail}`)
   }
 

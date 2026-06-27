@@ -115,7 +115,8 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
-import { getProfileMembers, inviteMember, removeMember, searchUsersForInvite, type UserSearchResult } from '~/utils/memberships'
+import { getProfileMembers, inviteMember, removeMember, searchUsersForInvite } from '~/utils/memberships'
+import type { UserSearchResult } from '~/types/userSearch'
 import { useAnalytics } from '~/composables/useAnalytics'
 
 interface Props {

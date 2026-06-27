@@ -198,6 +198,10 @@ export default defineEventHandler(async (event) => {
     return { ok: true, id: page.id, url: page.url }
   } catch (error) {
     console.error('Notion support submission failed:', error)
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('not connected to the BBX Support integration')) {
+      throw createError({ statusCode: 503, statusMessage: message })
+    }
     throw createError({
       statusCode: 502,
       statusMessage: 'Could not send feedback. Please try again later.',

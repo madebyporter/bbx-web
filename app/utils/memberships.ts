@@ -149,12 +149,7 @@ export async function getUserProfileByIdentifier(
   }
 }
 
-export interface UserSearchResult {
-  id: string
-  username: string | null
-  display_name: string | null
-  email?: string | null
-}
+import type { UserSearchResult } from '~/types/userSearch'
 
 /**
  * Search users for member invitation

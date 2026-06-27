@@ -10,7 +10,7 @@
 
       <aside
         ref="panelRef"
-        class="absolute bottom-4 left-4 w-full max-w-[min(325px,calc(100vw-2rem))] max-h-[min(44rem,calc(100dvh-2rem))] flex flex-col overflow-hidden rounded-md bg-neutral-900 ring-1 ring-neutral-800 shadow-lg"
+        class="absolute bottom-4 left-4 w-[min(325px,calc(100vw-2rem))] max-h-[min(44rem,calc(100dvh-2rem))] flex flex-col overflow-hidden rounded-md bg-neutral-900 ring-1 ring-neutral-800 shadow-lg"
         role="dialog"
         aria-labelledby="support-popup-title"
         @click.stop
@@ -29,7 +29,10 @@
           </button>
         </div>
 
-        <div v-if="submitted" class="p-4 text-sm text-neutral-300 flex flex-col gap-2 overflow-auto">
+        <div
+          v-if="submitted"
+          class="p-4 text-sm text-neutral-300 flex flex-col gap-2 grow overflow-auto min-h-0"
+        >
           <p>Thanks — we've received your feedback.</p>
           <p class="text-neutral-500 leading-snug">
             Our team will review it and aim to get back to you within 48 hours.
@@ -43,7 +46,7 @@
           </button>
         </div>
 
-        <template v-else>
+        <div v-else class="flex flex-col grow min-h-0">
           <form
             id="support-form"
             class="flex flex-col gap-4 p-3 grow overflow-auto min-h-0"
@@ -160,7 +163,7 @@
               {{ submitting ? 'Sending…' : 'Submit' }}
             </Button>
           </div>
-        </template>
+        </div>
       </aside>
     </div>
   </Teleport>
