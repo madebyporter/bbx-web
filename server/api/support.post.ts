@@ -29,13 +29,20 @@ function normalizeImageMime(mime: string): string {
   return base === 'image/jpg' ? 'image/jpeg' : base
 }
 
+function readServerEnv(...names: string[]): string {
+  for (const name of names) {
+    const value = process.env[name]?.trim()
+    if (value) return value
+  }
+  return ''
+}
+
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
-  const notionApiKey = typeof config.notionApiKey === 'string' ? config.notionApiKey.trim() : ''
-  const databaseId =
-    typeof config.notionSupportDatabaseId === 'string' ? config.notionSupportDatabaseId.trim() : ''
+  const notionApiKey = readServerEnv('NOTION_API_KEY', 'NUXT_NOTION_API_KEY')
+  const databaseId = readServerEnv('NOTION_SUPPORT_DATABASE_ID', 'NUXT_NOTION_SUPPORT_DATABASE_ID')
   const supabaseUrl = config.public.supabaseUrl
-  const supabaseServiceKey = config.supabaseServiceKey
+  const supabaseServiceKey = readServerEnv('SUPABASE_SERVICE_KEY', 'NUXT_SUPABASE_SERVICE_KEY')
 
   if (!notionApiKey || !databaseId) {
     throw createError({
