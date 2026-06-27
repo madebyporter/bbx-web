@@ -3,7 +3,6 @@
 This document outlines the structure of the site, detailing the purpose of each directory and key files within the project.
 
 ## Root Directory
-- **.env.example**: Example environment configuration file.
 - **.gitignore**: Specifies files and directories that should be ignored by Git.
 - **app.vue**: The main Vue component that serves as the entry point for the application.
 - **nuxt.config.ts**: Configuration file for the Nuxt.js application.

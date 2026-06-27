@@ -5,10 +5,10 @@ BBX Resource Database is a web application for managing and discovering music pr
 
 ## Quick Start
 1. Clone the repository
-2. Copy `.env.example` to `.env` and fill in your Supabase credentials:
+2. Create a `.env` file with your Supabase credentials:
    ```
-   SUPABASE_URL=your-project-url
-   SUPABASE_KEY=your-anon-key
+   NUXT_PUBLIC_SUPABASE_URL=your-project-url
+   NUXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
    ```
 3. Install dependencies: `npm install`
 4. Run development server: `npm run dev`
