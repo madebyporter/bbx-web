@@ -31,6 +31,29 @@
         :selected-count="selectedTrackIds.size" @tracks-deleted="handleTracksDeleted"
         @tracks-updated="handleTracksUpdated" @close="handleBulkActionsClose" />
 
+      <Modal
+        v-model:show="showCollectionModal"
+        :anchor-rect="collectionModalAnchor"
+        :title="collectionModalTitle"
+        @close="resetCollectionModal"
+      >
+        <CollectionPicker
+          v-if="showCollectionModal"
+          v-model="selectedCollectionIds"
+          :collections="userCollections"
+          :disabled="collectionSaving"
+          @create-collection="queueCollectionCreation"
+        />
+        <template #footer>
+          <Button variant="ghost" :disabled="collectionSaving" @click="closeCollectionModal">
+            Cancel
+          </Button>
+          <Button :disabled="collectionSaving" @click="saveCollections">
+            {{ collectionSaving ? 'Saving…' : 'Save' }}
+          </Button>
+        </template>
+      </Modal>
+
       <!-- Single Grid Container - wraps header and all rows -->
       <div class="w-fit md:w-full h-fit">
         <!-- Header -->
@@ -175,48 +198,18 @@
           <div class="text-neutral-300">{{ formatTrackStat(track.id, 'completion') }}</div>
         </template>
         <template v-else>
-        <div v-if="isOwnProfile" class="text-neutral-400 overflow-visible flex justify-start items-center">
-          <!-- Editing Collections -->
-          <div v-if="editingCollectionTrackId === track.id"
-            class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
-            <select v-if="!showNewCollectionInput" ref="collectionSelectRef" v-model="selectedCollectionId"
-              class="px-1 text-xs rounded text-neutral-200 outline-none bg-neutral-800 border border-neutral-700 min-w-[80px] w-auto"
-              @change="handleCollectionSelectChange">
-              <option value="Select...">Select...</option>
-              <option v-for="collection in userCollections" :key="collection.id" :value="collection.id">
-                {{ collection.name }}
-              </option>
-              <option value="__new__">+ Create new collection</option>
-            </select>
-            <input v-else ref="newCollectionInputRef" v-model="newCollectionName" type="text"
-              class="px-2 py-1 text-xs rounded text-neutral-200 outline-none bg-neutral-800 border border-neutral-700 min-w-[80px] w-auto"
-              placeholder="Collection name" @keyup.enter="saveCollection" @keyup.esc="cancelEditingCollection"
-              @input="adjustInputWidth" />
-            <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800 flex-shrink-0" title="Cancel" @click="cancelEditingCollection">
-              <Xmark class="w-[10px] h-[10px]" />
-            </Button>
-            <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800 flex-shrink-0" title="Save" @click="saveCollection">
-              <Check class="w-[10px] h-[10px]" />
-            </Button>
-          </div>
-          <!-- Existing Collections -->
-          <template v-else>
-            <CollectionTagsCell
-              :collections="track.collections"
-              :owner-username="getTrackOwnerUsername(track)"
-            >
-              <template #empty>
-                <Button
-                  variant="ghost"
-                  class="!p-1 bg-neutral-800 rounded hover:bg-neutral-700 border border-neutral-700"
-                  title="Add to collection"
-                  @click="startEditingCollection(track.id)"
-                >
-                  <Plus class="w-2.5 h-2.5 max-w-2.5 max-h-2.5" />
-                </Button>
-              </template>
-            </CollectionTagsCell>
-          </template>
+        <div v-if="isOwnProfile" class="text-neutral-400 overflow-visible flex justify-start items-center gap-1">
+          <CollectionTagsCell
+            :collections="track.collections"
+            :owner-username="getTrackOwnerUsername(track)"
+          />
+          <div
+            class="cursor-pointer p-1 bg-transparent rounded hover:bg-neutral-700 border border-neutral-700"
+            title="Manage collections"
+            @click="openCollectionModal(track, $event)"
+          >
+            <Plus class="size-3" />
+        </div>
         </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.genre || '-' }}</div>
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
@@ -307,7 +300,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch, computed, nextTick } from 'vue'
+import { onMounted, onUnmounted, ref, watch, computed } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
 import { useStemPlayer } from '~/composables/useStemPlayer'
 import { useSupabase } from '~/utils/supabase'
@@ -315,6 +308,9 @@ import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 import BulkActionsDrawer from '~/components/BulkActionsDrawer.vue'
+import Modal from '~/components/Modal.vue'
+import type { AnchorRect } from '~/components/Modal.vue'
+import CollectionPicker from '~/components/CollectionPicker.vue'
 import { addTrackToShortlist, removeTrackFromShortlist, checkIfTracksAreShortlisted } from '~/utils/shortlist'
 import { generateUniqueSlug } from '~/utils/collections'
 import { setPlaybackContext } from '~/composables/useTrackAnalytics'
@@ -323,7 +319,7 @@ import {
   formatAnalyticsDuration,
   type TrackAnalyticsRow,
 } from '~/composables/useTrackAnalyticsData'
-import { Plus, Check, Xmark, EditPencil, ChatBubble } from '@iconoir/vue'
+import { Plus, EditPencil, ChatBubble } from '@iconoir/vue'
 
 interface Props {
   tracks: any[]
@@ -368,14 +364,19 @@ const showBulkActionsDrawer = ref(false)
 const shortlistedTrackIds = ref(new Set<number>())
 const shortlistLoading = ref(new Set<number>()) // Track IDs being added/removed
 
-// Collection editing state
-const editingCollectionTrackId = ref<number | null>(null)
-const selectedCollectionId = ref<number | string | null>(null)
-const newCollectionName = ref('')
-const showNewCollectionInput = ref(false)
+// Collection modal state
+const showCollectionModal = ref(false)
+const collectionModalTrack = ref<{ id: number; title?: string; track_group_name?: string } | null>(null)
+const collectionModalAnchor = ref<AnchorRect | null>(null)
+const selectedCollectionIds = ref<number[]>([])
+const pendingCollections = ref<Array<{ tempId: number; name: string }>>([])
 const userCollections = ref<Array<{ id: number; name: string; slug: string }>>([])
-const collectionSelectRef = ref<HTMLSelectElement | null>(null)
-const newCollectionInputRef = ref<HTMLInputElement | null>(null)
+const collectionSaving = ref(false)
+
+const collectionModalTitle = computed(() => {
+  const title = collectionModalTrack.value?.title?.trim()
+  return title ? `Collections — ${title}` : 'Collections'
+})
 
 const hasSelections = computed(() => selectedTrackIds.value.size > 0)
 
@@ -770,177 +771,240 @@ const fetchUserCollections = async () => {
   }
 }
 
-// Start editing collection for a track
-const startEditingCollection = async (trackId: number) => {
+function rectToAnchor(rect: DOMRect): AnchorRect {
+  return {
+    top: rect.top,
+    left: rect.left,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height,
+  }
+}
+
+const loadTrackCollections = async (trackId: number) => {
+  if (!supabase) return
+
+  try {
+    const { data, error } = await supabase
+      .from('collections_sounds')
+      .select('collection_id')
+      .eq('sound_id', trackId)
+
+    if (error) throw error
+    selectedCollectionIds.value = (data || []).map(item => item.collection_id)
+  } catch (error) {
+    console.error('Error loading track collections:', error)
+    selectedCollectionIds.value = []
+  }
+}
+
+const resetCollectionModal = () => {
+  collectionModalTrack.value = null
+  collectionModalAnchor.value = null
+  selectedCollectionIds.value = []
+  pendingCollections.value = []
+  collectionSaving.value = false
+}
+
+const closeCollectionModal = () => {
+  showCollectionModal.value = false
+  resetCollectionModal()
+}
+
+const openCollectionModal = async (track: any, event: Event) => {
   if (!user.value) return
-  
-  editingCollectionTrackId.value = trackId
-  selectedCollectionId.value = null
-  newCollectionName.value = ''
-  showNewCollectionInput.value = false
-  
-  // Fetch collections if not already loaded
+
+  const target = event.currentTarget as HTMLElement | null
+  collectionModalAnchor.value = target ? rectToAnchor(target.getBoundingClientRect()) : null
+  collectionModalTrack.value = {
+    id: track.id,
+    title: track.title,
+    track_group_name: track.track_group_name,
+  }
+  pendingCollections.value = []
+  selectedCollectionIds.value = []
+
   if (userCollections.value.length === 0) {
     await fetchUserCollections()
   }
+  await loadTrackCollections(track.id)
+  showCollectionModal.value = true
 }
 
-// Handle collection select change
-const handleCollectionSelectChange = () => {
-  if (selectedCollectionId.value === '__new__') {
-    showNewCollectionInput.value = true
-    selectedCollectionId.value = null
+const queueCollectionCreation = (name: string) => {
+  if (!name.trim()) return
+
+  const tempId = -Date.now() - Math.random() * 1000
+  const tempCollection = {
+    id: tempId,
+    name: name.trim(),
+    slug: name.trim().toLowerCase().replace(/\s+/g, '-'),
+  }
+
+  userCollections.value.push(tempCollection)
+
+  if (!selectedCollectionIds.value.includes(tempId)) {
+    selectedCollectionIds.value.push(tempId)
+  }
+
+  pendingCollections.value.push({ tempId, name: name.trim() })
+}
+
+const autoHideOlderVersions = async (
+  trackId: number,
+  trackGroupName: string,
+  collectionIds: number[]
+) => {
+  if (!supabase || !user.value || !trackGroupName) return
+
+  try {
+    const { data: groupTracks } = await supabase
+      .from('sounds')
+      .select('id, version')
+      .eq('user_id', user.value.id)
+      .eq('track_group_name', trackGroupName)
+      .neq('id', trackId)
+
+    if (!groupTracks || groupTracks.length === 0) return
+
+    for (const collectionId of collectionIds) {
+      const { data: tracksInCollection } = await supabase
+        .from('collections_sounds')
+        .select('sound_id')
+        .eq('collection_id', collectionId)
+        .in('sound_id', groupTracks.map(t => t.id))
+
+      if (!tracksInCollection || tracksInCollection.length === 0) continue
+
+      const soundIdsToHide = tracksInCollection.map(t => t.sound_id)
+
+      if (soundIdsToHide.length > 0) {
+        await supabase
+          .from('collections_sounds')
+          .update({ hidden: true })
+          .eq('collection_id', collectionId)
+          .in('sound_id', soundIdsToHide)
+      }
+    }
+  } catch (error) {
+    console.error('Error auto-hiding older versions:', error)
   }
 }
 
-// Cancel editing collection
-const cancelEditingCollection = () => {
-  editingCollectionTrackId.value = null
-  selectedCollectionId.value = null
-  newCollectionName.value = ''
-  showNewCollectionInput.value = false
-}
+const syncTrackCollections = async (trackId: number, trackGroupName?: string) => {
+  if (!supabase) return
 
-// Save collection (add track to collection)
-const saveCollection = async () => {
-  if (!supabase || !user.value || !editingCollectionTrackId.value) return
-  
-  const trackId = editingCollectionTrackId.value
-  let collectionId: number | null = null
-  
-  const toastId = showProcessing('Adding track to collection...')
-  
-  try {
-    // If creating new collection
-    if (showNewCollectionInput.value && newCollectionName.value.trim()) {
-      // Get existing slugs to ensure uniqueness
-      const { data: existing } = await supabase
-        .from('collections')
-        .select('slug')
-        .eq('user_id', user.value.id)
-      
-      const existingSlugs = (existing || []).map((c: any) => c.slug)
-      const slug = generateUniqueSlug(newCollectionName.value.trim(), existingSlugs)
-      
-      // Create the collection
-      const { data: newCollection, error: createError } = await supabase
-        .from('collections')
-        .insert({
-          user_id: user.value.id,
-          name: newCollectionName.value.trim(),
-          description: null,
-          slug
-        })
-        .select()
-        .single()
-      
-      if (createError) throw createError
-      
-      collectionId = newCollection.id as number
-      
-      // Add to userCollections for immediate UI update
-      userCollections.value.push({
-        id: newCollection.id as number,
-        name: newCollection.name as string,
-        slug: newCollection.slug as string
-      })
-    } else if (selectedCollectionId.value) {
-      collectionId = typeof selectedCollectionId.value === 'number' 
-        ? selectedCollectionId.value 
-        : parseInt(selectedCollectionId.value as string)
-    } else {
-      removeToast(toastId)
-      showError('Please select a collection or create a new one')
-      return
-    }
-    
-    if (!collectionId) {
-      removeToast(toastId)
-      showError('Invalid collection')
-      return
-    }
-    
-    // Check if track is already in this collection
-    const { data: existing } = await supabase
+  const { data: current, error: fetchError } = await supabase
+    .from('collections_sounds')
+    .select('collection_id')
+    .eq('sound_id', trackId)
+
+  if (fetchError) throw fetchError
+
+  const currentIds = (current || []).map(c => c.collection_id)
+  const toAdd = selectedCollectionIds.value.filter(id => !currentIds.includes(id))
+  const toRemove = currentIds.filter(id => !selectedCollectionIds.value.includes(id))
+
+  if (toRemove.length > 0) {
+    const { error: deleteError } = await supabase
       .from('collections_sounds')
-      .select('id')
-      .eq('collection_id', collectionId)
+      .delete()
       .eq('sound_id', trackId)
-      .single()
-    
-    if (existing) {
-      removeToast(toastId)
-      showSuccess('Track is already in this collection')
-      cancelEditingCollection()
-      emit('tracks-deleted') // Trigger refetch to update UI
-      return
-    }
-    
-    // Add track to collection
+      .in('collection_id', toRemove)
+
+    if (deleteError) throw deleteError
+  }
+
+  if (toAdd.length > 0) {
+    const collectionsToInsert = toAdd.map(collectionId => ({
+      collection_id: collectionId,
+      sound_id: trackId,
+      hidden: false,
+    }))
+
     const { error: insertError } = await supabase
       .from('collections_sounds')
-      .insert({
-        collection_id: collectionId,
-        sound_id: trackId,
-        hidden: false
-      })
-    
+      .insert(collectionsToInsert)
+
     if (insertError) throw insertError
-    
+
+    if (trackGroupName) {
+      await autoHideOlderVersions(trackId, trackGroupName, toAdd)
+    }
+  }
+}
+
+const saveCollections = async () => {
+  if (!supabase || !user.value || !collectionModalTrack.value || collectionSaving.value) return
+
+  collectionSaving.value = true
+  const toastId = showProcessing('Saving collections...')
+
+  try {
+    if (pendingCollections.value.length > 0) {
+      for (const { tempId, name } of pendingCollections.value) {
+        const { data: existing } = await supabase
+          .from('collections')
+          .select('slug')
+          .eq('user_id', user.value.id)
+
+        const existingSlugs = (existing || []).map((c: { slug: string }) => c.slug)
+        const slug = generateUniqueSlug(name, existingSlugs)
+
+        const { data, error: createError } = await supabase
+          .from('collections')
+          .insert({
+            user_id: user.value.id,
+            name,
+            description: null,
+            slug,
+          })
+          .select()
+          .single()
+
+        if (createError) throw createError
+
+        const tempCollectionIndex = userCollections.value.findIndex(c => c.id === tempId)
+        if (tempCollectionIndex !== -1) {
+          userCollections.value[tempCollectionIndex] = {
+            id: data.id,
+            name: data.name,
+            slug: data.slug,
+          }
+        }
+
+        const selectedIndex = selectedCollectionIds.value.indexOf(tempId)
+        if (selectedIndex !== -1) {
+          selectedCollectionIds.value[selectedIndex] = data.id
+        }
+      }
+
+      pendingCollections.value = []
+    }
+
+    await syncTrackCollections(
+      collectionModalTrack.value.id,
+      collectionModalTrack.value.track_group_name
+    )
+
     removeToast(toastId)
-    showSuccess('Track added to collection')
-    cancelEditingCollection()
-    emit('tracks-deleted') // Trigger refetch to update UI
+    showSuccess('Collections updated')
+    closeCollectionModal()
+    emit('tracks-deleted')
   } catch (error) {
     removeToast(toastId)
-    showError('Failed to add track to collection')
-    console.error('Error saving collection:', error)
+    showError('Failed to save collections')
+    console.error('Error saving collections:', error)
+  } finally {
+    collectionSaving.value = false
   }
 }
 
-// Get select width based on longest collection name
-const getSelectWidth = (): number => {
-  if (userCollections.value.length === 0) return 150
-  
-  const longestName = Math.max(
-    'Select collection...'.length,
-    '+ Create new collection'.length,
-    ...userCollections.value.map(c => c.name.length)
-  )
-  
-  // Approximate width: ~7px per character + padding
-  return Math.max(150, Math.min(250, longestName * 7 + 30))
-}
-
-// Get input width based on content
-const getInputWidth = (): number => {
-  const text = newCollectionName.value || 'Collection name'
-  // Approximate width: ~7px per character + padding
-  return Math.max(150, Math.min(300, text.length * 7 + 30))
-}
-
-// Adjust input width based on content (for real-time updates)
-const adjustInputWidth = () => {
-  if (newCollectionInputRef.value) {
-    const width = getInputWidth()
-    newCollectionInputRef.value.style.width = `${width}px`
-  }
-}
-
-// Watch for user and isOwnProfile to fetch collections
 watch([() => user.value, () => props.isOwnProfile], async () => {
   if (user.value && props.isOwnProfile) {
     await fetchUserCollections()
   }
 }, { immediate: true })
-
-// Watch for newCollectionName changes to adjust width
-watch(() => newCollectionName.value, () => {
-  if (showNewCollectionInput.value) {
-    nextTick(() => {
-      adjustInputWidth()
-    })
-  }
-})
 </script>
 

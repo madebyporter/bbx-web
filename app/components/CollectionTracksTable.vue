@@ -38,6 +38,30 @@
         @tracks-updated="handleTracksUpdated"
         @close="handleBulkActionsClose"
       />
+
+      <Modal
+        v-if="isOwnProfile"
+        v-model:show="showCollectionModal"
+        :anchor-rect="collectionModalAnchor"
+        :title="collectionModalTitle"
+        @close="resetCollectionModal"
+      >
+        <CollectionPicker
+          v-if="showCollectionModal"
+          v-model="selectedCollectionIds"
+          :collections="userCollections"
+          :disabled="collectionSaving"
+          @create-collection="queueCollectionCreation"
+        />
+        <template #footer>
+          <Button variant="ghost" :disabled="collectionSaving" @click="closeCollectionModal">
+            Cancel
+          </Button>
+          <Button :disabled="collectionSaving" @click="saveCollections">
+            {{ collectionSaving ? 'Saving…' : 'Save' }}
+          </Button>
+        </template>
+      </Modal>
       
       <!-- Single Grid Container - wraps header and all rows -->
       <div class="w-fit md:w-full h-fit">
@@ -148,12 +172,20 @@
           <div class="text-neutral-300">{{ formatTrackStat(track.id, 'completion') }}</div>
         </template>
         <template v-else>
-        <div v-if="user" class="text-neutral-400 overflow-visible flex justify-start items-center">
+        <div v-if="user" class="text-neutral-400 overflow-visible flex justify-start items-center gap-1">
           <CollectionTagsCell
             :collections="getOwnerCollectionsForTrack(track)"
             :owner-username="username"
-            empty-text="-"
+            :empty-text="isOwnProfile ? '' : '-'"
           />
+          <div
+            v-if="isOwnProfile"
+            class="cursor-pointer p-1 bg-transparent rounded hover:bg-neutral-700 border border-neutral-700"
+            title="Manage collections"
+            @click="openCollectionModal(track, $event)"
+          >
+            <Plus class="size-3" />
+          </div>
         </div>
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.genre || '-' }}</div>
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
@@ -227,12 +259,16 @@ import { useSupabase } from '~/utils/supabase'
 import { useToast } from '~/composables/useToast'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 import BulkActionsDrawer from '~/components/BulkActionsDrawer.vue'
+import Modal from '~/components/Modal.vue'
+import type { AnchorRect } from '~/components/Modal.vue'
+import CollectionPicker from '~/components/CollectionPicker.vue'
+import { generateUniqueSlug } from '~/utils/collections'
 import { setPlaybackContext } from '~/composables/useTrackAnalytics'
 import {
   formatAnalyticsDuration,
   type TrackAnalyticsRow,
 } from '~/composables/useTrackAnalyticsData'
-import { EditPencil, ChatBubble } from '@iconoir/vue'
+import { EditPencil, ChatBubble, Plus } from '@iconoir/vue'
 
 interface ActiveFilterChip {
   id: string
@@ -282,6 +318,20 @@ const bulkSelectionMode = ref(false)
 const selectedTrackIds = ref(new Set<number>())
 const clickCount = ref(0)
 const showBulkActionsDrawer = ref(false)
+
+// Collection modal state
+const showCollectionModal = ref(false)
+const collectionModalTrack = ref<{ id: number; title?: string; track_group_name?: string } | null>(null)
+const collectionModalAnchor = ref<AnchorRect | null>(null)
+const selectedCollectionIds = ref<number[]>([])
+const pendingCollections = ref<Array<{ tempId: number; name: string }>>([])
+const userCollections = ref<Array<{ id: number; name: string; slug: string }>>([])
+const collectionSaving = ref(false)
+
+const collectionModalTitle = computed(() => {
+  const title = collectionModalTrack.value?.title?.trim()
+  return title ? `Collections — ${title}` : 'Collections'
+})
 
 const hasSelections = computed(() => selectedTrackIds.value.size > 0)
 
@@ -549,6 +599,264 @@ const handleBulkActionsClose = () => {
 const getOwnerCollectionsForTrack = (track: any) => {
   return track.collections || []
 }
+
+function rectToAnchor(rect: DOMRect): AnchorRect {
+  return {
+    top: rect.top,
+    left: rect.left,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height,
+  }
+}
+
+const fetchUserCollections = async () => {
+  if (!supabase || !user.value || !props.isOwnProfile) return
+
+  try {
+    const { data, error } = await supabase
+      .from('collections')
+      .select('id, name, slug')
+      .eq('user_id', user.value.id)
+      .order('name')
+
+    if (error) throw error
+
+    userCollections.value = (data || []).map((c: { id: number; name: string; slug: string }) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+    }))
+  } catch (error) {
+    console.error('Error fetching user collections:', error)
+  }
+}
+
+const loadTrackCollections = async (trackId: number) => {
+  if (!supabase) return
+
+  try {
+    const { data, error } = await supabase
+      .from('collections_sounds')
+      .select('collection_id')
+      .eq('sound_id', trackId)
+
+    if (error) throw error
+    selectedCollectionIds.value = (data || []).map(item => item.collection_id)
+  } catch (error) {
+    console.error('Error loading track collections:', error)
+    selectedCollectionIds.value = []
+  }
+}
+
+const resetCollectionModal = () => {
+  collectionModalTrack.value = null
+  collectionModalAnchor.value = null
+  selectedCollectionIds.value = []
+  pendingCollections.value = []
+  collectionSaving.value = false
+}
+
+const closeCollectionModal = () => {
+  showCollectionModal.value = false
+  resetCollectionModal()
+}
+
+const openCollectionModal = async (track: any, event: Event) => {
+  if (!user.value || !props.isOwnProfile) return
+
+  const target = event.currentTarget as HTMLElement | null
+  collectionModalAnchor.value = target ? rectToAnchor(target.getBoundingClientRect()) : null
+  collectionModalTrack.value = {
+    id: track.id,
+    title: track.title,
+    track_group_name: track.track_group_name,
+  }
+  pendingCollections.value = []
+  selectedCollectionIds.value = []
+
+  if (userCollections.value.length === 0) {
+    await fetchUserCollections()
+  }
+  await loadTrackCollections(track.id)
+  showCollectionModal.value = true
+}
+
+const queueCollectionCreation = (name: string) => {
+  if (!name.trim()) return
+
+  const tempId = -Date.now() - Math.random() * 1000
+  const tempCollection = {
+    id: tempId,
+    name: name.trim(),
+    slug: name.trim().toLowerCase().replace(/\s+/g, '-'),
+  }
+
+  userCollections.value.push(tempCollection)
+
+  if (!selectedCollectionIds.value.includes(tempId)) {
+    selectedCollectionIds.value.push(tempId)
+  }
+
+  pendingCollections.value.push({ tempId, name: name.trim() })
+}
+
+const autoHideOlderVersions = async (
+  trackId: number,
+  trackGroupName: string,
+  collectionIds: number[]
+) => {
+  if (!supabase || !user.value || !trackGroupName) return
+
+  try {
+    const { data: groupTracks } = await supabase
+      .from('sounds')
+      .select('id, version')
+      .eq('user_id', user.value.id)
+      .eq('track_group_name', trackGroupName)
+      .neq('id', trackId)
+
+    if (!groupTracks || groupTracks.length === 0) return
+
+    for (const collectionId of collectionIds) {
+      const { data: tracksInCollection } = await supabase
+        .from('collections_sounds')
+        .select('sound_id')
+        .eq('collection_id', collectionId)
+        .in('sound_id', groupTracks.map(t => t.id))
+
+      if (!tracksInCollection || tracksInCollection.length === 0) continue
+
+      const soundIdsToHide = tracksInCollection.map(t => t.sound_id)
+
+      if (soundIdsToHide.length > 0) {
+        await supabase
+          .from('collections_sounds')
+          .update({ hidden: true })
+          .eq('collection_id', collectionId)
+          .in('sound_id', soundIdsToHide)
+      }
+    }
+  } catch (error) {
+    console.error('Error auto-hiding older versions:', error)
+  }
+}
+
+const syncTrackCollections = async (trackId: number, trackGroupName?: string) => {
+  if (!supabase) return
+
+  const { data: current, error: fetchError } = await supabase
+    .from('collections_sounds')
+    .select('collection_id')
+    .eq('sound_id', trackId)
+
+  if (fetchError) throw fetchError
+
+  const currentIds = (current || []).map(c => c.collection_id)
+  const toAdd = selectedCollectionIds.value.filter(id => !currentIds.includes(id))
+  const toRemove = currentIds.filter(id => !selectedCollectionIds.value.includes(id))
+
+  if (toRemove.length > 0) {
+    const { error: deleteError } = await supabase
+      .from('collections_sounds')
+      .delete()
+      .eq('sound_id', trackId)
+      .in('collection_id', toRemove)
+
+    if (deleteError) throw deleteError
+  }
+
+  if (toAdd.length > 0) {
+    const collectionsToInsert = toAdd.map(collectionId => ({
+      collection_id: collectionId,
+      sound_id: trackId,
+      hidden: false,
+    }))
+
+    const { error: insertError } = await supabase
+      .from('collections_sounds')
+      .insert(collectionsToInsert)
+
+    if (insertError) throw insertError
+
+    if (trackGroupName) {
+      await autoHideOlderVersions(trackId, trackGroupName, toAdd)
+    }
+  }
+}
+
+const saveCollections = async () => {
+  if (!supabase || !user.value || !collectionModalTrack.value || collectionSaving.value) return
+
+  collectionSaving.value = true
+  const toastId = showProcessing('Saving collections...')
+
+  try {
+    if (pendingCollections.value.length > 0) {
+      for (const { tempId, name } of pendingCollections.value) {
+        const { data: existing } = await supabase
+          .from('collections')
+          .select('slug')
+          .eq('user_id', user.value.id)
+
+        const existingSlugs = (existing || []).map((c: { slug: string }) => c.slug)
+        const slug = generateUniqueSlug(name, existingSlugs)
+
+        const { data, error: createError } = await supabase
+          .from('collections')
+          .insert({
+            user_id: user.value.id,
+            name,
+            description: null,
+            slug,
+          })
+          .select()
+          .single()
+
+        if (createError) throw createError
+
+        const tempCollectionIndex = userCollections.value.findIndex(c => c.id === tempId)
+        if (tempCollectionIndex !== -1) {
+          userCollections.value[tempCollectionIndex] = {
+            id: data.id,
+            name: data.name,
+            slug: data.slug,
+          }
+        }
+
+        const selectedIndex = selectedCollectionIds.value.indexOf(tempId)
+        if (selectedIndex !== -1) {
+          selectedCollectionIds.value[selectedIndex] = data.id
+        }
+      }
+
+      pendingCollections.value = []
+    }
+
+    await syncTrackCollections(
+      collectionModalTrack.value.id,
+      collectionModalTrack.value.track_group_name
+    )
+
+    removeToast(toastId)
+    showSuccess('Collections updated')
+    closeCollectionModal()
+    emit('tracks-removed')
+  } catch (error) {
+    removeToast(toastId)
+    showError('Failed to save collections')
+    console.error('Error saving collections:', error)
+  } finally {
+    collectionSaving.value = false
+  }
+}
+
+watch([() => user.value, () => props.isOwnProfile], async () => {
+  if (user.value && props.isOwnProfile) {
+    await fetchUserCollections()
+  }
+}, { immediate: true })
 
 // Remove track from collection
 const handleRemoveFromCollection = async (trackId: number) => {

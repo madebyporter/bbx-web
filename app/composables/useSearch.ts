@@ -111,16 +111,6 @@ export function useSearch() {
           metadata: {}
         }))
 
-      case 'kits':
-        return items.map((item: any) => ({
-          type: 'kit' as const,
-          id: item.id,
-          title: item.name,
-          subtitle: item.creator || 'Unknown Creator',
-          url: '/kits',
-          metadata: {}
-        }))
-
       case 'tracks':
         return items.map((item: any) => {
           const username = searchContext.owner || ''
