@@ -6,7 +6,7 @@
         {{ description }}
       </p>
     </div>
-    <div class="flex items-stretch gap-4">
+    <div class="hidden lg:flex items-stretch gap-4">
       <p class="text-sm text-neutral-500 hidden md:flex items-center">
         {{ count }} {{ count === 1 ? itemLabel : itemLabel + 's' }}
       </p>
