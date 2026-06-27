@@ -85,6 +85,15 @@
                   Settings
                 </button>
               </div>
+              <div class="w-full flex items-center p-2">
+                <button
+                  type="button"
+                  class="text-link text-xs hover:text-amber-400 no-underline"
+                  @click="handleShowSupport"
+                >
+                  Support
+                </button>
+              </div>
               <div v-if="isAdmin" class="w-full flex items-center p-2">
                 <button
                   type="button"
@@ -117,6 +126,8 @@
       v-model:show="showSettingsDrawer" 
       @profile-updated="handleProfileUpdated"
     />
+
+    <SupportPopup v-model:show="showSupportPopup" />
   </nav>
 </template>
 
@@ -127,6 +138,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import { useSupabase } from '~/utils/supabase'
 import SettingsDrawer from '~/components/SettingsDrawer.vue'
+import SupportPopup from '~/components/SupportPopup.vue'
 
 
 const auth = useAuth()
@@ -139,6 +151,7 @@ const showMobileNav = ref(false)
 const username = ref<string | null>(null)
 const wasDesktop = ref(false)
 const showSettingsDrawer = ref(false)
+const showSupportPopup = ref(false)
 
 // Emit events to parent layout
 const emit = defineEmits(['show-auth-modal', 'show-admin-modal', 'toggle-mobile-nav'])
@@ -167,6 +180,10 @@ const handleShowAdminModal = () => {
 
 const handleShowSettings = () => {
   showSettingsDrawer.value = true
+}
+
+const handleShowSupport = () => {
+  showSupportPopup.value = true
 }
 
 const handleProfileUpdated = () => {

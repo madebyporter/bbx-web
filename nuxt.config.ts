@@ -39,7 +39,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Private keys are only available on the server
     supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY,
-    
+    notionApiKey: process.env.NOTION_API_KEY,
+    notionSupportDatabaseId: process.env.NOTION_SUPPORT_DATABASE_ID,
+
     // Public keys that are exposed to the client
     public: {
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
