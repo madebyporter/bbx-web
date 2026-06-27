@@ -137,10 +137,6 @@ import { recordPageView, setPlaybackContext } from '~/composables/useTrackAnalyt
 
 // Debug: Log immediately to verify component is loading during SSR
 if (process.server) {
-  console.log('[SSR] Track page component is executing!', {
-    path: useRoute().path,
-    params: useRoute().params
-  })
 }
 
 const route = useRoute()
@@ -482,12 +478,6 @@ const trackForSEO = trackData.value
 
 // Debug: Log during SSR to verify data is available
 if (process.server) {
-  console.log('[SSR] Track data for SEO:', {
-    hasData: !!trackForSEO,
-    title: trackForSEO?.title,
-    artist: trackForSEO?.artist,
-    username: usernameParam
-  })
 }
 
 // Calculate SEO values directly from data (available during SSR after await useAsyncData)
@@ -531,7 +521,6 @@ useHead({
 
 // Listen for track update events (client-side only)
 const handleTrackUpdate = () => {
-  console.log('[track].vue: Received track update event, refreshing data')
   refreshNuxtData(`track-${route.params.track}`)
 }
 

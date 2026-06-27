@@ -52,7 +52,6 @@ const createAuth = () => {
 
   // Set up auth state change listener
   const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((event, session) => {
-    console.log('Auth state change:', event, session?.user?.email)
     
     if (session?.user) {
       user.value = session.user as AuthUser
@@ -60,7 +59,6 @@ const createAuth = () => {
       
       // Handle successful email confirmation
       if (event === 'SIGNED_IN') {
-        console.log('User signed in successfully:', session.user.email)
       }
     } else if (event === 'SIGNED_OUT') {
       user.value = null
@@ -137,7 +135,6 @@ const createAuth = () => {
           }
           // Don't throw - user is created, profile can be fixed later
         } else {
-          console.log('User profile created successfully with user_type:', userType)
           // Clear localStorage since profile is created
           if (typeof window !== 'undefined') {
             localStorage.removeItem(PENDING_USER_TYPE_KEY)
@@ -149,7 +146,6 @@ const createAuth = () => {
       }
     } else if (data.user && !data.session) {
       // User created but needs email confirmation - profile will be created in confirm.vue
-      console.log('User created, waiting for email confirmation. user_type stored in localStorage:', userType)
     }
     
     return data
@@ -204,7 +200,6 @@ const createAuth = () => {
         return
       }
       if (data.session?.user) {
-        console.log('Email confirmed successfully for:', data.session.user.email)
         user.value = data.session.user as AuthUser
         isAdmin.value = data.session.user.app_metadata.roles?.includes('admin') || false
       }

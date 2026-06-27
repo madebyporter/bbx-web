@@ -324,7 +324,6 @@ useHead({
 
 // Apply filters and sort to tracks
 const updateFiltersAndSort = async (params: any) => {
-  console.log('Group page: Applying filters and sort:', params)
   
   if (!supabase || !profileUserId.value || !groupName.value) return
   
@@ -422,7 +421,6 @@ defineExpose({
 
 // Listen for track update events
 const handleTrackUpdate = () => {
-  console.log('[group].vue: Received track update event, refetching tracks')
   fetchGroupTracks()
 }
 

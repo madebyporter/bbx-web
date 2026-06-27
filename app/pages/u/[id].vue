@@ -443,13 +443,6 @@ const { data: initialData, refresh: refreshInitialData } = await useAsyncData(
 
 // PHASE 2: Server-side logging to verify data availability
 if (process.server) {
-  console.log('[SSR SEO] Profile data fetched:', {
-    hasData: !!initialData.value,
-    profileId: initialData.value?.profile?.id,
-    username: initialData.value?.profile?.username,
-    displayName: initialData.value?.profile?.display_name,
-    trackCount: initialData.value?.tracks?.length || 0
-  })
 }
 
 // Fetch software data with caching
@@ -1440,7 +1433,6 @@ let fetchTracksRequestId = 0
 
 const fetchTracks = async () => {
   if (!supabase || !profileUserId.value) {
-    console.log('fetchTracks: Missing supabase or profileUserId', { supabase: !!supabase, profileUserId: profileUserId.value })
     return
   }
 
@@ -1662,7 +1654,6 @@ const handleOpenFilterSort = () => {
 
 // Apply filters and sort to tracks
 const updateFiltersAndSort = async (params: any) => {
-  console.log('Profile page: Applying filters and sort:', params)
   
   if (!supabase || !profileUserId.value) return
   
@@ -1770,14 +1761,6 @@ const seoUrl = `${siteUrl}/u/${profileForSEO?.username || username.value || rout
 
 // PHASE 2: Log before setting SEO meta tags
 if (process.server) {
-  console.log('[SSR SEO] Setting meta tags:', {
-    title: seoTitle,
-    description: seoDescription.substring(0, 60) + '...',
-    url: seoUrl,
-    hasProfileData: !!profileForSEO,
-    hasInitialData: !!initialData.value,
-    routeParam: route.params.id
-  })
 }
 
 // Use useHead with direct values - this pattern works reliably during SSR
@@ -1816,18 +1799,14 @@ const handleTrackUpdate = async (event: any) => {
   
   if (updatedTrack) {
     // Update the specific track in place instead of refetching everything
-    console.log('[id].vue: Updating track in place:', updatedTrack.id)
     const index = tracks.value.findIndex(t => t.id === updatedTrack.id)
     if (index !== -1) {
       // Preserve scroll position by updating in place
       tracks.value[index] = updatedTrack
-      console.log('[id].vue: Track updated in place, scroll position preserved')
     } else {
-      console.log('[id].vue: Track not found in current list, may need to refetch')
     }
   } else {
     // Fallback: refetch if no track data provided (e.g., track deleted)
-    console.log('[id].vue: No track data provided, refetching all tracks')
     await fetchTracks()
   }
 }

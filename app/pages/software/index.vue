@@ -33,19 +33,9 @@ definePageMeta({
 const route = useRoute()
 
 // Debug logging
-console.log('[software.vue] Component mounted/updated', {
-  path: route.path,
-  params: route.params,
-  fullPath: route.fullPath
-})
 
 // Watch for route changes
 watch(() => route.path, (newPath, oldPath) => {
-  console.log('[software.vue] Route path changed', {
-    from: oldPath,
-    to: newPath,
-    params: route.params
-  })
   
   // If navigating to a detail page, this component should unmount
   // If we're still here, Nuxt isn't recognizing the route change
@@ -120,7 +110,6 @@ onUnmounted(() => {
 defineExpose({
   database,
   updateFiltersAndSort: (params: FilterSortParams) => {
-    console.log('Software page: Forwarding updateFiltersAndSort to database component')
     if (database.value && typeof database.value.updateFiltersAndSort === 'function') {
       database.value.updateFiltersAndSort(params)
     } else {
@@ -128,7 +117,6 @@ defineExpose({
     }
   },
   fetchResources: () => {
-    console.log('Software page: Forwarding fetchResources to database component')
     if (database.value && typeof database.value.fetchResources === 'function') {
       return database.value.fetchResources()
     } else {

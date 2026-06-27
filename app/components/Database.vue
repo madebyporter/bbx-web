@@ -44,7 +44,6 @@
               v-if="resource.slug && resource.type?.slug"
               :to="getResourceDetailUrl(resource)"
               class="min-w-[111px] max-w-[111px] h-[61px] bg-neutral-200 rounded-md overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-              @click="(e) => { console.log('[Database.vue] Image clicked', { url: getResourceDetailUrl(resource), slug: resource.slug }) }"
             >
               <img v-if="resource.image_url" :src="getImageUrl(resource.image_url)" :alt="resource.name"
                 class="w-full h-full object-cover" @error="handleImageError" />
@@ -57,7 +56,6 @@
               v-if="resource.slug && resource.type?.slug"
               :to="getResourceDetailUrl(resource)"
               class="overflow-hidden truncate hover:text-amber-400 transition-colors"
-              @click="(e) => { console.log('[Database.vue] Name clicked', { url: getResourceDetailUrl(resource), slug: resource.slug }) }"
             >
               {{ resource.name }}
             </NuxtLink>
@@ -212,11 +210,6 @@ const fetchResources = async () => {
   }
 
   try {
-    console.log('Database: Fetching resources with:', {
-      filters: currentFilters.value,
-      sort: currentSort.value,
-      type: props.type
-    })
 
     // Start building the query
     let query = supabase
@@ -241,7 +234,6 @@ const fetchResources = async () => {
 
     // Filter by type if specified
     if (props.type) {
-      console.log('Database: Filtering by type slug:', props.type)
       try {
         // First approach: Get the type_id for the given slug
         const { data: typeData, error: typeError } = await supabase
@@ -253,10 +245,8 @@ const fetchResources = async () => {
         if (typeError) {
           console.error('Database: Error finding resource type:', typeError)
           // Fallback approach: Try direct filtering
-          console.log('Database: Trying direct filtering approach')
           query = query.filter('resource_types.slug', 'eq', props.type)
         } else if (typeData) {
-          console.log('Database: Found type ID:', typeData.id)
           // Filter resources by the type_id
           query = query.eq('type_id', typeData.id)
         } else {
@@ -269,11 +259,9 @@ const fetchResources = async () => {
 
     // Apply price filter
     if (currentFilters.value.price?.free || currentFilters.value.price?.paid) {
-      console.log('Database: Applying price filter:', currentFilters.value.price);
       
       if (currentFilters.value.price.free && !currentFilters.value.price.paid) {
         // Free items: Match any of these conditions
-        console.log('Database: Filtering for FREE items');
         
         // Alternative approach for free items using multiple OR conditions
         query = query.or(
@@ -285,10 +273,8 @@ const fetchResources = async () => {
           'price.ilike.%free%'
         );
         
-        console.log('Database: Free query:', query);
       } else if (!currentFilters.value.price.free && currentFilters.value.price.paid) {
         // Paid items: Exclude all free variations and nulls
-        console.log('Database: Filtering for PAID items');
         
         // First, create a base query excluding nulls
         let paidQuery = query.not('price', 'is', null);
@@ -301,18 +287,14 @@ const fetchResources = async () => {
         paidQuery = paidQuery.not('price', 'ilike', '%free%');
         
         query = paidQuery;
-        console.log('Database: Paid query:', query);
       } else if (currentFilters.value.price.free && currentFilters.value.price.paid) {
         // Both selected - this effectively means "show all", so no filtering needed
-        console.log('Database: Both price filters selected, showing all resources');
       } else {
-        console.log('Database: No price filters selected, not applying price filter');
       }
     }
 
     // Apply OS filter
     if (currentFilters.value.os?.length > 0) {
-      console.log('Database: Filtering by OS:', currentFilters.value.os);
       
       // We want resources that contain ANY of the selected OS values
       const osValues = currentFilters.value.os;
@@ -320,7 +302,6 @@ const fetchResources = async () => {
       if (osValues.length === 1) {
         // If only one OS is selected, use a simpler contains query
         query = query.contains('os', [osValues[0]]);
-        console.log(`Database: Filtering for OS: ${osValues[0]}`);
       } else {
         // If multiple OS values are selected, we use OR to match any of them
         let orConditions = '';
@@ -330,13 +311,11 @@ const fetchResources = async () => {
         });
         
         query = query.or(orConditions);
-        console.log('Database: Filtering for multiple OS with query:', orConditions);
       }
     }
 
     // Apply tag filter
     if (currentFilters.value.tags?.length > 0) {
-      console.log('Database: Filtering by tags:', currentFilters.value.tags);
       
       // To match resources with ALL selected tags, we use multiple filters
       const tags = currentFilters.value.tags;
@@ -346,10 +325,8 @@ const fetchResources = async () => {
       for (const tag of tags) {
         const tagName = tag.toLowerCase();
         query = query.filter('resource_tags.tags.name', 'eq', tagName);
-        console.log(`Database: Added filter for tag: ${tagName}`);
       }
       
-      console.log('Database: Final tag filter query:', query);
     }
 
     // Search is now handled by SearchModal, not here
@@ -369,7 +346,6 @@ const fetchResources = async () => {
         case 'price':
           // For price sorting, we need to handle it in the JS layer after fetching
           // because Supabase doesn't allow complex string parsing in the query
-          console.log('Database: Will sort by price after fetching data')
           query = query.order('id', direction) // Default order for now
           break
         default:
@@ -378,7 +354,6 @@ const fetchResources = async () => {
     }
 
     // Execute query
-    console.log('Database: Executing Supabase query with filters applied');
     const { data, error } = await query;
 
     if (error) {
@@ -387,12 +362,10 @@ const fetchResources = async () => {
     }
 
     if (!data) {
-      console.log('Database: No results found');
       resources.value = [];
       return;
     }
 
-    console.log('Database: Raw query results:', data);
     
     // Process results
     const processedData = data.map(item => {
@@ -428,7 +401,6 @@ const fetchResources = async () => {
 
     // Apply custom sorting for price if needed
     if (currentSort.value.sortBy === 'price') {
-      console.log('Database: Applying custom price sorting')
       
       // Sort the processed data by extracted numeric price
       processedData.sort((a, b) => {
@@ -441,10 +413,8 @@ const fetchResources = async () => {
           : priceB - priceA;
       });
       
-      console.log('Database: Price sorting applied')
     }
 
-    console.log('Database: Processed results:', processedData)
     resources.value = processedData
 
     // Update use counts
@@ -595,7 +565,6 @@ const toggleUse = async (resource: Resource) => {
 // handleSearch removed - search is now handled by SearchModal
 
 const updateFiltersAndSort = async (params: FilterSortParams) => {
-  console.log('Database: Updating filters and sort:', params)
   
   if (!params) {
     console.error('Database: Invalid filter params received')
@@ -656,12 +625,10 @@ const extractNumericPrice = (priceStr: string): number => {
 const getResourceDetailUrl = (resource: Resource): string => {
   // Debug logging
   if (!resource.slug) {
-    console.log('Resource missing slug:', resource.name, resource)
     return '#'
   }
   
   if (!resource.type?.slug) {
-    console.log('Resource missing type slug:', resource.name, resource.type)
     // Fallback: use props.type if available (for software/kits pages)
     if (props.type) {
       const typePathMap: Record<string, string> = {

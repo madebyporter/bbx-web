@@ -49,7 +49,6 @@ export function useStemPlayer() {
     // Check cache first - check if URL is still valid
     const cached = urlCache.value.get(filepath)
     if (cached && cached.expiry > Date.now()) {
-      console.log('[StemPlayer] Using cached signed URL')
       return cached.url
     }
 
@@ -68,8 +67,6 @@ export function useStemPlayer() {
         console.error('[StemPlayer] No signed URL returned for:', filepath)
         return null
       }
-
-      console.log('[StemPlayer] Generated new signed URL for:', filepath)
 
       // Cache the URL for 23 hours (safe margin)
       urlCache.value.set(filepath, {
@@ -108,7 +105,6 @@ export function useStemPlayer() {
 
   // Load all tracks
   const loadTracks = async (tracks: any[]) => {
-    console.log('StemPlayer: Loading tracks', tracks.length)
     isStemPlayerActive.value = false
     isPlaying.value = false
     currentTime.value = 0
@@ -162,7 +158,6 @@ export function useStemPlayer() {
     }
 
     duration.value = maxDuration
-    console.log('StemPlayer: All tracks loaded, max duration:', maxDuration)
   }
 
   // Create and connect source nodes
@@ -271,7 +266,6 @@ export function useStemPlayer() {
     // Start time update loop
     updateCurrentTime()
 
-    console.log('StemPlayer: Playing from', pauseTime.value)
   }
 
   // Pause
@@ -288,7 +282,6 @@ export function useStemPlayer() {
       animationFrameId.value = null
     }
 
-    console.log('StemPlayer: Paused at', pauseTime.value)
   }
 
   // Stop
@@ -305,7 +298,6 @@ export function useStemPlayer() {
       animationFrameId.value = null
     }
 
-    console.log('StemPlayer: Stopped')
   }
 
   // Toggle play/pause
@@ -333,7 +325,6 @@ export function useStemPlayer() {
       startTime.value = audioContext.value!.currentTime
     }
 
-    console.log('StemPlayer: Seeked to', pauseTime.value)
   }
 
   // Toggle mute for a track

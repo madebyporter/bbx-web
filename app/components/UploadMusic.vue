@@ -347,7 +347,6 @@ const queueCollectionCreation = (name: string, fileIndex: number) => {
   // Add to selected collections for this file
   if (!selectedFiles.value[fileIndex].selectedCollectionIds.includes(tempId)) {
     selectedFiles.value[fileIndex].selectedCollectionIds.push(tempId)
-    console.log(`Added temp collection ${tempId} (${name}) to file ${fileIndex}`)
   }
   
   // Store the temp collection info for later replacement during upload
@@ -532,8 +531,6 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
     
     if (!bestMatch) return null
     
-    console.log(`📋 Found similar track: "${bestMatch.title}" (${Math.round(bestRatio * 100)}% match)`)
-    console.log(`   Copying metadata: artist, genre, BPM, year, mood, collections`)
     
     // Get collections for this track
     const { data: junctionData } = await supabase
@@ -635,13 +632,11 @@ const processFiles = async (files: File[]) => {
     const { parseFileName } = await import('~/utils/parseFileName')
     const parsedData = parseFileName(file.name)
     
-    console.log(`📝 Parsed filename "${file.name}":`, parsedData)
     
     // Extract MP3 metadata (ID3 tags)
     const { extractMP3Metadata } = await import('~/utils/mp3Metadata')
     const mp3Meta = await extractMP3Metadata(file)
     
-    console.log(`🎵 Extracted MP3 metadata:`, mp3Meta)
     
     // Try to find similar track and copy metadata (includes duplicate detection)
     const prefillData = await findSimilarTrackMetadata(parsedData.title, duration)
@@ -771,7 +766,6 @@ const autoHideOlderVersions = async (
           .eq('collection_id', collectionId)
           .in('sound_id', soundIdsToHide)
         
-        console.log(`✓ Auto-hid ${soundIdsToHide.length} older version(s) in collection ${collectionId}`)
       }
     }
   } catch (error) {
@@ -787,7 +781,6 @@ const analyzeAndUpdateBPM = async (fileData: SelectedFile) => {
   const toastId = showProcessing(`Analyzing BPM for "${fileData.metadata.title}"...`)
   
   try {
-    console.log(`🎵 Analyzing BPM for: ${fileData.metadata.title}`)
     const detectedBPM = await analyzeBPM(fileData.file)
     
     // Update the database with the detected BPM
@@ -803,7 +796,6 @@ const analyzeAndUpdateBPM = async (fileData: SelectedFile) => {
       showError(`BPM analysis failed for "${fileData.metadata.title}"`)
     } else {
       fileData.metadata.bpm = detectedBPM
-      console.log(`✓ BPM detected and saved: ${detectedBPM} for "${fileData.metadata.title}"`)
       removeToast(toastId)
       showSuccess(`BPM detected: ${detectedBPM} for "${fileData.metadata.title}"`)
     }
@@ -824,7 +816,6 @@ const analyzeAndUpdateKey = async (fileData: SelectedFile) => {
   const toastId = showProcessing(`Analyzing key for "${fileData.metadata.title}"...`)
   
   try {
-    console.log(`🎹 Analyzing Key for: ${fileData.metadata.title}`)
     const detectedKey = await analyzeKey(fileData.file)
     
     // Update the database with the detected key
@@ -840,7 +831,6 @@ const analyzeAndUpdateKey = async (fileData: SelectedFile) => {
       showError(`Key analysis failed for "${fileData.metadata.title}"`)
     } else {
       fileData.metadata.key = detectedKey
-      console.log(`✓ Key detected and saved: ${detectedKey} for "${fileData.metadata.title}"`)
       removeToast(toastId)
       showSuccess(`Key detected: ${detectedKey} for "${fileData.metadata.title}"`)
     }
@@ -923,7 +913,6 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
     
     // Add to collections if any are selected
     let collectionNames = ''
-    console.log('Processing collections for track:', fileData.metadata.title, 'selectedCollectionIds:', fileData.selectedCollectionIds)
     if (fileData.selectedCollectionIds && fileData.selectedCollectionIds.length > 0) {
       const collectionsToInsert = fileData.selectedCollectionIds.map(collectionId => ({
         collection_id: collectionId,
@@ -1027,7 +1016,6 @@ const onSubmit = async () => {
         const selectedIndex = selectedFiles.value[fileIndex].selectedCollectionIds.indexOf(tempId)
         if (selectedIndex !== -1) {
           selectedFiles.value[fileIndex].selectedCollectionIds[selectedIndex] = data.id
-          console.log(`Replaced temp ID ${tempId} with real ID ${data.id} for file ${fileIndex}`)
         }
       }
     }
@@ -1037,7 +1025,6 @@ const onSubmit = async () => {
     
     // Upload files sequentially
     for (const fileData of selectedFiles.value) {
-      console.log('Uploading file:', fileData.metadata.title, 'with collections:', fileData.selectedCollectionIds)
       const success = await uploadFile(fileData)
       if (success) successCount++
     }
@@ -1066,7 +1053,6 @@ const onSubmit = async () => {
       // Start BPM analysis in background for files that have analyzeBpm enabled
       const filesToAnalyzeBPM = selectedFiles.value.filter(f => f.analyzeBpm && f.uploadedSoundId)
       if (filesToAnalyzeBPM.length > 0) {
-        console.log(`🎵 Starting background BPM analysis for ${filesToAnalyzeBPM.length} track(s)`)
         // Run analysis in background without awaiting
         filesToAnalyzeBPM.forEach(fileData => {
           analyzeAndUpdateBPM(fileData).catch(err => {
@@ -1078,7 +1064,6 @@ const onSubmit = async () => {
       // Start Key analysis in background for files that have analyzeKey enabled
       const filesToAnalyzeKey = selectedFiles.value.filter(f => f.analyzeKey && f.uploadedSoundId)
       if (filesToAnalyzeKey.length > 0) {
-        console.log(`🎹 Starting background Key analysis for ${filesToAnalyzeKey.length} track(s)`)
         // Run analysis in background without awaiting
         filesToAnalyzeKey.forEach(fileData => {
           analyzeAndUpdateKey(fileData).catch(err => {

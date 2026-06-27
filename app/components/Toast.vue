@@ -87,7 +87,6 @@ const { toasts, removeToast } = useToast()
 
 // Debug: Log when toasts change
 watch(toasts, (newToasts) => {
-  console.log('Toast count:', newToasts.length, newToasts)
 }, { deep: true })
 
 const toastClasses = {

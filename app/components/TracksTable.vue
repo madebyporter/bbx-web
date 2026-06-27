@@ -549,17 +549,9 @@ const handlePlayClick = async (track: any, index: number) => {
   // If clicking the current track (regardless of play/pause state), just toggle play/pause
   // This ensures pausing/resuming doesn't restart the track
   if (isCurrentTrack(track)) {
-    console.log('handlePlayClick: Toggling play/pause for current track', { 
-      trackId: track.id, 
-      isPlaying: isPlaying.value
-    })
     await togglePlayPause()
   } else {
     // Load the queue and start playing from this track
-    console.log('handlePlayClick: Loading new queue', { 
-      trackId: track.id, 
-      currentTrackId: currentTrack.value?.id 
-    })
     setPlaybackContext({ source: 'library', collectionId: null })
     await loadQueue(props.tracks, props.sourceId, index)
   }

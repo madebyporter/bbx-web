@@ -241,7 +241,6 @@
                   class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
               </div>
 
-
               <!-- Copy Metadata Button -->
               <div v-if="metadata.track_group_name" class="col-span-2 border-t border-neutral-800 pt-4">
                 <Button
@@ -605,7 +604,6 @@ const autoHideOlderVersions = async (
           .eq('collection_id', collectionId)
           .in('sound_id', soundIdsToHide)
         
-        console.log(`✓ Auto-hid ${soundIdsToHide.length} older version(s) in collection ${collectionId}`)
       }
     }
   } catch (error) {
@@ -726,12 +724,10 @@ const analyzeBPMForTrack = async () => {
     if (!audioData) throw new Error('Failed to download audio file')
     
     // Analyze BPM
-    console.log(`🎵 Analyzing BPM for track: ${metadata.value.title}`)
     const detectedBPM = await analyzeBPM(audioData)
     
     // Update the form field
     metadata.value.bpm = detectedBPM
-    console.log(`✓ BPM detected: ${detectedBPM}`)
     
   } catch (err: any) {
     console.error('BPM analysis failed:', err)
@@ -761,12 +757,10 @@ const analyzeKeyForTrack = async () => {
     if (!audioData) throw new Error('Failed to download audio file')
     
     // Analyze Key
-    console.log(`🎹 Analyzing Key for track: ${metadata.value.title}`)
     const detectedKey = await analyzeKey(audioData)
     
     // Update the form field
     metadata.value.key = detectedKey
-    console.log(`✓ Key detected: ${detectedKey}`)
     
   } catch (err: any) {
     console.error('Key analysis failed:', err)
@@ -873,7 +867,6 @@ const copyMetadataFromGroup = async () => {
       copyMetadataMessage.value = '✓ All fields already filled - nothing to copy'
     } else {
       copyMetadataMessage.value = `✓ Copied ${copiedFields.join(', ')} from "${bestTrack.title}" (v${bestTrack.version})`
-      console.log(`📋 Copied metadata from "${bestTrack.title}":`, copiedFields)
     }
     
     setTimeout(() => { copyMetadataMessage.value = null }, 5000)
@@ -1026,14 +1019,6 @@ const onSubmit = async () => {
       ? metadata.value.mood.split(',').map(m => m.trim()).filter(m => m)
       : null
     
-    console.log('EditTrack: Updating track with data:', {
-      id: props.trackToEdit.id,
-      title: metadata.value.title,
-      artist: metadata.value.artist,
-      user_id: props.trackToEdit.user_id,
-      current_user_id: user.value.id,
-      replacingFile: !!newFile.value
-    })
     
     // Build update object
     const updateData: any = {
@@ -1073,7 +1058,6 @@ const onSubmit = async () => {
     // Sync collections
     await syncCollections(props.trackToEdit.id)
     
-    console.log('EditTrack: Update successful', data)
     
     // Fetch the updated track with collections to pass back
     const updatedTrackData = data && data.length > 0 ? data[0] : null
@@ -1123,7 +1107,6 @@ const handleClose = () => {
   }
 }
 
-
 const handleDelete = async () => {
   if (!supabase || !props.trackToEdit || !confirm('Are you sure you want to delete this track?')) return
   
@@ -1154,5 +1137,4 @@ const handleDelete = async () => {
   }
 }
 </script>
-
 

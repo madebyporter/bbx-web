@@ -257,7 +257,6 @@ const fetchUsers = async () => {
 
     // If RPC error (function doesn't exist or permission denied), fall back to basic user list
     if (rpcError) {
-      console.log('RPC function error, falling back to user_profiles:', rpcError.message)
     }
 
     // Fallback: fetch from user_profiles (works without the migration)

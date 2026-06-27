@@ -103,14 +103,12 @@ export function getUniqueGroupTracks(tracks: Track[]): Track[] {
     uniqueTracks.push(bestTrack)
     
     if (groupTracks.length > 1) {
-      console.log(`Group "${groupName}": selected v${bestTrack.version} (${bestTrack.title}) from ${groupTracks.length} tracks`)
     }
   }
   
   // Add all ungrouped tracks
   uniqueTracks.push(...ungroupedTracks)
   
-  console.log(`Deduplication: ${tracks.length} tracks → ${uniqueTracks.length} unique (${groupMap.size} groups, ${ungroupedTracks.length} ungrouped)`)
   
   return uniqueTracks
 }
@@ -135,7 +133,6 @@ function smartShuffle(array: Track[]): Track[] {
   const maxPasses = 5
   const minDistance = Math.max(3, Math.floor(shuffled.length / 8)) // At least 3 songs apart, or 12.5% of queue
   
-  console.log(`Smart shuffle: ${shuffled.length} tracks, min distance: ${minDistance}`)
   
   for (let pass = 0; pass < maxPasses; pass++) {
     let improved = false
@@ -206,7 +203,6 @@ function smartShuffle(array: Track[]): Track[] {
     
     // If no improvements were made, we're done
     if (!improved) {
-      console.log(`Smart shuffle: converged after ${pass + 1} passes`)
       break
     }
   }

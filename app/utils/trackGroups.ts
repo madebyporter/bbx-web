@@ -123,13 +123,11 @@ export async function findOrCreateTrackGroup(
   
   if (bestMatch && bestMatch.track.track_group_name) {
     // Found similar track with existing group
-    console.log(`Track group match found: "${title}" → "${bestMatch.track.track_group_name}" (${Math.round(bestMatch.ratio * 100)}% similar)`)
     return bestMatch.track.track_group_name
   }
   
   // No similar tracks or no existing group, create new
   const newGroupName = generateGroupName(title)
-  console.log(`Creating new track group: "${title}" → "${newGroupName}"`)
   return newGroupName
 }
 

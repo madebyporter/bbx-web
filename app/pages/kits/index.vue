@@ -91,7 +91,6 @@ onUnmounted(() => {
 defineExpose({
   databaseGrid,
   updateFiltersAndSort: (params: FilterSortParams) => {
-    console.log('Kits page: Forwarding updateFiltersAndSort to databaseGrid component')
     if (databaseGrid.value && typeof databaseGrid.value.updateFiltersAndSort === 'function') {
       databaseGrid.value.updateFiltersAndSort(params)
     } else {
@@ -99,7 +98,6 @@ defineExpose({
     }
   },
   fetchResources: () => {
-    console.log('Kits page: Forwarding fetchResources to databaseGrid component')
     if (databaseGrid.value && typeof databaseGrid.value.fetchResources === 'function') {
       return databaseGrid.value.fetchResources()
     } else {

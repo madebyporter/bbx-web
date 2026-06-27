@@ -14,8 +14,6 @@ export default defineNuxtPlugin(() => {
           scope: '/'
         })
 
-        console.log('[SW Plugin] Service Worker registered successfully:', registration.scope)
-
         // Check for updates periodically
         setInterval(() => {
           registration.update()
@@ -28,7 +26,6 @@ export default defineNuxtPlugin(() => {
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'activated') {
-                console.log('[SW Plugin] Service Worker updated')
               }
             })
           }

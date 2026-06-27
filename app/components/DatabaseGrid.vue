@@ -83,7 +83,6 @@
           </div>
         </div>
 
-
         <!-- Action Buttons -->
         <div class="flex justify-between items-center mt-4">
           <!-- I Use This -->
@@ -194,11 +193,6 @@ const fetchResources = async () => {
   }
 
   try {
-    console.log('DatabaseGrid: Fetching resources with:', {
-      filters: currentFilters.value,
-      sort: currentSort.value,
-      type: props.type
-    })
 
     // Start building the query
     let query = supabase
@@ -223,7 +217,6 @@ const fetchResources = async () => {
 
     // Filter by type if specified
     if (props.type) {
-      console.log('DatabaseGrid: Filtering by type slug:', props.type)
       try {
         // First approach: Get the type_id for the given slug
         const { data: typeData, error: typeError } = await supabase
@@ -235,10 +228,8 @@ const fetchResources = async () => {
         if (typeError) {
           console.error('DatabaseGrid: Error finding resource type:', typeError)
           // Fallback approach: Try direct filtering
-          console.log('DatabaseGrid: Trying direct filtering approach')
           query = query.filter('resource_types.slug', 'eq', props.type)
         } else if (typeData) {
-          console.log('DatabaseGrid: Found type ID:', typeData.id)
           // Filter resources by the type_id
           query = query.eq('type_id', typeData.id)
         } else {
@@ -251,11 +242,9 @@ const fetchResources = async () => {
 
     // Apply price filter
     if (currentFilters.value.price?.free || currentFilters.value.price?.paid) {
-      console.log('DatabaseGrid: Applying price filter:', currentFilters.value.price);
       
       if (currentFilters.value.price.free && !currentFilters.value.price.paid) {
         // Free items: Match any of these conditions
-        console.log('DatabaseGrid: Filtering for FREE items');
         
         // Alternative approach for free items using multiple OR conditions
         query = query.or(
@@ -267,10 +256,8 @@ const fetchResources = async () => {
           'price.ilike.%free%'
         );
         
-        console.log('DatabaseGrid: Free query:', query);
       } else if (!currentFilters.value.price.free && currentFilters.value.price.paid) {
         // Paid items: Exclude all free variations and nulls
-        console.log('DatabaseGrid: Filtering for PAID items');
         
         // First, create a base query excluding nulls
         let paidQuery = query.not('price', 'is', null);
@@ -283,18 +270,14 @@ const fetchResources = async () => {
         paidQuery = paidQuery.not('price', 'ilike', '%free%');
         
         query = paidQuery;
-        console.log('DatabaseGrid: Paid query:', query);
       } else if (currentFilters.value.price.free && currentFilters.value.price.paid) {
         // Both selected - this effectively means "show all", so no filtering needed
-        console.log('DatabaseGrid: Both price filters selected, showing all resources');
       } else {
-        console.log('DatabaseGrid: No price filters selected, not applying price filter');
       }
     }
 
     // Apply OS filter
     if (currentFilters.value.os?.length > 0) {
-      console.log('DatabaseGrid: Filtering by OS:', currentFilters.value.os);
       
       // We want resources that contain ANY of the selected OS values
       const osValues = currentFilters.value.os;
@@ -302,7 +285,6 @@ const fetchResources = async () => {
       if (osValues.length === 1) {
         // If only one OS is selected, use a simpler contains query
         query = query.contains('os', [osValues[0]]);
-        console.log(`DatabaseGrid: Filtering for OS: ${osValues[0]}`);
       } else {
         // If multiple OS values are selected, we use OR to match any of them
         let orConditions = '';
@@ -312,13 +294,11 @@ const fetchResources = async () => {
         });
         
         query = query.or(orConditions);
-        console.log('DatabaseGrid: Filtering for multiple OS with query:', orConditions);
       }
     }
 
     // Apply tag filter
     if (currentFilters.value.tags?.length > 0) {
-      console.log('DatabaseGrid: Filtering by tags:', currentFilters.value.tags);
       
       // To match resources with ALL selected tags, we use multiple filters
       const tags = currentFilters.value.tags;
@@ -328,10 +308,8 @@ const fetchResources = async () => {
       for (const tag of tags) {
         const tagName = tag.toLowerCase();
         query = query.filter('resource_tags.tags.name', 'eq', tagName);
-        console.log(`DatabaseGrid: Added filter for tag: ${tagName}`);
       }
       
-      console.log('DatabaseGrid: Final tag filter query:', query);
     }
 
     // Search is now handled by SearchModal, not here
@@ -351,7 +329,6 @@ const fetchResources = async () => {
         case 'price':
           // For price sorting, we need to handle it in the JS layer after fetching
           // because Supabase doesn't allow complex string parsing in the query
-          console.log('DatabaseGrid: Will sort by price after fetching data')
           query = query.order('id', direction) // Default order for now
           break
         default:
@@ -360,7 +337,6 @@ const fetchResources = async () => {
     }
 
     // Execute query
-    console.log('DatabaseGrid: Executing Supabase query');
     const { data, error } = await query;
 
     if (error) {
@@ -369,7 +345,6 @@ const fetchResources = async () => {
     }
 
     if (!data) {
-      console.log('DatabaseGrid: No results found');
       resources.value = [];
       return;
     }
@@ -407,7 +382,6 @@ const fetchResources = async () => {
 
     // Apply custom sorting for price if needed
     if (currentSort.value.sortBy === 'price') {
-      console.log('DatabaseGrid: Applying custom price sorting')
       
       // Sort the processed data by extracted numeric price
       processedData.sort((a, b) => {
@@ -420,7 +394,6 @@ const fetchResources = async () => {
           : priceB - priceA;
       });
       
-      console.log('DatabaseGrid: Price sorting applied')
     }
 
     resources.value = processedData
@@ -528,12 +501,10 @@ const handleImageError = (event: Event) => {
 const getResourceDetailUrl = (resource: Resource): string => {
   // Debug logging
   if (!resource.slug) {
-    console.log('Resource missing slug:', resource.name, resource)
     return '#'
   }
   
   if (!resource.type?.slug) {
-    console.log('Resource missing type slug:', resource.name, resource.type)
     // Fallback: use props.type if available (for software/kits pages)
     if (props.type) {
       const typePathMap: Record<string, string> = {
@@ -577,7 +548,6 @@ const confirmDelete = async (resource: Resource) => {
 // handleSearch removed - search is now handled by SearchModal
 
 const updateFiltersAndSort = async (params: FilterSortParams) => {
-  console.log('DatabaseGrid: Updating filters and sort:', params)
   
   if (!params) {
     console.error('DatabaseGrid: Invalid filter params received')

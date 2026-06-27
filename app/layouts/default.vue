@@ -330,7 +330,6 @@ const handleToggleNav = () => {
 
 const handleMobileNavToggle = (isOpen: boolean) => {
   isMobileNavOpen.value = isOpen
-  console.log('Mobile nav toggled:', isOpen)
 }
 
 // Auth handlers
@@ -519,7 +518,6 @@ const closeModal = () => {
 const refreshDatabase = (updatedTrack?: any) => {
   // For user profile pages, dispatch window event with updated track data
   if (isUserProfilePage.value) {
-    console.log('Layout: Dispatching track-updated event', updatedTrack ? 'with track data' : 'without data')
     const event = new CustomEvent('track-updated', { 
       detail: updatedTrack ? { track: updatedTrack } : null,
       bubbles: true
@@ -534,7 +532,6 @@ const refreshDatabase = (updatedTrack?: any) => {
   }
   // For resource pages, refresh database grid
   else if (databaseRef.value?.fetchResources) {
-    console.log('Layout: Found database component, calling fetchResources')
     databaseRef.value.fetchResources()
   } else {
     console.error('Layout: Database component not found or fetchResources method not available')
@@ -542,7 +539,6 @@ const refreshDatabase = (updatedTrack?: any) => {
 }
 
 const handleFiltersAndSort = (params: FilterSortParams) => {
-  console.log('Layout: Received filter params:', params)
   
   if (!params) {
     console.error('Layout: Invalid filter parameters received')
@@ -638,44 +634,37 @@ const handleFiltersAndSort = (params: FilterSortParams) => {
 
 // Function for pages to register their search handler
 const registerSearchHandler = (handler: (query: string) => void) => {
-  console.log('Layout: Search handler registered')
   currentSearchHandler.value = handler
 }
 
 // Function for pages to unregister their search handler
 const unregisterSearchHandler = () => {
-  console.log('Layout: Search handler unregistered')
   currentSearchHandler.value = null
 }
 
 // Function for music pages to register their filter/sort handler
 const registerFiltersAndSortHandler = (handler: (params: FilterSortParams) => void) => {
-  console.log('Layout: FiltersAndSort handler registered')
   currentFiltersAndSortHandler.value = handler
 }
 
 // Function for music pages to unregister their filter/sort handler
 const unregisterFiltersAndSortHandler = () => {
-  console.log('Layout: FiltersAndSort handler unregistered')
   currentFiltersAndSortHandler.value = null
 }
 
 // Function for pages to register their context items for search
 const registerContextItems = (items: any[], searchFields: string[]) => {
-  console.log('Layout: Context items registered', { count: items.length, fields: searchFields })
   searchContextItems.value = items
   searchContextFields.value = searchFields
 }
 
 // Function for pages to unregister their context items
 const unregisterContextItems = () => {
-  console.log('Layout: Context items unregistered')
   searchContextItems.value = []
   searchContextFields.value = []
 }
 
 const handleSearch = (query: string) => {
-  console.log('Layout: handleSearch called with query:', query)
 
   const path = route.path
   if (path.includes('/software')) {
@@ -686,31 +675,25 @@ const handleSearch = (query: string) => {
   
   // Use registered search handler if available
   if (currentSearchHandler.value) {
-    console.log('Layout: Using registered search handler')
     currentSearchHandler.value(query)
   }
   // Fallback: Try pageRef for resource pages
   else if (pageRef.value && typeof pageRef.value.handleSearch === 'function') {
-    console.log('Layout: Found page handleSearch method')
     pageRef.value.handleSearch(query)
   }
   // Fallback: Try pageRef.database for resource pages
   else if (pageRef.value?.database && typeof (pageRef.value.database as any)?.handleSearch === 'function') {
-    console.log('Layout: Found database handleSearch method via pageRef')
     ;(pageRef.value.database as any).handleSearch(query)
   }
   // Fallback: Try databaseRef
   else if (databaseRef.value?.handleSearch) {
-    console.log('Layout: Found databaseRef handleSearch method')
     databaseRef.value.handleSearch(query)
   } else {
-    console.log('Layout: No search handler found for current page')
   }
 }
 
 // Handle "I Use This" signup flow
 const handleShowSignup = () => {
-  console.log('Show signup called, current user:', user.value)
   if (!user.value) {
     const sourcePage = route.path
     capture('signup_cta_clicked', { source_page: sourcePage })
@@ -756,10 +739,8 @@ provide('showModal', { value: showModal })
 onMounted(async () => {
   if (!process.client) return
   
-  console.log('Layout: Starting auth initialization...')
   // isInitialized is already true (set in ref initialization above)
   // This ensures layout always renders, preventing hydration mismatch
-  console.log('Layout: Initialized, isInitialized =', isInitialized.value)
   
   try {
     await auth.init()

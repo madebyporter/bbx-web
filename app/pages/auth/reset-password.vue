@@ -116,7 +116,6 @@ onMounted(async () => {
       
       if (data.session) {
         isValidToken.value = true
-        console.log('Recovery token verified successfully')
       } else {
         throw new Error('Invalid or expired reset link')
       }
@@ -151,7 +150,6 @@ const handlePasswordReset = async () => {
   try {
     await auth.updatePassword(newPassword.value)
     isSuccess.value = true
-    console.log('Password updated successfully')
   } catch (error: any) {
     console.error('Password update error:', error)
     passwordError.value = error.message || 'Failed to update password. Please try again.'

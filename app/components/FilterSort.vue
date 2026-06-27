@@ -435,7 +435,6 @@ const loadSavedFilters = () => {
     
     if (savedData) {
       const parsed = JSON.parse(savedData)
-      console.log(`FilterSort: Loading saved filters for ${props.context}:`, parsed)
       
       // Restore sort
       if (parsed.sort) {
@@ -504,7 +503,6 @@ const saveFilters = () => {
     }
     
     localStorage.setItem(savedFiltersKey, JSON.stringify(dataToSave))
-    console.log(`FilterSort: Saved filters for ${props.context}`)
   } catch (error) {
     console.error('FilterSort: Error saving filters:', error)
   }
@@ -527,7 +525,6 @@ watch(() => props.context, (newContext, oldContext) => {
     
     // If current sortBy is not valid for new context, reset to 'created_at'
     if (!validOptions.includes(sortBy.value)) {
-      console.log(`FilterSort: Context changed to ${newContext}, resetting sortBy from ${sortBy.value} to created_at`)
       sortBy.value = 'created_at'
     }
   }
@@ -641,7 +638,6 @@ const applyFiltersAndSort = () => {
     }
   }
   
-  console.log('FilterSort: Applying filters and sort:', filterSortParams)
   
   // Save filters to localStorage for persistence
   saveFilters()

@@ -34,7 +34,6 @@ export async function generatePrerenderRoutes(): Promise<string[]> {
       }
     })
     
-    console.log(`Generated ${routes.length} routes for prerendering`)
     return routes
   } catch (error) {
     console.error('Error generating prerender routes:', error)

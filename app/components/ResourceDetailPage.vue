@@ -141,20 +141,16 @@ const route = useRoute()
 const startTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
 const context = process.server ? 'SERVER' : process.client ? 'CLIENT' : 'UNKNOWN'
 const routePath = typeof window !== 'undefined' ? window.location.pathname : (route?.path || 'SSR')
-console.log(`[SEO-TIMING] [COMPONENT] ResourceDetailPage setup started | Context: ${context} | Timestamp: ${startTime}ms | Route: ${routePath}`)
 
 // [SEO-TIMING] Critical: Check if this is SSR or client-side navigation
 if (process.server) {
-  console.log(`[SEO-TIMING] [COMPONENT] ✅ RUNNING ON SERVER (SSR) - SEO tags WILL be in HTML`)
 } else if (process.client) {
-  console.log(`[SEO-TIMING] [COMPONENT] ⚠️ RUNNING ON CLIENT ONLY - SEO tags set via JavaScript (not in initial HTML)`)
   // Check if this is initial page load or client-side navigation
   if (typeof window !== 'undefined' && window.performance) {
     try {
       const navEntries = (window.performance as any).getEntriesByType?.('navigation') || []
       const navType = navEntries[0]?.type
       const isInitialLoad = navType === 'navigate' || navType === 'reload'
-      console.log(`[SEO-TIMING] [COMPONENT] Navigation type: ${navType} | Initial load: ${isInitialLoad}`)
     } catch (e) {
       // Navigation timing API might not be available
     }
@@ -205,10 +201,8 @@ const { data: resourceData, pending: loading, refresh } = await useAsyncData(
   async () => {
     const fetchStartTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
     const fetchContext = process.server ? 'SERVER' : process.client ? 'CLIENT' : 'UNKNOWN'
-    console.log(`[SEO-TIMING] useAsyncData callback STARTED | Context: ${fetchContext} | Timestamp: ${fetchStartTime}ms | Slug: ${props.slug}`)
     
     if (!supabase) {
-      console.log(`[SEO-TIMING] useAsyncData callback - Supabase not available | Context: ${fetchContext}`)
       return null
     }
     
@@ -216,7 +210,6 @@ const { data: resourceData, pending: loading, refresh } = await useAsyncData(
       const data = await fetchResourceBySlug(props.slug, typeConfig.value.dbTypeSlug)
       const fetchEndTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
       const fetchDuration = fetchEndTime - fetchStartTime
-      console.log(`[SEO-TIMING] useAsyncData callback RESOLVED | Context: ${fetchContext} | Timestamp: ${fetchEndTime}ms | Duration: ${fetchDuration.toFixed(2)}ms | Data: ${data ? `Found resource "${data.name}" (ID: ${data.id})` : 'null'}`)
       return data
     } catch (error) {
       const fetchEndTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
@@ -261,17 +254,14 @@ const { data: useStatusData } = await useAsyncData(
   async () => {
     const useFetchStartTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
     const useFetchContext = process.server ? 'SERVER' : process.client ? 'CLIENT' : 'UNKNOWN'
-    console.log(`[SEO-TIMING] useStatusData callback STARTED | Context: ${useFetchContext} | Timestamp: ${useFetchStartTime}ms | ResourceID: ${resourceData.value?.id || 'null'}`)
     
     if (!resourceData.value?.id) {
-      console.log(`[SEO-TIMING] useStatusData callback - No resource ID, returning defaults | Context: ${useFetchContext}`)
       return { count: 0, isUsing: false }
     }
     try {
       const status = await getResourceUseStatus(resourceData.value.id)
       const useFetchEndTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
       const useFetchDuration = useFetchEndTime - useFetchStartTime
-      console.log(`[SEO-TIMING] useStatusData callback RESOLVED | Context: ${useFetchContext} | Timestamp: ${useFetchEndTime}ms | Duration: ${useFetchDuration.toFixed(2)}ms | Count: ${status.count} | IsUsing: ${status.isUsing}`)
       return status
     } catch (error) {
       const useFetchEndTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
@@ -316,7 +306,6 @@ watch(() => [resource.value, useCount.value], ([newResource, count]) => {
   const watchTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
   
   if (!newResource) {
-    console.log(`[SEO-TIMING] watch callback - No resource data available | Context: ${watchContext} | Timestamp: ${watchTime}ms`)
     return
   }
   
@@ -326,18 +315,6 @@ watch(() => [resource.value, useCount.value], ([newResource, count]) => {
   const seoUrl = `${siteUrl}${route.path}`
   const seoImage = newResource.image_url ? getImageUrl(newResource.image_url) : `${siteUrl}/img/og-image.jpg`
   
-  console.log(`[SEO-TIMING] BEFORE useHead | Context: ${watchContext} | Timestamp: ${watchTime}ms`)
-  console.log(`[SEO-TIMING] SEO values available:`, {
-    title: seoTitle,
-    description: seoDescription.substring(0, 60) + '...',
-    url: seoUrl,
-    image: seoImage,
-    resourceName: newResource.name,
-    resourceId: newResource.id,
-    useCount: count,
-    hasResourceData: !!newResource,
-    hasUseCount: count > 0
-  })
   
   // Structured data (JSON-LD) for rich snippets
   const structuredData = {
@@ -369,7 +346,6 @@ watch(() => [resource.value, useCount.value], ([newResource, count]) => {
   }
   
   const beforeUseHeadTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
-  console.log(`[SEO-TIMING] CALLING useHead | Context: ${watchContext} | Timestamp: ${beforeUseHeadTime}ms`)
   
   useHead({
     title: seoTitle,
@@ -399,7 +375,6 @@ watch(() => [resource.value, useCount.value], ([newResource, count]) => {
   // [SEO-TIMING] After useHead - log confirmation
   const afterUseHeadTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
   const useHeadDuration = afterUseHeadTime - beforeUseHeadTime
-  console.log(`[SEO-TIMING] AFTER useHead | Context: ${watchContext} | Timestamp: ${afterUseHeadTime}ms | Duration: ${useHeadDuration.toFixed(2)}ms | SEO tags set`)
 }, { immediate: true })
 
 /*
@@ -483,14 +458,6 @@ const onDelete = async () => {
 onMounted(() => {
   const mountedTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
   const mountedContext = process.server ? 'SERVER' : process.client ? 'CLIENT' : 'UNKNOWN'
-  console.log(`[SEO-TIMING] onMounted | Context: ${mountedContext} | Timestamp: ${mountedTime}ms | Route: ${window.location.pathname}`)
-  console.log(`[SEO-TIMING] onMounted - Resource data available:`, {
-    hasResource: !!resource.value,
-    resourceName: resource.value?.name || 'null',
-    resourceId: resource.value?.id || 'null',
-    useCount: useCount.value,
-    hasUseStatusData: !!useStatusData.value
-  })
   
   // Check if SEO tags are in DOM
   if (typeof document !== 'undefined') {
@@ -499,13 +466,6 @@ onMounted(() => {
     const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content')
     const jsonLd = document.querySelector('script[type="application/ld+json"]')?.textContent
     
-    console.log(`[SEO-TIMING] onMounted - DOM SEO state:`, {
-      title,
-      metaDescription: metaDescription?.substring(0, 60) + '...',
-      ogTitle,
-      hasJsonLd: !!jsonLd,
-      jsonLdPreview: jsonLd ? JSON.parse(jsonLd)?.name : null
-    })
   }
 })
 </script>

@@ -102,8 +102,6 @@ onMounted(async () => {
             console.error('User ID:', data.session.user.id, 'User Type:', userType)
             // Don't fail the confirmation if profile creation fails
           } else {
-            console.log('User profile created/updated successfully:', profileData)
-            console.log('User type set to:', userType)
             // Clear localStorage since profile is created
             if (typeof window !== 'undefined') {
               localStorage.removeItem(PENDING_USER_TYPE_KEY)
@@ -117,7 +115,6 @@ onMounted(async () => {
         setSignedInFromSession(!!data.session)
         isSuccess.value = true
         capture('email_confirmed', {})
-        console.log('Email confirmed successfully:', data.session.user.email)
       }
     } else {
       // Check if user is already confirmed and signed in
@@ -156,8 +153,6 @@ onMounted(async () => {
               console.error('Profile error details:', JSON.stringify(profileError, null, 2))
               console.error('User ID:', session.user.id, 'User Type:', userType)
             } else {
-              console.log('User profile created successfully:', profileData)
-              console.log('User type set to:', userType)
               // Clear localStorage since profile is created
               if (typeof window !== 'undefined') {
                 localStorage.removeItem(PENDING_USER_TYPE_KEY)
@@ -174,7 +169,6 @@ onMounted(async () => {
               if (updateError) {
                 console.error('Error updating user_type:', updateError)
               } else {
-                console.log('Updated user_type to:', userType)
               }
             }
           }

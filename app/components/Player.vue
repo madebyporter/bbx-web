@@ -200,7 +200,6 @@ const audioEl = ref<HTMLAudioElement | null>(null)
 
 // Set audio element reference
 onMounted(async () => {
-  console.log('Player.vue: onMounted, audioEl.value:', !!audioEl.value)
   if (audioEl.value) {
     setAudioElement(audioEl.value)
     await loadState()
@@ -212,7 +211,6 @@ onMounted(async () => {
 
 // Clean up audio element on unmount
 onUnmounted(() => {
-  console.log('Player.vue: onUnmounted, cleaning up')
   setAudioElement(null)
 })
 

@@ -44,7 +44,6 @@ function getFfmpegPath() {
 // Set ffmpeg path globally
 const resolvedFfmpegPath = getFfmpegPath()
 ffmpeg.setFfmpegPath(resolvedFfmpegPath)
-console.log('FFmpeg path set to:', resolvedFfmpegPath)
 
 const downloadSampleHandler = async (event, context) => {
   try {

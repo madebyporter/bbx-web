@@ -514,7 +514,6 @@ const fetchTracks = async () => {
   }
 }
 
-
 const handleEdit = (track: any) => {
   // Emit event to parent layout to open modal in edit mode
   const event = new CustomEvent('edit-track', { 
@@ -637,7 +636,6 @@ function applyFiltersAndSortToList(list: any[], params: { filters: any; sort: an
 
 // Apply filters and sort to tracks
 const updateFiltersAndSort = async (params: any) => {
-  console.log('Collection page: Applying filters and sort:', params)
 
   if (!supabase || !collection.value || !profileUserId.value) return
 
@@ -729,7 +727,6 @@ defineExpose({
 const { updateCurrentTrack } = usePlayer()
 
 const handleTrackUpdate = (event?: CustomEvent) => {
-  console.log('[collection].vue: Received track update event, refetching tracks')
   
   // If event has track data, update the player if it's the current track
   if (event?.detail?.track) {

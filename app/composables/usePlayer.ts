@@ -62,7 +62,6 @@ export function usePlayer() {
     // Check cache first - cached URLs are still valid
     const cached = signedUrlCache.value.get(filepath)
     if (cached && cached.expiry > Date.now()) {
-      console.log('Using cached signed URL for:', filepath)
       return cached.url
     }
 
@@ -81,8 +80,6 @@ export function usePlayer() {
         console.error('No signed URL returned for:', filepath)
         return null
       }
-
-      console.log('Generated new signed URL for:', filepath)
 
       // Cache the URL for 23 hours (safe margin before expiry)
       signedUrlCache.value.set(filepath, {
@@ -117,7 +114,6 @@ export function usePlayer() {
         link.href = url
         document.head.appendChild(link)
         preloadedUrls.value.add(nextTrack.storage_path)
-        console.log('Preloading next track:', nextTrack.title)
       }
     }
   }
@@ -134,9 +130,7 @@ export function usePlayer() {
 
   // Update queue without playing (for silent queue updates)
   const updateQueue = (tracks: Track[], sourceId: string) => {
-    console.log('updateQueue: Updating queue silently', { tracksCount: tracks?.length, sourceId })
     if (!tracks || tracks.length === 0) {
-      console.log('updateQueue: No tracks provided')
       return
     }
 
@@ -154,7 +148,6 @@ export function usePlayer() {
         newIndex = foundIndex
       } else {
         // Current track is no longer in the queue, reset to first track but don't play
-        console.log('updateQueue: Current track not in new queue')
         currentIndex.value = 0
         currentTrack.value = tracks[0] || null
         queue.value = [...tracks]
@@ -166,7 +159,6 @@ export function usePlayer() {
     // Apply shuffle if enabled
     if (isShuffled.value) {
       const tracksToShuffle = shuffleUniqueGroups(tracks)
-      console.log(`updateQueue: After deduplication: ${tracks.length} → ${tracksToShuffle.length} tracks`)
       
       const trackToKeep = tracks[newIndex]
       
@@ -187,15 +179,12 @@ export function usePlayer() {
       currentIndex.value = newIndex
     }
 
-    console.log('updateQueue: Queue updated', { newQueueLength: queue.value.length, currentIndex: currentIndex.value })
     saveState()
   }
 
   // Load queue and optionally start playing
   const loadQueue = async (tracks: Track[], sourceId: string, autoPlayIndex: number = 0) => {
-    console.log('loadQueue: Starting', { tracksCount: tracks?.length, sourceId, autoPlayIndex })
     if (!tracks || tracks.length === 0) {
-      console.log('loadQueue: No tracks provided')
       return
     }
 
@@ -214,7 +203,6 @@ export function usePlayer() {
     // Apply shuffle if enabled
     if (isShuffled.value) {
       const tracksToShuffle = shuffleUniqueGroups(tracks)
-      console.log(`loadQueue: After deduplication: ${tracks.length} → ${tracksToShuffle.length} tracks`)
       
       // Remove the explicitly selected track from the shuffled list
       const otherTracks = tracksToShuffle.filter(t => t.id !== explicitlySelectedTrack.id)
@@ -223,30 +211,23 @@ export function usePlayer() {
       queue.value = [explicitlySelectedTrack, ...otherTracks]
       currentIndex.value = 0
       
-      console.log(`loadQueue: Explicitly selected track [ID: ${explicitlySelectedTrack.id}] placed first`)
     } else {
       queue.value = [...tracks]
       currentIndex.value = autoPlayIndex
     }
 
     currentTrack.value = queue.value[currentIndex.value]
-    console.log('loadQueue: Current track set', { title: currentTrack.value?.title, storage_path: currentTrack.value?.storage_path })
     
     // Log the queue order for debugging
     if (isShuffled.value) {
-      console.log('📋 QUEUE ORDER (Smart Shuffle):')
       queue.value.forEach((track, idx) => {
-        console.log(`  ${idx + 1}. "${track.title}" [ID: ${track.id}] [Group: ${track.track_group_name || 'none'}]`)
       })
     }
     
     // Load the track
     if (currentTrack.value) {
-      console.log('loadQueue: Getting signed URL for', currentTrack.value.storage_path)
       const url = await getSignedUrl(currentTrack.value.storage_path)
-      console.log('loadQueue: Got signed URL', { url: url ? 'success' : 'null' })
       if (url && audioElement.value) {
-        console.log('loadQueue: Setting audio src and loading')
         audioElement.value.src = url
         audioElement.value.loop = false // Always false - we handle looping manually
         audioElement.value.preload = 'auto' // Ensure audio is preloaded
@@ -255,7 +236,6 @@ export function usePlayer() {
         if (loopOne.value) {
           await new Promise(resolve => setTimeout(resolve, 100))
         }
-        console.log('loadQueue: Calling play()')
         await play()
       } else {
         console.error('loadQueue: Failed - url or audioElement missing', { url: !!url, audioElement: !!audioElement.value })
@@ -269,7 +249,6 @@ export function usePlayer() {
   const play = async () => {
     if (audioElement.value && currentTrack.value) {
       try {
-        console.log(`▶️ NOW PLAYING: "${currentTrack.value.title}" by ${currentTrack.value.artist} [ID: ${currentTrack.value.id}] [Group: ${currentTrack.value.track_group_name || 'none'}] [Version: ${currentTrack.value.version || 'N/A'}]`)
         await audioElement.value.play()
         isPlaying.value = true
         beginListenSession(currentTrack.value)
@@ -356,20 +335,16 @@ export function usePlayer() {
     // Check if we've reached the end of the queue
     if (nextIndex >= queue.value.length) {
       if (isShuffled.value && originalQueue.value.length > 0) {
-        console.log('🔄 End of queue reached - Re-shuffling!')
         
         // Re-shuffle the queue with smart shuffle
         const newShuffledQueue = shuffleUniqueGroups(originalQueue.value)
         queue.value = newShuffledQueue
         
-        console.log('📋 NEW QUEUE ORDER (Re-shuffled):')
         queue.value.forEach((track, idx) => {
           if (idx < 10) { // Only show first 10 to avoid spam
-            console.log(`  ${idx + 1}. "${track.title}" [ID: ${track.id}] [Group: ${track.track_group_name || 'none'}]`)
           }
         })
         if (queue.value.length > 10) {
-          console.log(`  ... and ${queue.value.length - 10} more tracks`)
         }
         
         nextIndex = 0
@@ -417,7 +392,6 @@ export function usePlayer() {
       // Shuffle the queue, keeping current track at current position
       const currentTrackData = currentTrack.value
       const tracksToShuffle = shuffleUniqueGroups(originalQueue.value)
-      console.log(`toggleShuffle: After deduplication: ${originalQueue.value.length} → ${tracksToShuffle.length} tracks`)
       
       // Check if current track is in the deduplicated list
       if (currentTrackData) {
@@ -653,7 +627,6 @@ export function usePlayer() {
 
   // Set audio element (called by Player component)
   const setAudioElement = (el: HTMLAudioElement | null) => {
-    console.log('setAudioElement: Setting audio element', { el: !!el })
     audioElement.value = el
     if (el) {
       el.volume = volume.value
@@ -682,11 +655,6 @@ export function usePlayer() {
       const oldPath = currentTrack.value.storage_path
       const newPath = updatedTrack.storage_path
       
-      console.log('Player: Updating current track with new data', {
-        oldPath,
-        newPath,
-        pathChanged: oldPath !== newPath
-      })
       
       // Clear the signed URL cache for the old path
       if (oldPath) {
