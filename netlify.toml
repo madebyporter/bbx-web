@@ -56,5 +56,7 @@
 
 # Daily at 10:00 UTC — requires env in Netlify UI:
 # SUPABASE_SERVICE_KEY, RESEND_API_KEY, CRON_SECRET, RESEND_FROM_EMAIL
+# Support feedback notifications (server/api/support.post.ts):
+# RESEND_API_KEY, optional SUPPORT_NOTIFY_EMAIL (default: connectbbx@gmail.com)
 [functions."send-onboarding-reminders"]
   schedule = "0 10 * * *" 

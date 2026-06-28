@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createError, getHeader, readBody, readMultipartFormData } from 'h3'
 import { createNotionSupportPage } from '../utils/notionSupport'
+import { notifySupportSubmission } from '../utils/supportNotification'
 import { uploadBufferToNotion } from '../utils/notionFileUpload'
 import {
   SUPPORT_IMAGE_TYPES,
@@ -202,6 +203,13 @@ export default defineEventHandler(async (event) => {
 
   try {
     const page = await createNotionSupportPage(notionApiKey, databaseId, submission)
+
+    try {
+      await notifySupportSubmission(submission, page.url)
+    } catch (emailError) {
+      console.error('Support notification email failed:', emailError)
+    }
+
     return { ok: true, id: page.id, url: page.url }
   } catch (error) {
     console.error('Notion support submission failed:', error)
