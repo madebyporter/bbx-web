@@ -6,9 +6,6 @@ interface SendResendEmailOptions {
   fromName?: string
 }
 
-export { upsertResendContact } from './resendContacts'
-export type { ResendUserType, UpsertResendContactOptions } from './resendContacts'
-
 export async function sendResendEmail({
   to,
   subject,

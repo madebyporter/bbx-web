@@ -60,13 +60,15 @@ Confirmed users are synced to Resend Contacts for broadcasts. Unconfirmed users 
 
 ### Resend segments
 
-Create these segments in the [Resend dashboard](https://resend.com/contacts) (already configured for production):
+Create these segments in the [Resend dashboard](https://resend.com/contacts), then copy each segment ID into Netlify:
 
-| Segment | Env var | ID |
-|---------|---------|-----|
-| Beatbox Users | `RESEND_SEGMENT_ID` | `d2c3033c-aa10-4363-b541-ecfcadbfbc4a` |
-| Creators | `RESEND_SEGMENT_CREATORS_ID` | `6a09e1aa-5c4c-47e4-8f27-d09a07192ee4` |
-| Audio Pros | `RESEND_SEGMENT_AUDIO_PROS_ID` | `1adc5f0e-de0b-4e79-be9d-6ed1e77361ee` |
+| Segment | Env var |
+|---------|---------|
+| Beatbox Users | `RESEND_SEGMENT_ID` |
+| Creators | `RESEND_SEGMENT_CREATORS_ID` |
+| Audio Pros | `RESEND_SEGMENT_AUDIO_PROS_ID` |
+
+In Resend: **Contacts → Segments →** open a segment → copy its ID from the URL or segment settings.
 
 Each confirmed contact is added to **Beatbox Users** plus **Creators** or **Audio Pros** based on `user_profiles.user_type`.
 
