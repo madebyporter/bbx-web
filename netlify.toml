@@ -59,4 +59,10 @@
 # Support feedback notifications (server/api/support.post.ts):
 # RESEND_API_KEY, optional SUPPORT_NOTIFY_EMAIL (default: connectbbx@gmail.com)
 [functions."send-onboarding-reminders"]
-  schedule = "0 10 * * *" 
+  schedule = "0 10 * * *"
+
+# Daily Resend contact sync for broadcasts — requires env in Netlify UI:
+# SUPABASE_SERVICE_KEY, RESEND_API_KEY, CRON_SECRET,
+# RESEND_SEGMENT_ID, RESEND_SEGMENT_CREATORS_ID, RESEND_SEGMENT_AUDIO_PROS_ID
+[functions."sync-resend-contacts"]
+  schedule = "0 11 * * *"

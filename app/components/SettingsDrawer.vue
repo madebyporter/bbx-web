@@ -107,6 +107,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import { useAnalytics } from '~/composables/useAnalytics'
 import MasterDrawer from '~/components/MasterDrawer.vue'
+import { syncResendContact } from '~/utils/resendContactSync'
 
 interface Props {
   show: boolean
@@ -359,6 +360,7 @@ const handleSave = async () => {
       
       showSuccess('Profile updated successfully')
       emit('profile-updated')
+      void syncResendContact(supabase)
       
       // Close drawer after a short delay
       setTimeout(() => {

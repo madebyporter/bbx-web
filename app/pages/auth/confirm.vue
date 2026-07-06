@@ -41,6 +41,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useAnalytics } from '~/composables/useAnalytics'
 import { useSupabase } from '~/utils/supabase'
 import { PENDING_USER_TYPE_KEY, clearPendingSignupEmail } from '~/utils/authStorage'
+import { syncResendContact } from '~/utils/resendContactSync'
 
 const auth = useAuth()
 const { supabase } = useSupabase()
@@ -115,6 +116,7 @@ onMounted(async () => {
         setSignedInFromSession(!!data.session)
         isSuccess.value = true
         capture('email_confirmed', {})
+        await syncResendContact(supabase)
       }
     } else {
       // Check if user is already confirmed and signed in
@@ -179,6 +181,7 @@ onMounted(async () => {
         setSignedInFromSession(true)
         isSuccess.value = true
         capture('email_confirmed', {})
+        await syncResendContact(supabase)
       } else {
         throw new Error('No valid confirmation token found')
       }

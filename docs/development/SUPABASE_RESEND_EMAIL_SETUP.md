@@ -53,3 +53,51 @@ Optional manual catch-up for existing unconfirmed users:
 curl -X POST "https://beatbox.studio/.netlify/functions/send-onboarding-reminders?mode=catchup" \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
+
+## 5. Resend broadcast contact sync
+
+Confirmed users are synced to Resend Contacts for broadcasts. Unconfirmed users stay on transactional onboarding emails only (sections 1–4 above).
+
+### Resend segments
+
+Create these segments in the [Resend dashboard](https://resend.com/contacts) (already configured for production):
+
+| Segment | Env var | ID |
+|---------|---------|-----|
+| Beatbox Users | `RESEND_SEGMENT_ID` | `d2c3033c-aa10-4363-b541-ecfcadbfbc4a` |
+| Creators | `RESEND_SEGMENT_CREATORS_ID` | `6a09e1aa-5c4c-47e4-8f27-d09a07192ee4` |
+| Audio Pros | `RESEND_SEGMENT_AUDIO_PROS_ID` | `1adc5f0e-de0b-4e79-be9d-6ed1e77361ee` |
+
+Each confirmed contact is added to **Beatbox Users** plus **Creators** or **Audio Pros** based on `user_profiles.user_type`.
+
+### Netlify environment variables
+
+Add to Netlify (in addition to section 4 vars):
+
+- `RESEND_SEGMENT_ID`
+- `RESEND_SEGMENT_CREATORS_ID`
+- `RESEND_SEGMENT_AUDIO_PROS_ID`
+
+### Sync behavior
+
+- **On email confirmation** — client calls `/api/resend/sync-contact` (fire-and-forget)
+- **On profile save** — same endpoint when display name or user type changes
+- **Daily cron** — `sync-resend-contacts` at 11:00 UTC backfills and catches missed contacts
+
+### Manual backfill
+
+Run once after deploy:
+
+```bash
+curl -X POST "https://beatbox.studio/.netlify/functions/sync-resend-contacts" \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+### Who is included
+
+| User state | Synced to Resend? |
+|------------|-------------------|
+| Email confirmed | Yes |
+| Email not confirmed | No (use onboarding reminder cron) |
+
+Broadcast personalization example: `Hi {{{contact.first_name|there}}}`
