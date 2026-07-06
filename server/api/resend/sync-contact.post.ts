@@ -71,8 +71,6 @@ export default defineEventHandler(async (event) => {
     email: user.email,
     firstName: firstNameFromProfile(profile, user.email),
     userType: profile?.user_type,
-    username: profile?.username,
-    supabaseUserId: user.id,
     previousUserType,
   })
 

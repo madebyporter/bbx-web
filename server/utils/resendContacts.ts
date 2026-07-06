@@ -4,8 +4,6 @@ export interface UpsertResendContactOptions {
   email: string
   firstName: string
   userType?: string | null
-  username?: string | null
-  supabaseUserId?: string | null
   previousUserType?: string | null
 }
 
@@ -49,10 +47,14 @@ async function resendRequest(url: string, options: RequestInit = {}): Promise<Re
   })
 }
 
+async function readResponseBody(response: Response): Promise<string> {
+  return response.text()
+}
+
 async function addContactToSegment(email: string, segmentId: string): Promise<void> {
   const response = await resendRequest(segmentUrl(email, segmentId), { method: 'POST' })
   if (!response.ok && response.status !== 409) {
-    const body = await response.text()
+    const body = await readResponseBody(response)
     throw new Error(`Resend add segment error (${response.status}): ${body}`)
   }
 }
@@ -60,7 +62,7 @@ async function addContactToSegment(email: string, segmentId: string): Promise<vo
 async function removeContactFromSegment(email: string, segmentId: string): Promise<void> {
   const response = await resendRequest(segmentUrl(email, segmentId), { method: 'DELETE' })
   if (!response.ok && response.status !== 404) {
-    const body = await response.text()
+    const body = await readResponseBody(response)
     throw new Error(`Resend remove segment error (${response.status}): ${body}`)
   }
 }
@@ -88,8 +90,6 @@ export async function upsertResendContact({
   email,
   firstName,
   userType,
-  username,
-  supabaseUserId,
   previousUserType,
 }: UpsertResendContactOptions): Promise<void> {
   const normalizedType = normalizeUserType(userType)
@@ -101,21 +101,14 @@ export async function upsertResendContact({
     )
   }
 
-  const properties = {
-    username: username || '',
-    user_type: normalizedType,
-    supabase_user_id: supabaseUserId || '',
-  }
-
-  const updateBody = {
+  const contactBody = {
     first_name: firstName,
     unsubscribed: false,
-    properties,
   }
 
   const updateResponse = await resendRequest(contactUrl(email), {
     method: 'PATCH',
-    body: JSON.stringify(updateBody),
+    body: JSON.stringify(contactBody),
   })
 
   if (updateResponse.ok) {
@@ -124,7 +117,7 @@ export async function upsertResendContact({
   }
 
   if (updateResponse.status !== 404) {
-    const body = await updateResponse.text()
+    const body = await readResponseBody(updateResponse)
     throw new Error(`Resend update contact error (${updateResponse.status}): ${body}`)
   }
 
@@ -132,10 +125,8 @@ export async function upsertResendContact({
     method: 'POST',
     body: JSON.stringify({
       email,
-      first_name: firstName,
-      unsubscribed: false,
+      ...contactBody,
       segments: [{ id: all }, { id: typeSegment }],
-      properties,
     }),
   })
 
@@ -143,19 +134,19 @@ export async function upsertResendContact({
     return
   }
 
-  if (createResponse.status === 409 || createResponse.status === 422) {
+  if (createResponse.status === 409) {
     const retryResponse = await resendRequest(contactUrl(email), {
       method: 'PATCH',
-      body: JSON.stringify(updateBody),
+      body: JSON.stringify(contactBody),
     })
     if (!retryResponse.ok) {
-      const body = await retryResponse.text()
+      const body = await readResponseBody(retryResponse)
       throw new Error(`Resend update contact error (${retryResponse.status}): ${body}`)
     }
     await ensureSegmentMembership(email, normalizedType, previousUserType)
     return
   }
 
-  const body = await createResponse.text()
+  const body = await readResponseBody(createResponse)
   throw new Error(`Resend create contact error (${createResponse.status}): ${body}`)
 }

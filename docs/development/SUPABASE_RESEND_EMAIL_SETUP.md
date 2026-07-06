@@ -72,6 +72,14 @@ In Resend: **Contacts → Segments →** open a segment → copy its ID from the
 
 Each confirmed contact is added to **Beatbox Users** plus **Creators** or **Audio Pros** based on `user_profiles.user_type`.
 
+Synced fields:
+
+| What you need | Where it lands in Resend |
+|---------------|--------------------------|
+| Email | Contact `email` |
+| Name | Contact `first_name` (from `display_name`) |
+| Creator vs audio pro | Segment membership (`Creators` or `Audio Pros`) |
+
 ### Netlify environment variables
 
 Add to Netlify (in addition to section 4 vars):
