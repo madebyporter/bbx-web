@@ -2,7 +2,6 @@ import type { SupportSubmission } from '~/types/support'
 import { sendResendEmail } from './resend'
 
 const SUPPORT_NOTIFY_EMAIL = 'connectbbx@gmail.com'
-const SUPPORT_FROM_EMAIL = 'notifications@beatbox.studio'
 
 function escapeHtml(text: string): string {
   return text
@@ -51,7 +50,6 @@ export async function notifySupportSubmission(
 
   await sendResendEmail({
     to,
-    from: SUPPORT_FROM_EMAIL,
     subject: `[Beatbox ${submission.type}] ${submission.subject}`,
     html: buildSupportNotificationHtml(submission, notionUrl),
   })

@@ -37,9 +37,12 @@ function hoursSince(isoDate) {
 
 async function sendResendEmail({ to, subject, html }) {
   const apiKey = process.env.RESEND_API_KEY
-  const from = process.env.RESEND_FROM_EMAIL || 'hello@beatbox.studio'
+  const from = process.env.RESEND_FROM_EMAIL?.trim()
   if (!apiKey) {
     throw new Error('RESEND_API_KEY is not configured')
+  }
+  if (!from) {
+    throw new Error('RESEND_FROM_EMAIL is not configured')
   }
 
   const response = await fetch('https://api.resend.com/emails', {

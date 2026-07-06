@@ -21,7 +21,10 @@ export async function sendResendEmail({
     throw new Error('RESEND_API_KEY is not configured')
   }
 
-  const fromEmail = from || process.env.RESEND_FROM_EMAIL?.trim() || 'notifications@beatbox.studio'
+  const fromEmail = from || process.env.RESEND_FROM_EMAIL?.trim()
+  if (!fromEmail) {
+    throw new Error('RESEND_FROM_EMAIL is not configured')
+  }
   const recipients = Array.isArray(to) ? to : [to]
 
   const response = await fetch('https://api.resend.com/emails', {
