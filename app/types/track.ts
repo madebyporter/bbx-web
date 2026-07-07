@@ -12,6 +12,11 @@ export interface Track {
   year?: number | null
   collection_names?: string
   track_group_name?: string | null
+  parent_sound_id?: number | null
+  lineage_root_sound_id?: number | null
+  source_client?: 'web' | 'studio' | 'api' | string | null
+  source_project_ref?: string | null
+  source_revision_ref?: string | null
   created_at?: string
   status_id?: number | null
   is_public?: boolean
