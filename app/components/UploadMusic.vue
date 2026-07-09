@@ -56,6 +56,47 @@
         <div class="flex flex-col gap-2 overflow-y-auto grow pb-2">
           <span v-if="errors.files" class="text-red-500 text-xs px-2">{{ errors.files }}</span>
 
+          <!-- Zero state placeholder -->
+          <div
+            v-if="selectedFiles.length === 0"
+            class="border border-[#333] rounded h-[356px] flex flex-col shrink-0 w-full"
+          >
+            <div class="flex items-start gap-2 p-2">
+              <span class="flex-1 min-w-0 px-2 text-xs font-semibold text-transparent truncate self-center select-none" aria-hidden="true">
+                Track filename.mp3
+              </span>
+              <div class="flex items-center gap-2 px-2 text-xs font-semibold text-transparent shrink-0 self-center whitespace-nowrap select-none" aria-hidden="true">
+                <span>0:00</span>
+                <span>|</span>
+                <span>0 MB</span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  class="size-6 flex items-center justify-center rounded-sm bg-[#3b3b3b] opacity-50 cursor-default"
+                  disabled
+                  tabindex="-1"
+                  aria-hidden="true"
+                >
+                  <svg class="size-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="size-6 flex items-center justify-center rounded-sm bg-[#5c1a1a] opacity-50 cursor-default"
+                  disabled
+                  tabindex="-1"
+                  aria-hidden="true"
+                >
+                  <svg class="size-3 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div
             v-for="(file, index) in selectedFiles"
             :key="index"
