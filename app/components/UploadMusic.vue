@@ -627,6 +627,17 @@ watch(() => props.show, async (newVal) => {
   }
 })
 
+const getNextVersionFromExisting = (currentVersion: string | null | undefined): string => {
+  if (!currentVersion) return 'v1.0'
+
+  const versionNum = parseFloat(currentVersion.replace(/^v/i, ''))
+  if (!isNaN(versionNum)) {
+    return `v${Math.floor(versionNum) + 1}.0`
+  }
+
+  return 'v1.0'
+}
+
 const findSimilarTrackMetadata = async (title: string, duration: number | null) => {
   if (!supabase || !user.value) return null
   
@@ -660,7 +671,7 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
           bpm: exactMatch.bpm || null,
           key: exactMatch.key || null,
           year: exactMatch.year || null,
-          version: exactMatch.version || 'v1.0',
+          version: getNextVersionFromExisting(exactMatch.version),
           collectionIds: []
         }
       }
@@ -694,14 +705,6 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
       ? bestMatch.mood.join(', ') 
       : (bestMatch.mood || '')
     
-    let nextVersion = 'v1.0'
-    if (bestMatch.version) {
-      const versionNum = parseFloat(bestMatch.version.replace('v', ''))
-      if (!isNaN(versionNum)) {
-        nextVersion = `v${Math.floor(versionNum) + 1}.0`
-      }
-    }
-    
     return {
       isDuplicate: false,
       artist: bestMatch.artist || '',
@@ -710,7 +713,7 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
       bpm: bestMatch.bpm || null,
       key: bestMatch.key || null,
       year: bestMatch.year || null,
-      version: nextVersion,
+      version: getNextVersionFromExisting(bestMatch.version),
       collectionIds
     }
   } catch (error) {
@@ -798,7 +801,7 @@ const processFiles = async (files: File[]) => {
       metadata: {
         title: parsedData.title,
         artist: prefillData?.artist || mp3Meta?.artist || parsedData.artist || userDisplayName.value || '',
-        version: prefillData?.version || parsedData.version || 'v1.0',
+        version: parsedData.version || prefillData?.version || 'v1.0',
         group_name: autoGroupName,
         collection_name: '',
         genre: prefillData?.genre || mp3Meta?.genre || '',
@@ -856,7 +859,7 @@ const handleReupload = async (event: Event, index: number) => {
   if (!fileData.metadata.key && parsed.key) {
     fileData.metadata.key = parsed.key
   }
-  if (!fileData.metadata.version && parsed.version) {
+  if (parsed.version) {
     fileData.metadata.version = parsed.version
   }
 
