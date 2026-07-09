@@ -87,6 +87,7 @@ import {
   loadStoredAnalyticsRangeLabel,
   useTrackAnalyticsData,
 } from '~/composables/useTrackAnalyticsData'
+import { getUniqueGroupTracks } from '~/utils/uniqueGroupShuffle'
 
 const route = useRoute()
 const router = useRouter()
@@ -279,6 +280,13 @@ const activeFiltersForDisplay = computed<ActiveFilterChip[]>(() => {
       remove: () => removeFilter('status', s, 'array')
     })
   })
+  if (f.latestVersionOnly) {
+    chips.push({
+      id: 'latest-version-only',
+      label: 'Latest versions only',
+      remove: () => removeFilter('latestVersionOnly', false, 'latestVersionOnly')
+    })
+  }
   return chips
 })
 
@@ -288,7 +296,7 @@ const showNoFilterResults = computed(() =>
   activeFiltersForDisplay.value.length > 0
 )
 
-function removeFilter(key: string, value: unknown, mode: 'array' | 'bpmMin' | 'bpmMax' | 'yearMin' | 'yearMax') {
+function removeFilter(key: string, value: unknown, mode: 'array' | 'bpmMin' | 'bpmMax' | 'yearMin' | 'yearMax' | 'latestVersionOnly') {
   const params = lastAppliedParams.value
   if (!params) return
   const next = {
@@ -308,6 +316,8 @@ function removeFilter(key: string, value: unknown, mode: 'array' | 'bpmMin' | 'b
     next.filters.year = { ...next.filters.year, min: null }
   } else if (mode === 'yearMax') {
     next.filters.year = { ...next.filters.year, max: null }
+  } else if (mode === 'latestVersionOnly') {
+    next.filters.latestVersionOnly = false
   }
   lastAppliedParams.value = next
   tracks.value = applyFiltersAndSortToList(unfilteredTracks.value, next)
@@ -631,6 +641,12 @@ function applyFiltersAndSortToList(list: any[], params: { filters: any; sort: an
     if (sort.sortDirection === 'asc') return aVal > bVal ? 1 : -1
     return aVal < bVal ? 1 : -1
   })
+
+  if (filters.latestVersionOnly) {
+    const keepIds = new Set(getUniqueGroupTracks(result).map((t) => t.id))
+    result = result.filter((t) => keepIds.has(t.id))
+  }
+
   return result
 }
 
@@ -709,6 +725,14 @@ const updateFiltersAndSort = async (params: any) => {
 
       unfilteredTracks.value = tracksWithCollections
       tracks.value = applyFiltersAndSortToList(tracksWithCollections, params)
+    }
+
+    if (params.filters?.latestVersionOnly && collection.value) {
+      const sourceId = `collection-${collection.value.id}`
+      if (queueSourceId.value === sourceId) {
+        const queueTracks = displayedTracks.value.filter((t: any) => !t.hidden)
+        updateQueue(queueTracks, sourceId)
+      }
     }
   } catch (error) {
     console.error('Error filtering tracks:', error)

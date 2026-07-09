@@ -122,6 +122,21 @@
 
         <!-- Music Filters -->
         <template v-if="context === 'music'">
+          <!-- Latest Versions Only -->
+          <div>
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                v-model="filters.latestVersionOnly"
+                class="mt-1 h-4 w-4 rounded border border-neutral-800 bg-transparent accent-amber-400"
+              />
+              <span class="flex flex-col gap-1">
+                <span class="text-sm font-medium">Latest versions only</span>
+                <span class="text-xs text-neutral-500">Hides older versions of tracks and plays only the latest</span>
+              </span>
+            </label>
+          </div>
+
           <!-- Genre Filter -->
           <div>
             <label class="block nav-header mb-2">Genre</label>
@@ -316,7 +331,8 @@ const props = defineProps({
       key: [],
       mood: [],
       year: { min: null, max: null },
-      status: []
+      status: [],
+      latestVersionOnly: false
     })
   },
   initialSort: {
@@ -353,7 +369,8 @@ const filters = reactive({
     min: props.initialFilters.year?.min || null,
     max: props.initialFilters.year?.max || null
   },
-  status: [...(props.initialFilters.status || [])]
+  status: [...(props.initialFilters.status || [])],
+  latestVersionOnly: props.initialFilters.latestVersionOnly || false
 })
 
 // Tags state
@@ -468,6 +485,9 @@ const loadSavedFilters = () => {
             filters.year.max = parsed.filters.year.max
           }
           if (parsed.filters.status) filters.status = [...parsed.filters.status]
+          if (parsed.filters.latestVersionOnly != null) {
+            filters.latestVersionOnly = parsed.filters.latestVersionOnly
+          }
         }
       }
     }
@@ -498,7 +518,8 @@ const saveFilters = () => {
         key: [...filters.key],
         mood: [...filters.mood],
         year: { ...filters.year },
-        status: [...filters.status]
+        status: [...filters.status],
+        latestVersionOnly: filters.latestVersionOnly
       }
     }
     
@@ -634,7 +655,8 @@ const applyFiltersAndSort = () => {
       key: [...filters.key],
       mood: [...filters.mood],
       year: { ...filters.year },
-      status: [...filters.status]
+      status: [...filters.status],
+      latestVersionOnly: filters.latestVersionOnly
     }
   }
   
@@ -681,6 +703,7 @@ const performClearAll = () => {
   filters.year.min = null
   filters.year.max = null
   filters.status = []
+  filters.latestVersionOnly = false
 
   // Save cleared state to localStorage
   saveFilters()

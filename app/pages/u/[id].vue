@@ -356,11 +356,14 @@ import {
   loadStoredAnalyticsRangeLabel,
   useTrackAnalyticsData,
 } from '~/composables/useTrackAnalyticsData'
+import { getUniqueGroupTracks } from '~/utils/uniqueGroupShuffle'
+import { usePlayer } from '~/composables/usePlayer'
 import gsap from 'gsap'
 import { Plus, EditPencil, Trash, Check, Xmark, StatsReport } from '@iconoir/vue'
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
+const { updateQueue, queueSourceId } = usePlayer()
 const config = useRuntimeConfig()
 const siteUrl = 'https://beatbox.studio'
 
@@ -1735,7 +1738,20 @@ const updateFiltersAndSort = async (params: any) => {
       return { ...track, collections: collectionData || [], track_status: track.track_statuses }
     }))
     
-    tracks.value = tracksWithCollections
+    let filtered = tracksWithCollections
+    if (filters.latestVersionOnly) {
+      const keepIds = new Set(getUniqueGroupTracks(filtered).map((t) => t.id))
+      filtered = filtered.filter((t) => keepIds.has(t.id))
+    }
+
+    tracks.value = filtered
+
+    if (filters.latestVersionOnly) {
+      const sourceId = `profile-${profileUserId.value}`
+      if (queueSourceId.value === sourceId) {
+        updateQueue(filtered, sourceId)
+      }
+    }
   } catch (error) {
     console.error('Error filtering tracks:', error)
   } finally {

@@ -215,6 +215,7 @@ interface FilterSortParams {
     key: string[]
     mood: string[]
     year: { min: number | null; max: number | null }
+    latestVersionOnly?: boolean
   }
 }
 
@@ -319,7 +320,8 @@ const currentFilters = ref({
   bpm: { min: null as number | null, max: null as number | null },
   key: [] as string[],
   mood: [] as string[],
-  year: { min: null as number | null, max: null as number | null }
+  year: { min: null as number | null, max: null as number | null },
+  latestVersionOnly: false
 })
 
 const handleToggleNav = () => {
@@ -563,7 +565,8 @@ const handleFiltersAndSort = (params: FilterSortParams) => {
       bpm: { ...(params.filters.bpm || {}) },
       key: [...(params.filters.key || [])],
       mood: [...(params.filters.mood || [])],
-      year: { ...(params.filters.year || {}) }
+      year: { ...(params.filters.year || {}) },
+      latestVersionOnly: params.filters.latestVersionOnly ?? false
     }
   }
   
