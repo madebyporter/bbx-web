@@ -8,6 +8,7 @@
 
 export interface ParsedFileMetadata {
   bpm: number | null
+  key: string | null
   version: string | null
   artist: string | null
   title: string
@@ -39,6 +40,45 @@ export function extractBPM(filename: string): number | null {
     }
   }
   
+  return null
+}
+
+const NOTE_PATTERN = '[A-G][#b]?'
+const KEY_QUALITY_PATTERN = '(Min(?:or)?|Maj(?:or)?|m)'
+
+function formatKey(note: string, quality: string): string {
+  if (/^m$/i.test(quality)) {
+    return `${note} Minor`
+  }
+  if (/min/i.test(quality)) {
+    return `${note} Minor`
+  }
+  if (/maj/i.test(quality)) {
+    return `${note} Major`
+  }
+  return `${note} ${quality}`
+}
+
+/**
+ * Extract musical key/scale from filename
+ * Matches: DMin, D Min, C#Maj, C Major, AbMinor
+ */
+export function extractKey(filename: string): string | null {
+  const nameWithoutExt = filename.replace(/\.[^/.]+$/, '')
+
+  const patterns = [
+    new RegExp(`\\b(${NOTE_PATTERN})\\s*(${KEY_QUALITY_PATTERN})\\b`, 'i'),
+    new RegExp(`-\\s*(${NOTE_PATTERN})\\s*(${KEY_QUALITY_PATTERN})\\s*-`, 'i'),
+    new RegExp(`-\\s*(${NOTE_PATTERN})\\s+(${KEY_QUALITY_PATTERN})\\s*-`, 'i'),
+  ]
+
+  for (const pattern of patterns) {
+    const match = nameWithoutExt.match(pattern)
+    if (match?.[1] && match?.[2]) {
+      return formatKey(match[1], match[2])
+    }
+  }
+
   return null
 }
 
@@ -166,6 +206,16 @@ export function cleanTitle(filename: string): string {
   
   // Remove version markers
   cleaned = cleaned.replace(/\s*-?\s*v\d+(?:\.\d+)?\s*$/i, '')
+
+  // Remove key markers
+  cleaned = cleaned.replace(
+    new RegExp(`\\s*-?\\s*(${NOTE_PATTERN})\\s*(${KEY_QUALITY_PATTERN})\\s*-?`, 'gi'),
+    ' '
+  )
+  cleaned = cleaned.replace(
+    new RegExp(`\\s*-?\\s*(${NOTE_PATTERN})\\s+(${KEY_QUALITY_PATTERN})\\s*-?`, 'gi'),
+    ' '
+  )
   
   // Remove extra dashes and whitespace
   cleaned = cleaned.replace(/\s*-\s*$/, '') // trailing dash
@@ -180,12 +230,14 @@ export function cleanTitle(filename: string): string {
  */
 export function parseFileName(filename: string): ParsedFileMetadata {
   const bpm = extractBPM(filename)
+  const key = extractKey(filename)
   const version = extractVersion(filename)
   const artist = extractArtist(filename)
   const title = cleanTitle(filename)
   
   return {
     bpm,
+    key,
     version,
     artist,
     title

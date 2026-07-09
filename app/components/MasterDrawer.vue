@@ -6,7 +6,7 @@
       <div class="flex flex-col gap-4 justify-between h-full">
         <div class="flex flex-row justify-between items-center">
 
-          <div class="h-[50px] flex items-center text-white font-semibold" @click.stop>
+          <div class="grow h-[50px] flex items-center text-white font-semibold" @click.stop>
             <slot name="header"></slot>
           </div>
 

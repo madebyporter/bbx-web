@@ -1,7 +1,34 @@
 <template>
   <MasterDrawer :show="props.show" @update:show="(val) => emit('update:show', val)">
     <template #header>
-      <h2 class="text-2xl">Upload Music</h2>
+      <div
+        class="grow flex items-center justify-between h-[50px] border border-dashed rounded p-2 cursor-pointer transition-colors"
+        :class="isDragging ? 'border-[#e6b85b] bg-[#e6b85b]/10' : 'border-[#e6b85b]'"
+        @drop.prevent="handleDrop"
+        @dragover.prevent="isDragging = true"
+        @dragleave.prevent="isDragging = false"
+        @click="fileInput?.click()"
+      >
+        <input
+          ref="fileInput"
+          type="file"
+          accept="audio/mpeg,audio/mp3,.mp3,audio/mp4,audio/x-m4a,.m4a"
+          multiple
+          class="hidden"
+          @change="handleFileSelect"
+        />
+        <p class="px-2 text-sm font-semibold text-white whitespace-nowrap">
+          <template v-if="isDragging">Drop files here</template>
+          <template v-else>
+            Drop MP3/M4A files here or <span class="text-[#e6b85b]">click to browse</span>
+          </template>
+        </p>
+        <div class="bg-[#262626] rounded-sm p-1 h-full flex flex-col items-center justify-center shrink-0 min-w-[37px]">
+          <span class="text-[10px] font-semibold text-white leading-none">50MB</span>
+          <span class="text-[10px] font-semibold text-[#999] tracking-[2.5px] leading-none">MAX</span>
+          <span class="text-[5px] font-semibold text-[#999] tracking-[1.2px] leading-none">PER FILE</span>
+        </div>
+      </div>
     </template>
 
     <!-- Success Message -->
@@ -19,203 +46,204 @@
 
     <!-- Upload Form -->
     <template v-else>
-        <form class="grow flex flex-col gap-8 justify-between" @submit.prevent="onSubmit">
-        <!-- Drag & Drop Zone -->
-        <fieldset class="flex flex-col gap-2">
-          <div @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false"
-            :class="[
-              'border-2 border-dashed rounded-lg p-2 text-center transition-colors min-h-[100px] flex items-center justify-center',
-              isDragging ? 'border-blue-500 bg-blue-500/10' : 'border-neutral-700 hover:border-neutral-600'
-            ]">
-            <input ref="fileInput" type="file" accept="audio/mpeg,audio/mp3,.mp3,audio/mp4,audio/x-m4a,.m4a" multiple class="hidden"
-              @change="handleFileSelect" />
-            <div class="flex flex-row justify-between items-center gap-4 w-full">
+      <form
+        class="grow flex flex-col justify-between min-h-0"
+        @submit.prevent="onSubmit"
+        @drop.prevent="handleDrop"
+        @dragover.prevent="isDragging = true"
+        @dragleave.prevent="isDragging = false"
+      >
+        <div class="flex flex-col gap-2 overflow-y-auto grow pb-2">
+          <span v-if="errors.files" class="text-red-500 text-xs px-2">{{ errors.files }}</span>
 
-              <div class="grow flex flex-col gap-1">
-                <p class="text-base font-medium">{{ isDragging ? 'Drop files here' : 'Drag & drop MP3 or M4A files here' }}</p>
-                <p class="text-sm text-neutral-500">or <button type="button" class="text-link text-amber-400 hover:text-amber-300 no-underline" @click="fileInput?.click()">click to browse</button></p>
-                <p class="text-xs text-neutral-600">Maximum 50MB per file</p>
+          <div
+            v-for="(file, index) in selectedFiles"
+            :key="index"
+            class="bg-[#262626] rounded flex flex-col gap-1"
+          >
+            <!-- Card header -->
+            <div class="flex items-start gap-2 p-2">
+              <span class="flex-1 min-w-0 px-2 text-xs font-semibold text-[#ccc] truncate self-center">
+                {{ file.file.name }}
+              </span>
+              <div class="flex items-center gap-2 px-2 text-xs font-semibold text-[#ccc] shrink-0 self-center whitespace-nowrap">
+                <span v-if="file.duration">{{ formatDuration(file.duration) }}</span>
+                <span class="text-[#3b3b3b]">|</span>
+                <span>{{ formatFileSize(file.file.size) }}</span>
               </div>
-            </div>
-          </div>
-          <span v-if="errors.files" class="text-red-500 text-sm">{{ errors.files }}</span>
-        </fieldset>
-
-        <!-- Selected Files List -->
-        <div v-if="selectedFiles.length > 0" class="flex flex-col gap-4 h-full">
-          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <h3 class="font-semibold">Selected Files ({{ selectedFiles.length }})</h3>
-            <label class="flex items-center gap-2 text-sm text-neutral-400 cursor-pointer">
-              <input 
-                type="checkbox" 
-                :checked="allFilesAnalyzeBpm"
-                @change="toggleAllAnalyzeBpm"
-                :disabled="isUploading"
-                class="cursor-pointer"
-              />
-              Analyze BPM for all tracks
-            </label>
-          </div>
-          <div class="flex flex-col gap-4">
-            <div v-for="(file, index) in selectedFiles" :key="index" class="border border-neutral-800 bg-neutral-800 rounded-lg *:p-4">
-              <div class="flex items-center justify-between bg-neutral-900/30">
-                <span class="font-medium text-sm truncate flex-1">{{ file.file.name }}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  class="p-0 min-w-0 text-red-500 hover:text-red-400 ml-2"
+              <div class="flex items-center gap-1 shrink-0">
+                <input
+                  :ref="(el) => setReuploadInput(index, el as HTMLInputElement | null)"
+                  type="file"
+                  accept="audio/mpeg,audio/mp3,.mp3,audio/mp4,audio/x-m4a,.m4a"
+                  class="hidden"
                   :disabled="isUploading"
+                  @change="(e) => handleReupload(e, index)"
+                />
+                <button
+                  type="button"
+                  class="size-6 flex items-center justify-center rounded-sm bg-[#3b3b3b] hover:bg-neutral-600 disabled:opacity-50 cursor-pointer"
+                  :disabled="isUploading"
+                  title="Replace file"
+                  @click="triggerReupload(index)"
+                >
+                  <svg class="size-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="size-6 flex items-center justify-center rounded-sm bg-[#5c1a1a] hover:bg-red-800 disabled:opacity-50 cursor-pointer"
+                  :disabled="isUploading"
+                  title="Remove track"
                   @click="removeFile(index)"
                 >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  <svg class="size-3 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                </Button>
+                </button>
               </div>
+            </div>
 
-              <!-- Upload Progress -->
-              <div v-if="file.progress > 0 && file.progress < 100" class="w-full bg-neutral-700 rounded-full h-2">
-                <div class="bg-blue-500 h-2 rounded-full transition-all" :style="{ width: `${file.progress}%` }"></div>
+            <!-- Upload Progress -->
+            <div v-if="file.progress > 0 && file.progress < 100" class="mx-2 mb-1 w-auto bg-neutral-700 rounded-full h-1">
+              <div class="bg-[#e6b85b] h-1 rounded-full transition-all" :style="{ width: `${file.progress}%` }"></div>
+            </div>
+
+            <!-- Title -->
+            <div class="flex flex-col gap-2 p-2">
+              <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">
+                Title <span class="text-[#e53a17]">*</span>
+              </label>
+              <input
+                v-model="file.metadata.title"
+                type="text"
+                required
+                :class="inputClass"
+                :disabled="isUploading"
+              />
+            </div>
+
+            <!-- Artist -->
+            <div class="flex flex-col gap-2 p-2">
+              <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Artist</label>
+              <input
+                v-model="file.metadata.artist"
+                type="text"
+                :class="inputClass"
+                :disabled="isUploading"
+              />
+            </div>
+
+            <!-- Group Name + Version -->
+            <div class="flex gap-1">
+              <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
+                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Group Name</label>
+                <input
+                  v-model="file.metadata.group_name"
+                  type="text"
+                  placeholder="Auto-generated if empty"
+                  :class="inputClass"
+                  :disabled="isUploading"
+                />
               </div>
-
-              <!-- BPM Analysis Status -->
-              <div v-if="file.isAnalyzingBpm" class="flex items-center gap-2 text-sm text-amber-400">
-                <svg class="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Analyzing BPM...
+              <div class="flex flex-col gap-2 p-2 w-40 shrink-0">
+                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Version</label>
+                <input
+                  v-model="file.metadata.version"
+                  type="text"
+                  placeholder="e.g. v1.0"
+                  :class="inputClass"
+                  :disabled="isUploading"
+                />
               </div>
+            </div>
 
-              <!-- Key Analysis Status -->
-              <div v-if="file.isAnalyzingKey" class="flex items-center gap-2 text-sm text-amber-400">
-                <svg class="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Analyzing Key...
+            <!-- Collection -->
+            <div class="flex flex-col gap-2 p-2">
+              <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Collection</label>
+              <CollectionSelect
+                v-model="file.selectedCollectionIds"
+                :collections="collections"
+                size="sm"
+                :disabled="isUploading"
+                @create-collection="(name) => queueCollectionCreation(name, index)"
+              />
+            </div>
+
+            <!-- Genre + Mood -->
+            <div class="flex gap-1">
+              <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
+                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Genre</label>
+                <input
+                  v-model="file.metadata.genre"
+                  type="text"
+                  :class="inputClass"
+                  :disabled="isUploading"
+                />
               </div>
-
-              <!-- Metadata Fields -->
-              <div class="flex flex-col gap-3">
-                <!-- Title (full width) -->
-                <div>
-                  <label class="text-xs text-neutral-400">Title <span class="text-red-500">*</span></label>
-                  <input v-model="file.metadata.title" type="text" required
-                    class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                    :disabled="isUploading" />
-                </div>
-
-                <!-- Group Name (full width) -->
-                <div>
-                  <label class="text-xs text-neutral-400">
-                    Group Name
-                    <span class="text-neutral-500 ml-1">(for grouping versions)</span>
-                  </label>
-                  <input v-model="file.metadata.group_name" type="text" placeholder="Auto-generated if empty"
-                    class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                    :disabled="isUploading" />
-                  <p class="text-xs text-neutral-500 mt-1">Used to group different versions of the same track</p>
-                </div>
-
-                <!-- Other fields in grid -->
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <label class="text-xs text-neutral-400">Artist</label>
-                    <input v-model="file.metadata.artist" type="text"
-                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                      :disabled="isUploading" />
-                  </div>
-                  <div>
-                    <label class="text-xs text-neutral-400">Version</label>
-                    <input v-model="file.metadata.version" type="text" placeholder="e.g. v1.0, v2.5"
-                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                      :disabled="isUploading" />
-                  </div>
-                  <div class="col-span-2">
-                    <label class="text-xs text-neutral-400">Collections (optional)</label>
-                    <CollectionSelect v-model="file.selectedCollectionIds" :collections="collections" size="sm"
-                      :disabled="isUploading" @create-collection="(name) => queueCollectionCreation(name, index)" />
-                  </div>
-                  <div>
-                    <label class="text-xs text-neutral-400">Genre</label>
-                    <input v-model="file.metadata.genre" type="text"
-                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                      :disabled="isUploading" />
-                  </div>
-                  <div>
-                    <label class="flex items-center justify-between text-xs text-neutral-400">
-                      <span>BPM</span>
-                      <label class="flex items-center gap-1 cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          v-model="file.analyzeBpm"
-                          :disabled="isUploading"
-                          class="cursor-pointer"
-                        />
-                        <span class="text-xs">Auto-analyze</span>
-                      </label>
-                    </label>
-                    <input v-model.number="file.metadata.bpm" type="number"
-                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                      :disabled="isUploading" />
-                  </div>
-                  <div>
-                    <label class="flex items-center justify-between text-xs text-neutral-400">
-                      <span>Key</span>
-                      <label class="flex items-center gap-1 cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          v-model="file.analyzeKey"
-                          :disabled="isUploading"
-                          class="cursor-pointer"
-                        />
-                        <span class="text-xs">Auto-analyze</span>
-                      </label>
-                    </label>
-                    <input v-model="file.metadata.key" type="text" placeholder="e.g. C Major"
-                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                      :disabled="isUploading" />
-                  </div>
-                  <div>
-                    <label class="text-xs text-neutral-400">Year</label>
-                    <input v-model.number="file.metadata.year" type="number"
-                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                      :disabled="isUploading" />
-                  </div>
-                  <div>
-                    <label class="text-xs text-neutral-400">Mood</label>
-                    <input v-model="file.metadata.mood" type="text" placeholder="e.g. Dark, Happy"
-                      class="w-full p-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                      :disabled="isUploading" />
-                  </div>
-                </div>
+              <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
+                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Mood</label>
+                <input
+                  v-model="file.metadata.mood"
+                  type="text"
+                  placeholder="e.g. Dark"
+                  :class="inputClass"
+                  :disabled="isUploading"
+                />
               </div>
+            </div>
 
-              <!-- File Info -->
-              <div class="mt-2 text-xs text-neutral-500 flex items-center gap-4">
-                <span>{{ formatFileSize(file.file.size) }}</span>
-                <span v-if="file.duration">{{ formatDuration(file.duration) }}</span>
+            <!-- Year + Key + BPM -->
+            <div class="flex gap-1">
+              <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
+                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Year</label>
+                <input
+                  v-model.number="file.metadata.year"
+                  type="number"
+                  :class="inputClass"
+                  :disabled="isUploading"
+                />
               </div>
+              <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
+                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Key</label>
+                <input
+                  v-model="file.metadata.key"
+                  type="text"
+                  placeholder="e.g. C Major"
+                  :class="inputClass"
+                  :disabled="isUploading"
+                />
+              </div>
+              <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
+                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">BPM</label>
+                <input
+                  v-model.number="file.metadata.bpm"
+                  type="number"
+                  :class="inputClass"
+                  :disabled="isUploading"
+                />
+              </div>
+            </div>
 
-              <!-- Error/Warning Message -->
-              <div v-if="file.error" :class="[
-                'mt-2 text-xs',
+            <!-- Error/Warning Message -->
+            <div
+              v-if="file.error"
+              :class="[
+                'px-2 pb-2 text-[10px]',
                 file.error.startsWith('⚠️') ? 'text-amber-500' : 'text-red-500'
-              ]">
-                {{ file.error }}
-              </div>
+              ]"
+            >
+              {{ file.error }}
             </div>
           </div>
         </div>
 
         <!-- Upload Button -->
-        <div class="sticky bottom-0 flex justify-end bg-neutral-900">
+        <div class="sticky bottom-0 border-t border-[#262626] p-2 bg-neutral-900 shrink-0">
           <Button
             type="submit"
             full-width
-            class="btn w-full"
             :disabled="isUploading || selectedFiles.length === 0"
           >
             {{ uploadButtonText }}
@@ -223,7 +251,7 @@
         </div>
 
         <!-- Global Errors -->
-        <div v-if="globalError" class="text-red-500 text-sm">
+        <div v-if="globalError" class="text-red-500 text-sm px-2">
           {{ globalError }}
         </div>
       </form>
@@ -239,10 +267,10 @@ import { useAuth } from '~/composables/useAuth'
 import { usePlayer } from '~/composables/usePlayer'
 import { useToast } from '~/composables/useToast'
 import { useAnalytics } from '~/composables/useAnalytics'
-import { analyzeBPM, analyzeKey } from '~/composables/useAudioAnalyzer'
 import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
-import { generateSlug, generateUniqueSlug } from '~/utils/collections'
+import Button from './Button.vue'
+import { generateUniqueSlug } from '~/utils/collections'
 import { findOrCreateTrackGroup } from '~/utils/trackGroups'
 import { sanitizeStorageFilename } from '~/utils/sanitizeStorageFilename'
 
@@ -273,10 +301,6 @@ interface SelectedFile {
   duration: number | null
   progress: number
   error: string | null
-  analyzeBpm: boolean
-  isAnalyzingBpm: boolean
-  analyzeKey: boolean
-  isAnalyzingKey: boolean
   uploadedSoundId: number | null
 }
 
@@ -286,12 +310,15 @@ interface Collection {
   slug: string
 }
 
+const inputClass =
+  'w-full p-2 text-[10px] font-semibold border border-[#3b3b3b] rounded-sm bg-transparent text-[#ccc] placeholder:text-[#545454] hover:border-neutral-600 disabled:opacity-50'
+
 const route = useRoute()
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const { capture } = useAnalytics()
 const { addTrackToQueue, queueSourceId } = usePlayer()
-const { showProcessing, showError, showSuccess, removeToast, updateToast } = useToast()
+const { showError, showSuccess } = useToast()
 
 const isDragging = ref(false)
 const selectedFiles = ref<SelectedFile[]>([])
@@ -301,6 +328,7 @@ const showSuccessMessage = ref(false)
 const uploadedCount = ref(0)
 const collections = ref<Collection[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
+const reuploadInputs = ref<Record<number, HTMLInputElement | null>>({})
 const globalError = ref<string | null>(null)
 const pendingCollections = ref<Map<number, Array<{ tempId: number, name: string }>>>(new Map())
 const currentCollectionId = ref<number | null>(null)
@@ -314,48 +342,39 @@ const uploadButtonText = computed(() => {
     const completed = selectedFiles.value.filter(f => f.progress === 100).length
     return `Uploading... (${completed}/${selectedFiles.value.length})`
   }
-  return `Upload ${selectedFiles.value.length} track${selectedFiles.value.length !== 1 ? 's' : ''}`
+  return `Upload ${selectedFiles.value.length} Track${selectedFiles.value.length !== 1 ? 's' : ''}`
 })
 
-const allFilesAnalyzeBpm = computed(() => {
-  return selectedFiles.value.length > 0 && selectedFiles.value.every(f => f.analyzeBpm)
-})
+const setReuploadInput = (index: number, el: HTMLInputElement | null) => {
+  reuploadInputs.value[index] = el
+}
 
-const toggleAllAnalyzeBpm = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  selectedFiles.value.forEach(f => {
-    f.analyzeBpm = target.checked
-  })
+const triggerReupload = (index: number) => {
+  reuploadInputs.value[index]?.click()
 }
 
 const queueCollectionCreation = (name: string, fileIndex: number) => {
   if (!name.trim()) return
   
-  // Create a temporary collection ID (negative numbers to avoid conflicts)
   const tempId = -Date.now() - Math.random() * 1000
   
-  // Create a temporary collection object
   const tempCollection = {
     id: tempId,
     name: name.trim(),
     slug: name.trim().toLowerCase().replace(/\s+/g, '-')
   }
   
-  // Add to collections list so it shows up in the UI
   collections.value.push(tempCollection)
   
-  // Add to selected collections for this file
   if (!selectedFiles.value[fileIndex].selectedCollectionIds.includes(tempId)) {
     selectedFiles.value[fileIndex].selectedCollectionIds.push(tempId)
   }
   
-  // Store the temp collection info for later replacement during upload
   const existing = pendingCollections.value.get(fileIndex) || []
   existing.push({ tempId, name: name.trim() })
   pendingCollections.value.set(fileIndex, existing)
 }
 
-// Fetch current collection from route if on collection page
 const fetchCurrentCollection = async () => {
   if (!supabase || !user.value) {
     currentCollectionId.value = null
@@ -363,7 +382,6 @@ const fetchCurrentCollection = async () => {
   }
   
   const path = route?.path || ''
-  // Check if we're on a collection page: /u/[username]/c/[collection]
   if (!path.includes('/c/')) {
     currentCollectionId.value = null
     return
@@ -378,7 +396,6 @@ const fetchCurrentCollection = async () => {
       return
     }
     
-    // Get the profile user ID
     const { data: profileData } = await supabase
       .from('user_profiles')
       .select('id')
@@ -390,7 +407,6 @@ const fetchCurrentCollection = async () => {
       return
     }
     
-    // Get the collection ID
     const { data: collectionData } = await supabase
       .from('collections')
       .select('id')
@@ -401,10 +417,8 @@ const fetchCurrentCollection = async () => {
     if (collectionData) {
       currentCollectionId.value = collectionData.id
       
-      // Make sure this collection is in the collections list
       const existsInList = collections.value.some(c => c.id === collectionData.id)
       if (!existsInList) {
-        // Fetch full collection data
         const { data: fullCollection } = await supabase
           .from('collections')
           .select('id, name, slug')
@@ -424,12 +438,10 @@ const fetchCurrentCollection = async () => {
   }
 }
 
-// Fetch collections on mount
 onMounted(async () => {
   if (!supabase || !user.value) return
   
   try {
-    // Fetch user's display name for default artist
     const { data: profileData } = await supabase
       .from('user_profiles')
       .select('display_name')
@@ -440,7 +452,6 @@ onMounted(async () => {
       userDisplayName.value = profileData.display_name
     }
     
-    // Fetch collections
     const { data, error } = await supabase
       .from('collections')
       .select('id, name, slug')
@@ -450,16 +461,13 @@ onMounted(async () => {
     if (error) throw error
     collections.value = data || []
     
-    // Fetch current collection from route
     await fetchCurrentCollection()
   } catch (error) {
     console.error('Error fetching data:', error)
-    // Don't block upload if fetch fails
     collections.value = []
   }
 })
 
-// Watch for drawer opening to fetch current collection
 watch(() => props.show, async (newVal) => {
   if (newVal) {
     await fetchCurrentCollection()
@@ -470,34 +478,26 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
   if (!supabase || !user.value) return null
   
   try {
-    // Normalize the title (strip BPM/version)
     const { normalizeTitle, similarityRatio } = await import('~/utils/trackGroups')
     const normalized = normalizeTitle(title)
     
-    // Get all user's tracks
     const { data: userTracks } = await supabase
       .from('sounds')
       .select('*')
       .eq('user_id', user.value.id)
-      .order('created_at', { ascending: false }) // Most recent first
+      .order('created_at', { ascending: false })
     
     if (!userTracks || userTracks.length === 0) return null
     
-    // Check for exact duplicates first (same title)
     const exactMatch = userTracks.find(track => 
       track.title && track.title.toLowerCase() === title.toLowerCase()
     )
     
     if (exactMatch) {
-      // Check if duration is also similar (within 2 seconds)
       const isDurationSimilar = duration && exactMatch.duration && 
         Math.abs(duration - exactMatch.duration) < 2
       
       if (isDurationSimilar) {
-        console.warn(`⚠️  POTENTIAL DUPLICATE: "${title}"`)
-        console.warn(`   Existing track: "${exactMatch.title}" (${exactMatch.duration}s)`)
-        console.warn(`   New upload: "${title}" (${duration}s)`)
-        
         return {
           isDuplicate: true,
           duplicateTrack: exactMatch,
@@ -513,7 +513,6 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
       }
     }
     
-    // Find similar tracks (85% similarity threshold)
     let bestMatch: any = null
     let bestRatio = 0
     
@@ -531,8 +530,6 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
     
     if (!bestMatch) return null
     
-    
-    // Get collections for this track
     const { data: junctionData } = await supabase
       .from('collections_sounds')
       .select('collection_id')
@@ -540,12 +537,10 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
     
     const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
     
-    // Format mood (array to comma-separated string)
     const moodString = Array.isArray(bestMatch.mood) 
       ? bestMatch.mood.join(', ') 
       : (bestMatch.mood || '')
     
-    // Suggest next version number
     let nextVersion = 'v1.0'
     if (bestMatch.version) {
       const versionNum = parseFloat(bestMatch.version.replace('v', ''))
@@ -583,14 +578,12 @@ const getDuration = (audio: HTMLAudioElement): Promise<number> => {
 }
 
 const validateFile = (file: File): string | null => {
-  // Check file type (MP3 or M4A)
   const isMp3 = file.type.match(/audio\/(mpeg|mp3)/) || file.name.toLowerCase().endsWith('.mp3')
   const isM4a = file.type.match(/audio\/(mp4|x-m4a)/) || file.name.toLowerCase().endsWith('.m4a')
   if (!isMp3 && !isM4a) {
     return 'Only MP3 and M4A files are allowed'
   }
   
-  // Check file size (50MB)
   if (file.size > 50 * 1024 * 1024) {
     return 'File size must be less than 50MB'
   }
@@ -608,7 +601,6 @@ const handleFileSelect = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const files = Array.from(target.files || [])
   await processFiles(files)
-  // Reset input
   if (target) target.value = ''
 }
 
@@ -623,74 +615,45 @@ const processFiles = async (files: File[]) => {
       continue
     }
     
-    // Extract duration
     const audio = new Audio(URL.createObjectURL(file))
     const duration = await getDuration(audio)
     URL.revokeObjectURL(audio.src)
     
-    // Parse metadata from filename
     const { parseFileName } = await import('~/utils/parseFileName')
     const parsedData = parseFileName(file.name)
     
-    
-    // Extract MP3 metadata (ID3 tags)
     const { extractMP3Metadata } = await import('~/utils/mp3Metadata')
     const mp3Meta = await extractMP3Metadata(file)
     
-    
-    // Try to find similar track and copy metadata (includes duplicate detection)
     const prefillData = await findSimilarTrackMetadata(parsedData.title, duration)
     
-    // If potential duplicate detected, add warning
     let warningMessage = null
     if (prefillData?.isDuplicate) {
       warningMessage = `⚠️ Possible duplicate of existing track "${prefillData.duplicateTrack.title}"`
     }
     
-    // Auto-generate group name (user can edit it)
     const autoGroupName = await findOrCreateTrackGroup(
       supabase!,
       user.value!.id,
       parsedData.title
     )
     
-    // Merge all metadata sources
-    // Priority: Similar track > MP3 ID3 tags > Filename parsing > User's display name > Empty
     selectedFiles.value.push({
       file,
       metadata: {
-        // Title: Always use cleaned filename (most descriptive)
         title: parsedData.title,
-        
-        // Artist: Similar track > MP3 tags > Filename > User's display name > Empty
         artist: prefillData?.artist || mp3Meta?.artist || parsedData.artist || userDisplayName.value || '',
-        
-        // Version: Similar track > Filename > Default
         version: prefillData?.version || parsedData.version || 'v1.0',
-        
-        // Group Name: Auto-generated (user can edit)
         group_name: autoGroupName,
-        
-        collection_name: '', // Keep for backwards compatibility but not used
-        
-        // Genre: Similar track > MP3 tags > Empty
+        collection_name: '',
         genre: prefillData?.genre || mp3Meta?.genre || '',
-        
-        // Mood: Similar track only
         mood: prefillData?.mood || '',
-        
-        // BPM: Similar track > Filename > Null
         bpm: prefillData?.bpm || parsedData.bpm || null,
-        
-        // Key: Similar track > Null (no key in MP3 tags typically)
-        key: prefillData?.key || null,
-        
-        // Year: Similar track > MP3 tags > Null
+        key: prefillData?.key || parsedData.key || null,
         year: prefillData?.year || mp3Meta?.year || null
       },
       selectedCollectionIds: (() => {
         const ids = prefillData?.collectionIds || []
-        // Add current collection if we're on a collection page and it's not already included
         if (currentCollectionId.value && !ids.includes(currentCollectionId.value)) {
           ids.push(currentCollectionId.value)
         }
@@ -698,14 +661,47 @@ const processFiles = async (files: File[]) => {
       })(),
       duration,
       progress: 0,
-      error: warningMessage, // Will show as warning in yellow
-      analyzeBpm: false, // Manual opt-in for speed
-      isAnalyzingBpm: false,
-      analyzeKey: false, // Manual opt-in for speed
-      isAnalyzingKey: false,
+      error: warningMessage,
       uploadedSoundId: null
     })
   }
+}
+
+const handleReupload = async (event: Event, index: number) => {
+  const target = event.target as HTMLInputElement
+  const newFile = target.files?.[0]
+  if (!newFile) return
+
+  const error = validateFile(newFile)
+  if (error) {
+    selectedFiles.value[index].error = error
+    target.value = ''
+    return
+  }
+
+  const fileData = selectedFiles.value[index]
+  fileData.file = newFile
+  fileData.progress = 0
+  fileData.error = null
+
+  const audio = new Audio(URL.createObjectURL(newFile))
+  fileData.duration = await getDuration(audio)
+  URL.revokeObjectURL(audio.src)
+
+  const { parseFileName } = await import('~/utils/parseFileName')
+  const parsed = parseFileName(newFile.name)
+
+  if (!fileData.metadata.bpm && parsed.bpm) {
+    fileData.metadata.bpm = parsed.bpm
+  }
+  if (!fileData.metadata.key && parsed.key) {
+    fileData.metadata.key = parsed.key
+  }
+  if (!fileData.metadata.version && parsed.version) {
+    fileData.metadata.version = parsed.version
+  }
+
+  target.value = ''
 }
 
 const removeFile = (index: number) => {
@@ -735,19 +731,16 @@ const autoHideOlderVersions = async (
   if (!supabase || !user.value || !trackGroupName) return
   
   try {
-    // Find other tracks in the same group by this user
     const { data: groupTracks } = await supabase
       .from('sounds')
       .select('id, version')
       .eq('user_id', user.value.id)
       .eq('track_group_name', trackGroupName)
-      .neq('id', newSoundId) // Exclude the newly uploaded track
+      .neq('id', newSoundId)
     
     if (!groupTracks || groupTracks.length === 0) return
     
-    // For each collection, hide older versions
     for (const collectionId of collectionIds) {
-      // Get all tracks from this group that are in this collection
       const { data: tracksInCollection } = await supabase
         .from('collections_sounds')
         .select('sound_id')
@@ -756,7 +749,6 @@ const autoHideOlderVersions = async (
       
       if (!tracksInCollection || tracksInCollection.length === 0) continue
       
-      // Hide all older versions in this collection
       const soundIdsToHide = tracksInCollection.map(t => t.sound_id)
       
       if (soundIdsToHide.length > 0) {
@@ -765,82 +757,10 @@ const autoHideOlderVersions = async (
           .update({ hidden: true })
           .eq('collection_id', collectionId)
           .in('sound_id', soundIdsToHide)
-        
       }
     }
   } catch (error) {
     console.error('Error auto-hiding older versions:', error)
-    // Don't throw - this is a nice-to-have feature
-  }
-}
-
-const analyzeAndUpdateBPM = async (fileData: SelectedFile) => {
-  if (!supabase || !fileData.uploadedSoundId) return
-  
-  fileData.isAnalyzingBpm = true
-  const toastId = showProcessing(`Analyzing BPM for "${fileData.metadata.title}"...`)
-  
-  try {
-    const detectedBPM = await analyzeBPM(fileData.file)
-    
-    // Update the database with the detected BPM
-    const { error: updateError } = await supabase
-      .from('sounds')
-      .update({ bpm: detectedBPM })
-      .eq('id', fileData.uploadedSoundId)
-    
-    if (updateError) {
-      console.error('Failed to update BPM:', updateError)
-      fileData.error = `Upload successful, but BPM analysis update failed`
-      removeToast(toastId)
-      showError(`BPM analysis failed for "${fileData.metadata.title}"`)
-    } else {
-      fileData.metadata.bpm = detectedBPM
-      removeToast(toastId)
-      showSuccess(`BPM detected: ${detectedBPM} for "${fileData.metadata.title}"`)
-    }
-  } catch (error: any) {
-    console.error('BPM analysis failed:', error)
-    fileData.error = `Upload successful, but BPM analysis failed: ${error.message}`
-    removeToast(toastId)
-    showError(`BPM analysis failed for "${fileData.metadata.title}"`)
-  } finally {
-    fileData.isAnalyzingBpm = false
-  }
-}
-
-const analyzeAndUpdateKey = async (fileData: SelectedFile) => {
-  if (!supabase || !fileData.uploadedSoundId) return
-  
-  fileData.isAnalyzingKey = true
-  const toastId = showProcessing(`Analyzing key for "${fileData.metadata.title}"...`)
-  
-  try {
-    const detectedKey = await analyzeKey(fileData.file)
-    
-    // Update the database with the detected key
-    const { error: updateError } = await supabase
-      .from('sounds')
-      .update({ key: detectedKey })
-      .eq('id', fileData.uploadedSoundId)
-    
-    if (updateError) {
-      console.error('Failed to update key:', updateError)
-      fileData.error = `Upload successful, but key analysis update failed`
-      removeToast(toastId)
-      showError(`Key analysis failed for "${fileData.metadata.title}"`)
-    } else {
-      fileData.metadata.key = detectedKey
-      removeToast(toastId)
-      showSuccess(`Key detected: ${detectedKey} for "${fileData.metadata.title}"`)
-    }
-  } catch (error: any) {
-    console.error('Key analysis failed:', error)
-    fileData.error = `Upload successful, but key analysis failed: ${error.message}`
-    removeToast(toastId)
-    showError(`Key analysis failed for "${fileData.metadata.title}"`)
-  } finally {
-    fileData.isAnalyzingKey = false
   }
 }
 
@@ -853,12 +773,10 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
   try {
     fileData.progress = 10
     
-    // Generate file path (sanitize filename for Supabase Storage key rules)
     const timestamp = Date.now()
     const safeName = sanitizeStorageFilename(fileData.file.name)
     const filePath = `${user.value.id}/${timestamp}-${safeName}`
     
-    // Upload to storage
     fileData.progress = 30
     const { error: uploadError } = await supabase.storage
       .from('sounds')
@@ -871,12 +789,10 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
     
     fileData.progress = 60
     
-    // Parse mood (comma-separated to array)
     const moodArray = fileData.metadata.mood 
       ? fileData.metadata.mood.split(',').map(m => m.trim()).filter(m => m)
       : null
     
-    // Use user-provided group name, or auto-generate if empty
     const trackGroupName = fileData.metadata.group_name?.trim()
       ? fileData.metadata.group_name.trim()
       : await findOrCreateTrackGroup(
@@ -885,7 +801,6 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
           fileData.metadata.title || fileData.file.name
         )
     
-    // Save to sounds table and get the sound_id
     const { data: soundData, error: dbError } = await supabase
       .from('sounds')
       .insert({
@@ -908,16 +823,14 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
     
     if (dbError) throw dbError
     
-    // Store the sound ID for later use (e.g., BPM analysis)
     fileData.uploadedSoundId = soundData.id
     
-    // Add to collections if any are selected
     let collectionNames = ''
     if (fileData.selectedCollectionIds && fileData.selectedCollectionIds.length > 0) {
       const collectionsToInsert = fileData.selectedCollectionIds.map(collectionId => ({
         collection_id: collectionId,
         sound_id: soundData.id,
-        hidden: false // New track is visible by default
+        hidden: false
       }))
       
       const { error: junctionError } = await supabase
@@ -926,12 +839,9 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       
       if (junctionError) {
         console.error('Error adding to collections:', junctionError)
-        // Don't fail the upload if collection assignment fails
       } else {
-        // Auto-hide older versions in these collections
         await autoHideOlderVersions(soundData.id, trackGroupName, fileData.selectedCollectionIds)
         
-        // Get collection names for display
         const collectionNamesData = collections.value
           .filter(c => fileData.selectedCollectionIds.includes(c.id))
           .map(c => c.name)
@@ -940,7 +850,6 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       }
     }
     
-    // Add to player queue if current queue is from this user's profile
     if (queueSourceId.value === `profile-${user.value.id}`) {
       const newTrack = {
         id: soundData.id,
@@ -976,10 +885,8 @@ const onSubmit = async () => {
   let successCount = 0
   
   try {
-    // Create pending collections first
     for (const [fileIndex, pendingCollectionInfos] of pendingCollections.value) {
       for (const { tempId, name } of pendingCollectionInfos) {
-        // Get existing slugs to ensure uniqueness
         const { data: existing } = await supabase
           .from('collections')
           .select('slug')
@@ -988,7 +895,6 @@ const onSubmit = async () => {
         const existingSlugs = (existing || []).map(c => c.slug)
         const slug = generateUniqueSlug(name, existingSlugs)
         
-        // Create the collection
         const { data, error: createError } = await supabase
           .from('collections')
           .insert({
@@ -1002,7 +908,6 @@ const onSubmit = async () => {
         
         if (createError) throw createError
         
-        // Replace the temporary collection with the real one
         const tempCollectionIndex = collections.value.findIndex(c => c.id === tempId)
         if (tempCollectionIndex !== -1) {
           collections.value[tempCollectionIndex] = {
@@ -1012,7 +917,6 @@ const onSubmit = async () => {
           }
         }
         
-        // Replace the temporary ID in selected collections
         const selectedIndex = selectedFiles.value[fileIndex].selectedCollectionIds.indexOf(tempId)
         if (selectedIndex !== -1) {
           selectedFiles.value[fileIndex].selectedCollectionIds[selectedIndex] = data.id
@@ -1020,10 +924,8 @@ const onSubmit = async () => {
       }
     }
     
-    // Clear pending collections
     pendingCollections.value.clear()
     
-    // Upload files sequentially
     for (const fileData of selectedFiles.value) {
       const success = await uploadFile(fileData)
       if (success) successCount++
@@ -1047,30 +949,7 @@ const onSubmit = async () => {
         })
       }
       
-      // Show success toast for uploads
       showSuccess(`Successfully uploaded ${successCount} track${successCount !== 1 ? 's' : ''}`)
-      
-      // Start BPM analysis in background for files that have analyzeBpm enabled
-      const filesToAnalyzeBPM = selectedFiles.value.filter(f => f.analyzeBpm && f.uploadedSoundId)
-      if (filesToAnalyzeBPM.length > 0) {
-        // Run analysis in background without awaiting
-        filesToAnalyzeBPM.forEach(fileData => {
-          analyzeAndUpdateBPM(fileData).catch(err => {
-            console.error('Background BPM analysis error:', err)
-          })
-        })
-      }
-      
-      // Start Key analysis in background for files that have analyzeKey enabled
-      const filesToAnalyzeKey = selectedFiles.value.filter(f => f.analyzeKey && f.uploadedSoundId)
-      if (filesToAnalyzeKey.length > 0) {
-        // Run analysis in background without awaiting
-        filesToAnalyzeKey.forEach(fileData => {
-          analyzeAndUpdateKey(fileData).catch(err => {
-            console.error('Background Key analysis error:', err)
-          })
-        })
-      }
     } else {
       globalError.value = 'All uploads failed. Please try again.'
       showError('All uploads failed. Please try again.')
@@ -1093,4 +972,3 @@ const resetAndShowForm = () => {
 }
 
 </script>
-
