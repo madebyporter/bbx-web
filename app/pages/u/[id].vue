@@ -535,6 +535,7 @@ const profileSocialLinks = ref<{
   [key: string]: string | undefined
 }>((initialData.value?.profile?.social_links as any) || {})
 const tracks = ref<any[]>(initialData.value?.tracks || [])
+const lastAppliedParams = ref<{ filters: any; sort: any } | null>(null)
 const loading = ref(false)
 // searchQuery removed - search is now handled by SearchModal
 const allSoftware = computed(() => softwareData.value || [])
@@ -1434,6 +1435,41 @@ const fetchSoftware = async () => {
 
 let fetchTracksRequestId = 0
 
+function loadPersistedFilterParams(): { filters: any; sort: any } | null {
+  if (lastAppliedParams.value) return lastAppliedParams.value
+  if (typeof window === 'undefined') return null
+  try {
+    const saved = localStorage.getItem('filterSort_music')
+    if (!saved) return null
+    const parsed = JSON.parse(saved)
+    if (!parsed || (!parsed.sort && !parsed.filters)) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function hasActiveMusicFilters(params: { filters?: any }): boolean {
+  const f = params.filters || {}
+  return !!(
+    f.latestVersionOnly ||
+    f.genre?.length > 0 ||
+    f.bpm?.min != null ||
+    f.bpm?.max != null ||
+    f.key?.length > 0 ||
+    f.mood?.length > 0 ||
+    f.year?.min != null ||
+    f.year?.max != null ||
+    f.status?.length > 0
+  )
+}
+
+async function applyPersistedFiltersIfNeeded() {
+  const params = loadPersistedFilterParams()
+  if (!params || !hasActiveMusicFilters(params)) return
+  await updateFiltersAndSort(params)
+}
+
 const fetchTracks = async () => {
   if (!supabase || !profileUserId.value) {
     return
@@ -1582,6 +1618,7 @@ const fetchTracks = async () => {
     })
 
     tracks.value = tracksWithCollections
+    await applyPersistedFiltersIfNeeded()
   } catch (error) {
     if (requestId !== fetchTracksRequestId) {
       return
@@ -1659,6 +1696,11 @@ const handleOpenFilterSort = () => {
 const updateFiltersAndSort = async (params: any) => {
   
   if (!supabase || !profileUserId.value) return
+
+  lastAppliedParams.value = {
+    filters: { ...params.filters },
+    sort: { ...params.sort }
+  }
   
   loading.value = true
   
