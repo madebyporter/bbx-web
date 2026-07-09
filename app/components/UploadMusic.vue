@@ -164,6 +164,59 @@
               <div class="bg-[#e6b85b] h-1 rounded-full transition-all" :style="{ width: `${file.progress}%` }"></div>
             </div>
 
+            <!-- Artwork -->
+            <div class="flex flex-col gap-2 p-2">
+              <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Artwork</label>
+              <div class="flex items-start gap-2 px-2">
+                <input
+                  :ref="(el) => setArtworkInput(index, el as HTMLInputElement | null)"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov"
+                  class="hidden"
+                  :disabled="isUploading"
+                  @change="(e) => handleArtworkSelect(e, index)"
+                />
+                <button
+                  type="button"
+                  class="size-16 shrink-0 rounded-sm border border-dashed border-[#3b3b3b] hover:border-neutral-600 overflow-hidden flex items-center justify-center bg-transparent disabled:opacity-50 cursor-pointer"
+                  :disabled="isUploading"
+                  @click="triggerArtworkSelect(index)"
+                >
+                  <video
+                    v-if="file.artworkPreview && file.artworkIsVideo"
+                    :src="file.artworkPreview"
+                    autoplay
+                    muted
+                    loop
+                    playsinline
+                    class="size-full object-cover"
+                  />
+                  <img
+                    v-else-if="file.artworkPreview"
+                    :src="file.artworkPreview"
+                    alt="Artwork preview"
+                    class="size-full object-cover"
+                  />
+                  <span v-else class="text-[10px] text-[#545454] text-center px-1">Add cover</span>
+                </button>
+                <div class="flex flex-col gap-1 min-w-0">
+                  <p class="text-[10px] text-[#545454]">
+                    JPG, PNG, WebP, GIF, MP4, MOV. Max 10MB, 1600x1600.
+                  </p>
+                  <button
+                    v-if="file.artworkFile"
+                    type="button"
+                    class="text-[10px] text-red-400 hover:text-red-300 text-left cursor-pointer"
+                    :disabled="isUploading"
+                    @click="removeArtwork(index)"
+                  >
+                    Remove
+                  </button>
+                  <p v-if="file.artworkError" class="text-[10px] text-red-500">{{ file.artworkError }}</p>
+                </div>
+              </div>
+            </div>
+
             <!-- Title -->
             <div class="flex flex-col gap-2 p-2">
               <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">
@@ -321,6 +374,7 @@ import { useAuth } from '~/composables/useAuth'
 import { usePlayer } from '~/composables/usePlayer'
 import { useToast } from '~/composables/useToast'
 import { useAnalytics } from '~/composables/useAnalytics'
+import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
 import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import Button from './Button.vue'
@@ -356,6 +410,10 @@ interface SelectedFile {
   progress: number
   error: string | null
   uploadedSoundId: number | null
+  artworkFile: File | null
+  artworkPreview: string | null
+  artworkError: string | null
+  artworkIsVideo: boolean
 }
 
 interface Collection {
@@ -371,6 +429,7 @@ const route = useRoute()
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const { capture } = useAnalytics()
+const { validateAndProcessArtwork, uploadArtwork, deleteArtwork } = useArtwork()
 const { addTrackToQueue, queueSourceId } = usePlayer()
 const { showError, showSuccess } = useToast()
 
@@ -383,6 +442,7 @@ const uploadedCount = ref(0)
 const collections = ref<Collection[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const reuploadInputs = ref<Record<number, HTMLInputElement | null>>({})
+const artworkInputs = ref<Record<number, HTMLInputElement | null>>({})
 const globalError = ref<string | null>(null)
 const pendingCollections = ref<Map<number, Array<{ tempId: number, name: string }>>>(new Map())
 const currentCollectionId = ref<number | null>(null)
@@ -405,6 +465,45 @@ const setReuploadInput = (index: number, el: HTMLInputElement | null) => {
 
 const triggerReupload = (index: number) => {
   reuploadInputs.value[index]?.click()
+}
+
+const setArtworkInput = (index: number, el: HTMLInputElement | null) => {
+  artworkInputs.value[index] = el
+}
+
+const triggerArtworkSelect = (index: number) => {
+  artworkInputs.value[index]?.click()
+}
+
+const handleArtworkSelect = async (event: Event, index: number) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  const fileData = selectedFiles.value[index]
+  if (!fileData) return
+
+  try {
+    const { file: processedFile, preview } = await validateAndProcessArtwork(file)
+    fileData.artworkFile = processedFile
+    fileData.artworkPreview = preview
+    fileData.artworkError = null
+    fileData.artworkIsVideo = isVideoArtwork(processedFile.name)
+  } catch (error: any) {
+    fileData.artworkError = error.message || 'Invalid artwork file'
+  }
+
+  if (target) target.value = ''
+}
+
+const removeArtwork = (index: number) => {
+  const fileData = selectedFiles.value[index]
+  if (!fileData) return
+
+  fileData.artworkFile = null
+  fileData.artworkPreview = null
+  fileData.artworkError = null
+  fileData.artworkIsVideo = false
 }
 
 const queueCollectionCreation = (name: string, fileIndex: number) => {
@@ -718,7 +817,11 @@ const processFiles = async (files: File[]) => {
       duration,
       progress: 0,
       error: warningMessage,
-      uploadedSoundId: null
+      uploadedSoundId: null,
+      artworkFile: null,
+      artworkPreview: null,
+      artworkError: null,
+      artworkIsVideo: false
     })
   }
 }
@@ -825,8 +928,15 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
     fileData.error = 'Not authenticated'
     return false
   }
+
+  let artworkPath: string | null = null
   
   try {
+    if (fileData.artworkFile) {
+      fileData.progress = 5
+      artworkPath = await uploadArtwork(fileData.artworkFile, user.value.id)
+    }
+
     fileData.progress = 10
     
     const timestamp = Date.now()
@@ -862,6 +972,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       .insert({
         user_id: user.value.id,
         storage_path: filePath,
+        artwork_path: artworkPath,
         title: fileData.metadata.title || null,
         artist: fileData.metadata.artist || null,
         version: fileData.metadata.version || 'v1.0',
@@ -913,6 +1024,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         title: fileData.metadata.title || 'Untitled',
         artist: fileData.metadata.artist || 'Unknown',
         storage_path: filePath,
+        artwork_path: artworkPath,
         duration: fileData.duration || 0,
         version: fileData.metadata.version || 'v1.0',
         genre: fileData.metadata.genre || null,
@@ -927,6 +1039,9 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
     
   } catch (error: any) {
     console.error('Upload error:', error)
+    if (artworkPath) {
+      await deleteArtwork(artworkPath)
+    }
     fileData.error = error.message || 'Upload failed'
     showError(`Failed to upload "${fileData.metadata.title}": ${error.message || 'Unknown error'}`)
     return false

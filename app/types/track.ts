@@ -4,6 +4,7 @@ export interface Track {
   title: string
   artist: string
   storage_path: string
+  artwork_path?: string | null
   duration: number
   version?: string
   genre?: string

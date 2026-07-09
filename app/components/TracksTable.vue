@@ -166,7 +166,9 @@
           <!-- Normal Mode: Show Play Button -->
           <PlayerButton
             v-else
-            variant="ghost"
+            variant="art"
+            :artwork-url="getArtworkUrl(track.artwork_path)"
+            :artwork-is-video="isVideoArtwork(track.artwork_path)"
             :class="isCurrentlyPlaying(track) ? 'text-orange-400' : ''"
             :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'"
             @click="handlePlayClick(track, index)"
@@ -306,6 +308,7 @@ import { useStemPlayer } from '~/composables/useStemPlayer'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
+import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 import BulkActionsDrawer from '~/components/BulkActionsDrawer.vue'
 import Modal from '~/components/Modal.vue'
@@ -349,6 +352,7 @@ const { currentTrack, isPlaying, loadQueue, togglePlayPause } = usePlayer()
 const { isStemPlayerActive, stemTracks, toggleMute, toggleSolo } = useStemPlayer()
 const { supabase } = useSupabase()
 const { user } = useAuth()
+const { getArtworkUrl } = useArtwork()
 const { showProcessing, showSuccess, showError, removeToast } = useToast()
 const { capture } = useAnalytics()
 

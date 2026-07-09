@@ -95,6 +95,93 @@
               </div>
             </div>
 
+            <!-- Artwork -->
+            <div class="col-span-2 border-b border-neutral-800 pb-4">
+              <label class="text-sm text-neutral-400 mb-2 block">Artwork</label>
+              <div class="flex flex-col gap-2">
+                <input
+                  ref="artworkInput"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov"
+                  class="hidden"
+                  @change="handleArtworkSelect"
+                />
+
+                <div
+                  v-if="displayArtworkPreview"
+                  class="flex items-center justify-between p-3 border border-neutral-700 rounded bg-neutral-900/50"
+                >
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="size-16 rounded-sm overflow-hidden bg-neutral-800 shrink-0">
+                      <video
+                        v-if="displayArtworkIsVideo"
+                        :src="displayArtworkPreview"
+                        autoplay
+                        muted
+                        loop
+                        playsinline
+                        class="size-full object-cover"
+                      />
+                      <img
+                        v-else
+                        :src="displayArtworkPreview"
+                        alt="Track artwork"
+                        class="size-full object-cover"
+                      />
+                    </div>
+                    <div class="flex flex-col gap-1 min-w-0">
+                      <span class="text-sm text-neutral-300">
+                        {{ newArtworkFile ? 'New artwork:' : 'Current artwork' }}
+                      </span>
+                      <span v-if="newArtworkFile" class="text-xs text-amber-400 truncate">{{ newArtworkFile.name }}</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      class="border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
+                      :disabled="isUpdating"
+                      @click="artworkInput?.click()"
+                    >
+                      Choose New File
+                    </Button>
+                    <button
+                      v-if="canRemoveArtwork"
+                      type="button"
+                      class="text-link text-sm text-red-400 hover:text-red-300 no-underline"
+                      @click="removeArtworkSelection"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  v-else
+                  class="flex items-center justify-between p-3 border border-neutral-700 rounded bg-neutral-900/50"
+                >
+                  <span class="text-sm text-neutral-500">No artwork</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    class="border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
+                    :disabled="isUpdating"
+                    @click="artworkInput?.click()"
+                  >
+                    Choose File
+                  </Button>
+                </div>
+
+                <p v-if="artworkError" class="text-xs text-red-500">{{ artworkError }}</p>
+                <p class="text-xs text-neutral-500">
+                  JPG, PNG, WebP, GIF, MP4, MOV. Max 10MB, 1600x1600.
+                </p>
+              </div>
+            </div>
+
             <!-- Title (full width) -->
             <div class="col-span-2">
               <label class="text-sm text-neutral-400">Title <span class="text-red-500">*</span></label>
@@ -305,6 +392,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { analyzeBPM, analyzeKey } from '~/composables/useAudioAnalyzer'
+import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
 import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
@@ -347,6 +435,12 @@ interface Collection {
 
 const { supabase } = useSupabase()
 const { user } = useAuth()
+const {
+  getArtworkUrl,
+  validateAndProcessArtwork,
+  uploadArtwork,
+  deleteArtwork,
+} = useArtwork()
 
 const drawerRef = ref<any>(null)
 const isUpdating = ref(false)
@@ -384,6 +478,29 @@ const newFile = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const fileError = ref<string | null>(null)
 const newFileDuration = ref<number | null>(null)
+const newArtworkFile = ref<File | null>(null)
+const artworkInput = ref<HTMLInputElement | null>(null)
+const artworkPreview = ref<string | null>(null)
+const artworkError = ref<string | null>(null)
+const removeArtworkFlag = ref(false)
+
+const currentArtworkUrl = computed(() => getArtworkUrl(props.trackToEdit?.artwork_path))
+
+const displayArtworkPreview = computed(() => {
+  if (artworkPreview.value) return artworkPreview.value
+  if (!removeArtworkFlag.value && currentArtworkUrl.value) return currentArtworkUrl.value
+  return null
+})
+
+const displayArtworkIsVideo = computed(() => {
+  if (newArtworkFile.value) return isVideoArtwork(newArtworkFile.value.name)
+  if (!removeArtworkFlag.value) return isVideoArtwork(props.trackToEdit?.artwork_path)
+  return false
+})
+
+const canRemoveArtwork = computed(() => {
+  return !!newArtworkFile.value || (!!props.trackToEdit?.artwork_path && !removeArtworkFlag.value)
+})
 
 // Define functions before watch to avoid hoisting issues
 const loadTrackCollections = async (trackId: number) => {
@@ -540,6 +657,39 @@ const handleFileSelect = async (event: Event) => {
   }
 }
 
+const handleArtworkSelect = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+
+  if (!file) {
+    return
+  }
+
+  try {
+    const { file: processedFile, preview } = await validateAndProcessArtwork(file)
+    newArtworkFile.value = processedFile
+    artworkPreview.value = preview
+    artworkError.value = null
+    removeArtworkFlag.value = false
+  } catch (err: any) {
+    artworkError.value = err.message || 'Invalid artwork file'
+    newArtworkFile.value = null
+    artworkPreview.value = null
+  }
+
+  if (target) target.value = ''
+}
+
+const removeArtworkSelection = () => {
+  newArtworkFile.value = null
+  artworkPreview.value = null
+  artworkError.value = null
+  removeArtworkFlag.value = true
+  if (artworkInput.value) {
+    artworkInput.value.value = ''
+  }
+}
+
 const queueCollectionCreation = (name: string) => {
   if (!name.trim()) return
   
@@ -676,10 +826,17 @@ watch(() => props.trackToEdit, async (newTrack) => {
   newFile.value = null
   newFileDuration.value = null
   fileError.value = null
+  newArtworkFile.value = null
+  artworkPreview.value = null
+  artworkError.value = null
+  removeArtworkFlag.value = false
   if (fileInput.value) {
     fileInput.value.value = ''
   }
-  
+  if (artworkInput.value) {
+    artworkInput.value.value = ''
+  }
+
   if (newTrack) {
     const moodString = Array.isArray(newTrack.mood) 
       ? newTrack.mood.join(', ') 
@@ -1043,6 +1200,17 @@ const onSubmit = async () => {
         updateData.duration = newDuration
       }
     }
+
+    if (newArtworkFile.value) {
+      const uploadedArtworkPath = await uploadArtwork(newArtworkFile.value, user.value.id)
+      if (props.trackToEdit.artwork_path) {
+        await deleteArtwork(props.trackToEdit.artwork_path)
+      }
+      updateData.artwork_path = uploadedArtworkPath
+    } else if (removeArtworkFlag.value && props.trackToEdit.artwork_path) {
+      await deleteArtwork(props.trackToEdit.artwork_path)
+      updateData.artwork_path = null
+    }
     
     const { data, error: updateError } = await supabase
       .from('sounds')
@@ -1086,8 +1254,15 @@ const onSubmit = async () => {
     newFile.value = null
     newFileDuration.value = null
     fileError.value = null
+    newArtworkFile.value = null
+    artworkPreview.value = null
+    artworkError.value = null
+    removeArtworkFlag.value = false
     if (fileInput.value) {
       fileInput.value.value = ''
+    }
+    if (artworkInput.value) {
+      artworkInput.value.value = ''
     }
     
     showSuccessMessage.value = true
@@ -1118,6 +1293,10 @@ const handleDelete = async () => {
         .remove([props.trackToEdit.storage_path])
       
       if (storageError) throw storageError
+    }
+
+    if (props.trackToEdit.artwork_path) {
+      await deleteArtwork(props.trackToEdit.artwork_path)
     }
     
     // Delete from database

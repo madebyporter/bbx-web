@@ -64,22 +64,47 @@
       <!-- Playback Section -->
       <div class="p-4 border-b border-neutral-800">
         <div class="flex items-center gap-4">
-          <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
-            <div><span class="text-neutral-500">Duration:</span> {{ formatDuration(track.duration) }}</div>
-            <div><span class="text-neutral-500">Genre:</span> {{ track.genre || '-' }}</div>
-            <div><span class="text-neutral-500">BPM:</span> {{ track.bpm || '-' }}</div>
-            <div><span class="text-neutral-500">Key:</span> {{ track.key || '-' }}</div>
-            <div><span class="text-neutral-500">Year:</span> {{ track.year || '-' }}</div>
-            <div><span class="text-neutral-500">Mood:</span> {{ track.mood?.join(', ') || '-' }}</div>
-            <div>
-              <span class="text-neutral-500">Collections: </span>
-              <span v-if="collections.length === 0">-</span>
-              <span v-else>
-                <NuxtLink v-for="(collection, index) in collections" :key="collection.id"
-                  :to="`/u/${username}/c/${collection.slug}`"
-                  class="text-amber-400 hover:text-amber-300 hover:underline">{{ collection.name }}<span
-                    v-if="index < collections.length - 1">, </span></NuxtLink>
-              </span>
+          <div :class="['flex-1 grid grid-cols-1 gap-4 text-sm', trackArtworkUrl ? 'lg:grid-cols-3' : 'lg:grid-cols-2']">
+            <div v-if="trackArtworkUrl" class="flex justify-center lg:justify-start">
+              <div class="size-40 rounded-sm overflow-hidden bg-neutral-800">
+                <video
+                  v-if="trackArtworkIsVideo"
+                  :src="trackArtworkUrl"
+                  autoplay
+                  muted
+                  loop
+                  playsinline
+                  class="size-full object-cover"
+                />
+                <img
+                  v-else
+                  :src="trackArtworkUrl"
+                  :alt="`${track.title || 'Track'} artwork`"
+                  class="size-full object-cover"
+                />
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-4">
+              <div><span class="text-neutral-500">Duration:</span> {{ formatDuration(track.duration) }}</div>
+              <div><span class="text-neutral-500">BPM:</span> {{ track.bpm || '-' }}</div>
+              <div><span class="text-neutral-500">Year:</span> {{ track.year || '-' }}</div>
+              <div>
+                <span class="text-neutral-500">Collections: </span>
+                <span v-if="collections.length === 0">-</span>
+                <span v-else>
+                  <NuxtLink v-for="(collection, index) in collections" :key="collection.id"
+                    :to="`/u/${username}/c/${collection.slug}`"
+                    class="text-amber-400 hover:text-amber-300 hover:underline">{{ collection.name }}<span
+                      v-if="index < collections.length - 1">, </span></NuxtLink>
+                </span>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-4">
+              <div><span class="text-neutral-500">Genre:</span> {{ track.genre || '-' }}</div>
+              <div><span class="text-neutral-500">Key:</span> {{ track.key || '-' }}</div>
+              <div><span class="text-neutral-500">Mood:</span> {{ track.mood?.join(', ') || '-' }}</div>
             </div>
           </div>
         </div>
@@ -133,6 +158,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import { usePlayer } from '~/composables/usePlayer'
 import { useToast } from '~/composables/useToast'
+import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 import { recordPageView, setPlaybackContext } from '~/composables/useTrackAnalytics'
 
@@ -145,6 +171,7 @@ const { user } = useAuth()
 const { supabase } = useSupabase()
 const { loadQueue, currentTrack, isPlaying, togglePlayPause } = usePlayer()
 const { showSuccess, showError } = useToast()
+const { getArtworkUrl } = useArtwork()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
@@ -250,6 +277,9 @@ const { data: trackData, pending: loading } = await useAsyncData(
 // Store initial data for SEO (available during SSR)
 // Use trackData.value directly - it's populated after await useAsyncData
 const track = computed(() => trackData.value)
+
+const trackArtworkUrl = computed(() => getArtworkUrl(track.value?.artwork_path))
+const trackArtworkIsVideo = computed(() => isVideoArtwork(track.value?.artwork_path))
 
 const isOwnProfile = computed(() => {
   return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
