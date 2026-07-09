@@ -164,21 +164,20 @@
           </template>
 
           <!-- Normal Mode: Show Play Button -->
-          <Button
+          <PlayerButton
             v-else
             variant="ghost"
-            class="!p-0"
-            :class="['text-neutral-400 hover:text-white', isCurrentlyPlaying(track) ? 'text-orange-400' : '']"
+            :class="isCurrentlyPlaying(track) ? 'text-orange-400' : ''"
             :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'"
             @click="handlePlayClick(track, index)"
           >
-            <svg v-if="isCurrentlyPlaying(track)" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <svg v-if="isCurrentlyPlaying(track)" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
             </svg>
-            <svg v-else class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <svg v-else class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
-          </Button>
+          </PlayerButton>
         </div>
         <div class="overflow-hidden">
           <NuxtLink

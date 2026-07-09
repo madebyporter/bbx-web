@@ -13,31 +13,32 @@
       <div class="p-4 border-b border-neutral-800">
         <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div class="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              class="!p-0 min-w-16 w-16 h-16 bg-white hover:bg-neutral-100 rounded-full text-black"
+            <PlayerButton
+              variant="filled"
               @click="handlePlay"
             >
-              <svg v-if="isPlaying && currentTrack?.id === track.id" class="w-8 h-8" fill="currentColor"
+              <svg v-if="isPlaying && currentTrack?.id === track.id" class="w-5 h-5" fill="currentColor"
                 viewBox="0 0 24 24">
                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
               </svg>
-              <svg v-else class="w-8 h-8 ml-1" fill="currentColor" viewBox="0 0 24 24">
+              <svg v-else class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
               </svg>
-            </Button>
-            <div class="flex flex-col gap-1">
-              <h1 class="text-3xl font-bold">{{ track.title || 'Untitled' }}</h1>
-              <p class="text-neutral-400">{{ track.artist || 'Unknown Artist' }}</p>
-              <p class="text-sm text-neutral-500 mt-2">
-                Version: {{ track.version }}
-                <span v-if="track.track_group_name" class="ml-2">
-                  | Group:
-                  <NuxtLink :to="`/u/${username}/g/${track.track_group_name}`" class="text-blue-400 hover:underline">
-                    {{ track.track_group_name }}
-                  </NuxtLink>
-                </span>
-              </p>
+            </PlayerButton>
+            <div class="flex flex-col gap-px">
+              <h1 class="text-xl font-bold">{{ track.title || 'Untitled' }}</h1>
+              <div class="flex flex-col sm:flex-row gap-px sm:gap-4">
+                <p class="text-sm text-neutral-400">{{ track.artist || 'Unknown Artist' }}</p>
+                <div class="text-sm text-neutral-500 flex flex-row gap-1">
+                  <span>Version: {{ track.version }}</span>
+                  <span v-if="track.track_group_name">
+                    / Group:
+                    <NuxtLink :to="`/u/${username}/g/${track.track_group_name}`" class="text-blue-400 hover:underline">
+                      {{ track.track_group_name }}
+                    </NuxtLink>
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
           

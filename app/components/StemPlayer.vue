@@ -27,55 +27,54 @@
     <div v-else ref="expandedRef" class="overflow-hidden">
       <!-- Master Controls -->
       <div class="p-4 flex items-center gap-4">
-      <!-- Play/Pause -->
-      <Button
-        variant="ghost"
-        class="!p-0 w-10 h-10 bg-white hover:bg-neutral-100 rounded-sm text-black disabled:opacity-30"
-        :disabled="!isLoaded"
-        :title="isPlaying ? 'Pause All' : 'Play All'"
-        @click="togglePlayPause"
-      >
-        <svg v-if="isPlaying" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-        </svg>
-        <svg v-else class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M8 5v14l11-7z" />
-        </svg>
-      </Button>
+        <!-- Play/Pause -->
+        <PlayerButton
+          variant="filled"
+          :disabled="!isLoaded"
+          :title="isPlaying ? 'Pause All' : 'Play All'"
+          @click="togglePlayPause"
+        >
+          <svg v-if="isPlaying" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+          </svg>
+          <svg v-else class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </PlayerButton>
 
-      <!-- Timeline -->
-      <div class="flex-1 flex items-center gap-2">
-        <span class="text-xs text-neutral-400 w-10 text-right">{{ formattedCurrentTime }}</span>
-        <div class="flex-1 relative h-1">
-          <!-- Background track -->
-          <div class="absolute inset-0 bg-neutral-700 rounded-full"></div>
-          <!-- Progress bar -->
-          <div class="absolute top-0 left-0 h-full bg-neutral-200 rounded-full pointer-events-none"
-            :style="{ width: `${progress}%` }"></div>
-          <!-- Interactive range input -->
-          <input type="range" :value="currentTime" :max="duration || 100" @input="handleSeek"
-            :disabled="!isLoaded" class="absolute inset-0 w-full appearance-none bg-transparent cursor-pointer disabled:cursor-not-allowed z-10 transition-transform [&::-webkit-slider-thumb]:ring-2 [&::-webkit-slider-thumb]:ring-neutral-800
-            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-2 
-            [&::-webkit-slider-thumb]:rounded-sm [&::-webkit-slider-thumb]:bg-yellow-400 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-115
-            [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-20
-            [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-2 [&::-moz-range-thumb]:rounded-full 
-            [&::-moz-range-thumb]:bg-yellow-400 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer
-            [&::-moz-range-thumb]:shadow-lg" />
+        <!-- Timeline -->
+        <div class="flex-1 flex items-center gap-2">
+          <span class="text-xs text-neutral-400 w-10 text-right">{{ formattedCurrentTime }}</span>
+          <div class="flex-1 relative h-1">
+            <!-- Background track -->
+            <div class="absolute inset-0 bg-neutral-700 rounded-full"></div>
+            <!-- Progress bar -->
+            <div class="absolute top-0 left-0 h-full bg-neutral-200 rounded-full pointer-events-none"
+              :style="{ width: `${progress}%` }"></div>
+            <!-- Interactive range input -->
+            <input type="range" :value="currentTime" :max="duration || 100" @input="handleSeek"
+              :disabled="!isLoaded" class="absolute inset-0 w-full appearance-none bg-transparent cursor-pointer disabled:cursor-not-allowed z-10 transition-transform [&::-webkit-slider-thumb]:ring-2 [&::-webkit-slider-thumb]:ring-neutral-800
+              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-2 
+              [&::-webkit-slider-thumb]:rounded-sm [&::-webkit-slider-thumb]:bg-yellow-400 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-115
+              [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-20
+              [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-2 [&::-moz-range-thumb]:rounded-full 
+              [&::-moz-range-thumb]:bg-yellow-400 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer
+              [&::-moz-range-thumb]:shadow-lg" />
+          </div>
+          <span class="text-xs text-neutral-400 w-10">{{ formattedDuration }}</span>
         </div>
-        <span class="text-xs text-neutral-400 w-10">{{ formattedDuration }}</span>
-      </div>
 
-      <!-- Master Volume -->
-      <div class="hidden lg:flex items-center gap-2">
-        <span class="text-xs text-neutral-400">Master</span>
-        <input type="range" :value="masterVolume" min="0" max="1" step="0.01" @input="handleMasterVolume"
-          class="w-20 h-1 appearance-none bg-neutral-700 rounded-full cursor-pointer
-          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 
-          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer
-          [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full 
-          [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer" />
-        <span class="text-xs text-neutral-400 w-8">{{ Math.round(masterVolume * 100) }}%</span>
-      </div>
+        <!-- Master Volume -->
+        <div class="hidden lg:flex items-center gap-2">
+          <span class="text-xs text-neutral-400">Master</span>
+          <input type="range" :value="masterVolume" min="0" max="1" step="0.01" @input="handleMasterVolume"
+            class="w-20 h-1 appearance-none bg-neutral-700 rounded-full cursor-pointer
+            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 
+            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer
+            [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full 
+            [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer" />
+          <span class="text-xs text-neutral-400 w-8">{{ Math.round(masterVolume * 100) }}%</span>
+        </div>
       </div>
 
       <!-- Info Text -->
