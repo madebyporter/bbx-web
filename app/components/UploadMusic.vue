@@ -24,8 +24,8 @@
           </template>
         </p>
         <div class="bg-[#262626] rounded-sm p-1 h-full flex flex-col items-center justify-center shrink-0 min-w-[37px]">
-          <span class="text-[10px] font-semibold text-white leading-none">50MB</span>
-          <span class="text-[10px] font-semibold text-[#999] tracking-[2.5px] leading-none">MAX</span>
+          <span class="text-xs font-semibold text-white leading-none">50MB</span>
+          <span class="text-xs font-semibold text-[#999] tracking-[2.5px] leading-none">MAX</span>
           <span class="text-[5px] font-semibold text-[#999] tracking-[1.2px] leading-none">PER FILE</span>
         </div>
       </div>
@@ -59,7 +59,7 @@
           <!-- Zero state placeholder / alternate drop zone -->
           <div
             v-if="selectedFiles.length === 0"
-            class="border border-dashed divide-y divide-dashed rounded h-[356px] flex flex-col shrink-0 w-full cursor-pointerimage.png"
+            class="border border-dashed divide-y divide-dashed rounded h-[356px] flex flex-col shrink-0 w-full cursor-pointer transition-colors"
             :class="isDragging ? 'border-[#e6b85b] divide-[#e6b85b] bg-[#e6b85b]/5' : 'border-neutral-800 hover:border-neutral-700 divide-neutral-800 hover:divide-neutral-700'"
             @drop.prevent="handleDrop"
             @dragover.prevent="isDragging = true"
@@ -113,7 +113,7 @@
           <div
             v-for="(file, index) in selectedFiles"
             :key="index"
-            class="bg-[#262626] rounded flex flex-col gap-1"
+            class="bg-neutral-800/30 rounded flex flex-col gap-1"
           >
             <!-- Card header -->
             <div class="flex items-start gap-2 p-2">
@@ -166,7 +166,7 @@
 
             <!-- Title -->
             <div class="flex flex-col gap-2 p-2">
-              <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">
+              <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">
                 Title <span class="text-[#e53a17]">*</span>
               </label>
               <input
@@ -180,7 +180,7 @@
 
             <!-- Artist -->
             <div class="flex flex-col gap-2 p-2">
-              <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Artist</label>
+              <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Artist</label>
               <input
                 v-model="file.metadata.artist"
                 type="text"
@@ -192,7 +192,7 @@
             <!-- Group Name + Version -->
             <div class="flex gap-1">
               <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
-                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Group Name</label>
+                <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Group Name</label>
                 <input
                   v-model="file.metadata.group_name"
                   type="text"
@@ -202,7 +202,7 @@
                 />
               </div>
               <div class="flex flex-col gap-2 p-2 w-40 shrink-0">
-                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Version</label>
+                <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Version</label>
                 <input
                   v-model="file.metadata.version"
                   type="text"
@@ -215,7 +215,7 @@
 
             <!-- Collection -->
             <div class="flex flex-col gap-2 p-2">
-              <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Collection</label>
+              <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Collection</label>
               <CollectionSelect
                 v-model="file.selectedCollectionIds"
                 :collections="collections"
@@ -228,7 +228,7 @@
             <!-- Genre + Mood -->
             <div class="flex gap-1">
               <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
-                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Genre</label>
+                <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Genre</label>
                 <input
                   v-model="file.metadata.genre"
                   type="text"
@@ -237,7 +237,7 @@
                 />
               </div>
               <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
-                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Mood</label>
+                <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Mood</label>
                 <input
                   v-model="file.metadata.mood"
                   type="text"
@@ -251,7 +251,7 @@
             <!-- Year + Key + BPM -->
             <div class="flex gap-1">
               <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
-                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Year</label>
+                <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Year</label>
                 <input
                   v-model.number="file.metadata.year"
                   type="number"
@@ -260,7 +260,7 @@
                 />
               </div>
               <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
-                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">Key</label>
+                <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Key</label>
                 <input
                   v-model="file.metadata.key"
                   type="text"
@@ -270,7 +270,7 @@
                 />
               </div>
               <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
-                <label class="text-[10px] font-semibold text-[#ccc] px-2 h-3 flex items-center">BPM</label>
+                <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">BPM</label>
                 <input
                   v-model.number="file.metadata.bpm"
                   type="number"
@@ -284,7 +284,7 @@
             <div
               v-if="file.error"
               :class="[
-                'px-2 pb-2 text-[10px]',
+                'px-2 pb-2 text-xs',
                 file.error.startsWith('⚠️') ? 'text-amber-500' : 'text-red-500'
               ]"
             >
@@ -365,7 +365,7 @@ interface Collection {
 }
 
 const inputClass =
-  'w-full p-2 text-[10px] font-semibold border border-[#3b3b3b] rounded-sm bg-transparent text-[#ccc] placeholder:text-[#545454] hover:border-neutral-600 disabled:opacity-50'
+  'w-full p-2 text-xs font-semibold border border-[#3b3b3b] rounded-sm bg-transparent text-[#ccc] placeholder:text-[#545454] hover:border-neutral-600 disabled:opacity-50'
 
 const route = useRoute()
 const { supabase } = useSupabase()
@@ -646,8 +646,10 @@ const validateFile = (file: File): string | null => {
 }
 
 const handleDrop = async (event: DragEvent) => {
+  event.stopPropagation()
   isDragging.value = false
   const files = Array.from(event.dataTransfer?.files || [])
+  if (files.length === 0) return
   await processFiles(files)
 }
 

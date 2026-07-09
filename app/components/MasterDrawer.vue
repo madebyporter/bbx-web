@@ -1,10 +1,10 @@
 <template>
   <Teleport to="body">
     <aside v-if="show" ref="modal"
-      class="p-4 fixed right-2 lg:right-2 top-2 lg:top-2 bottom-2 lg:bottom-2 left-2 lg:left-auto lg:w-2/5 bg-neutral-900 ring-1 ring-neutral-800 text-neutral-400 rounded-md overflow-visible z-50"
+      class="fixed right-2 lg:right-2 top-2 lg:top-2 bottom-2 lg:bottom-2 left-2 lg:left-auto lg:w-2/5 bg-neutral-900 ring-1 ring-neutral-800 text-neutral-400 rounded-md overflow-visible z-50"
       :style="{ transform: `translateX(${initialX}%)`, opacity: modalOpacity }">
-      <div class="flex flex-col gap-4 justify-between h-full">
-        <div class="flex flex-row justify-between items-center">
+      <div class="flex flex-col gap-0 justify-between h-full divide-y divide-neutral-800">
+        <div class="flex flex-row gap-2 justify-between items-center p-2">
 
           <div class="grow h-[50px] flex items-center text-white font-semibold" @click.stop>
             <slot name="header"></slot>
@@ -16,7 +16,7 @@
           </div>
         </div>
         <!-- Main content slot -->
-        <div class="grow flex flex-col gap-0 overflow-auto no-scrollbar" @click.stop>
+        <div class="grow flex flex-col gap-0 overflow-auto no-scrollbar p-2" @click.stop>
           <slot></slot>
         </div>
       </div>

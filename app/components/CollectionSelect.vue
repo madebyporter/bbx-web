@@ -3,31 +3,25 @@
     <!-- Input with tags -->
     <div 
       :class="[
-        'input-wrapper border rounded cursor-text transition-colors',
-        size === 'sm' ? 'p-2' : 'p-3',
-        'border-neutral-700 hover:border-neutral-600 bg-neutral-900',
+        'input-wrapper border rounded cursor-text transition-colors flex flex-wrap gap-0 items-center border-neutral-700 hover:border-neutral-600',
         isOpen ? 'border-neutral-600' : '',
         disabled ? 'opacity-50 cursor-not-allowed' : ''
       ]"
       @click="!disabled && openDropdown()"
     >
       <!-- Selected tags -->
-      <div v-if="selectedCollections.length > 0" class="flex flex-wrap gap-1 mb-2">
-        <span 
+      <div v-if="selectedCollections.length > 0" class="flex flex-row flex-wrap w-fit gap-1 p-2">
+        <div 
           v-for="collection in selectedCollections" 
           :key="collection.id"
-          class="inline-flex items-center gap-1 px-2 py-1 bg-neutral-700 rounded text-xs text-neutral-200"
+          class="inline-flex items-center gap-1 p-1 m-0 bg-neutral-700 rounded text-xs text-neutral-200 whitespace-nowrap"
         >
-          {{ collection.name }}
-          <Button
-            variant="ghost"
-            class="!p-0 hover:text-red-400 text-neutral-400"
-            :disabled="disabled"
-            @click.stop="removeCollection(collection.id)"
-          >
-            ×
-          </Button>
-        </span>
+          <span class="px-1">{{ collection.name }}</span>
+          <button type="button"
+            class="size-6 flex items-center justify-center rounded-xs bg-[#3b3b3b] hover:bg-neutral-600 disabled:opacity-50 cursor-pointer" title="Remove" :disabled="disabled" @click.stop="removeCollection(collection.id)">
+            <Xmark class="size-3" />
+          </button>
+        </div>
       </div>
       
       <!-- Search input -->
@@ -36,8 +30,8 @@
         v-model="searchQuery"
         :placeholder="selectedCollections.length > 0 ? 'Add more collections...' : 'Search or add collections...'"
         :class="[
-          'w-full bg-transparent border-none outline-none text-neutral-200 placeholder-neutral-500',
-          size === 'sm' ? 'text-sm' : 'text-base'
+          'bg-transparent border-none outline-none text-neutral-200 placeholder-neutral-500 p-2 w-full',
+          size === 'sm' ? 'text-xs' : 'text-sm'
         ]"
         :disabled="disabled"
         @focus="openDropdown()"
@@ -49,13 +43,13 @@
     <!-- Dropdown -->
     <div 
       v-if="isOpen" 
-      class="absolute z-10 mt-1 w-full bg-neutral-800 border border-neutral-700 rounded-md shadow-lg max-h-60 overflow-y-auto"
+      class="absolute z-10 mt-1 w-full bg-neutral-900/90 backdrop-blur-sm border border-neutral-700 rounded-md shadow-lg max-h-60 overflow-y-auto"
     >
       <!-- Filtered collections -->
       <div 
         v-for="collection in filteredCollections" 
         :key="collection.id"
-        class="flex items-center gap-2 p-2 hover:bg-neutral-700 cursor-pointer"
+        class="flex items-center gap-2 p-2 hover:bg-neutral-800 cursor-pointer"
         @click="toggleCollection(collection.id)"
       >
         <input 
@@ -64,7 +58,7 @@
           class="w-4 h-4 text-amber-600 bg-neutral-700 border-neutral-600 rounded focus:ring-amber-500"
           @click.stop="toggleCollection(collection.id)"
         />
-        <label class="flex-1 cursor-pointer text-neutral-200">{{ collection.name }}</label>
+        <label class="flex-1 cursor-pointer text-neutral-200 text-xs">{{ collection.name }}</label>
       </div>
       
       <!-- Create button when no match -->
@@ -91,6 +85,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { Xmark } from '@iconoir/vue'
 
 interface Collection {
   id: number
