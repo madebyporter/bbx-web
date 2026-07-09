@@ -59,7 +59,7 @@
           <!-- Zero state placeholder -->
           <div
             v-if="selectedFiles.length === 0"
-            class="border border-[#333] rounded h-[356px] flex flex-col shrink-0 w-full"
+            class="border border-neutral-800 rounded h-[356px] flex flex-col shrink-0 w-full"
           >
             <div class="flex items-start gap-2 p-2">
               <span class="flex-1 min-w-0 px-2 text-xs font-semibold text-transparent truncate self-center select-none" aria-hidden="true">

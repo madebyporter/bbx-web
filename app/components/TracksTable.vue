@@ -57,10 +57,12 @@
       <!-- Single Grid Container - wraps header and all rows -->
       <div class="w-fit md:w-full h-fit">
         <!-- Header -->
-        <div :class="[
-          'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 bg-neutral-900 *:flex *:items-center',
-          tableGridClass
-        ]">
+        <div
+          :class="[
+            'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 bg-neutral-900 *:flex *:items-center',
+          ]"
+          :style="tableGridStyle"
+        >
           <div class="px-2 flex items-center justify-center">
             <Button
               v-if="isOwnProfile"
@@ -89,11 +91,11 @@
             <div>Completion</div>
           </template>
           <template v-else>
-            <div v-if="isOwnProfile">Collection</div>
+            <div v-if="showCollectionColumn">Collection</div>
           <div>Genre</div>
           <div>BPM</div>
           <div>Duration</div>
-            <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
+            <div v-if="showStatusColumn">Status</div>
           </template>
           <div :class="[
             'flex items-center justify-start',
@@ -114,9 +116,8 @@
         <!-- Tracks -->
         <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
           'text-sm border-b border-neutral-900 *:py-4 items-center',
-          tableGridClass,
           isCurrentlyPlaying(track) ? 'bg-neutral-800/70  lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
-        ]">
+        ]" :style="tableGridStyle">
         <div class="px-2 flex items-center justify-center gap-1">
           <!-- Bulk Selection Mode: Show Checkbox -->
           <template v-if="bulkSelectionMode">
@@ -198,7 +199,7 @@
           <div class="text-neutral-300">{{ formatTrackStat(track.id, 'completion') }}</div>
         </template>
         <template v-else>
-        <div v-if="isOwnProfile" class="text-neutral-400 overflow-visible flex justify-start items-center gap-1">
+        <div v-if="showCollectionColumn" class="text-neutral-400 overflow-visible flex justify-start items-center gap-1">
           <CollectionTagsCell
             :collections="track.collections"
             :owner-username="getTrackOwnerUsername(track)"
@@ -214,7 +215,7 @@
         <div class="text-neutral-400 overflow-hidden truncate">{{ track.genre || '-' }}</div>
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
         <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>
-        <div v-if="isOwnProfile && profileUserType === 'audio_pro'" class="text-neutral-400 overflow-hidden">
+        <div v-if="showStatusColumn" class="text-neutral-400 overflow-hidden">
           <select v-if="statuses.length > 0" :value="track.status_id || ''"
             @change="updateTrackStatus(track.id, $event.target.value ? parseInt($event.target.value) : null)"
             class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-xs text-neutral-200 cursor-pointer outline-none">
@@ -380,24 +381,48 @@ const collectionModalTitle = computed(() => {
 
 const hasSelections = computed(() => selectedTrackIds.value.size > 0)
 
+const showStatusColumn = computed(() =>
+  props.isOwnProfile && props.profileUserType === 'audio_pro' && !props.analyticsMode
+)
+
+const showCollectionColumn = computed(() =>
+  props.isOwnProfile && !props.analyticsMode
+)
+
+const tableGridStyle = computed(() => {
+  const cols = [
+    'minmax(70px, auto)',
+    'minmax(250px, 1fr)',
+    '100px',
+    '70px',
+  ]
+
+  if (props.analyticsMode && props.isOwnProfile) {
+    cols.push('70px', '70px', '120px', '90px', '100px')
+  } else {
+    if (showCollectionColumn.value) {
+      cols.push('minmax(140px, max-content)')
+    }
+    cols.push('70px', '50px', '70px')
+    if (showStatusColumn.value) {
+      cols.push('100px')
+    }
+    cols.push('88px')
+  }
+
+  return {
+    display: 'grid',
+    gap: '1rem',
+    gridTemplateColumns: cols.join(' '),
+  }
+})
+
 const showActionsColumn = computed(() => {
   return !!(
     user.value ||
     props.isOwnProfile ||
     (props.viewerUserType === 'creator' && props.profileUserType === 'audio_pro')
   )
-})
-
-const tableGridClass = computed(() => {
-  if (props.analyticsMode && props.isOwnProfile) {
-    return 'trackGrid-analytics-edit'
-  }
-  if (props.isOwnProfile) return 'trackGrid-edit'
-  if (props.viewerUserType === 'creator' && props.profileUserType === 'audio_pro') {
-    return 'trackGrid-edit-no-collection'
-  }
-  if (user.value) return 'trackGrid-with-actions'
-  return 'trackGrid-no-collection'
 })
 
 const openTrackComments = (track: any) => {
