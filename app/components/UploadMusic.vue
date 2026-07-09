@@ -56,12 +56,17 @@
         <div class="flex flex-col gap-2 overflow-y-auto grow pb-2">
           <span v-if="errors.files" class="text-red-500 text-xs px-2">{{ errors.files }}</span>
 
-          <!-- Zero state placeholder -->
+          <!-- Zero state placeholder / alternate drop zone -->
           <div
             v-if="selectedFiles.length === 0"
-            class="border border-neutral-800 rounded h-[356px] flex flex-col shrink-0 w-full"
+            class="border border-dashed divide-y divide-dashed rounded h-[356px] flex flex-col shrink-0 w-full cursor-pointerimage.png"
+            :class="isDragging ? 'border-[#e6b85b] divide-[#e6b85b] bg-[#e6b85b]/5' : 'border-neutral-800 hover:border-neutral-700 divide-neutral-800 hover:divide-neutral-700'"
+            @drop.prevent="handleDrop"
+            @dragover.prevent="isDragging = true"
+            @dragleave.prevent="isDragging = false"
+            @click="fileInput?.click()"
           >
-            <div class="flex items-start gap-2 p-2">
+            <div class="flex items-start gap-2 p-2 pointer-events-none">
               <span class="flex-1 min-w-0 px-2 text-xs font-semibold text-transparent truncate self-center select-none" aria-hidden="true">
                 Track filename.mp3
               </span>
@@ -94,6 +99,14 @@
                   </svg>
                 </button>
               </div>
+            </div>
+            <div class="flex-1 flex items-center justify-center p-4 pointer-events-none">
+              <p class="text-sm font-semibold text-center text-neutral-500">
+                <template v-if="isDragging">Drop files here</template>
+                <template v-else>
+                  Drop MP3/M4A files here or <span class="text-[#e6b85b]">click to browse</span>
+                </template>
+              </p>
             </div>
           </div>
 
