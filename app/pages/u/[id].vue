@@ -1464,10 +1464,56 @@ function hasActiveMusicFilters(params: { filters?: any }): boolean {
   )
 }
 
-async function applyPersistedFiltersIfNeeded() {
+function hasServerSideMusicFilters(params: { filters?: any }): boolean {
+  const f = params.filters || {}
+  return !!(
+    f.genre?.length > 0 ||
+    f.bpm?.min != null ||
+    f.bpm?.max != null ||
+    f.key?.length > 0 ||
+    f.mood?.length > 0 ||
+    f.year?.min != null ||
+    f.year?.max != null ||
+    f.status?.length > 0
+  )
+}
+
+function applyLatestVersionOnlyFilter(list: any[]): any[] {
+  const keepIds = new Set(getUniqueGroupTracks(list).map((t) => t.id))
+  return list.filter((t) => keepIds.has(t.id))
+}
+
+async function applyPersistedFiltersToTracks(tracksWithCollections: any[]): Promise<any[] | null> {
   const params = loadPersistedFilterParams()
-  if (!params || !hasActiveMusicFilters(params)) return
-  await updateFiltersAndSort(params)
+  if (!params || !hasActiveMusicFilters(params)) {
+    return tracksWithCollections
+  }
+
+  lastAppliedParams.value = {
+    filters: { ...(params.filters || {}) },
+    sort: { ...(params.sort || { sortBy: 'created_at', sortDirection: 'desc' }) }
+  }
+
+  if (hasServerSideMusicFilters(params)) {
+    try {
+      await updateFiltersAndSort(params)
+    } catch (error) {
+      console.error('Error applying persisted server-side filters:', error)
+      return tracksWithCollections
+    }
+    return null
+  }
+
+  let result = tracksWithCollections
+  if (params.filters?.latestVersionOnly) {
+    result = applyLatestVersionOnlyFilter(result)
+    const sourceId = `profile-${profileUserId.value}`
+    if (queueSourceId.value === sourceId) {
+      updateQueue(result, sourceId)
+    }
+  }
+
+  return result
 }
 
 const fetchTracks = async () => {
@@ -1494,17 +1540,19 @@ const fetchTracks = async () => {
   // Load saved sort preferences from localStorage
   let sortBy = 'created_at'
   let sortDirection: 'asc' | 'desc' = 'desc'
-  try {
-    const savedFilters = localStorage.getItem('filterSort_music')
-    if (savedFilters) {
-      const parsed = JSON.parse(savedFilters)
-      if (parsed.sort) {
-        sortBy = parsed.sort.sortBy || 'created_at'
-        sortDirection = parsed.sort.sortDirection || 'desc'
+  if (typeof window !== 'undefined') {
+    try {
+      const savedFilters = localStorage.getItem('filterSort_music')
+      if (savedFilters) {
+        const parsed = JSON.parse(savedFilters)
+        if (parsed.sort) {
+          sortBy = parsed.sort.sortBy || 'created_at'
+          sortDirection = parsed.sort.sortDirection || 'desc'
+        }
       }
+    } catch (e) {
+      console.error('fetchTracks: Error loading saved sort:', e)
     }
-  } catch (e) {
-    console.error('fetchTracks: Error loading saved sort:', e)
   }
 
   try {
@@ -1617,8 +1665,10 @@ const fetchTracks = async () => {
       }
     })
 
-    tracks.value = tracksWithCollections
-    await applyPersistedFiltersIfNeeded()
+    const filtered = await applyPersistedFiltersToTracks(tracksWithCollections)
+    if (filtered !== null) {
+      tracks.value = filtered
+    }
   } catch (error) {
     if (requestId !== fetchTracksRequestId) {
       return
@@ -1698,8 +1748,8 @@ const updateFiltersAndSort = async (params: any) => {
   if (!supabase || !profileUserId.value) return
 
   lastAppliedParams.value = {
-    filters: { ...params.filters },
-    sort: { ...params.sort }
+    filters: { ...(params.filters || {}) },
+    sort: { ...(params.sort || { sortBy: 'created_at', sortDirection: 'desc' }) }
   }
   
   loading.value = true
@@ -1714,7 +1764,8 @@ const updateFiltersAndSort = async (params: any) => {
       .eq('user_id', profileUserId.value)
     
     // Apply music filters
-    const { filters, sort } = params
+    const filters = params.filters || {}
+    const sort = params.sort || { sortBy: 'created_at', sortDirection: 'desc' }
     
     // Genre filter
     if (filters.genre?.length > 0) {
@@ -1782,8 +1833,7 @@ const updateFiltersAndSort = async (params: any) => {
     
     let filtered = tracksWithCollections
     if (filters.latestVersionOnly) {
-      const keepIds = new Set(getUniqueGroupTracks(filtered).map((t) => t.id))
-      filtered = filtered.filter((t) => keepIds.has(t.id))
+      filtered = applyLatestVersionOnlyFilter(filtered)
     }
 
     tracks.value = filtered
