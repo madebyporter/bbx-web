@@ -157,8 +157,7 @@ if (process.server) {
   }
 }
 const { supabase } = useSupabase()
-const config = useRuntimeConfig()
-const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
+const siteUrl = useSiteOrigin()
 
 // Map route type to database type slug and labels
 const typeConfig = computed(() => {
@@ -362,7 +361,7 @@ watch(() => [resource.value, useCount.value], ([newResource, count]) => {
       { name: 'twitter:image', content: seoImage }
     ],
     link: [
-      { rel: 'canonical', href: seoUrl }
+      { rel: 'canonical', href: seoUrl, key: 'canonical' }
     ],
     script: [
       {
