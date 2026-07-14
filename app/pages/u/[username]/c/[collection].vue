@@ -90,7 +90,10 @@ import {
   useTrackAnalyticsData,
 } from '~/composables/useTrackAnalyticsData'
 import { getUniqueGroupTracks } from '~/utils/uniqueGroupShuffle'
-import { useFilterSortCookie } from '~/composables/useFilterSortPersistence'
+import {
+  parseFilterSortParams,
+  useFilterSortCookie,
+} from '~/composables/useFilterSortPersistence'
 
 const route = useRoute()
 const router = useRouter()
@@ -817,8 +820,8 @@ onMounted(async () => {
   }
 
   // Apply saved filter/sort from cookie so initial view matches user preference
-  const saved = musicFilterCookie.value
-  if (saved && (saved.sort || saved.filters)) {
+  const saved = parseFilterSortParams(musicFilterCookie.value, 'music')
+  if (saved) {
     await updateFiltersAndSort(saved)
   }
 

@@ -26,6 +26,7 @@
 import { ref, inject, onMounted, onUnmounted, computed, watch, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
+import type { FilterSortParams } from '~/composables/useFilterSortPersistence'
 import DatabaseGrid from '~/components/DatabaseGrid.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
 
@@ -54,19 +55,6 @@ useHead({
     { rel: 'canonical', href: kitsCanonical, key: 'canonical' }
   ]
 })
-
-// Define interfaces for type safety
-interface FilterSortParams {
-  sort: {
-    sortBy: string
-    sortDirection: 'asc' | 'desc'
-  }
-  filters: {
-    price: { free: boolean; paid: boolean }
-    os: string[]
-    tags: string[]
-  }
-}
 
 const { isAdmin } = useAuth()
 const databaseGrid = ref<InstanceType<typeof DatabaseGrid> | null>(null)

@@ -303,14 +303,34 @@ import { useAuth } from '~/composables/useAuth'
 import { useAnalytics } from '~/composables/useAnalytics'
 import {
   getDefaultFilterSortParams,
+  parseFilterSortParams,
   useFilterSortCookie,
+  type FilterSortContext,
+  type FilterSortParams,
 } from '~/composables/useFilterSortPersistence'
 import { ref, onMounted, reactive, computed, watch } from 'vue'
 import MasterDrawer from './MasterDrawer.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 
+const props = withDefaults(defineProps<{
+  show?: boolean
+  context?: FilterSortContext
+  initialFilters?: FilterSortParams['filters']
+  initialSort?: FilterSortParams['sort']
+}>(), {
+  show: false,
+  context: 'software',
+  initialFilters: () => getDefaultFilterSortParams().filters,
+  initialSort: () => getDefaultFilterSortParams().sort,
+})
+
+const emit = defineEmits<{
+  'update:show': [show: boolean]
+  'apply-filters': [params: FilterSortParams]
+}>()
+
 // Reference to the MasterDrawer component
-const drawerRef = ref(null)
+const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
 const showClearAllConfirm = ref(false)
 const musicFilterCookie = useFilterSortCookie('music')
 const softwareFilterCookie = useFilterSortCookie('software')
@@ -322,46 +342,9 @@ const activeFilterCookie = computed(() => {
   return kitsFilterCookie
 })
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  context: {
-    type: String,
-    default: 'software',
-    validator: (value) => ['software', 'kits', 'music'].includes(value)
-  },
-  initialFilters: {
-    type: Object,
-    default: () => ({
-      price: { free: false, paid: false },
-      os: [],
-      tags: [],
-      // Music filters
-      genre: [],
-      bpm: { min: null, max: null },
-      key: [],
-      mood: [],
-      year: { min: null, max: null },
-      status: [],
-      latestVersionOnly: false
-    })
-  },
-  initialSort: {
-    type: Object,
-    default: () => ({
-      sortBy: 'created_at',
-      sortDirection: 'desc'
-    })
-  }
-})
-
-const emit = defineEmits(['update:show', 'apply-filters'])
-
 // Filter and sort state
 const sortBy = ref(props.initialSort.sortBy)
-const sortDirection = ref(props.initialSort.sortDirection)
+const sortDirection = ref<'asc' | 'desc'>(props.initialSort.sortDirection)
 const filters = reactive({
   // Software/Kits filters
   price: {
@@ -390,13 +373,13 @@ const filters = reactive({
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const tagInput = ref('')
-const availableTags = ref([])
-const filteredTags = ref([])
+const availableTags = ref<string[]>([])
+const filteredTags = ref<string[]>([])
 const showSuggestions = ref(false)
 const selectedTags = computed(() => filters.tags)
 
 // Status state
-const availableStatuses = ref([])
+const availableStatuses = ref<Array<{ id: number; name: string }>>([])
 
 // TODO: Consider extracting tag search functionality into a reusable composable
 // that both FilterSort and SubmitResource components can use
@@ -478,45 +461,31 @@ const resetFormToDefaults = () => {
 // Load saved filters from cookie
 const loadSavedFilters = () => {
   try {
-    const parsed = activeFilterCookie.value.value
+    const parsed = parseFilterSortParams(activeFilterCookie.value.value, props.context)
 
     if (!parsed) {
       resetFormToDefaults()
       return
     }
 
-    if (parsed.sort) {
-      sortBy.value = parsed.sort.sortBy || 'created_at'
-      sortDirection.value = parsed.sort.sortDirection || 'desc'
-    }
+    sortBy.value = parsed.sort.sortBy
+    sortDirection.value = parsed.sort.sortDirection
 
-    if (parsed.filters) {
-      if (props.context !== 'music') {
-        if (parsed.filters.price) {
-          filters.price.free = parsed.filters.price.free || false
-          filters.price.paid = parsed.filters.price.paid || false
-        }
-        if (parsed.filters.os) filters.os = [...parsed.filters.os]
-        if (parsed.filters.tags) filters.tags = [...parsed.filters.tags]
-      }
-
-      if (props.context === 'music') {
-        if (parsed.filters.genre) filters.genre = [...parsed.filters.genre]
-        if (parsed.filters.bpm) {
-          filters.bpm.min = parsed.filters.bpm.min
-          filters.bpm.max = parsed.filters.bpm.max
-        }
-        if (parsed.filters.key) filters.key = [...parsed.filters.key]
-        if (parsed.filters.mood) filters.mood = [...parsed.filters.mood]
-        if (parsed.filters.year) {
-          filters.year.min = parsed.filters.year.min
-          filters.year.max = parsed.filters.year.max
-        }
-        if (parsed.filters.status) filters.status = [...parsed.filters.status]
-        if (parsed.filters.latestVersionOnly != null) {
-          filters.latestVersionOnly = parsed.filters.latestVersionOnly
-        }
-      }
+    if (props.context !== 'music') {
+      filters.price.free = parsed.filters.price.free
+      filters.price.paid = parsed.filters.price.paid
+      filters.os = [...parsed.filters.os]
+      filters.tags = [...parsed.filters.tags]
+    } else {
+      filters.genre = [...parsed.filters.genre]
+      filters.bpm.min = parsed.filters.bpm.min
+      filters.bpm.max = parsed.filters.bpm.max
+      filters.key = [...parsed.filters.key]
+      filters.mood = [...parsed.filters.mood]
+      filters.year.min = parsed.filters.year.min
+      filters.year.max = parsed.filters.year.max
+      filters.status = [...parsed.filters.status]
+      filters.latestVersionOnly = parsed.filters.latestVersionOnly
     }
   } catch (error) {
     console.error('FilterSort: Error loading saved filters:', error)
@@ -665,7 +634,7 @@ const applyFiltersAndSort = () => {
     })
   }
 
-  const filterSortParams = {
+  const filterSortParams: FilterSortParams = {
     sort: {
       sortBy: sortBy.value,
       sortDirection: sortDirection.value
@@ -694,9 +663,6 @@ const applyFiltersAndSort = () => {
   emit('apply-filters', filterSortParams)
   
   // Then trigger the close animation
-  // We need a fake event since MasterDrawer's handleClose expects one
-  const fakeEvent = { preventDefault: () => {}, stopPropagation: () => {} }
-  
   if (drawerRef.value?.$el) {
     // If we have access to the internal animateOut method, use it
     if (typeof drawerRef.value.animateOut === 'function') {

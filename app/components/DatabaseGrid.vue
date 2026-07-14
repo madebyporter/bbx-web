@@ -138,22 +138,11 @@ import { ref, onMounted, watch } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { fetchResourcesWithTags, type Resource, type ResourceType } from '~/utils/resourceQueries'
 import { useAuth } from '~/composables/useAuth'
+import type { FilterSortParams } from '~/composables/useFilterSortPersistence'
 
 interface Props {
   type?: string
   canEdit?: boolean
-}
-
-interface FilterSortParams {
-  sort: {
-    sortBy: string
-    sortDirection: 'asc' | 'desc'
-  }
-  filters: {
-    price: { free: boolean; paid: boolean }
-    os: string[]
-    tags: string[]
-  }
 }
 
 const props = withDefaults(defineProps<Props>(), {

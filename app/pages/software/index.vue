@@ -24,6 +24,7 @@
 import { ref, inject, onMounted, onUnmounted, computed, watch, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
+import type { FilterSortParams } from '~/composables/useFilterSortPersistence'
 import Database from '~/components/Database.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
 
@@ -72,19 +73,6 @@ watch(() => route.path, (newPath, oldPath) => {
     })
   }
 }, { immediate: true })
-
-// Define interfaces for type safety
-interface FilterSortParams {
-  sort: {
-    sortBy: string
-    sortDirection: 'asc' | 'desc'
-  }
-  filters: {
-    price: { free: boolean; paid: boolean }
-    os: string[]
-    tags: string[]
-  }
-}
 
 const { isAdmin } = useAuth()
 const database = ref<InstanceType<typeof Database> | null>(null)

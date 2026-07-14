@@ -368,7 +368,11 @@ import {
   loadStoredAnalyticsRangeLabel,
   useTrackAnalyticsData,
 } from '~/composables/useTrackAnalyticsData'
-import { useFilterSortCookie } from '~/composables/useFilterSortPersistence'
+import {
+  parseFilterSortParams,
+  useFilterSortCookie,
+  type FilterSortParams,
+} from '~/composables/useFilterSortPersistence'
 import { getUniqueGroupTracks } from '~/utils/uniqueGroupShuffle'
 import { usePlayer } from '~/composables/usePlayer'
 import gsap from 'gsap'
@@ -551,7 +555,7 @@ const profileSocialLinks = ref<{
   [key: string]: string | undefined
 }>((initialData.value?.profile?.social_links as any) || {})
 const tracks = ref<any[]>(initialData.value?.tracks || [])
-const lastAppliedParams = ref<{ filters: any; sort: any } | null>(null)
+const lastAppliedParams = ref<FilterSortParams | null>(null)
 const loading = ref(false)
 // searchQuery removed - search is now handled by SearchModal
 const allSoftware = computed(() => softwareData.value || [])
@@ -1451,11 +1455,9 @@ const fetchSoftware = async () => {
 
 let fetchTracksRequestId = 0
 
-function loadPersistedFilterParams(): { filters: any; sort: any } | null {
+function loadPersistedFilterParams(): FilterSortParams | null {
   if (lastAppliedParams.value) return lastAppliedParams.value
-  const saved = musicFilterCookie.value
-  if (!saved || (!saved.sort && !saved.filters)) return null
-  return saved
+  return parseFilterSortParams(musicFilterCookie.value, 'music')
 }
 
 function hasActiveMusicFilters(params: { filters?: any }): boolean {
@@ -1549,10 +1551,10 @@ const fetchTracks = async () => {
   // Load saved sort preferences from cookie
   let sortBy = 'created_at'
   let sortDirection: 'asc' | 'desc' = 'desc'
-  const savedFilters = musicFilterCookie.value
-  if (savedFilters?.sort) {
-    sortBy = savedFilters.sort.sortBy || 'created_at'
-    sortDirection = savedFilters.sort.sortDirection || 'desc'
+  const savedFilters = parseFilterSortParams(musicFilterCookie.value, 'music')
+  if (savedFilters) {
+    sortBy = savedFilters.sort.sortBy
+    sortDirection = savedFilters.sort.sortDirection
   }
 
   try {

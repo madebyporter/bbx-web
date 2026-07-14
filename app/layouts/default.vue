@@ -169,6 +169,7 @@ import {
   hasActiveFilterSort,
   migrateFilterSortFromLocalStorage,
   useFilterSortCookie,
+  type FilterSortParams,
 } from '~/composables/useFilterSortPersistence'
 import Player from '~/components/Player.vue'
 import Toast from '~/components/Toast.vue'
@@ -203,27 +204,6 @@ interface PageRef {
   }
   updateFiltersAndSort?: (params: FilterSortParams) => void
   [key: string]: any
-}
-
-interface FilterSortParams {
-  sort: {
-    sortBy: string
-    sortDirection: 'asc' | 'desc'
-  }
-  filters: {
-    // Software/Kits filters
-    price: { free: boolean; paid: boolean }
-    os: string[]
-    tags: string[]
-    // Music filters
-    genre: string[]
-    bpm: { min: number | null; max: number | null }
-    key: string[]
-    mood: string[]
-    year: { min: number | null; max: number | null }
-    latestVersionOnly?: boolean
-    status?: (number | null)[]
-  }
 }
 
 interface ResourceType {

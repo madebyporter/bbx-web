@@ -81,7 +81,10 @@ import TracksTable from '~/components/TracksTable.vue'
 import StemPlayer from '~/components/StemPlayer.vue'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
-import { useFilterSortCookie } from '~/composables/useFilterSortPersistence'
+import {
+  parseFilterSortParams,
+  useFilterSortCookie,
+} from '~/composables/useFilterSortPersistence'
 import { Xmark } from '@iconoir/vue'
 
 const route = useRoute()
@@ -200,10 +203,10 @@ const fetchGroupTracks = async () => {
     let sortBy = 'version'
     let sortDirection: 'asc' | 'desc' = 'desc'
 
-    const savedFilters = musicFilterCookie.value
-    if (savedFilters?.sort) {
-      sortBy = savedFilters.sort.sortBy || 'version'
-      sortDirection = savedFilters.sort.sortDirection || 'desc'
+    const savedFilters = parseFilterSortParams(musicFilterCookie.value, 'music')
+    if (savedFilters) {
+      sortBy = savedFilters.sort.sortBy
+      sortDirection = savedFilters.sort.sortDirection
     }
     
     // Fetch all tracks in this group

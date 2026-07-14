@@ -138,6 +138,7 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { fetchResourcesWithTags, deleteResource, type ResourceType } from '~/utils/resourceQueries'
 import { useAuth } from '~/composables/useAuth'
+import type { FilterSortParams } from '~/composables/useFilterSortPersistence'
 
 interface ResourceFilters {
   price: {
@@ -160,11 +161,6 @@ interface ResourceUserUse {
 interface SortParams {
   sortBy: string
   sortDirection: 'asc' | 'desc'
-}
-
-interface FilterSortParams {
-  sort: SortParams
-  filters: ResourceFilters
 }
 
 interface Resource {

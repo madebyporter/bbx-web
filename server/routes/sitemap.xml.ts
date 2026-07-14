@@ -19,6 +19,20 @@ function urlEntry(loc: string, lastmod?: string | null) {
   return `  <url>\n    <loc>${escapeXml(loc)}</loc>${lastmodTag}\n  </url>`
 }
 
+function readResourceTypeSlug(value: unknown): string | undefined {
+  const resourceType = Array.isArray(value) ? value[0] : value
+  if (
+    typeof resourceType !== 'object' ||
+    resourceType === null ||
+    !('slug' in resourceType) ||
+    typeof resourceType.slug !== 'string'
+  ) {
+    return undefined
+  }
+
+  return resourceType.slug
+}
+
 export default defineEventHandler(async (event) => {
   const staticRoutes = [
     '/',
@@ -39,22 +53,23 @@ export default defineEventHandler(async (event) => {
       .eq('status', 'approved')
 
     resources?.forEach((resource) => {
-      const resourceType = resource.resource_types as
-        | { slug: string }
-        | { slug: string }[]
-        | null
-      const typeSlug = Array.isArray(resourceType)
-        ? resourceType[0]?.slug
-        : resourceType?.slug
+      const typeSlug = readResourceTypeSlug(resource.resource_types)
+      if (typeof resource.slug !== 'string' || resource.slug.length === 0) {
+        return
+      }
+
+      const lastmod = typeof resource.created_at === 'string'
+        ? resource.created_at
+        : null
       if (typeSlug === 'software') {
         resourceRoutes.push({
           loc: `${SITE_ORIGIN}/software/${resource.slug}`,
-          lastmod: resource.created_at,
+          lastmod,
         })
       } else if (typeSlug === 'sounds') {
         resourceRoutes.push({
           loc: `${SITE_ORIGIN}/kits/${resource.slug}`,
-          lastmod: resource.created_at,
+          lastmod,
         })
       }
     })
