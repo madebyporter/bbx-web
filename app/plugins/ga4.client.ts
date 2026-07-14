@@ -2,14 +2,14 @@ import { setGa4Ready } from '~/composables/useAnalytics'
 
 export default defineNuxtPlugin(() => {
   const config = useRuntimeConfig()
-  const measurementId = config.public.ga4MeasurementId as string | undefined
+  const measurementId = config.public.ga4MeasurementId
 
   if (!measurementId) {
     return
   }
 
   window.dataLayer = window.dataLayer || []
-  window.gtag = function gtag(...args: unknown[]) {
+  window.gtag = function gtag(...args: GtagArguments) {
     window.dataLayer.push(args)
   }
 

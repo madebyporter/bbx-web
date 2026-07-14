@@ -1,4 +1,12 @@
+type GtagParameters = Record<string, unknown>
+
+type GtagArguments =
+  | ['js', Date]
+  | ['config', string, GtagParameters?]
+  | ['event', string, GtagParameters?]
+  | ['set', string, GtagParameters]
+
 interface Window {
-  dataLayer: any[]
-  gtag: (...args: any[]) => void
-} 
+  dataLayer: GtagArguments[]
+  gtag: (...args: GtagArguments) => void
+}
