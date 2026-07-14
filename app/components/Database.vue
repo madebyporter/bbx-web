@@ -203,10 +203,10 @@ const useCounts = ref<{[key: number]: number}>({})
 const userUsedResources = ref<{[key: number]: boolean}>({})
 const isSupabaseReady = ref(false)
 
-const fetchResources = async () => {
+const runResourceQuery = async (): Promise<Resource[]> => {
   if (!supabase) {
     console.error('Database: Supabase client not initialized')
-    return
+    return []
   }
 
   try {
@@ -362,8 +362,7 @@ const fetchResources = async () => {
     }
 
     if (!data) {
-      resources.value = [];
-      return;
+      return [];
     }
 
     
@@ -415,23 +414,30 @@ const fetchResources = async () => {
       
     }
 
-    resources.value = processedData
-
-    // Update use counts
-    await fetchUseCounts()
+    return processedData
 
   } catch (error) {
     console.error('Database: Error fetching resources:', error)
-    resources.value = []
+    return []
   }
+}
+
+// Assign query results to state and refresh use counts (used for interactive updates)
+const fetchResources = async () => {
+  resources.value = await runResourceQuery()
+  await fetchUseCounts()
 }
 
 // Initialize Supabase
 onMounted(async () => {
   if (supabase) {
     isSupabaseReady.value = true
-    await fetchResources()
-  } else {
+    // Resources are populated server-side via useAsyncData; only refetch if empty
+    if (resources.value.length) {
+      await fetchUseCounts()
+    } else {
+      await fetchResources()
+    }
   }
 })
 
@@ -649,6 +655,16 @@ const getResourceDetailUrl = (resource: Resource): string => {
   
   const basePath = typePathMap[resource.type.slug] || '/software'
   return `${basePath}/${resource.slug}`
+}
+
+// Fetch initial resources server-side so crawlers receive the full list in HTML
+const { data: ssrResources } = await useAsyncData<Resource[]>(
+  `software-resources-${props.type ?? 'all'}`,
+  () => runResourceQuery(),
+  { default: () => [] as Resource[] }
+)
+if (ssrResources.value) {
+  resources.value = ssrResources.value
 }
 
 // Expose methods and state for parent components
