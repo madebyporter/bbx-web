@@ -285,18 +285,30 @@
         <div class="flex flex-col overflow-auto">
           <h2 class="text-lg lg:text-xl font-bold truncate">Music</h2>
         </div>
-        <div class="flex items-stretch gap-4">
+        <div class="flex items-stretch gap-2">
           <p class="text-sm text-neutral-500 flex items-center">
             {{ filteredTracks.length }} {{ filteredTracks.length === 1 ? 'track' : 'tracks' }}
           </p>
-          <Button
-            variant="secondary"
-            size="sm"
-            class="btn px-3! py-1.5! text-sm h-full max-h-10 self-stretch"
-            @click="handleOpenFilterSort"
-          >
-            Filter & Sort
-          </Button>
+          <div id="ui_filter" class="flex items-stretch gap-px group/filter">
+            <Button
+              variant="secondary"
+              size="sm"
+              class="btn px-3! py-1.5! text-sm h-full max-h-10 self-stretch group-hover/filter:bg-neutral-600"
+              @click="handleOpenFilterSort"
+            >
+              Filter & Sort
+            </Button>
+            <Button
+              v-if="hasActiveFilterSort"
+              variant="secondary"
+              size="sm"
+              class="btn px-2.5! py-1.5! text-sm h-full max-h-10 self-stretch shrink-0 group-hover/filter:bg-neutral-600"
+              title="Clear filters"
+              @click="handleClearFilterSort"
+            >
+              <Xmark class="w-4 h-4" />
+            </Button>
+          </div>
           <Button
             v-if="isOwnProfile && isAudioPro"
             variant="secondary"
@@ -341,7 +353,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onActivated, onUnmounted, inject, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onActivated, onUnmounted, inject, watch, nextTick, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -356,6 +368,11 @@ import {
   loadStoredAnalyticsRangeLabel,
   useTrackAnalyticsData,
 } from '~/composables/useTrackAnalyticsData'
+import {
+  parseFilterSortParams,
+  useFilterSortCookie,
+  type FilterSortParams,
+} from '~/composables/useFilterSortPersistence'
 import { getUniqueGroupTracks } from '~/utils/uniqueGroupShuffle'
 import { usePlayer } from '~/composables/usePlayer'
 import gsap from 'gsap'
@@ -373,6 +390,9 @@ const unregisterContextItems = inject<() => void>('unregisterContextItems')
 const registerFiltersAndSortHandler = inject<(handler: (params: any) => void) => void>('registerFiltersAndSortHandler')
 const unregisterFiltersAndSortHandler = inject<() => void>('unregisterFiltersAndSortHandler')
 const openFilterModal = inject<() => void>('openFilterModal')
+const clearFilterSort = inject<(() => void) | null>('clearFilterSort', null)
+const hasActiveFilterSort = inject<ComputedRef<boolean>>('hasActiveFilterSort', computed(() => false))
+const musicFilterCookie = useFilterSortCookie('music')
 
 // Fetch initial profile data server-side for SEO
 const { data: initialData, refresh: refreshInitialData } = await useAsyncData(
@@ -535,7 +555,7 @@ const profileSocialLinks = ref<{
   [key: string]: string | undefined
 }>((initialData.value?.profile?.social_links as any) || {})
 const tracks = ref<any[]>(initialData.value?.tracks || [])
-const lastAppliedParams = ref<{ filters: any; sort: any } | null>(null)
+const lastAppliedParams = ref<FilterSortParams | null>(null)
 const loading = ref(false)
 // searchQuery removed - search is now handled by SearchModal
 const allSoftware = computed(() => softwareData.value || [])
@@ -1435,18 +1455,9 @@ const fetchSoftware = async () => {
 
 let fetchTracksRequestId = 0
 
-function loadPersistedFilterParams(): { filters: any; sort: any } | null {
+function loadPersistedFilterParams(): FilterSortParams | null {
   if (lastAppliedParams.value) return lastAppliedParams.value
-  if (typeof window === 'undefined') return null
-  try {
-    const saved = localStorage.getItem('filterSort_music')
-    if (!saved) return null
-    const parsed = JSON.parse(saved)
-    if (!parsed || (!parsed.sort && !parsed.filters)) return null
-    return parsed
-  } catch {
-    return null
-  }
+  return parseFilterSortParams(musicFilterCookie.value, 'music')
 }
 
 function hasActiveMusicFilters(params: { filters?: any }): boolean {
@@ -1537,22 +1548,13 @@ const fetchTracks = async () => {
     loading.value = true
   }
 
-  // Load saved sort preferences from localStorage
+  // Load saved sort preferences from cookie
   let sortBy = 'created_at'
   let sortDirection: 'asc' | 'desc' = 'desc'
-  if (typeof window !== 'undefined') {
-    try {
-      const savedFilters = localStorage.getItem('filterSort_music')
-      if (savedFilters) {
-        const parsed = JSON.parse(savedFilters)
-        if (parsed.sort) {
-          sortBy = parsed.sort.sortBy || 'created_at'
-          sortDirection = parsed.sort.sortDirection || 'desc'
-        }
-      }
-    } catch (e) {
-      console.error('fetchTracks: Error loading saved sort:', e)
-    }
+  const savedFilters = parseFilterSortParams(musicFilterCookie.value, 'music')
+  if (savedFilters) {
+    sortBy = savedFilters.sort.sortBy
+    sortDirection = savedFilters.sort.sortDirection
   }
 
   try {
@@ -1740,6 +1742,11 @@ const handleOpenFilterSort = () => {
   if (openFilterModal) {
     openFilterModal()
   }
+}
+
+const handleClearFilterSort = () => {
+  lastAppliedParams.value = null
+  clearFilterSort?.()
 }
 
 // Apply filters and sort to tracks

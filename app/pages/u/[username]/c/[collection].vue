@@ -21,7 +21,9 @@
         :analytics-mode="analyticsMode"
         analytics-page="collection"
         filter-context="music"
+        :show-clear-filters="hasActiveFilterSort"
         @open-filter-sort="handleOpenFilterSort"
+        @clear-filters="handleClearFilterSort"
         @open-settings="showSettingsDrawer = true"
         @update:analytics-mode="analyticsMode = $event"
       />
@@ -71,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch, type ComputedRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -88,6 +90,10 @@ import {
   useTrackAnalyticsData,
 } from '~/composables/useTrackAnalyticsData'
 import { getUniqueGroupTracks } from '~/utils/uniqueGroupShuffle'
+import {
+  parseFilterSortParams,
+  useFilterSortCookie,
+} from '~/composables/useFilterSortPersistence'
 
 const route = useRoute()
 const router = useRouter()
@@ -103,6 +109,9 @@ const unregisterSearchHandler = inject<() => void>('unregisterSearchHandler')
 const registerFiltersAndSortHandler = inject<(handler: (params: any) => void) => void>('registerFiltersAndSortHandler')
 const unregisterFiltersAndSortHandler = inject<() => void>('unregisterFiltersAndSortHandler')
 const openFilterModal = inject<() => void>('openFilterModal')
+const clearFilterSort = inject<(() => void) | null>('clearFilterSort', null)
+const hasActiveFilterSort = inject<ComputedRef<boolean>>('hasActiveFilterSort', computed(() => false))
+const musicFilterCookie = useFilterSortCookie('music')
 
 // Fetch initial collection data server-side for SEO
 const { data: initialData } = await useAsyncData(
@@ -599,6 +608,11 @@ const handleOpenFilterSort = () => {
   }
 }
 
+const handleClearFilterSort = () => {
+  lastAppliedParams.value = null
+  clearFilterSort?.()
+}
+
 // Apply filter and sort to a list (no fetch). Used when we have unfilteredTracks.
 function applyFiltersAndSortToList(list: any[], params: { filters: any; sort: any }): any[] {
   const { filters, sort } = params
@@ -805,19 +819,10 @@ onMounted(async () => {
     registerFiltersAndSortHandler(updateFiltersAndSort)
   }
 
-  // Apply saved filter/sort from localStorage so initial view matches user preference
-  if (typeof window !== 'undefined') {
-    try {
-      const saved = localStorage.getItem('filterSort_music')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed && (parsed.sort || parsed.filters)) {
-          await updateFiltersAndSort(parsed)
-        }
-      }
-    } catch (e) {
-      console.error('Collection page: Error applying saved filter/sort:', e)
-    }
+  // Apply saved filter/sort from cookie so initial view matches user preference
+  const saved = parseFilterSortParams(musicFilterCookie.value, 'music')
+  if (saved) {
+    await updateFiltersAndSort(saved)
   }
 
   // Listen for track updates

@@ -294,61 +294,57 @@
   </MasterDrawer>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import IconApple from './IconApple.vue'
 import IconWindows from './IconWindows.vue'
 import IconLinux from './IconLinux.vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { useAnalytics } from '~/composables/useAnalytics'
+import {
+  getDefaultFilterSortParams,
+  parseFilterSortParams,
+  useFilterSortCookie,
+  type FilterSortContext,
+  type FilterSortParams,
+} from '~/composables/useFilterSortPersistence'
 import { ref, onMounted, reactive, computed, watch } from 'vue'
 import MasterDrawer from './MasterDrawer.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 
-// Reference to the MasterDrawer component
-const drawerRef = ref(null)
-const showClearAllConfirm = ref(false)
-
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  context: {
-    type: String,
-    default: 'software',
-    validator: (value) => ['software', 'kits', 'music'].includes(value)
-  },
-  initialFilters: {
-    type: Object,
-    default: () => ({
-      price: { free: false, paid: false },
-      os: [],
-      tags: [],
-      // Music filters
-      genre: [],
-      bpm: { min: null, max: null },
-      key: [],
-      mood: [],
-      year: { min: null, max: null },
-      status: [],
-      latestVersionOnly: false
-    })
-  },
-  initialSort: {
-    type: Object,
-    default: () => ({
-      sortBy: 'created_at',
-      sortDirection: 'desc'
-    })
-  }
+const props = withDefaults(defineProps<{
+  show?: boolean
+  context?: FilterSortContext
+  initialFilters?: FilterSortParams['filters']
+  initialSort?: FilterSortParams['sort']
+}>(), {
+  show: false,
+  context: 'software',
+  initialFilters: () => getDefaultFilterSortParams().filters,
+  initialSort: () => getDefaultFilterSortParams().sort,
 })
 
-const emit = defineEmits(['update:show', 'apply-filters'])
+const emit = defineEmits<{
+  'update:show': [show: boolean]
+  'apply-filters': [params: FilterSortParams]
+}>()
+
+// Reference to the MasterDrawer component
+const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
+const showClearAllConfirm = ref(false)
+const musicFilterCookie = useFilterSortCookie('music')
+const softwareFilterCookie = useFilterSortCookie('software')
+const kitsFilterCookie = useFilterSortCookie('kits')
+
+const activeFilterCookie = computed(() => {
+  if (props.context === 'music') return musicFilterCookie
+  if (props.context === 'software') return softwareFilterCookie
+  return kitsFilterCookie
+})
 
 // Filter and sort state
 const sortBy = ref(props.initialSort.sortBy)
-const sortDirection = ref(props.initialSort.sortDirection)
+const sortDirection = ref<'asc' | 'desc'>(props.initialSort.sortDirection)
 const filters = reactive({
   // Software/Kits filters
   price: {
@@ -377,13 +373,33 @@ const filters = reactive({
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const tagInput = ref('')
-const availableTags = ref([])
-const filteredTags = ref([])
+const availableTags = ref<string[]>([])
+const filteredTags = ref<string[]>([])
 const showSuggestions = ref(false)
 const selectedTags = computed(() => filters.tags)
 
 // Status state
-const availableStatuses = ref([])
+const availableStatuses = ref<Array<{ id: number; name: string }>>([])
+
+function isTagRow(value: unknown): value is { name: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'name' in value &&
+    typeof value.name === 'string'
+  )
+}
+
+function isStatusRow(value: unknown): value is { id: number; name: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    typeof value.id === 'number' &&
+    'name' in value &&
+    typeof value.name === 'string'
+  )
+}
 
 // TODO: Consider extracting tag search functionality into a reusable composable
 // that both FilterSort and SubmitResource components can use
@@ -400,7 +416,8 @@ const fetchTags = async () => {
 
     if (error) throw error
     
-    availableTags.value = data
+    availableTags.value = (data || [])
+      .filter(isTagRow)
       .map(tag => tag.name)
       .sort((a, b) => a.localeCompare(b))
   } catch (error) {
@@ -432,9 +449,9 @@ const fetchStatuses = async () => {
         .eq('user_id', user.value.id)
         .order('name')
       
-      availableStatuses.value = newData || []
+      availableStatuses.value = (newData || []).filter(isStatusRow)
     } else {
-      availableStatuses.value = data
+      availableStatuses.value = data.filter(isStatusRow)
     }
   } catch (error) {
     console.error('FilterSort: Error fetching statuses:', error)
@@ -442,88 +459,81 @@ const fetchStatuses = async () => {
   }
 }
 
-// Load saved filters from localStorage
+// Reset form fields to defaults without persisting
+const resetFormToDefaults = () => {
+  const defaults = getDefaultFilterSortParams()
+  sortBy.value = defaults.sort.sortBy
+  sortDirection.value = defaults.sort.sortDirection
+  filters.price.free = defaults.filters.price.free
+  filters.price.paid = defaults.filters.price.paid
+  filters.os = [...defaults.filters.os]
+  filters.tags = [...defaults.filters.tags]
+  filters.genre = [...defaults.filters.genre]
+  filters.bpm.min = defaults.filters.bpm.min
+  filters.bpm.max = defaults.filters.bpm.max
+  filters.key = [...defaults.filters.key]
+  filters.mood = [...defaults.filters.mood]
+  filters.year.min = defaults.filters.year.min
+  filters.year.max = defaults.filters.year.max
+  filters.status = [...defaults.filters.status]
+  filters.latestVersionOnly = defaults.filters.latestVersionOnly
+}
+
+// Load saved filters from cookie
 const loadSavedFilters = () => {
-  if (typeof window === 'undefined') return // SSR guard
-  
   try {
-    const savedFiltersKey = `filterSort_${props.context}`
-    const savedData = localStorage.getItem(savedFiltersKey)
-    
-    if (savedData) {
-      const parsed = JSON.parse(savedData)
-      
-      // Restore sort
-      if (parsed.sort) {
-        sortBy.value = parsed.sort.sortBy || 'created_at'
-        sortDirection.value = parsed.sort.sortDirection || 'desc'
-      }
-      
-      // Restore filters based on context
-      if (parsed.filters) {
-        // Software/Kits filters
-        if (props.context !== 'music') {
-          if (parsed.filters.price) {
-            filters.price.free = parsed.filters.price.free || false
-            filters.price.paid = parsed.filters.price.paid || false
-          }
-          if (parsed.filters.os) filters.os = [...parsed.filters.os]
-          if (parsed.filters.tags) filters.tags = [...parsed.filters.tags]
-        }
-        
-        // Music filters
-        if (props.context === 'music') {
-          if (parsed.filters.genre) filters.genre = [...parsed.filters.genre]
-          if (parsed.filters.bpm) {
-            filters.bpm.min = parsed.filters.bpm.min
-            filters.bpm.max = parsed.filters.bpm.max
-          }
-          if (parsed.filters.key) filters.key = [...parsed.filters.key]
-          if (parsed.filters.mood) filters.mood = [...parsed.filters.mood]
-          if (parsed.filters.year) {
-            filters.year.min = parsed.filters.year.min
-            filters.year.max = parsed.filters.year.max
-          }
-          if (parsed.filters.status) filters.status = [...parsed.filters.status]
-          if (parsed.filters.latestVersionOnly != null) {
-            filters.latestVersionOnly = parsed.filters.latestVersionOnly
-          }
-        }
-      }
+    const parsed = parseFilterSortParams(activeFilterCookie.value.value, props.context)
+
+    if (!parsed) {
+      resetFormToDefaults()
+      return
+    }
+
+    sortBy.value = parsed.sort.sortBy
+    sortDirection.value = parsed.sort.sortDirection
+
+    if (props.context !== 'music') {
+      filters.price.free = parsed.filters.price.free
+      filters.price.paid = parsed.filters.price.paid
+      filters.os = [...parsed.filters.os]
+      filters.tags = [...parsed.filters.tags]
+    } else {
+      filters.genre = [...parsed.filters.genre]
+      filters.bpm.min = parsed.filters.bpm.min
+      filters.bpm.max = parsed.filters.bpm.max
+      filters.key = [...parsed.filters.key]
+      filters.mood = [...parsed.filters.mood]
+      filters.year.min = parsed.filters.year.min
+      filters.year.max = parsed.filters.year.max
+      filters.status = [...parsed.filters.status]
+      filters.latestVersionOnly = parsed.filters.latestVersionOnly
     }
   } catch (error) {
     console.error('FilterSort: Error loading saved filters:', error)
   }
 }
 
-// Save filters to localStorage
+// Save filters to cookie
 const saveFilters = () => {
-  if (typeof window === 'undefined') return // SSR guard
-  
   try {
-    const savedFiltersKey = `filterSort_${props.context}`
-    const dataToSave = {
+    activeFilterCookie.value.value = {
       sort: {
         sortBy: sortBy.value,
-        sortDirection: sortDirection.value
+        sortDirection: sortDirection.value,
       },
       filters: {
-        // Software/Kits filters
         price: { ...filters.price },
         os: [...filters.os],
         tags: [...filters.tags],
-        // Music filters
         genre: [...filters.genre],
         bpm: { ...filters.bpm },
         key: [...filters.key],
         mood: [...filters.mood],
         year: { ...filters.year },
         status: [...filters.status],
-        latestVersionOnly: filters.latestVersionOnly
-      }
+        latestVersionOnly: filters.latestVersionOnly,
+      },
     }
-    
-    localStorage.setItem(savedFiltersKey, JSON.stringify(dataToSave))
   } catch (error) {
     console.error('FilterSort: Error saving filters:', error)
   }
@@ -558,6 +568,12 @@ onMounted(async () => {
   loadSavedFilters()
 })
 
+watch(() => props.show, (isOpen) => {
+  if (isOpen) {
+    loadSavedFilters()
+  }
+})
+
 // Filter tags based on input
 const searchTags = () => {
   // When the input is empty, close the dropdown
@@ -589,7 +605,7 @@ const searchTags = () => {
 }
 
 // Select a tag from the dropdown
-const selectTag = (tag) => {
+const selectTag = (tag: string) => {
   if (!selectedTags.value.includes(tag)) {
     filters.tags.push(tag)
   }
@@ -610,7 +626,7 @@ const addTag = () => {
 }
 
 // Remove a tag
-const removeTag = (tag) => {
+const removeTag = (tag: string) => {
   filters.tags = filters.tags.filter(t => t !== tag)
 }
 
@@ -639,7 +655,7 @@ const applyFiltersAndSort = () => {
     })
   }
 
-  const filterSortParams = {
+  const filterSortParams: FilterSortParams = {
     sort: {
       sortBy: sortBy.value,
       sortDirection: sortDirection.value
@@ -661,16 +677,13 @@ const applyFiltersAndSort = () => {
   }
   
   
-  // Save filters to localStorage for persistence
+  // Save filters to cookie for persistence
   saveFilters()
   
   // First emit the filters
   emit('apply-filters', filterSortParams)
   
   // Then trigger the close animation
-  // We need a fake event since MasterDrawer's handleClose expects one
-  const fakeEvent = { preventDefault: () => {}, stopPropagation: () => {} }
-  
   if (drawerRef.value?.$el) {
     // If we have access to the internal animateOut method, use it
     if (typeof drawerRef.value.animateOut === 'function') {
@@ -687,25 +700,7 @@ const applyFiltersAndSort = () => {
 
 // Clear all filters and reset to defaults (called after user confirms)
 const performClearAll = () => {
-  sortBy.value = 'created_at'
-  sortDirection.value = 'desc'
-  // Software/Kits filters
-  filters.price.free = false
-  filters.price.paid = false
-  filters.os = []
-  filters.tags = []
-  // Music filters
-  filters.genre = []
-  filters.bpm.min = null
-  filters.bpm.max = null
-  filters.key = []
-  filters.mood = []
-  filters.year.min = null
-  filters.year.max = null
-  filters.status = []
-  filters.latestVersionOnly = false
-
-  // Save cleared state to localStorage
+  resetFormToDefaults()
   saveFilters()
 }
 </script>
