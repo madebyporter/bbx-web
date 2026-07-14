@@ -5,8 +5,8 @@
   NODE_VERSION = "20.19.0"
   # SEO debug snapshots; omit from secrets scan if re-added accidentally
   SECRETS_SCAN_OMIT_PATHS = "diagnosis-output/**"
-  # Public client env vars are inlined in the bundle by design (not secrets)
-  SECRETS_SCAN_OMIT_KEYS = "NUXT_PUBLIC_POSTHOG_HOST"
+  # Public client env vars / site origin are inlined or hardcoded by design (not secrets)
+  SECRETS_SCAN_OMIT_KEYS = "NUXT_PUBLIC_POSTHOG_HOST,SITE_URL"
 
 [dev]
   targetPort = 3000
