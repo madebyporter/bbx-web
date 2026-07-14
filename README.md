@@ -195,3 +195,6 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 - 0.54.0
   - Server-side rendering of software and kits list pages for crawlers
   - SEO metadata (title, description, canonical, Open Graph) on list pages
+- 0.54.1
+  - Validated persisted filter and sort data at runtime
+  - Enabled TypeScript checks for filter controls
