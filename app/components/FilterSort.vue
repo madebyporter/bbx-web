@@ -294,7 +294,7 @@
   </MasterDrawer>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import IconApple from './IconApple.vue'
 import IconWindows from './IconWindows.vue'
 import IconLinux from './IconLinux.vue'
