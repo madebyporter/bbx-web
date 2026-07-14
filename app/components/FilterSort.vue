@@ -381,6 +381,26 @@ const selectedTags = computed(() => filters.tags)
 // Status state
 const availableStatuses = ref<Array<{ id: number; name: string }>>([])
 
+function isTagRow(value: unknown): value is { name: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'name' in value &&
+    typeof value.name === 'string'
+  )
+}
+
+function isStatusRow(value: unknown): value is { id: number; name: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    typeof value.id === 'number' &&
+    'name' in value &&
+    typeof value.name === 'string'
+  )
+}
+
 // TODO: Consider extracting tag search functionality into a reusable composable
 // that both FilterSort and SubmitResource components can use
 
@@ -396,7 +416,8 @@ const fetchTags = async () => {
 
     if (error) throw error
     
-    availableTags.value = data
+    availableTags.value = (data || [])
+      .filter(isTagRow)
       .map(tag => tag.name)
       .sort((a, b) => a.localeCompare(b))
   } catch (error) {
@@ -428,9 +449,9 @@ const fetchStatuses = async () => {
         .eq('user_id', user.value.id)
         .order('name')
       
-      availableStatuses.value = newData || []
+      availableStatuses.value = (newData || []).filter(isStatusRow)
     } else {
-      availableStatuses.value = data
+      availableStatuses.value = data.filter(isStatusRow)
     }
   } catch (error) {
     console.error('FilterSort: Error fetching statuses:', error)
@@ -584,7 +605,7 @@ const searchTags = () => {
 }
 
 // Select a tag from the dropdown
-const selectTag = (tag) => {
+const selectTag = (tag: string) => {
   if (!selectedTags.value.includes(tag)) {
     filters.tags.push(tag)
   }
@@ -605,7 +626,7 @@ const addTag = () => {
 }
 
 // Remove a tag
-const removeTag = (tag) => {
+const removeTag = (tag: string) => {
   filters.tags = filters.tags.filter(t => t !== tag)
 }
 
