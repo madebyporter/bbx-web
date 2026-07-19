@@ -195,3 +195,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 - 0.54.0
   - Server-side rendering of software and kits list pages for crawlers
   - SEO metadata (title, description, canonical, Open Graph) on list pages
+- 0.54.1
+  - Fixed admin Manage Submissions empty queue when admin role loads after mount
