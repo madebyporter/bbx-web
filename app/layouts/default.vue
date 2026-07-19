@@ -164,6 +164,12 @@ import { useAnalytics } from '~/composables/useAnalytics'
 import { useToast } from '~/composables/useToast'
 import { setPendingSignupEmail } from '~/utils/authStorage'
 import { usePlayer } from '~/composables/usePlayer'
+import {
+  getDefaultFilterSortParams,
+  hasActiveFilterSort,
+  migrateFilterSortFromLocalStorage,
+  useFilterSortCookie,
+} from '~/composables/useFilterSortPersistence'
 import Player from '~/components/Player.vue'
 import Toast from '~/components/Toast.vue'
 import TrackCommentsDrawer from '~/components/TrackCommentsDrawer.vue'
@@ -216,6 +222,7 @@ interface FilterSortParams {
     mood: string[]
     year: { min: number | null; max: number | null }
     latestVersionOnly?: boolean
+    status?: (number | null)[]
   }
 }
 
@@ -321,8 +328,54 @@ const currentFilters = ref({
   key: [] as string[],
   mood: [] as string[],
   year: { min: null as number | null, max: null as number | null },
-  latestVersionOnly: false
+  latestVersionOnly: false,
+  status: [] as (number | null)[],
 })
+
+const musicFilterCookie = useFilterSortCookie('music')
+const softwareFilterCookie = useFilterSortCookie('software')
+const kitsFilterCookie = useFilterSortCookie('kits')
+
+const activeFilterSortCookie = computed(() => {
+  const ctx = filterSortContext.value
+  if (ctx === 'music') return musicFilterCookie
+  if (ctx === 'software') return softwareFilterCookie
+  if (ctx === 'kits') return kitsFilterCookie
+  return null
+})
+
+const hasActiveFilterSortState = computed(() => {
+  const ctx = filterSortContext.value
+  if (!ctx) return false
+  return hasActiveFilterSort(activeFilterSortCookie.value?.value, ctx)
+})
+
+const clearFilterSort = () => {
+  const ctx = filterSortContext.value
+  if (!ctx) return
+
+  const cookie = activeFilterSortCookie.value
+  if (cookie) {
+    cookie.value = null
+  }
+
+  const defaults = getDefaultFilterSortParams()
+  currentSort.value = { ...defaults.sort }
+  currentFilters.value = {
+    price: { ...defaults.filters.price },
+    os: [...defaults.filters.os],
+    tags: [...defaults.filters.tags],
+    genre: [...defaults.filters.genre],
+    bpm: { ...defaults.filters.bpm },
+    key: [...defaults.filters.key],
+    mood: [...defaults.filters.mood],
+    year: { ...defaults.filters.year },
+    latestVersionOnly: defaults.filters.latestVersionOnly,
+    status: [...defaults.filters.status],
+  }
+
+  handleFiltersAndSort(defaults)
+}
 
 const handleToggleNav = () => {
   if (navRef.value && navRef.value.toggleMobileNav) {
@@ -566,7 +619,8 @@ const handleFiltersAndSort = (params: FilterSortParams) => {
       key: [...(params.filters.key || [])],
       mood: [...(params.filters.mood || [])],
       year: { ...(params.filters.year || {}) },
-      latestVersionOnly: params.filters.latestVersionOnly ?? false
+      latestVersionOnly: params.filters.latestVersionOnly ?? false,
+      status: [...(params.filters.status || [])],
     }
   }
   
@@ -725,6 +779,8 @@ const openAuthModal = (mode: 'signin' | 'signup' | 'forgot' = 'signin') => {
 
 // Provide functions for child layouts
 provide('openFilterModal', openFilterModal)
+provide('clearFilterSort', clearFilterSort)
+provide('hasActiveFilterSort', hasActiveFilterSortState)
 provide('handleSearch', handleSearch)
 provide('registerSearchHandler', registerSearchHandler)
 provide('unregisterSearchHandler', unregisterSearchHandler)
@@ -750,6 +806,10 @@ onMounted(async () => {
   } catch (error) {
     console.error('Auth init error:', error)
   }
+
+  migrateFilterSortFromLocalStorage('music', musicFilterCookie)
+  migrateFilterSortFromLocalStorage('software', softwareFilterCookie)
+  migrateFilterSortFromLocalStorage('kits', kitsFilterCookie)
 
   openAuthFromQuery()
   

@@ -42,9 +42,21 @@
             <p class="text-sm text-neutral-500">
               {{ tracks.length }} {{ tracks.length === 1 ? 'track' : 'tracks' }}
             </p>
-            <Button variant="secondary" class="btn !px-3 !py-1.5 text-sm" @click="handleOpenFilterSort">
-              Filter & Sort
-            </Button>
+            <div class="flex items-center gap-1">
+              <Button variant="secondary" class="btn !px-3 !py-1.5 text-sm" @click="handleOpenFilterSort">
+                Filter & Sort
+              </Button>
+              <Button
+                v-if="hasActiveFilterSort"
+                variant="secondary"
+                size="sm"
+                class="btn px-2.5! py-1.5! text-sm shrink-0"
+                title="Clear filters"
+                @click="handleClearFilterSort"
+              >
+                <Xmark class="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -61,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, type ComputedRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -69,6 +81,8 @@ import TracksTable from '~/components/TracksTable.vue'
 import StemPlayer from '~/components/StemPlayer.vue'
 import LoadingLogo from '~/components/LoadingLogo.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
+import { useFilterSortCookie } from '~/composables/useFilterSortPersistence'
+import { Xmark } from '@iconoir/vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -83,11 +97,18 @@ const unregisterContextItems = inject<() => void>('unregisterContextItems')
 const registerFiltersAndSortHandler = inject<(handler: (params: any) => void) => void>('registerFiltersAndSortHandler')
 const unregisterFiltersAndSortHandler = inject<() => void>('unregisterFiltersAndSortHandler')
 const openFilterModal = inject<() => void>('openFilterModal')
+const clearFilterSort = inject<(() => void) | null>('clearFilterSort', null)
+const hasActiveFilterSort = inject<ComputedRef<boolean>>('hasActiveFilterSort', computed(() => false))
+const musicFilterCookie = useFilterSortCookie('music')
 
 const handleOpenFilterSort = () => {
   if (openFilterModal) {
     openFilterModal()
   }
+}
+
+const handleClearFilterSort = () => {
+  clearFilterSort?.()
 }
 
 // Fetch initial group data server-side for SEO
@@ -175,21 +196,14 @@ const fetchGroupTracks = async () => {
     
     profileUserId.value = profileData.id as string
     
-    // Load saved sort preferences from localStorage
+    // Load saved sort preferences from cookie
     let sortBy = 'version'
     let sortDirection: 'asc' | 'desc' = 'desc'
-    
-    try {
-      const savedFilters = localStorage.getItem('filterSort_music')
-      if (savedFilters) {
-        const parsed = JSON.parse(savedFilters)
-        if (parsed.sort) {
-          sortBy = parsed.sort.sortBy || 'version'
-          sortDirection = parsed.sort.sortDirection || 'desc'
-        }
-      }
-    } catch (e) {
-      console.error('Group page: Error loading saved sort:', e)
+
+    const savedFilters = musicFilterCookie.value
+    if (savedFilters?.sort) {
+      sortBy = savedFilters.sort.sortBy || 'version'
+      sortDirection = savedFilters.sort.sortDirection || 'desc'
     }
     
     // Fetch all tracks in this group

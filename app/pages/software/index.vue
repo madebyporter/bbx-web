@@ -6,7 +6,9 @@
       :count="resourceCount"
       item-label="item"
       filter-context="software"
+      :show-clear-filters="hasActiveFilterSort"
       @open-filter-sort="handleOpenFilterSort"
+      @clear-filters="handleClearFilterSort"
     />
     <Database 
       ref="database" 
@@ -19,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, inject, onMounted, onUnmounted, computed, watch, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import Database from '~/components/Database.vue'
@@ -31,6 +33,30 @@ definePageMeta({
 })
 
 const route = useRoute()
+
+// SSR SEO metadata for the software list page
+const siteOrigin = useSiteOrigin()
+const softwareCanonical = `${siteOrigin}/software`
+const softwareSeoTitle = 'Music Production Software'
+const softwareSeoDescription = 'Browse a curated collection of music production software — DAWs, synths, samplers, plugins, and audio tools used by producers and engineers.'
+
+useSeoMeta({
+  title: softwareSeoTitle,
+  description: softwareSeoDescription,
+  ogTitle: `${softwareSeoTitle} | Beatbox`,
+  ogDescription: softwareSeoDescription,
+  ogUrl: softwareCanonical,
+  ogType: 'website',
+  twitterCard: 'summary_large_image',
+  twitterTitle: `${softwareSeoTitle} | Beatbox`,
+  twitterDescription: softwareSeoDescription,
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: softwareCanonical, key: 'canonical' }
+  ]
+})
 
 // Debug logging
 
@@ -72,6 +98,8 @@ const resourceCount = computed(() => {
 const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
 const unregisterContextItems = inject<() => void>('unregisterContextItems')
 const openFilterModal = inject<() => void>('openFilterModal')
+const clearFilterSort = inject<(() => void) | null>('clearFilterSort', null)
+const hasActiveFilterSort = inject<ComputedRef<boolean>>('hasActiveFilterSort', computed(() => false))
 
 defineEmits(['edit-resource', 'show-signup'])
 
@@ -80,6 +108,10 @@ const handleOpenFilterSort = () => {
   if (openFilterModal) {
     openFilterModal()
   }
+}
+
+const handleClearFilterSort = () => {
+  clearFilterSort?.()
 }
 
 // Watch resources to update context items for search

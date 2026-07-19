@@ -10,15 +10,26 @@
       <p class="text-sm text-neutral-500 hidden md:flex items-center">
         {{ count }} {{ count === 1 ? itemLabel : itemLabel + 's' }}
       </p>
-      <Button
-        v-if="filterContext"
-        variant="secondary"
-        size="sm"
-        class="btn px-3! py-1.5! text-sm h-full max-h-10 self-stretch"
-        @click="emit('open-filter-sort')"
-      >
-        Filter & Sort
-      </Button>
+      <div v-if="filterContext" id="ui_filter" class="flex items-stretch gap-px">
+        <Button
+          variant="secondary"
+          size="sm"
+          class="btn px-3! py-1.5! text-sm h-full max-h-10 self-stretch"
+          @click="emit('open-filter-sort')"
+        >
+          Filter & Sort
+        </Button>
+        <Button
+          v-if="showClearFilters"
+          variant="secondary"
+          size="sm"
+          class="btn px-2.5! py-1.5! text-sm h-full max-h-10 self-stretch shrink-0"
+          title="Clear filters"
+          @click="emit('clear-filters')"
+        >
+          <Xmark class="w-4 h-4" />
+        </Button>
+      </div>
       <Button
         v-if="showAnalyticsToggle"
         variant="secondary"
@@ -83,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { StatsReport } from '@iconoir/vue'
+import { StatsReport, Xmark } from '@iconoir/vue'
 import { useAnalytics } from '~/composables/useAnalytics'
 
 const props = withDefaults(defineProps<{
@@ -100,6 +111,7 @@ const props = withDefaults(defineProps<{
   showAnalyticsToggle?: boolean
   analyticsMode?: boolean
   analyticsPage?: 'profile' | 'collection'
+  showClearFilters?: boolean
 }>(), {
   itemLabel: 'track',
   showViewModeSelector: true,
@@ -108,6 +120,7 @@ const props = withDefaults(defineProps<{
   showAnalyticsToggle: false,
   analyticsMode: false,
   analyticsPage: 'profile',
+  showClearFilters: false,
 })
 
 const { capture } = useAnalytics()
@@ -117,6 +130,7 @@ const emit = defineEmits<{
   'update:viewMode': [value: 'final' | 'all']
   'update:analyticsMode': [value: boolean]
   'open-filter-sort': []
+  'clear-filters': []
   'open-settings': []
 }>()
 
