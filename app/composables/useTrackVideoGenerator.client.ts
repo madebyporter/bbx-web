@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { fetchFile, toBlobURL } from '@ffmpeg/util'
+import { fetchFile } from '@ffmpeg/util'
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 
 export interface TrackVideoGenerationResult {
@@ -405,21 +405,61 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
 }
 
-async function toBlobURLWithProgress(
+async function fetchToBlobURL(
   url: string,
   mimeType: string,
   label: string,
-  onProgress?: (progress: TrackVideoGenerationProgress) => void
+  onProgress?: (progress: TrackVideoGenerationProgress) => void,
+  progressOffset = 0,
+  progressScale = 25
 ): Promise<string> {
-  return toBlobURL(url, mimeType, true, ({ received, total, done }) => {
-    if (!onProgress || done) return
-    const totalLabel = total > 0 ? formatBytes(total) : '~31MB'
-    onProgress({
-      stage: 'loading-encoder',
-      progress: total > 0 ? Math.min(50, Math.round((received / total) * 50)) : 30,
-      message: `Downloading ${label} (${formatBytes(received)} / ${totalLabel})...`,
-    })
-  })
+  const response = await fetch(url, { cache: 'no-store' })
+  if (!response.ok) {
+    throw new Error(`Failed to download ${label} (${response.status})`)
+  }
+
+  const total = Number(response.headers.get('content-length') || 0)
+  const reader = response.body?.getReader()
+
+  if (!reader) {
+    const buffer = await response.arrayBuffer()
+    return URL.createObjectURL(new Blob([buffer], { type: mimeType }))
+  }
+
+  const chunks: Uint8Array[] = []
+  let received = 0
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    if (!value) continue
+
+    chunks.push(value)
+    received += value.length
+
+    if (onProgress) {
+      const totalLabel = total > 0 ? formatBytes(total) : '...'
+      const progress =
+        total > 0
+          ? progressOffset + Math.round((received / total) * progressScale)
+          : progressOffset + Math.round(progressScale / 2)
+
+      onProgress({
+        stage: 'loading-encoder',
+        progress: Math.min(progressOffset + progressScale, progress),
+        message: `Downloading ${label} (${formatBytes(received)}${total > 0 ? ` / ${totalLabel}` : ''})...`,
+      })
+    }
+  }
+
+  const buffer = new Uint8Array(received)
+  let offset = 0
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset)
+    offset += chunk.length
+  }
+
+  return URL.createObjectURL(new Blob([buffer], { type: mimeType }))
 }
 
 async function loadFfmpeg(
@@ -468,10 +508,22 @@ async function loadFfmpeg(
               : 'Downloading encoder from CDN (~31MB)...',
         })
 
-        const [coreURL, wasmURL] = await Promise.all([
-          toBlobURLWithProgress(coreJs, 'text/javascript', 'encoder', onProgress),
-          toBlobURLWithProgress(coreWasm, 'application/wasm', 'encoder WASM', onProgress),
-        ])
+        const coreURL = await fetchToBlobURL(
+          coreJs,
+          'text/javascript',
+          'encoder',
+          onProgress,
+          20,
+          15
+        )
+        const wasmURL = await fetchToBlobURL(
+          coreWasm,
+          'application/wasm',
+          'encoder WASM',
+          onProgress,
+          35,
+          20
+        )
 
         onProgress?.({
           stage: 'loading-encoder',
