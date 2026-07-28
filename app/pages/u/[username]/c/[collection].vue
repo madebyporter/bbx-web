@@ -1,8 +1,18 @@
 <template>
   <div class="flex flex-col gap-0 text-neutral-300 grow h-fit">
-    <div v-if="loading" class="flex items-center justify-center p-8 w-full h-full grow">
-      <LoadingLogo />
-    </div>
+    <template v-if="!pageShellReady">
+      <div class="p-4 border-b border-neutral-800">
+        <div class="h-8 w-48 max-w-full rounded bg-neutral-800 animate-pulse mb-2" />
+        <div class="h-4 w-32 rounded bg-neutral-800 animate-pulse" />
+      </div>
+      <TracksTableSkeleton
+        :is-own-profile="isOwnProfile"
+        :profile-user-type="profileUserType"
+        :show-collection="isOwnProfile"
+        :show-status="isOwnProfile && profileUserType === 'audio_pro'"
+        :show-actions="!!(user || isOwnProfile)"
+      />
+    </template>
 
     <div v-else-if="!collection" class="text-neutral-500 p-4">
       Collection not found.
@@ -82,8 +92,8 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import { getTrackVisibilityCondition } from '~/utils/trackVisibility'
 import { usePlayer } from '~/composables/usePlayer'
-import LoadingLogo from '~/components/LoadingLogo.vue'
 import CollectionTracksTable from '~/components/CollectionTracksTable.vue'
+import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 import CollectionSettingsDrawer from '~/components/CollectionSettingsDrawer.vue'
 import TrackAnalyticsDateFilter from '~/components/TrackAnalyticsDateFilter.vue'
 import TrackAnalyticsSummary from '~/components/TrackAnalyticsSummary.vue'
@@ -95,6 +105,7 @@ import {
 import { getUniqueGroupTracks } from '~/utils/uniqueGroupShuffle'
 import { TRACK_PAGE_SIZE } from '~/utils/trackPagination'
 import { useFilterSortCookie } from '~/composables/useFilterSortPersistence'
+import { usePageShellReady } from '~/composables/usePageShellReady'
 
 const route = useRoute()
 const router = useRouter()
@@ -163,7 +174,7 @@ const tracks = ref<any[]>([])
 const unfilteredTracks = ref<any[]>([]) // full list from fetch; filters are applied on top of this
 const lastAppliedParams = ref<{ filters: any; sort: any } | null>(null)
 const loading = ref(false)
-const tracksLoading = ref(false)
+const tracksLoading = ref(true)
 const loadingMore = ref(false)
 const visibleCount = ref(TRACK_PAGE_SIZE)
 const profileUserId = ref<string | null>(initialData.value?.profileUserId || null)
@@ -180,6 +191,9 @@ const isOwnProfile = computed(() => {
 const isCollectionOwner = computed(() => {
   return !!(user.value && collection.value && user.value.id === collection.value.user_id)
 })
+
+const pageShellReady = computed(() => !loading.value && !tracksLoading.value)
+usePageShellReady(pageShellReady)
 
 const displayedTracks = computed(() => {
   let filtered = tracks.value

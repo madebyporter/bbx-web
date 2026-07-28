@@ -1,6 +1,25 @@
 <template>
   <div class="flex flex-col gap-0 text-neutral-300 grow min-w-0">
+    <template v-if="!pageShellReady">
+      <ProfileHeaderSkeleton :show-members="isOwnProfile && isAudioPro" />
+      <div class="grow min-w-0 overflow-x-hidden border-t border-neutral-800">
+        <div class="flex flex-row justify-between items-center gap-4 p-4 border-b border-neutral-800">
+          <div class="h-6 w-16 rounded bg-neutral-800 animate-pulse" />
+          <div class="flex items-stretch gap-2">
+            <div class="h-9 w-24 rounded bg-neutral-800 animate-pulse" />
+          </div>
+        </div>
+        <TracksTableSkeleton
+          :is-own-profile="isOwnProfile"
+          :profile-user-type="profileUserType"
+          :show-collection="skeletonShowCollection"
+          :show-status="skeletonShowStatus"
+          :show-actions="skeletonShowActions"
+        />
+      </div>
+    </template>
 
+    <template v-else>
     <!-- Profile Header -->
     <div class="flex flex-col md:flex-row justify-start md:justify-between items-stretch gap-2 p-4">
       <div class="flex flex-col gap-2 overflow-auto">
@@ -356,6 +375,7 @@
         @load-more="handleLoadMore"
       />
     </div>
+    </template>
   </div>
 </template>
 
@@ -366,6 +386,8 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import { getTrackVisibilityCondition } from '~/utils/trackVisibility'
 import TracksTable from '~/components/TracksTable.vue'
+import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
+import ProfileHeaderSkeleton from '~/components/ProfileHeaderSkeleton.vue'
 import ManageMembers from '~/components/ManageMembers.vue'
 import TrackAnalyticsDateFilter from '~/components/TrackAnalyticsDateFilter.vue'
 import TrackAnalyticsSummary from '~/components/TrackAnalyticsSummary.vue'
@@ -1319,6 +1341,30 @@ const isOwnProfile = computed(() => {
 const isAudioPro = computed(() => {
   return profileUserType.value === 'audio_pro'
 })
+
+const pageShellReady = computed(() => isReady.value && !!profileUserId.value && !loading.value)
+usePageShellReady(pageShellReady)
+
+const skeletonShowCollection = computed(
+  () =>
+    !analyticsMode.value &&
+    (isOwnProfile.value || (!isReady.value && profileUserType.value === 'audio_pro'))
+)
+const skeletonShowStatus = computed(
+  () =>
+    !analyticsMode.value &&
+    profileUserType.value === 'audio_pro' &&
+    (isOwnProfile.value || !isReady.value)
+)
+const skeletonShowActions = computed(
+  () =>
+    !isReady.value ||
+    !!(
+      user.value ||
+      isOwnProfile.value ||
+      (viewerUserType.value === 'creator' && profileUserType.value === 'audio_pro')
+    )
+)
 
 // Fetch viewer's user type when user is logged in
 const fetchViewerUserType = async () => {

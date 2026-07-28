@@ -50,6 +50,7 @@ export default defineNuxtConfig({
       SITE_URL: process.env.SITE_URL,
       posthogKey: process.env.NUXT_PUBLIC_POSTHOG_KEY,
       posthogHost: process.env.NUXT_PUBLIC_POSTHOG_HOST,
+      ga4MeasurementId: process.env.NUXT_PUBLIC_GA4_MEASUREMENT_ID || 'G-880GG6FBWS',
     }
   },
   
@@ -104,6 +105,7 @@ export default defineNuxtConfig({
   
   plugins: [
     '~/plugins/supabase.client.ts',
+    '~/plugins/ga4.client.ts',
     '~/plugins/posthog.client.ts',
     '~/plugins/service-worker.client.ts'
   ],

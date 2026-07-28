@@ -16,9 +16,12 @@ function isProductionHost(host: string) {
 export function useSiteOrigin(): string {
   if (import.meta.server) {
     try {
-      const { origin, host } = useRequestURL()
-      if (isProductionHost(host) || isLocalHost(host)) {
-        return origin
+      const { host } = useRequestURL()
+      if (isProductionHost(host)) {
+        return PRODUCTION_ORIGIN
+      }
+      if (isLocalHost(host)) {
+        return useRequestURL().origin
       }
     } catch {
       // fall through to production origin
@@ -27,7 +30,10 @@ export function useSiteOrigin(): string {
 
   if (import.meta.client && typeof window !== 'undefined') {
     const host = window.location.host
-    if (isProductionHost(host) || isLocalHost(host)) {
+    if (isProductionHost(host)) {
+      return PRODUCTION_ORIGIN
+    }
+    if (isLocalHost(host)) {
       return window.location.origin
     }
   }

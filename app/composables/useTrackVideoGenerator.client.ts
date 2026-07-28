@@ -158,7 +158,11 @@ export function resolveTrackVideoBackgroundColor(
 
 const CORE_JS = '/ffmpeg/ffmpeg-core.js'
 const CORE_WASM = '/ffmpeg/ffmpeg-core.wasm'
+const FFMPEG_CORE_VERSION = '0.12.6'
+const CDN_CORE_JS = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/esm/ffmpeg-core.js`
+const CDN_CORE_WASM = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/esm/ffmpeg-core.wasm`
 const LOAD_TIMEOUT_MS = 300_000
+const ASSET_FETCH_TIMEOUT_MS = 120_000
 
 let ffmpegInstance: FFmpeg | null = null
 let ffmpegLoadPromise: Promise<FFmpeg> | null = null
@@ -373,6 +377,64 @@ async function getWorkerUrl(): Promise<string> {
   return workerUrlPromise
 }
 
+async function encoderAssetExists(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url, { method: 'HEAD', cache: 'no-store' })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+async function resolveEncoderAssetUrls(origin: string): Promise<{
+  coreJs: string
+  coreWasm: string
+  source: 'local' | 'cdn'
+}> {
+  const localJs = `${origin}${CORE_JS}`
+  const localWasm = `${origin}${CORE_WASM}`
+
+  const [hasLocalJs, hasLocalWasm] = await Promise.all([
+    encoderAssetExists(localJs),
+    encoderAssetExists(localWasm),
+  ])
+
+  if (hasLocalJs && hasLocalWasm) {
+    return { coreJs: localJs, coreWasm: localWasm, source: 'local' }
+  }
+
+  return { coreJs: CDN_CORE_JS, coreWasm: CDN_CORE_WASM, source: 'cdn' }
+}
+
+async function toBlobURLWithTimeout(
+  url: string,
+  mimeType: string,
+  timeoutMs: number
+): Promise<string> {
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = await fetch(url, { signal: controller.signal, cache: 'no-store' })
+    if (!response.ok) {
+      throw new Error(`Failed to download encoder asset (${response.status}) from ${url}`)
+    }
+
+    const buffer = await response.arrayBuffer()
+    const blob = new Blob([buffer], { type: mimeType })
+    return URL.createObjectURL(blob)
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error(
+        `Encoder download timed out after ${Math.round(timeoutMs / 1000)}s. Check your connection and try again.`
+      )
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 async function loadFfmpeg(
   onProgress?: (progress: TrackVideoGenerationProgress) => void
 ): Promise<FFmpeg> {
@@ -411,12 +473,25 @@ async function loadFfmpeg(
         ffmpegInstance = ffmpeg
 
         const origin = window.location.origin
-        const coreURL = `${origin}${CORE_JS}`
-        const wasmURL = `${origin}${CORE_WASM}`
+        const { coreJs, coreWasm, source } = await resolveEncoderAssetUrls(origin)
 
         onProgress?.({
           stage: 'loading-encoder',
-          progress: 30,
+          progress: 25,
+          message:
+            source === 'local'
+              ? 'Downloading encoder (~31MB)...'
+              : 'Downloading encoder from CDN (~31MB)...',
+        })
+
+        const [coreURL, wasmURL] = await Promise.all([
+          toBlobURLWithTimeout(coreJs, 'text/javascript', ASSET_FETCH_TIMEOUT_MS),
+          toBlobURLWithTimeout(coreWasm, 'application/wasm', ASSET_FETCH_TIMEOUT_MS),
+        ])
+
+        onProgress?.({
+          stage: 'loading-encoder',
+          progress: 55,
           message: 'Initializing encoder (first time can take 1–3 min)...',
         })
 

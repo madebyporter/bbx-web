@@ -1,8 +1,6 @@
 <template>
   <div class="flex flex-col gap-0 text-neutral-300 grow h-fit">
-    <div v-if="loading" class="flex items-center justify-center p-8 h-full w-full grow">
-      <LoadingLogo />
-    </div>
+    <PageContentSkeleton v-if="!pageShellReady" />
 
     <div v-else-if="!track" class="text-neutral-500 p-4">
       Track not found.
@@ -159,7 +157,8 @@ import { useSupabase } from '~/utils/supabase'
 import { usePlayer } from '~/composables/usePlayer'
 import { useToast } from '~/composables/useToast'
 import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
-import LoadingLogo from '~/components/LoadingLogo.vue'
+import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
+import { usePageShellReady } from '~/composables/usePageShellReady'
 import { recordPageView, setPlaybackContext } from '~/composables/useTrackAnalytics'
 
 // Debug: Log immediately to verify component is loading during SSR
@@ -277,6 +276,9 @@ const { data: trackData, pending: loading } = await useAsyncData(
 // Store initial data for SEO (available during SSR)
 // Use trackData.value directly - it's populated after await useAsyncData
 const track = computed(() => trackData.value)
+
+const pageShellReady = computed(() => !loading.value)
+usePageShellReady(pageShellReady)
 
 const trackArtworkUrl = computed(() => getArtworkUrl(track.value?.artwork_path))
 const trackArtworkIsVideo = computed(() => isVideoArtwork(track.value?.artwork_path))

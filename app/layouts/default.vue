@@ -16,6 +16,7 @@
             v-model:show-search-modal="showSearchModal"
             :context-items="searchContextItems"
             :context-search-fields="searchContextFields"
+            :shell-loading="!shellContentReady"
             @open-search-modal="openSearchModal" 
             @update:search-query="searchQuery = $event" 
             @open-modal="openModal" 
@@ -176,6 +177,7 @@ import {
   migrateFilterSortFromLocalStorage,
   useFilterSortCookie,
 } from '~/composables/useFilterSortPersistence'
+import { providePageShellReady } from '~/composables/usePageShellReady'
 import Player from '~/components/Player.vue'
 import Toast from '~/components/Toast.vue'
 import TrackCommentsDrawer from '~/components/TrackCommentsDrawer.vue'
@@ -263,6 +265,14 @@ const { showSuccess, showError, showProcessing, showInfo } = useToast()
 // Auth initialization happens separately in onMounted without blocking layout
 const isInitialized = ref(true)
 const route = useRoute()
+const { shellContentReady } = providePageShellReady()
+
+watch(
+  () => route.fullPath,
+  () => {
+    shellContentReady.value = false
+  }
+)
 
 // Determine which modal to show based on route
 const isUserProfilePage = computed(() => {

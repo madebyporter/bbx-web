@@ -197,3 +197,12 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - SEO metadata (title, description, canonical, Open Graph) on list pages
 - 0.54.1
   - Fixed admin Manage Submissions empty queue when admin role loads after mount
+- 0.55.0
+  - Global shell loading orchestration: nav paints immediately, search and page skeletons until route ready, player defers until content reveals
+- 0.55.1
+  - Sticky actions column merged into track table grid rows for correct row alignment
+- 0.55.2
+  - Video generator falls back to CDN when local FFmpeg assets are missing on deploy
+- 0.55.3
+  - Resource detail pages (software/kits) always mount during SSR so crawlers get title, description, and canonical
+  - Canonical URLs always use https://beatbox.studio (not www)

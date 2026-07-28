@@ -1,6 +1,7 @@
 <template>
   <!-- Only show list content when on /kits exactly, not on child routes -->
-  <div v-if="route.path === '/kits'" class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-0 text-neutral-300">
+  <PageContentSkeleton v-if="route.path === '/kits' && !pageShellReady" />
+  <div v-else-if="route.path === '/kits'" class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-0 text-neutral-300">
     <LibraryHeader 
       title="Music production kits" 
       :count="resourceCount"
@@ -23,13 +24,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, onMounted, onUnmounted, computed, watch, type ComputedRef } from 'vue'
+import { ref, inject, onMounted, onUnmounted, computed, watch, nextTick, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import DatabaseGrid from '~/components/DatabaseGrid.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
+import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
+import { usePageShellReady } from '~/composables/usePageShellReady'
 
 const route = useRoute()
+const pageShellReady = ref(false)
+usePageShellReady(pageShellReady)
 
 // SSR SEO metadata for the kits list page
 const siteOrigin = useSiteOrigin()
@@ -105,7 +110,13 @@ watch(() => databaseGrid.value?.resources, (resources) => {
 }, { immediate: true, deep: true })
 
 // Register context items on mount
-onMounted(() => {
+onMounted(async () => {
+  await nextTick()
+  if (databaseGrid.value?.fetchResources) {
+    await databaseGrid.value.fetchResources()
+  }
+  pageShellReady.value = true
+
   // Register initial context items
   if (registerContextItems && databaseGrid.value?.resources) {
     registerContextItems(databaseGrid.value.resources, ['name', 'creator', 'tags'])

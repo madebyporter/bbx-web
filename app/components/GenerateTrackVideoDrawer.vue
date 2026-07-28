@@ -158,13 +158,14 @@
           <label for="video-padding" class="text-sm font-medium text-neutral-200">Padding (px)</label>
           <input
             id="video-padding"
-            v-model.number="coverPaddingPx"
-            type="number"
-            min="0"
-            :max="maxPaddingPx"
+            type="text"
+            inputmode="numeric"
+            :value="coverPaddingPx"
             placeholder="0"
             :disabled="isGenerating"
             class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            @input="handlePaddingInput"
+            @focus="handlePaddingFocus"
           />
           <p class="text-xs text-neutral-500">
             Shrinks cover art inside the frame. Video size stays the same.
@@ -399,11 +400,6 @@ const outputSizeLabel = computed(() => {
   return `${width}×${height}`
 })
 
-const maxPaddingPx = computed(() => {
-  const max = Math.floor(Math.min(outputSize.value.width, outputSize.value.height) / 2) - 1
-  return Math.max(0, max)
-})
-
 const clampedCoverPaddingPx = computed(() =>
   clampPaddingPx(coverPaddingPx.value, outputSize.value)
 )
@@ -442,6 +438,17 @@ function handleCustomBackgroundInput(event: Event) {
   const input = event.target as HTMLInputElement
   customBackgroundColor.value = normalizeHexColor(input.value)
   selectedBackgroundPreset.value = 'custom'
+}
+
+function handlePaddingInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  const digits = input.value.replace(/\D/g, '')
+  input.value = digits
+  coverPaddingPx.value = digits === '' ? 0 : Number(digits)
+}
+
+function handlePaddingFocus(event: FocusEvent) {
+  ;(event.target as HTMLInputElement).select()
 }
 
 function formatDuration(seconds: number): string {
