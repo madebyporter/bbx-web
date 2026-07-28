@@ -1,7 +1,7 @@
 <template>
   <div class="w-full min-w-0 overflow-x-hidden">
     <div class="w-full min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar">
-      <div class="w-max min-w-full h-fit">
+      <div class="w-full h-fit">
         <div
           class="text-sm text-left text-neutral-500 border-b border-neutral-800 bg-neutral-900 *:flex *:items-center *:p-4 min-h-[65px]"
           :style="tableGridStyle"

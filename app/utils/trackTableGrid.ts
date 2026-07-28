@@ -19,10 +19,13 @@ export function buildTrackGridTemplateColumns({
   showActions = false,
   analyticsMode = false,
 }: TrackGridColumnOptions): string {
+  const titleCol = `minmax(${TRACK_GRID_WIDTH.medium}, 1fr)`
+  const artistCol = analyticsMode ? TRACK_GRID_WIDTH.medium : TRACK_GRID_WIDTH.small
+
   const cols: string[] = [
     TRACK_GRID_WIDTH.tiny,
-    TRACK_GRID_WIDTH.medium,
-    TRACK_GRID_WIDTH.small,
+    titleCol,
+    artistCol,
     TRACK_GRID_WIDTH.tiny,
   ]
 
@@ -31,7 +34,7 @@ export function buildTrackGridTemplateColumns({
       TRACK_GRID_WIDTH.tiny,
       TRACK_GRID_WIDTH.tiny,
       TRACK_GRID_WIDTH.small,
-      TRACK_GRID_WIDTH.tiny
+      TRACK_GRID_WIDTH.small
     )
   } else {
     if (showCollection) {
@@ -53,6 +56,7 @@ export function buildTrackGridTemplateColumns({
 export function buildTrackGridStyle(options: TrackGridColumnOptions) {
   return {
     display: 'grid',
+    width: '100%',
     gap: '0',
     gridTemplateColumns: buildTrackGridTemplateColumns(options),
   }

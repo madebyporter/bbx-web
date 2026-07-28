@@ -61,7 +61,7 @@
       </Modal>
 
       <div class="w-full min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar">
-        <div class="w-max min-w-full h-fit">
+        <div class="w-full h-fit">
         <!-- Header -->
         <div
           :class="[
