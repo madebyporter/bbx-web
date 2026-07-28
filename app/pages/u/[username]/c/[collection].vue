@@ -13,7 +13,7 @@
       <LibraryHeader
         :title="collection.name"
         :description="collection.description"
-        :count="displayedTracksCount"
+        :count="tracksLoading ? 0 : totalFilteredCount"
         :is-own-profile="isOwnProfile"
         :show-view-mode-selector="false"
         :show-settings-button="isCollectionOwner"
@@ -40,10 +40,12 @@
       <!-- Tracks in Collection -->
       <div class="grow min-w-0 overflow-x-hidden h-fit w-full">
         <CollectionTracksTable 
-          :tracks="displayedTracks" 
+          :tracks="paginatedDisplayedTracks" 
           :source-id="`collection-${collection?.id}`" 
           :is-own-profile="isOwnProfile"
           :loading="tracksLoading"
+          :has-more="hasMoreTracks"
+          :loading-more="loadingMore"
           :username="route.params.username as string"
           :collection-id="collection?.id"
           :viewer-user-type="viewerUserType"
@@ -55,6 +57,7 @@
           :active-filter-chips="activeFiltersForDisplay"
           @edit-track="handleEdit"
           @tracks-removed="fetchTracks"
+          @load-more="handleLoadMore"
         />
       </div>
     </template>
@@ -90,6 +93,7 @@ import {
   useTrackAnalyticsData,
 } from '~/composables/useTrackAnalyticsData'
 import { getUniqueGroupTracks } from '~/utils/uniqueGroupShuffle'
+import { TRACK_PAGE_SIZE } from '~/utils/trackPagination'
 import { useFilterSortCookie } from '~/composables/useFilterSortPersistence'
 
 const route = useRoute()
@@ -160,6 +164,8 @@ const unfilteredTracks = ref<any[]>([]) // full list from fetch; filters are app
 const lastAppliedParams = ref<{ filters: any; sort: any } | null>(null)
 const loading = ref(false)
 const tracksLoading = ref(false)
+const loadingMore = ref(false)
+const visibleCount = ref(TRACK_PAGE_SIZE)
 const profileUserId = ref<string | null>(initialData.value?.profileUserId || null)
 const searchQuery = ref('')
 const viewerUserType = ref<'creator' | 'audio_pro' | null>(null)
@@ -176,9 +182,8 @@ const isCollectionOwner = computed(() => {
 })
 
 const displayedTracks = computed(() => {
-  // Filter by search query
   let filtered = tracks.value
-  
+
   if (searchQuery.value) {
     const query = searchQuery.value.trim().toLowerCase()
     filtered = filtered.filter(track => {
@@ -187,13 +192,24 @@ const displayedTracks = computed(() => {
       return title.includes(query) || artist.includes(query)
     })
   }
-  
+
   return filtered
 })
 
-const displayedTracksCount = computed(() => {
-  return displayedTracks.value.length
+const totalFilteredCount = computed(() => displayedTracks.value.length)
+
+const paginatedDisplayedTracks = computed(() => {
+  return displayedTracks.value.slice(0, visibleCount.value)
 })
+
+const hasMoreTracks = computed(() => visibleCount.value < displayedTracks.value.length)
+
+const handleLoadMore = () => {
+  if (loadingMore.value || tracksLoading.value || !hasMoreTracks.value) return
+  loadingMore.value = true
+  visibleCount.value += TRACK_PAGE_SIZE
+  loadingMore.value = false
+}
 
 const analyticsMode = ref(false)
 const analyticsRangeLabel = ref(loadStoredAnalyticsRangeLabel())
@@ -297,7 +313,8 @@ const activeFiltersForDisplay = computed<ActiveFilterChip[]>(() => {
 })
 
 const showNoFilterResults = computed(() =>
-  displayedTracksCount.value === 0 &&
+  !tracksLoading.value &&
+  totalFilteredCount.value === 0 &&
   unfilteredTracks.value.length > 0 &&
   activeFiltersForDisplay.value.length > 0
 )
@@ -326,6 +343,7 @@ function removeFilter(key: string, value: unknown, mode: 'array' | 'bpmMin' | 'b
     next.filters.latestVersionOnly = false
   }
   lastAppliedParams.value = next
+  visibleCount.value = TRACK_PAGE_SIZE
   tracks.value = applyFiltersAndSortToList(unfilteredTracks.value, next)
 }
 
@@ -426,7 +444,7 @@ const fetchCollection = async () => {
     collection.value = collectionData
     
     // Fetch tracks in this collection
-    await fetchTracks()
+    await fetchTracks({ finalizeLoading: false })
   } catch (error) {
     console.error('Error fetching collection:', error)
     collection.value = null
@@ -435,10 +453,12 @@ const fetchCollection = async () => {
   }
 }
 
-const fetchTracks = async () => {
+const fetchTracks = async (options: { finalizeLoading?: boolean } = {}) => {
+  const finalizeLoading = options.finalizeLoading ?? true
   if (!supabase || !collection.value || !profileUserId.value) return
 
   tracksLoading.value = true
+  visibleCount.value = TRACK_PAGE_SIZE
   
   try {
     // Fetch sounds via junction table with hidden status
@@ -526,7 +546,9 @@ const fetchTracks = async () => {
     tracks.value = []
     unfilteredTracks.value = []
   } finally {
-    tracksLoading.value = false
+    if (finalizeLoading) {
+      tracksLoading.value = false
+    }
   }
 }
 
@@ -542,6 +564,7 @@ const handleEdit = (track: any) => {
 
 const handleSearch = (query: string) => {
   searchQuery.value = query
+  visibleCount.value = TRACK_PAGE_SIZE
 }
 
 // Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
@@ -667,6 +690,7 @@ const updateFiltersAndSort = async (params: any) => {
   if (!supabase || !collection.value || !profileUserId.value) return
 
   tracksLoading.value = true
+  visibleCount.value = TRACK_PAGE_SIZE
   lastAppliedParams.value = { filters: { ...params.filters }, sort: { ...params.sort } }
 
   try {
@@ -796,6 +820,7 @@ const handleCollectionDeleted = () => {
 
 // Lifecycle
 onMounted(async () => {
+  tracksLoading.value = true
   await fetchCollection()
 
   if (profileUserId.value && collection.value && !isOwnProfile.value) {
@@ -806,23 +831,18 @@ onMounted(async () => {
     })
   }
 
-  // Register search handler
-  if (registerSearchHandler) {
-    registerSearchHandler(handleSearch)
-  }
+  await fetchTracks()
 
-  // Register filter/sort handler so layout can call updateFiltersAndSort when user applies
-  if (registerFiltersAndSortHandler) {
-    registerFiltersAndSortHandler(updateFiltersAndSort)
-  }
-
-  // Apply saved filter/sort from cookie so initial view matches user preference
   const saved = musicFilterCookie.value
   if (saved && (saved.sort || saved.filters)) {
     await updateFiltersAndSort(saved)
+  } else {
+    tracksLoading.value = false
   }
 
-  // Listen for track updates
+  registerSearchHandler?.(handleSearch)
+  registerFiltersAndSortHandler?.(updateFiltersAndSort)
+
   window.addEventListener('track-updated', ((event: CustomEvent) => {
     handleTrackUpdate(event)
   }) as EventListener)

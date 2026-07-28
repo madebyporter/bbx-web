@@ -37,7 +37,7 @@ export function buildTrackGridTemplateColumns({
     if (showCollection) {
       cols.push(TRACK_GRID_WIDTH.medium)
     }
-    cols.push(TRACK_GRID_WIDTH.tiny, TRACK_GRID_WIDTH.tiny, TRACK_GRID_WIDTH.tiny)
+    cols.push(TRACK_GRID_WIDTH.small, TRACK_GRID_WIDTH.tiny, TRACK_GRID_WIDTH.tiny)
     if (showStatus) {
       cols.push(TRACK_GRID_WIDTH.small)
     }

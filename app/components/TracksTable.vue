@@ -1,11 +1,18 @@
 <template>
   <div class="w-full min-w-0 overflow-x-hidden">
-    <div v-if="loading" class="flex items-center justify-center p-8 h-full w-full grow">
-      <LoadingLogo />
-    </div>
+    <template v-if="layoutReady">
+      <TracksTableSkeleton
+        v-if="loading"
+        :is-own-profile="isOwnProfile"
+        :profile-user-type="profileUserType"
+        :analytics-mode="analyticsMode"
+        :show-actions="showActionsColumn"
+        :show-collection="showCollectionColumn"
+        :show-status="showStatusColumn"
+      />
 
-    <!-- Zero State -->
-    <div v-else-if="tracks.length === 0" class="py-16 w-full text-center">
+      <!-- Zero State -->
+      <div v-else-if="tracks.length === 0" class="py-16 w-full text-center">
       <div class="max-w-md mx-auto">
         <h3 class="text-lg font-medium mb-2 text-neutral-300">
           {{ isOwnProfile && profileUserType === 'audio_pro' ? 'No tracks uploaded yet' : isOwnProfile &&
@@ -23,9 +30,9 @@
           Upload Music
         </Button>
       </div>
-    </div>
+      </div>
 
-    <div v-else class="w-full min-w-0">
+      <div v-else class="w-full min-w-0">
       <!-- Bulk Actions Drawer -->
       <BulkActionsDrawer v-model:show="showBulkActionsDrawer" :selected-tracks="selectedTracksArray"
         :selected-count="selectedTrackIds.size" @tracks-deleted="handleTracksDeleted"
@@ -61,7 +68,7 @@
         <div
           ref="mainTableHeaderRef"
           :class="[
-            'text-sm text-left text-neutral-500 border-b border-neutral-800 bg-neutral-900 *:flex *:items-center *:p-4',
+            'text-sm text-left text-neutral-500 border-b border-neutral-800 bg-neutral-900 *:flex *:items-center *:p-4 min-h-[65px]',
           ]"
           :style="tableMainGridStyle"
         >
@@ -103,7 +110,7 @@
 
         <!-- Tracks -->
         <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
-          'text-sm border-b border-neutral-900 *:p-4 items-center',
+          'text-sm border-b border-neutral-900 *:flex *:items-center *:p-4 items-center',
           isCurrentlyPlaying(track) ? 'bg-neutral-800/70  lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
         ]" :style="tableMainGridStyle">
         <div class="flex items-center justify-center gap-1">
@@ -217,6 +224,14 @@
         </div>
         </template>
         </div>
+
+        <div
+          v-if="hasMore"
+          ref="loadMoreSentinelRef"
+          class="flex items-center justify-center p-4 border-b border-neutral-900"
+        >
+          <div v-if="loadingMore" class="size-5 rounded-full border-2 border-neutral-600 border-t-amber-400 animate-spin" />
+        </div>
           </div>
         </div>
 
@@ -227,7 +242,7 @@
         >
           <div
             ref="actionsTableHeaderRef"
-            class="flex items-center justify-start p-4 border-b border-neutral-800 shrink-0 box-border"
+            class="flex items-center justify-start p-4 border-b border-neutral-800 shrink-0 box-border min-h-[65px]"
             :style="actionsHeaderHeightStyle"
           >
             <Button
@@ -296,7 +311,8 @@
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -308,7 +324,6 @@ import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
-import LoadingLogo from '~/components/LoadingLogo.vue'
 import BulkActionsDrawer from '~/components/BulkActionsDrawer.vue'
 import Modal from '~/components/Modal.vue'
 import type { AnchorRect } from '~/components/Modal.vue'
@@ -325,6 +340,8 @@ import { Plus } from '@iconoir/vue'
 import TrackRowActionsMenu from '~/components/TrackRowActionsMenu.vue'
 import { buildTrackGridStyle, TRACK_GRID_WIDTH } from '~/utils/trackTableGrid'
 import { useTrackTableHeaderHeight } from '~/composables/useTrackTableHeaderHeight'
+import { useInfiniteScroll } from '~/composables/useInfiniteScroll'
+import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 
 interface Props {
   tracks: any[]
@@ -337,23 +354,28 @@ interface Props {
   analyticsMode?: boolean
   trackStats?: Map<number, TrackAnalyticsRow>
   analyticsLoading?: boolean
+  hasMore?: boolean
+  loadingMore?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   analyticsMode: false,
   analyticsLoading: false,
+  hasMore: false,
+  loadingMore: false,
 })
 const emit = defineEmits<{
   'edit-track': [track: any]
   'tracks-deleted': []
   'track-shortlisted': [trackId: number]
   'track-unshortlisted': [trackId: number]
+  'load-more': []
 }>()
 
 const { currentTrack, isPlaying, loadQueue, togglePlayPause } = usePlayer()
 const { isStemPlayerActive, stemTracks, toggleMute, toggleSolo } = useStemPlayer()
 const { supabase } = useSupabase()
-const { user } = useAuth()
+const { user, isReady } = useAuth()
 const { getArtworkUrl } = useArtwork()
 const { showProcessing, showSuccess, showError, removeToast } = useToast()
 const { capture } = useAnalytics()
@@ -386,12 +408,17 @@ const collectionModalTitle = computed(() => {
 
 const hasSelections = computed(() => selectedTrackIds.value.size > 0)
 
-const showStatusColumn = computed(() =>
-  props.isOwnProfile && props.profileUserType === 'audio_pro' && !props.analyticsMode
+const layoutReady = computed(() => isReady.value)
+
+const showStatusColumn = computed(
+  () =>
+    props.isOwnProfile &&
+    props.profileUserType === 'audio_pro' &&
+    !props.analyticsMode
 )
 
-const showCollectionColumn = computed(() =>
-  props.isOwnProfile && !props.analyticsMode
+const showCollectionColumn = computed(
+  () => props.isOwnProfile && !props.analyticsMode
 )
 
 const tableMainGridStyle = computed(() =>
@@ -424,6 +451,15 @@ const actionsHeaderHeightStyle = computed(() => {
   if (!actionsHeaderHeight.value) return undefined
   const height = `${actionsHeaderHeight.value}px`
   return { height, minHeight: height }
+})
+
+const loadMoreSentinelRef = ref<HTMLElement | null>(null)
+
+useInfiniteScroll({
+  sentinelRef: loadMoreSentinelRef,
+  enabled: () => props.hasMore && !props.loading && !props.loadingMore,
+  loading: () => props.loadingMore,
+  onLoadMore: () => emit('load-more'),
 })
 
 function formatTrackStat(trackId: number, field: 'plays' | 'listeners' | 'avgListen' | 'completion'): string {

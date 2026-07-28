@@ -1,10 +1,17 @@
 <template>
   <div class="w-full min-w-0 overflow-x-hidden h-full">
-    <div v-if="loading" class="flex items-center justify-center p-8">
-      <LoadingLogo />
-    </div>
+    <template v-if="layoutReady">
+      <TracksTableSkeleton
+        v-if="loading"
+        :is-own-profile="isOwnProfile"
+        :profile-user-type="profileUserType"
+        :analytics-mode="analyticsMode"
+        :show-actions="showActionsColumn"
+        :show-collection="showCollectionColumn"
+        :show-status="showStatusColumn"
+      />
 
-    <div v-else-if="tracks.length === 0" class="text-neutral-500 p-4 flex flex-col gap-2">
+      <div v-else-if="tracks.length === 0" class="text-neutral-500 p-4 flex flex-col gap-2">
       <template v-if="noFilterResults && activeFilterChips.length > 0">
         <p>Your filters match no results.</p>
         <p class="flex flex-wrap items-center gap-x-1 gap-y-1">
@@ -70,7 +77,7 @@
         <div
           ref="mainTableHeaderRef"
           :class="[
-            'text-sm text-left text-neutral-500 border-b border-neutral-800 bg-neutral-900 *:flex *:items-center *:p-4',
+            'text-sm text-left text-neutral-500 border-b border-neutral-800 bg-neutral-900 *:flex *:items-center *:p-4 min-h-[65px]',
           ]"
           :style="tableMainGridStyle"
         >
@@ -111,7 +118,7 @@
 
         <!-- Tracks -->
         <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
-            'text-sm border-b border-neutral-900 *:p-4 items-center',
+            'text-sm border-b border-neutral-900 *:flex *:items-center *:p-4 items-center',
             isCurrentlyPlaying(track) ? 'bg-neutral-800/70  lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
           ]" :style="tableMainGridStyle">
         <div class="flex items-center justify-center">
@@ -196,6 +203,14 @@
         </div>
         </template>
         </div>
+
+        <div
+          v-if="hasMore"
+          ref="loadMoreSentinelRef"
+          class="flex items-center justify-center p-4 border-b border-neutral-900"
+        >
+          <div v-if="loadingMore" class="size-5 rounded-full border-2 border-neutral-600 border-t-amber-400 animate-spin" />
+        </div>
           </div>
         </div>
 
@@ -206,7 +221,7 @@
         >
           <div
             ref="actionsTableHeaderRef"
-            class="flex items-center justify-start p-4 border-b border-neutral-800 shrink-0 box-border"
+            class="flex items-center justify-start p-4 border-b border-neutral-800 shrink-0 box-border min-h-[65px]"
             :style="actionsHeaderHeightStyle"
           >
             <Button
@@ -252,7 +267,8 @@
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -263,7 +279,6 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import { useToast } from '~/composables/useToast'
 import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
-import LoadingLogo from '~/components/LoadingLogo.vue'
 import BulkActionsDrawer from '~/components/BulkActionsDrawer.vue'
 import Modal from '~/components/Modal.vue'
 import type { AnchorRect } from '~/components/Modal.vue'
@@ -278,6 +293,8 @@ import { Plus } from '@iconoir/vue'
 import TrackRowActionsMenu from '~/components/TrackRowActionsMenu.vue'
 import { buildTrackGridStyle, TRACK_GRID_WIDTH } from '~/utils/trackTableGrid'
 import { useTrackTableHeaderHeight } from '~/composables/useTrackTableHeaderHeight'
+import { useInfiniteScroll } from '~/composables/useInfiniteScroll'
+import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 
 interface ActiveFilterChip {
   id: string
@@ -300,12 +317,16 @@ const props = withDefaults(
     analyticsMode?: boolean
     trackStats?: Map<number, TrackAnalyticsRow>
     analyticsLoading?: boolean
+    hasMore?: boolean
+    loadingMore?: boolean
   }>(),
   {
     noFilterResults: false,
     activeFilterChips: () => [],
     analyticsMode: false,
     analyticsLoading: false,
+    hasMore: false,
+    loadingMore: false,
   }
 )
 
@@ -313,10 +334,11 @@ const emit = defineEmits<{
   'edit-track': [track: any]
   'tracks-removed': []
   'track-removed-from-collection': [trackId: number]
+  'load-more': []
 }>()
 
 const { loadQueue, currentTrack, isPlaying, togglePlayPause } = usePlayer()
-const { user } = useAuth()
+const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
 const { getArtworkUrl } = useArtwork()
 const { showProcessing, showSuccess, showError, removeToast } = useToast()
@@ -345,6 +367,8 @@ const collectionModalTitle = computed(() => {
 
 const hasSelections = computed(() => selectedTrackIds.value.size > 0)
 
+const layoutReady = computed(() => isReady.value)
+
 const showActionsColumn = computed(() => !!(user.value || props.isOwnProfile))
 
 const mainTableHeaderRef = ref<HTMLElement | null>(null)
@@ -362,10 +386,24 @@ const actionsHeaderHeightStyle = computed(() => {
   return { height, minHeight: height }
 })
 
-const showCollectionColumn = computed(() => !!user.value && !(props.analyticsMode && props.isOwnProfile))
+const loadMoreSentinelRef = ref<HTMLElement | null>(null)
+
+useInfiniteScroll({
+  sentinelRef: loadMoreSentinelRef,
+  enabled: () => props.hasMore && !props.loading && !props.loadingMore,
+  loading: () => props.loadingMore,
+  onLoadMore: () => emit('load-more'),
+})
+
+const showCollectionColumn = computed(
+  () => !!user.value && !(props.analyticsMode && props.isOwnProfile)
+)
 
 const showStatusColumn = computed(
-  () => props.isOwnProfile && props.profileUserType === 'audio_pro' && !(props.analyticsMode && props.isOwnProfile)
+  () =>
+    props.isOwnProfile &&
+    props.profileUserType === 'audio_pro' &&
+    !(props.analyticsMode && props.isOwnProfile)
 )
 
 const tableMainGridStyle = computed(() =>
