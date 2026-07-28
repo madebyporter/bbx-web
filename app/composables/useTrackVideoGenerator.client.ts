@@ -13,6 +13,58 @@ export interface TrackVideoGenerationProgress {
   message: string
 }
 
+export type TrackVideoQuality = 'standard' | 'high' | 'maximum'
+
+export const TRACK_VIDEO_QUALITY_OPTIONS: Array<{
+  value: TrackVideoQuality
+  label: string
+  description: string
+}> = [
+  {
+    value: 'standard',
+    label: 'Standard',
+    description: '1080×1080 · faster encode, smaller file',
+  },
+  {
+    value: 'high',
+    label: 'High',
+    description: '1600×1600 · full artwork resolution',
+  },
+  {
+    value: 'maximum',
+    label: 'Maximum',
+    description: 'Best for Reddit, Instagram, X · slowest encode',
+  },
+]
+
+interface TrackVideoQualityPreset {
+  scale: number
+  preset: string
+  crf: number
+  audioBitrate: string
+}
+
+const TRACK_VIDEO_QUALITY_PRESETS: Record<TrackVideoQuality, TrackVideoQualityPreset> = {
+  standard: {
+    scale: 1080,
+    preset: 'ultrafast',
+    crf: 23,
+    audioBitrate: '192k',
+  },
+  high: {
+    scale: 1600,
+    preset: 'fast',
+    crf: 20,
+    audioBitrate: '256k',
+  },
+  maximum: {
+    scale: 1600,
+    preset: 'medium',
+    crf: 18,
+    audioBitrate: '320k',
+  },
+}
+
 const CORE_JS = '/ffmpeg/ffmpeg-core.js'
 const CORE_WASM = '/ffmpeg/ffmpeg-core.wasm'
 const LOAD_TIMEOUT_MS = 300_000
@@ -43,13 +95,93 @@ function getAudioExtensionFromPath(storagePath: string): string {
   return 'mp3'
 }
 
-function sanitizeFilename(title: string): string {
-  const sanitized = title
+function sanitizeFilenamePart(value: string): string {
+  const sanitized = value
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-  return sanitized || 'track'
+  return sanitized
+}
+
+export function buildTrackVideoFilename(artistName: string, trackTitle: string): string {
+  const artist = sanitizeFilenamePart(artistName) || 'artist'
+  const title = sanitizeFilenamePart(trackTitle) || 'track'
+  return `${artist}-${title}-video.mp4`
+}
+
+function buildVideoFilter(scale: number, isGif: boolean): string {
+  const scaleFilter = `scale=${scale}:${scale}:flags=lanczos`
+  return isGif ? scaleFilter : `${scaleFilter},format=yuv420p`
+}
+
+function buildEncodeArgs({
+  coverName,
+  audioName,
+  outputName,
+  isGif,
+  quality,
+}: {
+  coverName: string
+  audioName: string
+  outputName: string
+  isGif: boolean
+  quality: TrackVideoQuality
+}): string[] {
+  const preset = TRACK_VIDEO_QUALITY_PRESETS[quality]
+  const videoFilter = buildVideoFilter(preset.scale, isGif)
+
+  if (isGif) {
+    return [
+      '-stream_loop',
+      '-1',
+      '-i',
+      coverName,
+      '-i',
+      audioName,
+      '-vf',
+      videoFilter,
+      '-c:v',
+      'libx264',
+      '-preset',
+      preset.preset,
+      '-crf',
+      String(preset.crf),
+      '-c:a',
+      'aac',
+      '-b:a',
+      preset.audioBitrate,
+      '-shortest',
+      outputName,
+    ]
+  }
+
+  return [
+    '-loop',
+    '1',
+    '-framerate',
+    '1',
+    '-i',
+    coverName,
+    '-i',
+    audioName,
+    '-vf',
+    videoFilter,
+    '-c:v',
+    'libx264',
+    '-preset',
+    preset.preset,
+    '-tune',
+    'stillimage',
+    '-crf',
+    String(preset.crf),
+    '-c:a',
+    'aac',
+    '-b:a',
+    preset.audioBitrate,
+    '-shortest',
+    outputName,
+  ]
 }
 
 function formatLoadError(error: unknown): Error {
@@ -223,16 +355,20 @@ export function useTrackVideoGenerator() {
     coverFile,
     audioBlob,
     audioStoragePath,
+    artistName,
     trackTitle,
     audioDurationSeconds,
+    quality,
     onProgress,
     signal,
   }: {
     coverFile: File
     audioBlob: Blob
     audioStoragePath: string
+    artistName: string
     trackTitle: string
     audioDurationSeconds: number
+    quality: TrackVideoQuality
     onProgress?: (progress: TrackVideoGenerationProgress) => void
     signal?: AbortSignal
   }): Promise<TrackVideoGenerationResult> => {
@@ -281,51 +417,13 @@ export function useTrackVideoGenerator() {
 
       ffmpeg.on('log', logHandler)
 
-      const args = isGif
-        ? [
-            '-stream_loop',
-            '-1',
-            '-i',
-            coverName,
-            '-i',
-            audioName,
-            '-c:v',
-            'libx264',
-            '-preset',
-            'ultrafast',
-            '-pix_fmt',
-            'yuv420p',
-            '-c:a',
-            'aac',
-            '-b:a',
-            '192k',
-            '-shortest',
-            outputName,
-          ]
-        : [
-            '-loop',
-            '1',
-            '-framerate',
-            '1',
-            '-i',
-            coverName,
-            '-i',
-            audioName,
-            '-c:v',
-            'libx264',
-            '-preset',
-            'ultrafast',
-            '-tune',
-            'stillimage',
-            '-c:a',
-            'aac',
-            '-b:a',
-            '192k',
-            '-pix_fmt',
-            'yuv420p',
-            '-shortest',
-            outputName,
-          ]
+      const args = buildEncodeArgs({
+        coverName,
+        audioName,
+        outputName,
+        isGif,
+        quality,
+      })
 
       try {
         const exitCode = await ffmpeg.exec(args, undefined, { signal })
@@ -339,7 +437,7 @@ export function useTrackVideoGenerator() {
       const data = await ffmpeg.readFile(outputName, undefined, { signal })
       const uint8 = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data))
       const blob = new Blob([new Uint8Array(uint8)], { type: 'video/mp4' })
-      const filename = `${sanitizeFilename(trackTitle)}-video.mp4`
+      const filename = buildTrackVideoFilename(artistName, trackTitle)
 
       await Promise.all([
         ffmpeg.deleteFile(coverName).catch(() => undefined),

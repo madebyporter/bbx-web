@@ -55,6 +55,25 @@
 
       <!-- Generate -->
       <section class="flex flex-col gap-3 shrink-0 border-t border-neutral-800 pt-4">
+        <div class="flex flex-col gap-2">
+          <label for="video-quality" class="text-sm font-medium text-neutral-200">Quality</label>
+          <select
+            id="video-quality"
+            v-model="selectedQuality"
+            :disabled="isGenerating"
+            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option
+              v-for="option in TRACK_VIDEO_QUALITY_OPTIONS"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+          <p class="text-xs text-neutral-500">{{ selectedQualityDescription }}</p>
+        </div>
+
         <Button :disabled="!canGenerate || isGenerating" @click="handleGenerate">
           {{ isGenerating ? 'Generating...' : 'Generate video' }}
         </Button>
@@ -156,7 +175,9 @@ import {
   preloadTrackVideoEncoder,
   terminateTrackVideoGenerator,
   useTrackVideoGenerator,
+  TRACK_VIDEO_QUALITY_OPTIONS,
   type TrackVideoGenerationProgress,
+  type TrackVideoQuality,
 } from '~/composables/useTrackVideoGenerator.client'
 import {
   deleteExport,
@@ -202,6 +223,7 @@ const historyLoading = ref(false)
 const deletingId = ref<string | null>(null)
 const encoderReady = ref(false)
 const encoderLoading = ref(false)
+const selectedQuality = ref<TrackVideoQuality>('maximum')
 
 let abortController: AbortController | null = null
 let previewObjectUrl: string | null = null
@@ -223,6 +245,13 @@ const coverPlaceholderText = computed(() => {
     return 'No artwork on this track. Upload an image to continue.'
   }
   return 'Loading artwork...'
+})
+
+const selectedQualityDescription = computed(() => {
+  return (
+    TRACK_VIDEO_QUALITY_OPTIONS.find((option) => option.value === selectedQuality.value)
+      ?.description || ''
+  )
 })
 
 function formatDuration(seconds: number): string {
@@ -419,8 +448,10 @@ async function handleGenerate() {
       coverFile: coverFile.value,
       audioBlob: audioData,
       audioStoragePath: props.track.storage_path,
+      artistName: props.track.artist,
       trackTitle: props.track.title,
       audioDurationSeconds: props.track.duration || 0,
+      quality: selectedQuality.value,
       onProgress: handleProgress,
       signal: abortController.signal,
     })
