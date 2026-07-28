@@ -201,3 +201,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Global shell loading orchestration: nav paints immediately, search and page skeletons until route ready, player defers until content reveals
 - 0.55.1
   - Sticky actions column merged into track table grid rows for correct row alignment
+- 0.55.2
+  - Video generator falls back to CDN when local FFmpeg assets are missing on deploy
