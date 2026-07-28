@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { fetchFile } from '@ffmpeg/util'
+import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 
 export interface TrackVideoGenerationResult {
@@ -161,12 +161,11 @@ const CORE_WASM = '/ffmpeg/ffmpeg-core.wasm'
 const FFMPEG_CORE_VERSION = '0.12.6'
 const CDN_CORE_JS = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/esm/ffmpeg-core.js`
 const CDN_CORE_WASM = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/esm/ffmpeg-core.wasm`
-const LOAD_TIMEOUT_MS = 300_000
-const ASSET_FETCH_TIMEOUT_MS = 120_000
+const LOAD_TIMEOUT_MS = 600_000
+const INIT_TIMEOUT_MS = 420_000
 
 let ffmpegInstance: FFmpeg | null = null
 let ffmpegLoadPromise: Promise<FFmpeg> | null = null
-let workerUrlPromise: Promise<string> | null = null
 
 function getFileExtension(file: File): string {
   const fromName = file.name.split('.').pop()?.toLowerCase()
@@ -370,13 +369,6 @@ function reportEncodingProgressFromLog(
   })
 }
 
-async function getWorkerUrl(): Promise<string> {
-  if (!workerUrlPromise) {
-    workerUrlPromise = import('@ffmpeg/ffmpeg/worker?url').then((module) => module.default)
-  }
-  return workerUrlPromise
-}
-
 async function encoderAssetExists(url: string): Promise<boolean> {
   try {
     const response = await fetch(url, { method: 'HEAD', cache: 'no-store' })
@@ -406,33 +398,28 @@ async function resolveEncoderAssetUrls(origin: string): Promise<{
   return { coreJs: CDN_CORE_JS, coreWasm: CDN_CORE_WASM, source: 'cdn' }
 }
 
-async function toBlobURLWithTimeout(
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) {
+    return `${Math.round(bytes / 1024)}KB`
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+}
+
+async function toBlobURLWithProgress(
   url: string,
   mimeType: string,
-  timeoutMs: number
+  label: string,
+  onProgress?: (progress: TrackVideoGenerationProgress) => void
 ): Promise<string> {
-  const controller = new AbortController()
-  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
-
-  try {
-    const response = await fetch(url, { signal: controller.signal, cache: 'no-store' })
-    if (!response.ok) {
-      throw new Error(`Failed to download encoder asset (${response.status}) from ${url}`)
-    }
-
-    const buffer = await response.arrayBuffer()
-    const blob = new Blob([buffer], { type: mimeType })
-    return URL.createObjectURL(blob)
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error(
-        `Encoder download timed out after ${Math.round(timeoutMs / 1000)}s. Check your connection and try again.`
-      )
-    }
-    throw error
-  } finally {
-    clearTimeout(timeoutId)
-  }
+  return toBlobURL(url, mimeType, true, ({ received, total, done }) => {
+    if (!onProgress || done) return
+    const totalLabel = total > 0 ? formatBytes(total) : '~31MB'
+    onProgress({
+      stage: 'loading-encoder',
+      progress: total > 0 ? Math.min(50, Math.round((received / total) * 50)) : 30,
+      message: `Downloading ${label} (${formatBytes(received)} / ${totalLabel})...`,
+    })
+  })
 }
 
 async function loadFfmpeg(
@@ -464,10 +451,7 @@ async function loadFfmpeg(
           message: 'Loading encoder...',
         })
 
-        const [{ FFmpeg }, classWorkerURL] = await Promise.all([
-          import('@ffmpeg/ffmpeg'),
-          getWorkerUrl(),
-        ])
+        const [{ FFmpeg }] = await Promise.all([import('@ffmpeg/ffmpeg')])
 
         const ffmpeg = new FFmpeg()
         ffmpegInstance = ffmpeg
@@ -477,7 +461,7 @@ async function loadFfmpeg(
 
         onProgress?.({
           stage: 'loading-encoder',
-          progress: 25,
+          progress: 20,
           message:
             source === 'local'
               ? 'Downloading encoder (~31MB)...'
@@ -485,8 +469,8 @@ async function loadFfmpeg(
         })
 
         const [coreURL, wasmURL] = await Promise.all([
-          toBlobURLWithTimeout(coreJs, 'text/javascript', ASSET_FETCH_TIMEOUT_MS),
-          toBlobURLWithTimeout(coreWasm, 'application/wasm', ASSET_FETCH_TIMEOUT_MS),
+          toBlobURLWithProgress(coreJs, 'text/javascript', 'encoder', onProgress),
+          toBlobURLWithProgress(coreWasm, 'application/wasm', 'encoder WASM', onProgress),
         ])
 
         onProgress?.({
@@ -495,11 +479,37 @@ async function loadFfmpeg(
           message: 'Initializing encoder (first time can take 1–3 min)...',
         })
 
-        await ffmpeg.load({
-          classWorkerURL,
-          coreURL,
-          wasmURL,
-        })
+        const initController = new AbortController()
+        const initTimeoutId = window.setTimeout(() => initController.abort(), INIT_TIMEOUT_MS)
+        const loadLogs: string[] = []
+        const loadLogHandler = ({ message }: { message: string }) => {
+          loadLogs.push(message)
+        }
+        ffmpeg.on('log', loadLogHandler)
+
+        try {
+          // Do not pass classWorkerURL — Vite's worker?url bundle omits ./const.js deps and hangs.
+          await ffmpeg.load(
+            {
+              coreURL,
+              wasmURL,
+            },
+            { signal: initController.signal }
+          )
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            const lastLog = loadLogs.at(-1)
+            throw new Error(
+              lastLog
+                ? `Encoder initialization timed out. Last log: ${lastLog}`
+                : 'Encoder initialization timed out during WebAssembly compile. Try Chrome, refresh, and wait a few minutes on first load.'
+            )
+          }
+          throw error
+        } finally {
+          clearTimeout(initTimeoutId)
+          ffmpeg.off('log', loadLogHandler)
+        }
 
         onProgress?.({
           stage: 'loading-encoder',
@@ -581,7 +591,7 @@ export function useTrackVideoGenerator() {
     isGenerating.value = true
 
     try {
-      const ffmpeg = await loadFfmpeg()
+      const ffmpeg = await loadFfmpeg(onProgress)
 
       if (signal?.aborted) {
         throw new DOMException('Aborted', 'AbortError')

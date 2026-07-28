@@ -206,3 +206,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 - 0.55.3
   - Resource detail pages (software/kits) always mount during SSR so crawlers get title, description, and canonical
   - Canonical URLs always use https://beatbox.studio (not www)
+- 0.55.4
+  - Fix video encoder hang by using ffmpeg's bundled worker instead of Vite's broken worker?url bundle

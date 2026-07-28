@@ -195,16 +195,19 @@
           {{ isGenerating ? 'Generating...' : 'Generate video' }}
         </Button>
 
-        <p v-if="encoderLoading && !isGenerating" class="text-xs text-neutral-500">
+        <p v-if="encoderLoading && !isGenerating && !generationMessage" class="text-xs text-neutral-500">
           Preparing encoder in the background (one-time download, ~31MB)...
         </p>
         <p v-else-if="encoderReady && !isGenerating && !generationMessage" class="text-xs text-neutral-500">
           Encoder ready. Browser encoding is slower than desktop apps — a 2–3 min track usually takes 1–3 min.
         </p>
 
-        <div v-if="isGenerating && generationMessage" class="flex flex-col gap-2">
+        <div v-if="generationMessage && (encoderLoading || isGenerating)" class="flex flex-col gap-2">
           <p class="text-sm text-neutral-400">{{ generationMessage }}</p>
-          <div class="w-full h-2 bg-neutral-800 rounded-full overflow-hidden">
+          <div
+            v-if="isGenerating || encoderLoading"
+            class="w-full h-2 bg-neutral-800 rounded-full overflow-hidden"
+          >
             <div
               class="h-full bg-amber-500 transition-all duration-300"
               :class="generationProgress > 0 ? '' : 'w-[8%] animate-pulse'"
@@ -568,7 +571,7 @@ async function preloadEncoder() {
   encoderLoading.value = true
   generationError.value = null
   try {
-    await preloadTrackVideoEncoder()
+    await preloadTrackVideoEncoder(handleProgress)
     encoderReady.value = true
   } catch (err: unknown) {
     generationError.value = err instanceof Error ? err.message : 'Failed to load encoder'
