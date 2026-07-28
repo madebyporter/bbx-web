@@ -1,6 +1,25 @@
 <template>
-  <div class="flex flex-col gap-0 text-neutral-300 grow">
+  <div class="flex flex-col gap-0 text-neutral-300 grow min-w-0">
+    <template v-if="!pageShellReady">
+      <ProfileHeaderSkeleton :show-members="isOwnProfile && isAudioPro" />
+      <div class="grow min-w-0 overflow-x-hidden border-t border-neutral-800">
+        <div class="flex flex-row justify-between items-center gap-4 p-4 border-b border-neutral-800">
+          <div class="h-6 w-16 rounded bg-neutral-800 animate-pulse" />
+          <div class="flex items-stretch gap-2">
+            <div class="h-9 w-24 rounded bg-neutral-800 animate-pulse" />
+          </div>
+        </div>
+        <TracksTableSkeleton
+          :is-own-profile="isOwnProfile"
+          :profile-user-type="profileUserType"
+          :show-collection="skeletonShowCollection"
+          :show-status="skeletonShowStatus"
+          :show-actions="skeletonShowActions"
+        />
+      </div>
+    </template>
 
+    <template v-else>
     <!-- Profile Header -->
     <div class="flex flex-col md:flex-row justify-start md:justify-between items-stretch gap-2 p-4">
       <div class="flex flex-col gap-2 overflow-auto">
@@ -280,23 +299,39 @@
       </div>
     </div>
     <!-- Tracks Section -->
-    <div v-if="musicSectionOpen" class="grow border-t border-neutral-800">
+    <div v-if="musicSectionOpen" class="grow min-w-0 overflow-x-hidden border-t border-neutral-800">
       <div class="flex flex-row justify-between items-center gap-4 p-4 border-b border-neutral-800">
         <div class="flex flex-col overflow-auto">
           <h2 class="text-lg lg:text-xl font-bold truncate">Music</h2>
         </div>
-        <div class="flex items-stretch gap-4">
-          <p class="text-sm text-neutral-500 flex items-center">
-            {{ filteredTracks.length }} {{ filteredTracks.length === 1 ? 'track' : 'tracks' }}
+        <div class="flex items-stretch gap-2">
+          <p v-if="loading" class="text-sm text-neutral-500 flex items-center">
+            <span class="h-4 w-16 rounded bg-neutral-800 animate-pulse inline-block" />
           </p>
-          <Button
-            variant="secondary"
-            size="sm"
-            class="btn px-3! py-1.5! text-sm h-full max-h-10 self-stretch"
-            @click="handleOpenFilterSort"
-          >
-            Filter & Sort
-          </Button>
+          <p v-else class="text-sm text-neutral-500 flex items-center">
+            {{ totalTrackCount }} {{ totalTrackCount === 1 ? 'track' : 'tracks' }}
+          </p>
+          <div id="ui_filter" class="flex items-stretch gap-px group/filter">
+            <Button
+              variant="secondary"
+              size="sm"
+              class="btn px-3! py-1.5! text-sm h-full max-h-10 self-stretch group-hover/filter:bg-neutral-600"
+              :disabled="loading"
+              @click="handleOpenFilterSort"
+            >
+              Filter & Sort
+            </Button>
+            <Button
+              v-if="hasActiveFilterSort"
+              variant="secondary"
+              size="sm"
+              class="btn px-2.5! py-1.5! text-sm h-full max-h-10 self-stretch shrink-0 group-hover/filter:bg-neutral-600"
+              title="Clear filters"
+              @click="handleClearFilterSort"
+            >
+              <Xmark class="w-4 h-4" />
+            </Button>
+          </div>
           <Button
             v-if="isOwnProfile && isAudioPro"
             variant="secondary"
@@ -325,6 +360,8 @@
         :source-id="`profile-${profileUserId}`"
         :is-own-profile="isOwnProfile"
         :loading="loading"
+        :has-more="hasMoreTracks"
+        :loading-more="loadingMore"
         :username="username"
         :viewer-user-type="viewerUserType"
         :profile-user-type="profileUserType"
@@ -335,18 +372,22 @@
         @tracks-deleted="fetchTracks"
         @track-shortlisted="handleTrackShortlisted"
         @track-unshortlisted="handleTrackUnshortlisted"
+        @load-more="handleLoadMore"
       />
     </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onActivated, onUnmounted, inject, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onActivated, onUnmounted, inject, watch, nextTick, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import { getTrackVisibilityCondition } from '~/utils/trackVisibility'
 import TracksTable from '~/components/TracksTable.vue'
+import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
+import ProfileHeaderSkeleton from '~/components/ProfileHeaderSkeleton.vue'
 import ManageMembers from '~/components/ManageMembers.vue'
 import TrackAnalyticsDateFilter from '~/components/TrackAnalyticsDateFilter.vue'
 import TrackAnalyticsSummary from '~/components/TrackAnalyticsSummary.vue'
@@ -356,8 +397,17 @@ import {
   loadStoredAnalyticsRangeLabel,
   useTrackAnalyticsData,
 } from '~/composables/useTrackAnalyticsData'
+import { useFilterSortCookie } from '~/composables/useFilterSortPersistence'
 import { getUniqueGroupTracks } from '~/utils/uniqueGroupShuffle'
 import { usePlayer } from '~/composables/usePlayer'
+import { trackPageRange } from '~/utils/trackPagination'
+import {
+  applyMusicFiltersToSoundsQuery,
+  needsClientOnlyPagination,
+  type MusicFilterSortParams,
+} from '~/utils/trackQueryFilters'
+import { enrichTracksWithCollections } from '~/utils/trackCollectionEnrichment'
+import { usePageShellReady } from '~/composables/usePageShellReady'
 import gsap from 'gsap'
 import { Plus, EditPencil, Trash, Check, Xmark, StatsReport } from '@iconoir/vue'
 const route = useRoute()
@@ -373,6 +423,9 @@ const unregisterContextItems = inject<() => void>('unregisterContextItems')
 const registerFiltersAndSortHandler = inject<(handler: (params: any) => void) => void>('registerFiltersAndSortHandler')
 const unregisterFiltersAndSortHandler = inject<() => void>('unregisterFiltersAndSortHandler')
 const openFilterModal = inject<() => void>('openFilterModal')
+const clearFilterSort = inject<(() => void) | null>('clearFilterSort', null)
+const hasActiveFilterSort = inject<ComputedRef<boolean>>('hasActiveFilterSort', computed(() => false))
+const musicFilterCookie = useFilterSortCookie('music')
 
 // Fetch initial profile data server-side for SEO
 const { data: initialData, refresh: refreshInitialData } = await useAsyncData(
@@ -534,9 +587,13 @@ const profileSocialLinks = ref<{
   linkedin?: string
   [key: string]: string | undefined
 }>((initialData.value?.profile?.social_links as any) || {})
-const tracks = ref<any[]>(initialData.value?.tracks || [])
+const tracks = ref<any[]>([])
+const totalTrackCount = ref(0)
+const currentPage = ref(0)
+const loadingMore = ref(false)
+const clientTrackCache = ref<any[] | null>(null)
 const lastAppliedParams = ref<{ filters: any; sort: any } | null>(null)
-const loading = ref(false)
+const loading = ref(true)
 // searchQuery removed - search is now handled by SearchModal
 const allSoftware = computed(() => softwareData.value || [])
 const loadingSoftware = computed(() => softwareData.value === null)
@@ -1282,6 +1339,30 @@ const isAudioPro = computed(() => {
   return profileUserType.value === 'audio_pro'
 })
 
+const pageShellReady = computed(() => isReady.value && !!profileUserId.value && !loading.value)
+usePageShellReady(pageShellReady)
+
+const skeletonShowCollection = computed(
+  () =>
+    !analyticsMode.value &&
+    (isOwnProfile.value || (!isReady.value && profileUserType.value === 'audio_pro'))
+)
+const skeletonShowStatus = computed(
+  () =>
+    !analyticsMode.value &&
+    profileUserType.value === 'audio_pro' &&
+    (isOwnProfile.value || !isReady.value)
+)
+const skeletonShowActions = computed(
+  () =>
+    !isReady.value ||
+    !!(
+      user.value ||
+      isOwnProfile.value ||
+      (viewerUserType.value === 'creator' && profileUserType.value === 'audio_pro')
+    )
+)
+
 // Fetch viewer's user type when user is logged in
 const fetchViewerUserType = async () => {
   if (!user.value || !supabase) return
@@ -1435,47 +1516,100 @@ const fetchSoftware = async () => {
 
 let fetchTracksRequestId = 0
 
-function loadPersistedFilterParams(): { filters: any; sort: any } | null {
+const hasMoreTracks = computed(() => tracks.value.length < totalTrackCount.value)
+
+function resolveFilterParams(override?: MusicFilterSortParams): MusicFilterSortParams {
+  if (override) return override
   if (lastAppliedParams.value) return lastAppliedParams.value
-  if (typeof window === 'undefined') return null
-  try {
-    const saved = localStorage.getItem('filterSort_music')
-    if (!saved) return null
-    const parsed = JSON.parse(saved)
-    if (!parsed || (!parsed.sort && !parsed.filters)) return null
-    return parsed
-  } catch {
-    return null
+  const saved = musicFilterCookie.value
+  if (saved && (saved.sort || saved.filters)) {
+    return {
+      filters: saved.filters || {},
+      sort: saved.sort || { sortBy: 'created_at', sortDirection: 'desc' },
+    }
+  }
+  return {
+    filters: {},
+    sort: { sortBy: 'created_at', sortDirection: 'desc' },
   }
 }
 
-function hasActiveMusicFilters(params: { filters?: any }): boolean {
-  const f = params.filters || {}
-  return !!(
-    f.latestVersionOnly ||
-    f.genre?.length > 0 ||
-    f.bpm?.min != null ||
-    f.bpm?.max != null ||
-    f.key?.length > 0 ||
-    f.mood?.length > 0 ||
-    f.year?.min != null ||
-    f.year?.max != null ||
-    f.status?.length > 0
-  )
+function isShortlistMode() {
+  return !!(isOwnProfile.value && viewerUserType.value === 'creator' && user.value)
 }
 
-function hasServerSideMusicFilters(params: { filters?: any }): boolean {
-  const f = params.filters || {}
-  return !!(
-    f.genre?.length > 0 ||
-    f.bpm?.min != null ||
-    f.bpm?.max != null ||
-    f.key?.length > 0 ||
-    f.mood?.length > 0 ||
-    f.year?.min != null ||
-    f.year?.max != null ||
-    f.status?.length > 0
-  )
+function applySortToTracks(arr: any[], sort: MusicFilterSortParams['sort']) {
+  const sortBy = sort?.sortBy || 'created_at'
+  const sortDirection = sort?.sortDirection || 'desc'
+  if (sortBy === 'created_at') {
+    arr.sort((a: any, b: any) => {
+      const aTime = new Date(a.shortlisted_at || a.created_at).getTime()
+      const bTime = new Date(b.shortlisted_at || b.created_at).getTime()
+      return sortDirection === 'asc' ? aTime - bTime : bTime - aTime
+    })
+  } else {
+    arr.sort((a: any, b: any) => {
+      const aVal = a[sortBy] || ''
+      const bVal = b[sortBy] || ''
+      if (sortDirection === 'asc') return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+      return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+    })
+  }
+}
+
+async function fetchFullTrackList(params: MusicFilterSortParams): Promise<any[]> {
+  if (!supabase || !profileUserId.value) return []
+
+  const sort = params.sort || { sortBy: 'created_at', sortDirection: 'desc' }
+
+  if (isShortlistMode()) {
+    const { getShortlistedTracks } = await import('~/utils/shortlist')
+    const result = await getShortlistedTracks(user.value!.id)
+    if (result.error) throw result.error
+    const data = [...(result.data || [])]
+    applySortToTracks(data, sort)
+    return enrichTracksWithCollections(supabase, data, { collectionOwnerId: user.value!.id })
+  }
+
+  let query = supabase
+    .from('sounds')
+    .select(`
+      *,
+      track_statuses!status_id(id, name)
+    `)
+    .eq('user_id', profileUserId.value)
+
+  query = applyMusicFiltersToSoundsQuery(query, params.filters)
+  query = query.order(sort.sortBy || 'created_at', { ascending: sort.sortDirection === 'asc' })
+
+  const { data, error } = await query
+  if (error) throw error
+  return enrichTracksWithCollections(supabase, data || [])
+}
+
+async function fetchServerTrackPage(params: MusicFilterSortParams, page: number) {
+  if (!supabase || !profileUserId.value) return { tracks: [], count: 0 }
+
+  const sort = params.sort || { sortBy: 'created_at', sortDirection: 'desc' }
+  const { from, to } = trackPageRange(page)
+
+  let query = supabase
+    .from('sounds')
+    .select(`
+      *,
+      track_statuses!status_id(id, name)
+    `, { count: 'exact' })
+    .eq('user_id', profileUserId.value)
+
+  query = applyMusicFiltersToSoundsQuery(query, params.filters)
+  query = query.order(sort.sortBy || 'created_at', { ascending: sort.sortDirection === 'asc' })
+  query = query.range(from, to)
+
+  const { data, error, count } = await query
+  if (error) throw error
+
+  const enriched = await enrichTracksWithCollections(supabase, data || [])
+  return { tracks: enriched, count: count ?? enriched.length }
 }
 
 function applyLatestVersionOnlyFilter(list: any[]): any[] {
@@ -1483,228 +1617,120 @@ function applyLatestVersionOnlyFilter(list: any[]): any[] {
   return list.filter((t) => keepIds.has(t.id))
 }
 
-async function applyPersistedFiltersToTracks(tracksWithCollections: any[]): Promise<any[] | null> {
-  const params = loadPersistedFilterParams()
-  if (!params || !hasActiveMusicFilters(params)) {
-    return tracksWithCollections
-  }
-
-  lastAppliedParams.value = {
-    filters: { ...(params.filters || {}) },
-    sort: { ...(params.sort || { sortBy: 'created_at', sortDirection: 'desc' }) }
-  }
-
-  if (hasServerSideMusicFilters(params)) {
-    try {
-      await updateFiltersAndSort(params)
-    } catch (error) {
-      console.error('Error applying persisted server-side filters:', error)
-      return tracksWithCollections
-    }
-    return null
-  }
-
-  let result = tracksWithCollections
-  if (params.filters?.latestVersionOnly) {
-    result = applyLatestVersionOnlyFilter(result)
-    const sourceId = `profile-${profileUserId.value}`
-    if (queueSourceId.value === sourceId) {
-      updateQueue(result, sourceId)
-    }
-  }
-
-  return result
-}
-
-const fetchTracks = async () => {
+const loadTracksPage = async (options: {
+  page?: number
+  append?: boolean
+  params?: MusicFilterSortParams
+} = {}) => {
   if (!supabase || !profileUserId.value) {
     return
   }
 
-  // Wait for auth to settle so isOwnProfile and RLS-backed queries are correct
-  if (!isReady.value) {
-    return
+  const page = options.page ?? 0
+  const append = options.append ?? false
+  const params = resolveFilterParams(options.params)
+
+  lastAppliedParams.value = {
+    filters: { ...(params.filters || {}) },
+    sort: { ...(params.sort || { sortBy: 'created_at', sortDirection: 'desc' }) },
   }
 
   const requestId = ++fetchTracksRequestId
-  
-  // Start visibility check as early as possible (run in parallel, don't block)
   getTrackVisibilityCondition(profileUserId.value, user.value?.id ?? null).catch(() => {})
 
-  // Only show loading state if we don't have any tracks yet (from initialData)
-  const hasInitialTracks = tracks.value.length > 0
-  if (!hasInitialTracks) {
+  if (append) {
+    loadingMore.value = true
+  } else {
     loading.value = true
-  }
-
-  // Load saved sort preferences from localStorage
-  let sortBy = 'created_at'
-  let sortDirection: 'asc' | 'desc' = 'desc'
-  if (typeof window !== 'undefined') {
-    try {
-      const savedFilters = localStorage.getItem('filterSort_music')
-      if (savedFilters) {
-        const parsed = JSON.parse(savedFilters)
-        if (parsed.sort) {
-          sortBy = parsed.sort.sortBy || 'created_at'
-          sortDirection = parsed.sort.sortDirection || 'desc'
-        }
-      }
-    } catch (e) {
-      console.error('fetchTracks: Error loading saved sort:', e)
-    }
+    currentPage.value = 0
+    clientTrackCache.value = null
   }
 
   try {
-    let data: any[] | null = null
-    let error: any = null
-
-    const runSoundsQuery = () =>
-      supabase
-        .from('sounds')
-        .select(`
-          *,
-          track_statuses!status_id(id, name)
-        `)
-        .eq('user_id', profileUserId.value)
-        .order(sortBy, { ascending: sortDirection === 'asc' })
-
-    const applySort = (arr: any[]) => {
-      if (sortBy === 'created_at') {
-        arr.sort((a: any, b: any) => {
-          const aTime = new Date(a.shortlisted_at || a.created_at).getTime()
-          const bTime = new Date(b.shortlisted_at || b.created_at).getTime()
-          return sortDirection === 'asc' ? aTime - bTime : bTime - aTime
-        })
-      } else {
-        arr.sort((a: any, b: any) => {
-          const aVal = a[sortBy] || ''
-          const bVal = b[sortBy] || ''
-          if (sortDirection === 'asc') return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
-          return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
-        })
-      }
+    if (isOwnProfile.value && user.value && !viewerUserType.value) {
+      await fetchViewerUserType()
     }
 
-    if (isOwnProfile.value && viewerUserType.value === 'creator' && user.value) {
-      const { getShortlistedTracks } = await import('~/utils/shortlist')
-      const result = await getShortlistedTracks(user.value.id)
-      if (result.error) throw result.error
-      data = result.data || []
-      applySort(data)
-    } else if (isOwnProfile.value && user.value && !viewerUserType.value) {
-      const [_, soundsResult] = await Promise.all([fetchViewerUserType(), runSoundsQuery()])
-      data = soundsResult.data
-      error = soundsResult.error
-      if (!error && data && viewerUserType.value === 'creator') {
-        const { getShortlistedTracks } = await import('~/utils/shortlist')
-        const result = await getShortlistedTracks(user.value!.id)
-        if (result.error) throw result.error
-        data = result.data || []
-        applySort(data)
+    const useClientPagination = isShortlistMode() || needsClientOnlyPagination(params)
+
+    if (useClientPagination) {
+      if (!clientTrackCache.value) {
+        let fullList = await fetchFullTrackList(params)
+        if (params.filters?.latestVersionOnly) {
+          fullList = applyLatestVersionOnlyFilter(fullList)
+          const sourceId = `profile-${profileUserId.value}`
+          if (queueSourceId.value === sourceId) {
+            updateQueue(fullList, sourceId)
+          }
+        }
+        clientTrackCache.value = fullList
+        totalTrackCount.value = fullList.length
       }
-    } else {
-      if (user.value && !viewerUserType.value) fetchViewerUserType()
-      const soundsResult = await runSoundsQuery()
-      data = soundsResult.data
-      error = soundsResult.error
-    }
 
-    if (error) throw error
+      if (requestId !== fetchTracksRequestId) return
 
-    // Ignore stale responses when navigating quickly between pages
-    if (requestId !== fetchTracksRequestId) {
+      const cache = clientTrackCache.value || []
+      const { from, to } = trackPageRange(page)
+      const slice = cache.slice(from, to + 1)
+      tracks.value = append ? [...tracks.value, ...slice] : slice
+      currentPage.value = page
       return
     }
 
-    const rawTracks = data || []
-    if (rawTracks.length === 0) {
-      tracks.value = []
-      return
-    }
+    const { tracks: pageTracks, count } = await fetchServerTrackPage(params, page)
+    if (requestId !== fetchTracksRequestId) return
 
-    const soundIds = rawTracks.map((t: any) => t.id)
-    const { data: allJunctionData } = await supabase
-      .from('collections_sounds')
-      .select('sound_id, collection_id')
-      .in('sound_id', soundIds)
-
-    const collectionIdsBySoundId = new Map<number, number[]>()
-    const allCollectionIds = new Set<number>()
-    for (const row of allJunctionData || []) {
-      const sid = (row as any).sound_id
-      const cid = (row as any).collection_id
-      if (!collectionIdsBySoundId.has(sid)) collectionIdsBySoundId.set(sid, [])
-      collectionIdsBySoundId.get(sid)!.push(cid)
-      allCollectionIds.add(cid)
-    }
-
-    let collectionsList: { id: number; name: string; slug: string; user_id: string }[] = []
-    if (allCollectionIds.size > 0) {
-      const { data: collectionsData } = await supabase
-        .from('collections')
-        .select('id, name, slug, user_id')
-        .in('id', Array.from(allCollectionIds))
-      collectionsList = (collectionsData || []) as { id: number; name: string; slug: string; user_id: string }[]
-    }
-
-    const collectionMap = new Map(collectionsList.map(c => [c.id, c]))
-    const isShortlistedTrack = isOwnProfile.value && viewerUserType.value === 'creator' && user.value
-    const collectionOwnerId = isShortlistedTrack ? user.value!.id : null
-
-    const tracksWithCollections = rawTracks.map((track: any) => {
-      const collectionIds = collectionIdsBySoundId.get(track.id) || []
-      const cols = collectionIds.map(id => collectionMap.get(id)).filter(Boolean) as { name: string; slug: string; user_id: string }[]
-      const collections = collectionOwnerId
-        ? cols.filter(c => c.user_id === collectionOwnerId).map(c => ({ name: c.name, slug: c.slug }))
-        : cols.map(c => ({ name: c.name, slug: c.slug }))
-      return {
-        ...track,
-        collections,
-        track_status: track.track_statuses
-      }
-    })
-
-    const filtered = await applyPersistedFiltersToTracks(tracksWithCollections)
-    if (filtered !== null) {
-      tracks.value = filtered
-    }
+    tracks.value = append ? [...tracks.value, ...pageTracks] : pageTracks
+    totalTrackCount.value = count
+    currentPage.value = page
   } catch (error) {
-    if (requestId !== fetchTracksRequestId) {
-      return
+    if (requestId !== fetchTracksRequestId) return
+    console.error('Error loading tracks:', error)
+    if (!append) {
+      tracks.value = []
+      totalTrackCount.value = 0
     }
-    console.error('Error fetching tracks:', error)
-    alert('Failed to load tracks: ' + (error as any).message)
   } finally {
     if (requestId === fetchTracksRequestId) {
       loading.value = false
+      loadingMore.value = false
     }
   }
 }
 
-// Refetch when auth becomes ready or profile id is resolved (fixes empty library after nav)
+const fetchTracks = async () => {
+  await loadTracksPage({ page: 0, append: false })
+}
+
+const handleLoadMore = () => {
+  if (loadingMore.value || loading.value || !hasMoreTracks.value) return
+  void loadTracksPage({ page: currentPage.value + 1, append: true })
+}
+
+// Refetch when profile id is resolved or auth state changes (shortlist mode)
 watch(
   [() => isReady.value, () => profileUserId.value, () => user.value?.id],
-  ([ready, profileId]) => {
-    if (ready && profileId) {
-      fetchTracks()
+  ([, profileId]) => {
+    if (profileId) {
+      void fetchTracks()
     }
-  }
+  },
+  { immediate: true }
 )
 
 // Refetch when returning to this page (e.g. All Music after Collections)
 watch(
   () => route.params.id as string,
   (id, previousId) => {
-    if (id && id !== previousId && isReady.value && profileUserId.value) {
-      fetchTracks()
+    if (id && id !== previousId && profileUserId.value) {
+      void fetchTracks()
     }
   }
 )
 
 onActivated(() => {
-  if (isReady.value && profileUserId.value) {
-    fetchTracks()
+  if (profileUserId.value) {
+    void fetchTracks()
   }
 })
 
@@ -1742,113 +1768,14 @@ const handleOpenFilterSort = () => {
   }
 }
 
+const handleClearFilterSort = () => {
+  lastAppliedParams.value = null
+  clearFilterSort?.()
+}
+
 // Apply filters and sort to tracks
 const updateFiltersAndSort = async (params: any) => {
-  
-  if (!supabase || !profileUserId.value) return
-
-  lastAppliedParams.value = {
-    filters: { ...(params.filters || {}) },
-    sort: { ...(params.sort || { sortBy: 'created_at', sortDirection: 'desc' }) }
-  }
-  
-  loading.value = true
-  
-  try {
-    let query = supabase
-      .from('sounds')
-      .select(`
-        *,
-        track_statuses!status_id(id, name)
-      `)
-      .eq('user_id', profileUserId.value)
-    
-    // Apply music filters
-    const filters = params.filters || {}
-    const sort = params.sort || { sortBy: 'created_at', sortDirection: 'desc' }
-    
-    // Genre filter
-    if (filters.genre?.length > 0) {
-      query = query.in('genre', filters.genre)
-    }
-    
-    // BPM range filter
-    if (filters.bpm?.min) {
-      query = query.gte('bpm', filters.bpm.min)
-    }
-    if (filters.bpm?.max) {
-      query = query.lte('bpm', filters.bpm.max)
-    }
-    
-    // Key filter
-    if (filters.key?.length > 0) {
-      query = query.in('key', filters.key)
-    }
-    
-    // Mood filter (array overlap)
-    if (filters.mood?.length > 0) {
-      query = query.overlaps('mood', filters.mood)
-    }
-    
-    // Year range filter
-    if (filters.year?.min) {
-      query = query.gte('year', filters.year.min)
-    }
-    if (filters.year?.max) {
-      query = query.lte('year', filters.year.max)
-    }
-    
-    // Status filter
-    if (filters.status?.length > 0) {
-      query = query.in('status_id', filters.status)
-    }
-    
-    // Apply sort
-    query = query.order(sort.sortBy, { ascending: sort.sortDirection === 'asc' })
-    
-    const { data, error } = await query
-    
-    if (error) throw error
-    
-    // Fetch collection names and slugs for each track
-    const tracksWithCollections = await Promise.all((data || []).map(async (track: any) => {
-      const { data: junctionData } = await supabase
-        .from('collections_sounds')
-        .select('collection_id')
-        .eq('sound_id', track.id)
-      
-      const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
-      
-      if (collectionIds.length === 0) {
-        return { ...track, collections: [], track_status: track.track_statuses }
-      }
-      
-      const { data: collectionData } = await supabase
-        .from('collections')
-        .select('name, slug')
-        .in('id', collectionIds)
-      
-      return { ...track, collections: collectionData || [], track_status: track.track_statuses }
-    }))
-    
-    let filtered = tracksWithCollections
-    if (filters.latestVersionOnly) {
-      filtered = applyLatestVersionOnlyFilter(filtered)
-    }
-
-    tracks.value = filtered
-
-    if (filters.latestVersionOnly) {
-      const sourceId = `profile-${profileUserId.value}`
-      if (queueSourceId.value === sourceId) {
-        updateQueue(filtered, sourceId)
-      }
-    }
-  } catch (error) {
-    console.error('Error filtering tracks:', error)
-  } finally {
-    loading.value = false
-  }
+  await loadTracksPage({ page: 0, append: false, params })
 }
 
 // Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
@@ -1924,9 +1851,6 @@ onMounted(async () => {
   await fetchProfile()
   if (!initialData.value?.profile) {
     await refreshInitialData()
-  }
-  if (isReady.value && profileUserId.value) {
-    await fetchTracks()
   }
   // Software is already loaded via useAsyncData (cached), no need to fetch again
   

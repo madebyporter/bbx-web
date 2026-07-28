@@ -12,8 +12,9 @@ function escapeXml(value: string) {
 }
 
 function urlEntry(loc: string, lastmod?: string | null) {
-  const lastmodTag = lastmod
-    ? `\n    <lastmod>${escapeXml(lastmod.split('T')[0])}</lastmod>`
+  const datePart = lastmod ? lastmod.split('T')[0] ?? lastmod : ''
+  const lastmodTag = datePart
+    ? `\n    <lastmod>${escapeXml(datePart)}</lastmod>`
     : ''
   return `  <url>\n    <loc>${escapeXml(loc)}</loc>${lastmodTag}\n  </url>`
 }
@@ -38,7 +39,13 @@ export default defineEventHandler(async (event) => {
       .eq('status', 'approved')
 
     resources?.forEach((resource) => {
-      const typeSlug = resource.resource_types?.slug
+      const resourceType = resource.resource_types as
+        | { slug: string }
+        | { slug: string }[]
+        | null
+      const typeSlug = Array.isArray(resourceType)
+        ? resourceType[0]?.slug
+        : resourceType?.slug
       if (typeSlug === 'software') {
         resourceRoutes.push({
           loc: `${SITE_ORIGIN}/software/${resource.slug}`,

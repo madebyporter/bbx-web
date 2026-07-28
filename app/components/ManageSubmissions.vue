@@ -143,7 +143,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import MasterDrawer from './MasterDrawer.vue'
 
@@ -302,21 +302,28 @@ const formatDate = (dateString) => {
   }
 }
 
-// Watch for drawer open to fetch users
+// Fetch pending submissions once admin auth is ready (isAdmin can load after mount)
+watch(
+  () => props.canEdit,
+  (canEdit) => {
+    if (canEdit) {
+      fetchResources()
+      if (props.show) {
+        fetchUsers()
+      }
+    } else {
+      loading.value = false
+      resources.value = []
+    }
+  },
+  { immediate: true }
+)
+
+// Refetch when drawer opens so queue stays current
 watch(() => props.show, (newVal) => {
   if (newVal && props.canEdit) {
-    fetchUsers()
-  }
-})
-
-onMounted(() => {
-  if (props.canEdit) {
     fetchResources()
-    if (props.show) {
-      fetchUsers()
-    }
-  } else {
-    loading.value = false
+    fetchUsers()
   }
 })
 </script> 

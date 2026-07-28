@@ -1,12 +1,15 @@
 <template>
   <!-- Only show list content when on /software exactly, not on child routes -->
-  <div v-if="route.path === '/software'" class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-0 text-neutral-300">
+  <PageContentSkeleton v-if="route.path === '/software' && !pageShellReady" />
+  <div v-else-if="route.path === '/software'" class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-0 text-neutral-300">
     <LibraryHeader 
       title="Music production software" 
       :count="resourceCount"
       item-label="item"
       filter-context="software"
+      :show-clear-filters="hasActiveFilterSort"
       @open-filter-sort="handleOpenFilterSort"
+      @clear-filters="handleClearFilterSort"
     />
     <Database 
       ref="database" 
@@ -19,11 +22,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, inject, onMounted, onUnmounted, computed, watch, nextTick, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import Database from '~/components/Database.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
+import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
+import { usePageShellReady } from '~/composables/usePageShellReady'
 
 // Define page meta to ensure this only matches /software exactly
 definePageMeta({
@@ -31,6 +36,32 @@ definePageMeta({
 })
 
 const route = useRoute()
+const pageShellReady = ref(false)
+usePageShellReady(pageShellReady)
+
+// SSR SEO metadata for the software list page
+const siteOrigin = useSiteOrigin()
+const softwareCanonical = `${siteOrigin}/software`
+const softwareSeoTitle = 'Music Production Software'
+const softwareSeoDescription = 'Browse a curated collection of music production software — DAWs, synths, samplers, plugins, and audio tools used by producers and engineers.'
+
+useSeoMeta({
+  title: softwareSeoTitle,
+  description: softwareSeoDescription,
+  ogTitle: `${softwareSeoTitle} | Beatbox`,
+  ogDescription: softwareSeoDescription,
+  ogUrl: softwareCanonical,
+  ogType: 'website',
+  twitterCard: 'summary_large_image',
+  twitterTitle: `${softwareSeoTitle} | Beatbox`,
+  twitterDescription: softwareSeoDescription,
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: softwareCanonical, key: 'canonical' }
+  ]
+})
 
 // Debug logging
 
@@ -72,6 +103,8 @@ const resourceCount = computed(() => {
 const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
 const unregisterContextItems = inject<() => void>('unregisterContextItems')
 const openFilterModal = inject<() => void>('openFilterModal')
+const clearFilterSort = inject<(() => void) | null>('clearFilterSort', null)
+const hasActiveFilterSort = inject<ComputedRef<boolean>>('hasActiveFilterSort', computed(() => false))
 
 defineEmits(['edit-resource', 'show-signup'])
 
@@ -80,6 +113,10 @@ const handleOpenFilterSort = () => {
   if (openFilterModal) {
     openFilterModal()
   }
+}
+
+const handleClearFilterSort = () => {
+  clearFilterSort?.()
 }
 
 // Watch resources to update context items for search
@@ -92,7 +129,13 @@ watch(() => database.value?.resources, (resources) => {
 }, { immediate: true, deep: true })
 
 // Register context items on mount
-onMounted(() => {
+onMounted(async () => {
+  await nextTick()
+  if (database.value?.fetchResources) {
+    await database.value.fetchResources()
+  }
+  pageShellReady.value = true
+
   // Register initial context items
   if (registerContextItems && database.value?.resources) {
     registerContextItems(database.value.resources, ['name', 'creator', 'tags'])

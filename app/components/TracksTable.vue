@@ -1,11 +1,17 @@
 <template>
-  <div class="overflow-x-auto w-full h-fit">
-    <div v-if="loading" class="flex items-center justify-center p-8 h-full w-full grow">
-      <LoadingLogo />
-    </div>
+  <div class="w-full min-w-0 overflow-x-hidden">
+      <TracksTableSkeleton
+        v-if="loading"
+        :is-own-profile="isOwnProfile"
+        :profile-user-type="profileUserType"
+        :analytics-mode="analyticsMode"
+        :show-actions="showActionsColumn"
+        :show-collection="showCollectionColumn"
+        :show-status="showStatusColumn"
+      />
 
-    <!-- Zero State -->
-    <div v-else-if="tracks.length === 0" class="py-16 w-full text-center">
+      <!-- Zero State -->
+      <div v-else-if="tracks.length === 0" class="py-16 w-full text-center">
       <div class="max-w-md mx-auto">
         <h3 class="text-lg font-medium mb-2 text-neutral-300">
           {{ isOwnProfile && profileUserType === 'audio_pro' ? 'No tracks uploaded yet' : isOwnProfile &&
@@ -23,9 +29,9 @@
           Upload Music
         </Button>
       </div>
-    </div>
+      </div>
 
-    <div v-else class="w-full overflow-x-auto">
+      <div v-else class="w-full min-w-0">
       <!-- Bulk Actions Drawer -->
       <BulkActionsDrawer v-model:show="showBulkActionsDrawer" :selected-tracks="selectedTracksArray"
         :selected-count="selectedTrackIds.size" @tracks-deleted="handleTracksDeleted"
@@ -54,16 +60,16 @@
         </template>
       </Modal>
 
-      <!-- Single Grid Container - wraps header and all rows -->
-      <div class="w-fit md:w-full h-fit">
+      <div class="w-full min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar">
+        <div class="w-full h-fit">
         <!-- Header -->
         <div
           :class="[
-            'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 bg-neutral-900 *:flex *:items-center',
+            'text-sm text-left text-neutral-500 border-b border-neutral-800 bg-neutral-900 *:flex *:items-center *:p-4 min-h-[65px]',
           ]"
           :style="tableGridStyle"
         >
-          <div class="px-2 flex items-center justify-center">
+          <div class="flex items-center justify-center">
             <Button
               v-if="isOwnProfile"
               variant="ghost"
@@ -97,10 +103,10 @@
           <div>Duration</div>
             <div v-if="showStatusColumn">Status</div>
           </template>
-          <div :class="[
-            'flex items-center justify-start',
-            showActionsColumn ? 'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[88px]' : ''
-          ]">
+          <div
+            v-if="showActionsColumn"
+            :class="[TRACK_TABLE_STICKY_ACTIONS_CLASS, 'justify-start min-h-[65px]']"
+          >
             <Button
               v-if="isOwnProfile && hasSelections"
               variant="primary"
@@ -115,10 +121,10 @@
 
         <!-- Tracks -->
         <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
-          'text-sm border-b border-neutral-900 *:py-4 items-center',
-          isCurrentlyPlaying(track) ? 'bg-neutral-800/70  lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
+          'group text-sm border-b border-neutral-900 *:flex *:items-center *:p-4 items-stretch',
+          isCurrentlyPlaying(track) ? 'is-playing bg-neutral-800/70 lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800'
         ]" :style="tableGridStyle">
-        <div class="px-2 flex items-center justify-center gap-1">
+        <div class="flex items-center justify-center gap-1">
           <!-- Bulk Selection Mode: Show Checkbox -->
           <template v-if="bulkSelectionMode">
             <Button variant="ghost" class="!p-0 text-neutral-400 hover:text-neutral-200" @click="toggleTrackSelection(track.id)">
@@ -181,7 +187,7 @@
             </svg>
           </PlayerButton>
         </div>
-        <div class="overflow-hidden">
+        <div class="overflow-hidden min-w-0">
           <NuxtLink
             :to="`/u/${getTrackOwnerUsername(track)}/t/${generateTrackSlug(track)}`"
             class="flex min-w-0 w-full items-center justify-between gap-2 text-neutral-300 hover:text-white hover:underline"
@@ -191,7 +197,7 @@
             <span v-if="track.is_public === false" class="text-xs text-neutral-500 flex-shrink-0">[private]</span>
           </NuxtLink>
         </div>
-        <div class="text-neutral-400 overflow-hidden truncate">{{ track.artist || 'Unknown' }}</div>
+        <div class="text-neutral-400 overflow-hidden truncate min-w-0">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
         <template v-if="analyticsMode && isOwnProfile">
           <div class="text-neutral-300">{{ formatTrackStat(track.id, 'plays') }}</div>
@@ -200,7 +206,7 @@
           <div class="text-neutral-300">{{ formatTrackStat(track.id, 'completion') }}</div>
         </template>
         <template v-else>
-        <div v-if="showCollectionColumn" class="text-neutral-400 overflow-visible flex justify-start items-center gap-1">
+        <div v-if="showCollectionColumn" class="text-neutral-400 overflow-visible flex justify-start items-center gap-1 min-w-0">
           <CollectionTagsCell
             :collections="track.collections"
             :owner-username="getTrackOwnerUsername(track)"
@@ -213,7 +219,7 @@
             <Plus class="size-3" />
         </div>
         </div>
-        <div class="text-neutral-400 overflow-hidden truncate">{{ track.genre || '-' }}</div>
+        <div class="text-neutral-400 overflow-hidden truncate min-w-0">{{ track.genre || '-' }}</div>
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
         <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>
         <div v-if="showStatusColumn" class="text-neutral-400 overflow-hidden">
@@ -228,36 +234,15 @@
           <div v-else class="text-xs px-2 py-1">Loading...</div>
         </div>
         </template>
-        <!-- Action Button: Edit / Comment / Add / Remove -->
-        <div :class="[
-          showActionsColumn
-            ? 'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4 min-w-[88px]'
-            : '',
-          isCurrentlyPlaying(track) ? '!bg-neutral-800' : ''
-        ]">
-          <div class="flex flex-row items-center gap-1">
-          <!-- Edit for audio_pro owners -->
-          <Button
-            v-if="isOwnProfile && profileUserType === 'audio_pro'"
-            variant="ghost"
-            size="sm"
-            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2"
-            title="Edit track"
-            @click="$emit('edit-track', track)"
-          >
-            <EditPencil class="w-4 h-4" />
-          </Button>
-          <!-- Comments for logged-in users -->
-          <Button
-            v-if="user"
-            variant="ghost"
-            size="sm"
-            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2"
-            title="Comments"
-            @click="openTrackComments(track)"
-          >
-            <ChatBubble class="w-4 h-4" />
-          </Button>
+        <div v-if="showActionsColumn" :class="TRACK_TABLE_STICKY_ACTIONS_CLASS">
+          <div class="flex flex-row items-center justify-end gap-1">
+          <TrackRowActionsMenu
+            :track="track"
+            :is-own-profile="isOwnProfile"
+            :profile-user-type="profileUserType"
+            :is-logged-in="!!user"
+            @edit-track="$emit('edit-track', $event)"
+          />
           <!-- Add button for creators viewing audio_pro profiles -->
           <Button
             v-if="!isOwnProfile && viewerUserType === 'creator' && profileUserType === 'audio_pro' && !shortlistedTrackIds.has(track.id)"
@@ -295,9 +280,18 @@
           </Button>
         </div>
         </div>
+        </div>
+
+        <div
+          v-if="hasMore"
+          ref="loadMoreSentinelRef"
+          class="flex items-center justify-center p-4 border-b border-neutral-900"
+        >
+          <div v-if="loadingMore" class="size-5 rounded-full border-2 border-neutral-600 border-t-amber-400 animate-spin" />
+        </div>
+        </div>
       </div>
-    </div>
-  </div>
+      </div>
   </div>
 </template>
 
@@ -309,7 +303,6 @@ import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
-import LoadingLogo from '~/components/LoadingLogo.vue'
 import BulkActionsDrawer from '~/components/BulkActionsDrawer.vue'
 import Modal from '~/components/Modal.vue'
 import type { AnchorRect } from '~/components/Modal.vue'
@@ -322,7 +315,11 @@ import {
   formatAnalyticsDuration,
   type TrackAnalyticsRow,
 } from '~/composables/useTrackAnalyticsData'
-import { Plus, EditPencil, ChatBubble } from '@iconoir/vue'
+import { Plus } from '@iconoir/vue'
+import TrackRowActionsMenu from '~/components/TrackRowActionsMenu.vue'
+import { buildTrackGridStyle, TRACK_TABLE_STICKY_ACTIONS_CLASS } from '~/utils/trackTableGrid'
+import { useInfiniteScroll } from '~/composables/useInfiniteScroll'
+import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 
 interface Props {
   tracks: any[]
@@ -335,17 +332,22 @@ interface Props {
   analyticsMode?: boolean
   trackStats?: Map<number, TrackAnalyticsRow>
   analyticsLoading?: boolean
+  hasMore?: boolean
+  loadingMore?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   analyticsMode: false,
   analyticsLoading: false,
+  hasMore: false,
+  loadingMore: false,
 })
 const emit = defineEmits<{
   'edit-track': [track: any]
   'tracks-deleted': []
   'track-shortlisted': [trackId: number]
   'track-unshortlisted': [trackId: number]
+  'load-more': []
 }>()
 
 const { currentTrack, isPlaying, loadQueue, togglePlayPause } = usePlayer()
@@ -384,41 +386,16 @@ const collectionModalTitle = computed(() => {
 
 const hasSelections = computed(() => selectedTrackIds.value.size > 0)
 
-const showStatusColumn = computed(() =>
-  props.isOwnProfile && props.profileUserType === 'audio_pro' && !props.analyticsMode
+const showStatusColumn = computed(
+  () =>
+    props.isOwnProfile &&
+    props.profileUserType === 'audio_pro' &&
+    !props.analyticsMode
 )
 
-const showCollectionColumn = computed(() =>
-  props.isOwnProfile && !props.analyticsMode
+const showCollectionColumn = computed(
+  () => props.isOwnProfile && !props.analyticsMode
 )
-
-const tableGridStyle = computed(() => {
-  const cols = [
-    'minmax(70px, auto)',
-    'minmax(250px, 1fr)',
-    '100px',
-    '70px',
-  ]
-
-  if (props.analyticsMode && props.isOwnProfile) {
-    cols.push('70px', '70px', '120px', '90px', '100px')
-  } else {
-    if (showCollectionColumn.value) {
-      cols.push('minmax(140px, max-content)')
-    }
-    cols.push('70px', '50px', '70px')
-    if (showStatusColumn.value) {
-      cols.push('100px')
-    }
-    cols.push('88px')
-  }
-
-  return {
-    display: 'grid',
-    gap: '1rem',
-    gridTemplateColumns: cols.join(' '),
-  }
-})
 
 const showActionsColumn = computed(() => {
   return !!(
@@ -428,17 +405,23 @@ const showActionsColumn = computed(() => {
   )
 })
 
-const openTrackComments = (track: any) => {
-  const event = new CustomEvent('open-track-comments', {
-    detail: {
-      track: { id: track.id, title: track.title },
-      collectionId: null,
-    },
-    bubbles: true,
-    composed: true,
+const tableGridStyle = computed(() =>
+  buildTrackGridStyle({
+    showCollection: showCollectionColumn.value,
+    showStatus: showStatusColumn.value,
+    showActions: showActionsColumn.value,
+    analyticsMode: props.analyticsMode && props.isOwnProfile,
   })
-  window.dispatchEvent(event)
-}
+)
+
+const loadMoreSentinelRef = ref<HTMLElement | null>(null)
+
+useInfiniteScroll({
+  sentinelRef: loadMoreSentinelRef,
+  enabled: () => props.hasMore && !props.loading && !props.loadingMore,
+  loading: () => props.loadingMore,
+  onLoadMore: () => emit('load-more'),
+})
 
 function formatTrackStat(trackId: number, field: 'plays' | 'listeners' | 'avgListen' | 'completion'): string {
   if (props.analyticsLoading) return '—'

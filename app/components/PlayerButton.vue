@@ -5,23 +5,28 @@
     :class="classes"
     v-bind="buttonAttrs"
   >
-    <template v-if="variant === 'art' && artworkUrl">
+    <template v-if="variant === 'art'">
       <video
-        v-if="artworkIsVideo"
+        v-if="artworkUrl && artworkIsVideo"
         :src="artworkUrl"
         autoplay
         muted
         loop
         playsinline
-        class="absolute inset-0 size-full object-cover pointer-events-none"
+        :class="mediaClasses"
+        @loadeddata="handleArtworkLoaded"
+        @error="handleArtworkError"
       />
       <img
-        v-else
+        v-else-if="artworkUrl"
         :src="artworkUrl"
         alt=""
-        class="absolute inset-0 size-full object-cover pointer-events-none"
+        :class="mediaClasses"
+        @load="handleArtworkLoaded"
+        @error="handleArtworkError"
       />
       <span
+        v-if="artworkUrl && artworkLoaded"
         class="absolute inset-0 bg-black/30 transition-colors group-hover:bg-black/40 pointer-events-none"
       />
     </template>
@@ -32,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue'
+import { computed, ref, useAttrs, watch } from 'vue'
 
 type Variant = 'filled' | 'ghost' | 'art'
 type ButtonType = 'button' | 'submit' | 'reset'
@@ -57,6 +62,22 @@ const props = withDefaults(
 defineOptions({ inheritAttrs: false })
 
 const attrs = useAttrs()
+const artworkLoaded = ref(false)
+
+watch(
+  () => props.artworkUrl,
+  () => {
+    artworkLoaded.value = false
+  }
+)
+
+const handleArtworkLoaded = () => {
+  artworkLoaded.value = true
+}
+
+const handleArtworkError = () => {
+  artworkLoaded.value = false
+}
 
 const variantClasses: Record<Exclude<Variant, 'art'>, string> = {
   filled:
@@ -68,14 +89,27 @@ const variantClasses: Record<Exclude<Variant, 'art'>, string> = {
 const baseClasses =
   'inline-flex items-center justify-center shrink-0 size-10 rounded-sm transition-colors cursor-pointer disabled:cursor-not-allowed'
 
+const hasArtwork = computed(() => props.variant === 'art' && !!props.artworkUrl)
+
+const mediaClasses = computed(() => [
+  'absolute inset-0 size-full object-cover pointer-events-none transition-opacity duration-200',
+  artworkLoaded.value ? 'opacity-100' : 'opacity-0',
+])
+
 const classes = computed(() => {
-  const hasArtwork = props.variant === 'art' && props.artworkUrl
+  if (props.variant === 'art') {
+    const artClasses = hasArtwork.value && !artworkLoaded.value
+      ? 'relative overflow-hidden group text-white bg-neutral-700'
+      : hasArtwork.value
+        ? 'relative overflow-hidden group text-white'
+        : 'relative overflow-hidden group text-white bg-transparent'
+
+    return [baseClasses, artClasses, attrs.class]
+  }
 
   return [
     baseClasses,
-    hasArtwork
-      ? 'relative overflow-hidden group text-white'
-      : variantClasses[props.variant === 'art' ? 'ghost' : props.variant],
+    variantClasses[props.variant],
     attrs.class,
   ]
 })

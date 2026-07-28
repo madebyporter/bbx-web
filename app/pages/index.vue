@@ -1,14 +1,17 @@
 <template>
-  <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
+  <PageContentSkeleton v-if="!pageShellReady" />
+  <div v-else class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
     <!-- Temporary redirect page - replace with real landing page in future -->
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, watch, ref } from 'vue'
+import { onMounted, watch, ref, nextTick } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import { navigateTo } from '#app'
+import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
+import { usePageShellReady } from '~/composables/usePageShellReady'
 
 // TEMPORARY HOMEPAGE REDIRECT
 // TODO: Replace this with a real landing page in the future
@@ -17,6 +20,8 @@ import { navigateTo } from '#app'
 const { user, isReady, init } = useAuth()
 const { supabase } = useSupabase()
 const username = ref<string | null>(null)
+const pageShellReady = ref(false)
+usePageShellReady(pageShellReady)
 
 // Fetch username for the logged-in user
 const fetchUsername = async () => {
@@ -47,6 +52,8 @@ const fetchUsername = async () => {
 onMounted(async () => {
   await init()
   await fetchUsername()
+  await nextTick()
+  pageShellReady.value = true
 })
 
 // Watch for auth ready state and redirect

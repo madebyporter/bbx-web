@@ -1,15 +1,14 @@
 <template>
   <div class="flex flex-col gap-0 text-neutral-300 grow">
-    <div v-if="loading" class="flex items-center justify-center p-8">
-      <LoadingLogo />
-    </div>
-
-    <div v-else-if="tracks.length === 0" class="text-neutral-500 p-4">
-      No tracks found in this group.
-    </div>
+    <template v-if="!pageShellReady">
+      <div class="p-4 border-b border-neutral-800">
+        <div class="h-8 lg:h-10 w-48 max-w-full rounded bg-neutral-800 animate-pulse mb-2" />
+        <div class="h-4 w-64 max-w-full rounded bg-neutral-800 animate-pulse" />
+      </div>
+      <TracksTableSkeleton :is-own-profile="isOwnProfile" :show-actions="!!(user || isOwnProfile)" />
+    </template>
 
     <template v-else>
-      <!-- Group Header with Edit and Filter/Sort -->
       <div class="p-4 border-b border-neutral-800">
         <div class="flex items-center justify-between mb-2">
           <div v-if="!isEditingGroupName" class="flex items-center gap-3 flex-1">
@@ -39,36 +38,71 @@
             Grouped tracks/versions of similar recordings
           </p>
           <div class="flex items-center gap-4">
-            <p class="text-sm text-neutral-500">
-              {{ tracks.length }} {{ tracks.length === 1 ? 'track' : 'tracks' }}
+            <p v-if="tracksLoading" class="text-sm text-neutral-500">
+              <span class="h-4 w-16 rounded bg-neutral-800 animate-pulse inline-block" />
             </p>
-            <Button variant="secondary" class="btn !px-3 !py-1.5 text-sm" @click="handleOpenFilterSort">
-              Filter & Sort
-            </Button>
+            <p v-else class="text-sm text-neutral-500">
+              {{ totalTrackCount }} {{ totalTrackCount === 1 ? 'track' : 'tracks' }}
+            </p>
+            <div class="flex items-center gap-1">
+              <Button
+                variant="secondary"
+                class="btn !px-3 !py-1.5 text-sm"
+                :disabled="tracksLoading"
+                @click="handleOpenFilterSort"
+              >
+                Filter & Sort
+              </Button>
+              <Button
+                v-if="hasActiveFilterSort"
+                variant="secondary"
+                size="sm"
+                class="btn px-2.5! py-1.5! text-sm shrink-0"
+                title="Clear filters"
+                @click="handleClearFilterSort"
+              >
+                <Xmark class="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Stem Player -->
-      <StemPlayer :tracks="tracks" />
-      <!-- Tracks in Group -->
+      <StemPlayer v-if="tracks.length > 0" :tracks="tracks" />
       <div class="grow">
-        <TracksTable :tracks="tracks" :source-id="`group-${groupName}`" :is-own-profile="isOwnProfile" :loading="false"
-          :username="username" @edit-track="handleEdit" />
+        <TracksTable
+          :tracks="tracks"
+          :source-id="`group-${groupName}`"
+          :is-own-profile="isOwnProfile"
+          :loading="tracksLoading"
+          :has-more="hasMoreTracks"
+          :loading-more="loadingMore"
+          :username="username"
+          @edit-track="handleEdit"
+          @load-more="handleLoadMore"
+        />
       </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch, type ComputedRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import TracksTable from '~/components/TracksTable.vue'
+import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 import StemPlayer from '~/components/StemPlayer.vue'
-import LoadingLogo from '~/components/LoadingLogo.vue'
-import LibraryHeader from '~/components/LibraryHeader.vue'
+import { useFilterSortCookie } from '~/composables/useFilterSortPersistence'
+import { Xmark } from '@iconoir/vue'
+import { trackPageRange } from '~/utils/trackPagination'
+import {
+  applyMusicFiltersToSoundsQuery,
+  type MusicFilterSortParams,
+} from '~/utils/trackQueryFilters'
+import { enrichTracksWithCollections } from '~/utils/trackCollectionEnrichment'
+import { usePageShellReady } from '~/composables/usePageShellReady'
 
 const route = useRoute()
 const router = useRouter()
@@ -77,67 +111,70 @@ const { supabase } = useSupabase()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
-// Inject functions from layout
 const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
 const unregisterContextItems = inject<() => void>('unregisterContextItems')
 const registerFiltersAndSortHandler = inject<(handler: (params: any) => void) => void>('registerFiltersAndSortHandler')
 const unregisterFiltersAndSortHandler = inject<() => void>('unregisterFiltersAndSortHandler')
 const openFilterModal = inject<() => void>('openFilterModal')
+const clearFilterSort = inject<(() => void) | null>('clearFilterSort', null)
+const hasActiveFilterSort = inject<ComputedRef<boolean>>('hasActiveFilterSort', computed(() => false))
+const musicFilterCookie = useFilterSortCookie('music')
 
 const handleOpenFilterSort = () => {
-  if (openFilterModal) {
-    openFilterModal()
-  }
+  openFilterModal?.()
 }
 
-// Fetch initial group data server-side for SEO
+const handleClearFilterSort = () => {
+  clearFilterSort?.()
+}
+
 const { data: initialData } = await useAsyncData(
   `group-${route.params.username}-${route.params.group}`,
   async () => {
     if (!supabase) return null
-    
+
     const usernameParam = route.params.username as string
     const groupParam = route.params.group as string
-    
+
     try {
-      // Get user profile
       const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('id')
         .eq('username', usernameParam)
         .single()
-      
+
       if (profileError || !profileData) return null
-      
-      // Fetch tracks in this group (basic data for SEO)
+
       const { data: tracksData, error: tracksError } = await supabase
         .from('sounds')
         .select('*')
         .eq('user_id', profileData.id)
         .eq('track_group_name', groupParam)
         .order('version', { ascending: false })
-        .limit(10) // Just fetch a few for SEO
-      
+        .limit(10)
+
       if (tracksError) return null
-      
+
       return {
         profileUserId: profileData.id,
         username: usernameParam,
         groupName: groupParam,
-        tracks: tracksData || []
+        tracks: tracksData || [],
       }
     } catch (error) {
       console.error('Error fetching group data:', error)
       return null
     }
   },
-  {
-    server: true // Ensure this runs on the server for SSR
-  }
+  { server: true }
 )
 
 const tracks = ref<any[]>([])
-const loading = ref(true)
+const totalTrackCount = ref(0)
+const currentPage = ref(0)
+const tracksLoading = ref(true)
+const loadingMore = ref(false)
+const lastAppliedParams = ref<MusicFilterSortParams | null>(null)
 const profileUserId = ref<string | null>(initialData.value?.profileUserId || null)
 const username = ref(initialData.value?.username || '')
 const groupName = ref(initialData.value?.groupName || '')
@@ -148,91 +185,115 @@ const isOwnProfile = computed(() => {
   return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
 })
 
+const pageShellReady = computed(() => !!profileUserId.value && !tracksLoading.value)
+usePageShellReady(pageShellReady)
+
+const hasMoreTracks = computed(() => tracks.value.length < totalTrackCount.value)
+
+function resolveFilterParams(override?: MusicFilterSortParams): MusicFilterSortParams {
+  if (override) return override
+  if (lastAppliedParams.value) return lastAppliedParams.value
+  const saved = musicFilterCookie.value
+  if (saved && (saved.sort || saved.filters)) {
+    return {
+      filters: saved.filters || {},
+      sort: saved.sort || { sortBy: 'version', sortDirection: 'desc' },
+    }
+  }
+  return {
+    filters: {},
+    sort: { sortBy: 'version', sortDirection: 'desc' },
+  }
+}
+
+const loadTracksPage = async (options: { page?: number; append?: boolean; params?: MusicFilterSortParams } = {}) => {
+  if (!supabase || !profileUserId.value || !groupName.value) return
+
+  const page = options.page ?? 0
+  const append = options.append ?? false
+  const params = resolveFilterParams(options.params)
+  lastAppliedParams.value = params
+
+  const sort = params.sort || { sortBy: 'version', sortDirection: 'desc' }
+  const { from, to } = trackPageRange(page)
+
+  if (append) {
+    loadingMore.value = true
+  } else {
+    tracksLoading.value = true
+    currentPage.value = 0
+  }
+
+  try {
+    let query = supabase
+      .from('sounds')
+      .select(`
+        *,
+        track_statuses!status_id(id, name)
+      `, { count: 'exact' })
+      .eq('user_id', profileUserId.value)
+      .eq('track_group_name', groupName.value)
+
+    query = applyMusicFiltersToSoundsQuery(query, params.filters)
+    query = query.order(sort.sortBy || 'version', { ascending: sort.sortDirection === 'asc' })
+    query = query.range(from, to)
+
+    const { data, error, count } = await query
+    if (error) throw error
+
+    const enriched = await enrichTracksWithCollections(supabase, data || [])
+    tracks.value = append ? [...tracks.value, ...enriched] : enriched
+    totalTrackCount.value = count ?? enriched.length
+    currentPage.value = page
+  } catch (error) {
+    console.error('Error loading group tracks:', error)
+    if (!append) {
+      tracks.value = []
+      totalTrackCount.value = 0
+    }
+  } finally {
+    tracksLoading.value = false
+    loadingMore.value = false
+  }
+}
+
 const fetchGroupTracks = async () => {
   const usernameParam = route.params.username as string
   const groupParam = route.params.group as string
-  
+
   username.value = usernameParam
   groupName.value = groupParam
   newGroupName.value = groupParam
-  
+
   if (!supabase) return
-  
-  loading.value = true
-  
+
   try {
-    // Get user profile
     const { data: profileData, error: profileError } = await supabase
       .from('user_profiles')
       .select('id')
       .eq('username', usernameParam)
       .single()
-    
+
     if (profileError || !profileData) {
-      loading.value = false
+      tracksLoading.value = false
       return
     }
-    
+
     profileUserId.value = profileData.id as string
-    
-    // Load saved sort preferences from localStorage
-    let sortBy = 'version'
-    let sortDirection: 'asc' | 'desc' = 'desc'
-    
-    try {
-      const savedFilters = localStorage.getItem('filterSort_music')
-      if (savedFilters) {
-        const parsed = JSON.parse(savedFilters)
-        if (parsed.sort) {
-          sortBy = parsed.sort.sortBy || 'version'
-          sortDirection = parsed.sort.sortDirection || 'desc'
-        }
-      }
-    } catch (e) {
-      console.error('Group page: Error loading saved sort:', e)
-    }
-    
-    // Fetch all tracks in this group
-    const { data: tracksData, error: tracksError } = await supabase
-      .from('sounds')
-      .select(`
-        *,
-        track_statuses!status_id(id, name)
-      `)
-      .eq('user_id', profileData.id)
-      .eq('track_group_name', groupParam)
-      .order(sortBy, { ascending: sortDirection === 'asc' })
-    
-    if (tracksError) throw tracksError
-    
-    // Fetch collection names and slugs for each track
-    const tracksWithCollections = await Promise.all((tracksData || []).map(async (track: any) => {
-      const { data: junctionData } = await supabase
-        .from('collections_sounds')
-        .select('collection_id')
-        .eq('sound_id', track.id)
-      
-      const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
-      
-      if (collectionIds.length === 0) {
-        return { ...track, collections: [], track_status: track.track_statuses }
-      }
-      
-      const { data: collectionData } = await supabase
-        .from('collections')
-        .select('name, slug')
-        .in('id', collectionIds)
-      
-      return { ...track, collections: collectionData || [], track_status: track.track_statuses }
-    }))
-    
-    tracks.value = tracksWithCollections
-    
+    await loadTracksPage({ page: 0, append: false })
   } catch (error) {
     console.error('Error fetching group tracks:', error)
-  } finally {
-    loading.value = false
+    tracksLoading.value = false
   }
+}
+
+const handleLoadMore = () => {
+  if (loadingMore.value || tracksLoading.value || !hasMoreTracks.value) return
+  void loadTracksPage({ page: currentPage.value + 1, append: true })
+}
+
+const updateFiltersAndSort = async (params: MusicFilterSortParams) => {
+  await loadTracksPage({ page: 0, append: false, params })
 }
 
 const saveGroupName = async () => {
@@ -240,20 +301,16 @@ const saveGroupName = async () => {
     isEditingGroupName.value = false
     return
   }
-  
+
   try {
-    // Update all tracks in this group with new group name
     const { error } = await supabase
       .from('sounds')
       .update({ track_group_name: newGroupName.value })
       .eq('user_id', profileUserId.value)
       .eq('track_group_name', groupName.value)
-    
+
     if (error) throw error
-    
-    // Navigate to new group URL
     router.push(`/u/${username.value}/g/${newGroupName.value}`)
-    
   } catch (error) {
     console.error('Error renaming group:', error)
   } finally {
@@ -262,17 +319,13 @@ const saveGroupName = async () => {
 }
 
 const handleEdit = (track: any) => {
-  const event = new CustomEvent('edit-track', { 
+  window.dispatchEvent(new CustomEvent('edit-track', {
     detail: track,
     bubbles: true,
-    composed: true
-  })
-  window.dispatchEvent(event)
+    composed: true,
+  }))
 }
 
-// Set SEO meta tags using useSeoMeta (recommended by Nuxt for SEO)
-// Use computed values to ensure reactivity and SSR compatibility
-// Note: titleTemplate in nuxt.config will add "| Beatbox" automatically
 const seoTitle = computed(() => {
   const groupUsername = initialData.value?.username || username.value
   const groupNameValue = initialData.value?.groupName || groupName.value
@@ -285,7 +338,7 @@ const seoTitle = computed(() => {
 const seoDescription = computed(() => {
   const groupUsername = initialData.value?.username || username.value
   const groupNameValue = initialData.value?.groupName || groupName.value
-  const trackCount = initialData.value?.tracks?.length || tracks.value.length
+  const trackCount = initialData.value?.tracks?.length || totalTrackCount.value
   if (!groupNameValue || !groupUsername) {
     return 'View track group on Beatbox'
   }
@@ -299,7 +352,6 @@ const seoUrl = computed(() => {
   return `${siteUrl}/u/${groupUsername}/g/${groupNameValue}`
 })
 
-// Use useSeoMeta with computed values for reactivity and SSR support
 useSeoMeta({
   title: seoTitle,
   description: seoDescription,
@@ -313,121 +365,21 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
   twitterTitle: seoTitle,
   twitterDescription: seoDescription,
-  twitterImage: `${siteUrl}/img/og-image.jpg`
+  twitterImage: `${siteUrl}/img/og-image.jpg`,
 })
 
 useHead({
-  link: [
-    { rel: 'canonical', href: seoUrl }
-  ]
+  link: [{ rel: 'canonical', href: seoUrl }],
 })
 
-// Apply filters and sort to tracks
-const updateFiltersAndSort = async (params: any) => {
-  
-  if (!supabase || !profileUserId.value || !groupName.value) return
-  
-  loading.value = true
-  
-  try {
-    let query = supabase
-      .from('sounds')
-      .select(`
-        *,
-        track_statuses!status_id(id, name)
-      `)
-      .eq('user_id', profileUserId.value)
-      .eq('track_group_name', groupName.value)
-    
-    // Apply music filters
-    const { filters, sort } = params
-    
-    // Genre filter
-    if (filters.genre?.length > 0) {
-      query = query.in('genre', filters.genre)
-    }
-    
-    // BPM range filter
-    if (filters.bpm?.min) {
-      query = query.gte('bpm', filters.bpm.min)
-    }
-    if (filters.bpm?.max) {
-      query = query.lte('bpm', filters.bpm.max)
-    }
-    
-    // Key filter
-    if (filters.key?.length > 0) {
-      query = query.in('key', filters.key)
-    }
-    
-    // Mood filter (array overlap)
-    if (filters.mood?.length > 0) {
-      query = query.overlaps('mood', filters.mood)
-    }
-    
-    // Year range filter
-    if (filters.year?.min) {
-      query = query.gte('year', filters.year.min)
-    }
-    if (filters.year?.max) {
-      query = query.lte('year', filters.year.max)
-    }
-    
-    // Status filter
-    if (filters.status?.length > 0) {
-      query = query.in('status_id', filters.status)
-    }
-    
-    // Apply sort
-    query = query.order(sort.sortBy, { ascending: sort.sortDirection === 'asc' })
-    
-    const { data, error } = await query
-    
-    if (error) throw error
-    
-    // Fetch collection names and slugs for each track
-    const tracksWithCollections = await Promise.all((data || []).map(async (track: any) => {
-      const { data: junctionData } = await supabase
-        .from('collections_sounds')
-        .select('collection_id')
-        .eq('sound_id', track.id)
-      
-      const collectionIds = (junctionData || []).map((item: any) => item.collection_id)
-      
-      if (collectionIds.length === 0) {
-        return { ...track, collections: [], track_status: track.track_statuses }
-      }
-      
-      const { data: collectionData } = await supabase
-        .from('collections')
-        .select('name, slug')
-        .in('id', collectionIds)
-      
-      return { ...track, collections: collectionData || [], track_status: track.track_statuses }
-    }))
-    
-    tracks.value = tracksWithCollections
-  } catch (error) {
-    console.error('Error filtering tracks:', error)
-  } finally {
-    loading.value = false
-  }
-}
+defineExpose({ updateFiltersAndSort })
 
-// Expose updateFiltersAndSort for parent to call
-defineExpose({
-  updateFiltersAndSort
-})
-
-// Listen for track update events
 const handleTrackUpdate = () => {
   fetchGroupTracks()
 }
 
-// Watch tracks to update context items for search
 watch(() => tracks.value, (tracksList) => {
-  if (registerContextItems && tracksList && tracksList.length > 0) {
-    // For tracks, search by title and artist
+  if (registerContextItems && tracksList.length > 0) {
     registerContextItems(tracksList, ['title', 'artist'])
   }
 }, { immediate: true, deep: true })
@@ -435,28 +387,17 @@ watch(() => tracks.value, (tracksList) => {
 onMounted(async () => {
   await fetchGroupTracks()
 
-  // Register initial context items
   if (registerContextItems && tracks.value.length > 0) {
     registerContextItems(tracks.value, ['title', 'artist'])
   }
 
-  // Register filter/sort handler so layout can call updateFiltersAndSort when user applies
-  if (registerFiltersAndSortHandler) {
-    registerFiltersAndSortHandler(updateFiltersAndSort)
-  }
-
-  // Listen for track updates
+  registerFiltersAndSortHandler?.(updateFiltersAndSort)
   window.addEventListener('track-updated', handleTrackUpdate)
 })
 
 onUnmounted(() => {
-  if (unregisterContextItems) {
-    unregisterContextItems()
-  }
-  if (unregisterFiltersAndSortHandler) {
-    unregisterFiltersAndSortHandler()
-  }
+  unregisterContextItems?.()
+  unregisterFiltersAndSortHandler?.()
   window.removeEventListener('track-updated', handleTrackUpdate)
 })
 </script>
-

@@ -1,8 +1,6 @@
 <template>
   <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
-    <div v-if="loading" class="flex items-center justify-center p-8">
-      <LoadingLogo />
-    </div>
+    <PageContentSkeleton v-if="!pageShellReady" />
     
     <div v-else-if="!profileUserId" class="text-neutral-500 p-4">
       User not found.
@@ -78,7 +76,8 @@ import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
-import LoadingLogo from '~/components/LoadingLogo.vue'
+import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
+import { usePageShellReady } from '~/composables/usePageShellReady'
 
 const route = useRoute()
 const { user } = useAuth()
@@ -94,6 +93,9 @@ const loading = ref(true)
 const profileUserId = ref<string | null>(null)
 const username = ref('')
 const searchQuery = ref('')
+
+const pageShellReady = computed(() => !loading.value)
+usePageShellReady(pageShellReady)
 
 // Computed
 const isOwnProfile = computed(() => {

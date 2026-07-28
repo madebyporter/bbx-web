@@ -1,12 +1,15 @@
 <template>
   <!-- Only show list content when on /kits exactly, not on child routes -->
-  <div v-if="route.path === '/kits'" class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-0 text-neutral-300">
+  <PageContentSkeleton v-if="route.path === '/kits' && !pageShellReady" />
+  <div v-else-if="route.path === '/kits'" class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-0 text-neutral-300">
     <LibraryHeader 
       title="Music production kits" 
       :count="resourceCount"
       item-label="kit"
       filter-context="kits"
+      :show-clear-filters="hasActiveFilterSort"
       @open-filter-sort="handleOpenFilterSort"
+      @clear-filters="handleClearFilterSort"
     />
     <div class="overflow-x-scroll xl:overflow-auto">
       <DatabaseGrid 
@@ -21,13 +24,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, onMounted, onUnmounted, computed } from 'vue'
+import { ref, inject, onMounted, onUnmounted, computed, watch, nextTick, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import DatabaseGrid from '~/components/DatabaseGrid.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
+import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
+import { usePageShellReady } from '~/composables/usePageShellReady'
 
 const route = useRoute()
+const pageShellReady = ref(false)
+usePageShellReady(pageShellReady)
+
+// SSR SEO metadata for the kits list page
+const siteOrigin = useSiteOrigin()
+const kitsCanonical = `${siteOrigin}/kits`
+const kitsSeoTitle = 'Music Production Kits & Sample Packs'
+const kitsSeoDescription = 'Browse a curated collection of music production kits, sample packs, and sound libraries for producers, beatmakers, and sound designers.'
+
+useSeoMeta({
+  title: kitsSeoTitle,
+  description: kitsSeoDescription,
+  ogTitle: `${kitsSeoTitle} | Beatbox`,
+  ogDescription: kitsSeoDescription,
+  ogUrl: kitsCanonical,
+  ogType: 'website',
+  twitterCard: 'summary_large_image',
+  twitterTitle: `${kitsSeoTitle} | Beatbox`,
+  twitterDescription: kitsSeoDescription,
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: kitsCanonical, key: 'canonical' }
+  ]
+})
 
 // Define interfaces for type safety
 interface FilterSortParams {
@@ -54,6 +85,8 @@ const resourceCount = computed(() => {
 const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
 const unregisterContextItems = inject<() => void>('unregisterContextItems')
 const openFilterModal = inject<() => void>('openFilterModal')
+const clearFilterSort = inject<(() => void) | null>('clearFilterSort', null)
+const hasActiveFilterSort = inject<ComputedRef<boolean>>('hasActiveFilterSort', computed(() => false))
 
 defineEmits(['edit-resource', 'show-signup'])
 
@@ -62,6 +95,10 @@ const handleOpenFilterSort = () => {
   if (openFilterModal) {
     openFilterModal()
   }
+}
+
+const handleClearFilterSort = () => {
+  clearFilterSort?.()
 }
 
 // Watch resources to update context items for search
@@ -73,7 +110,13 @@ watch(() => databaseGrid.value?.resources, (resources) => {
 }, { immediate: true, deep: true })
 
 // Register context items on mount
-onMounted(() => {
+onMounted(async () => {
+  await nextTick()
+  if (databaseGrid.value?.fetchResources) {
+    await databaseGrid.value.fetchResources()
+  }
+  pageShellReady.value = true
+
   // Register initial context items
   if (registerContextItems && databaseGrid.value?.resources) {
     registerContextItems(databaseGrid.value.resources, ['name', 'creator', 'tags'])

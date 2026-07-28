@@ -186,10 +186,10 @@ interface UserResource {
   resource_id: number
 }
 
-const fetchResources = async () => {
+const runResourceQuery = async (): Promise<Resource[]> => {
   if (!supabase) {
     console.error('DatabaseGrid: Supabase client not initialized')
-    return
+    return []
   }
 
   try {
@@ -345,8 +345,7 @@ const fetchResources = async () => {
     }
 
     if (!data) {
-      resources.value = [];
-      return;
+      return [];
     }
 
     // Process results
@@ -396,12 +395,17 @@ const fetchResources = async () => {
       
     }
 
-    resources.value = processedData
-    await fetchUseCounts()
+    return processedData
   } catch (error) {
     console.error('DatabaseGrid: Error fetching resources:', error)
-    resources.value = []
+    return []
   }
+}
+
+// Assign query results to state and refresh use counts (used for interactive updates)
+const fetchResources = async () => {
+  resources.value = await runResourceQuery()
+  await fetchUseCounts()
 }
 
 const fetchUseCounts = async () => {
@@ -607,8 +611,12 @@ const extractNumericPrice = (priceStr: string): number => {
 // Initialize
 onMounted(async () => {
   if (supabase) {
-    await fetchResources()
-  } else {
+    // Resources are populated server-side via useAsyncData; only refetch if empty
+    if (resources.value.length) {
+      await fetchUseCounts()
+    } else {
+      await fetchResources()
+    }
   }
 })
 
@@ -616,6 +624,16 @@ onMounted(async () => {
 watch(() => auth.user, async () => {
   await fetchUseCounts()
 })
+
+// Fetch initial resources server-side so crawlers receive the full list in HTML
+const { data: ssrResources } = await useAsyncData<Resource[]>(
+  `kits-resources-${props.type ?? 'all'}`,
+  () => runResourceQuery(),
+  { default: () => [] as Resource[] }
+)
+if (ssrResources.value) {
+  resources.value = ssrResources.value
+}
 
 // Expose methods for parent component
 defineExpose({

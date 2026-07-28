@@ -10,12 +10,13 @@
     <main class="flex flex-row justify-stretch items-stretch gap-0 transition-all duration-300 grow overflow-hidden">
       <Nav ref="navRef" @show-auth-modal="showAuthModal = true" @show-admin-modal="showAdminModal = true"
         @toggle-mobile-nav="handleMobileNavToggle" />
-      <section id="content" class="gap-0 grow w-full flex flex-col overflow-y-auto">
+      <section id="content" class="gap-0 grow w-full min-w-0 flex flex-col overflow-x-hidden overflow-y-auto">
         <div class="col-span-full sticky top-0 z-30">
           <SearchFilter 
             v-model:show-search-modal="showSearchModal"
             :context-items="searchContextItems"
             :context-search-fields="searchContextFields"
+            :shell-loading="!shellContentReady"
             @open-search-modal="openSearchModal" 
             @update:search-query="searchQuery = $event" 
             @open-modal="openModal" 
@@ -151,6 +152,12 @@
       :collection-id="commentsCollectionId"
     />
 
+    <!-- Generate Track Video Drawer -->
+    <GenerateTrackVideoDrawer
+      v-model:show="showGenerateTrackVideoDrawer"
+      :track="generateVideoTrack"
+    />
+
     <!-- Toast Notifications -->
     <Toast />
   </div>
@@ -164,9 +171,18 @@ import { useAnalytics } from '~/composables/useAnalytics'
 import { useToast } from '~/composables/useToast'
 import { setPendingSignupEmail } from '~/utils/authStorage'
 import { usePlayer } from '~/composables/usePlayer'
+import {
+  getDefaultFilterSortParams,
+  hasActiveFilterSort,
+  migrateFilterSortFromLocalStorage,
+  useFilterSortCookie,
+} from '~/composables/useFilterSortPersistence'
+import { providePageShellReady } from '~/composables/usePageShellReady'
 import Player from '~/components/Player.vue'
 import Toast from '~/components/Toast.vue'
 import TrackCommentsDrawer from '~/components/TrackCommentsDrawer.vue'
+import GenerateTrackVideoDrawer from '~/components/GenerateTrackVideoDrawer.vue'
+import type { Track } from '~/types/track'
 
 // Define interfaces
 interface DatabaseComponent {
@@ -216,6 +232,7 @@ interface FilterSortParams {
     mood: string[]
     year: { min: number | null; max: number | null }
     latestVersionOnly?: boolean
+    status?: (number | null)[]
   }
 }
 
@@ -248,6 +265,14 @@ const { showSuccess, showError, showProcessing, showInfo } = useToast()
 // Auth initialization happens separately in onMounted without blocking layout
 const isInitialized = ref(true)
 const route = useRoute()
+const { shellContentReady } = providePageShellReady()
+
+watch(
+  () => route.fullPath,
+  () => {
+    shellContentReady.value = false
+  }
+)
 
 // Determine which modal to show based on route
 const isUserProfilePage = computed(() => {
@@ -293,6 +318,8 @@ const editingTrack = ref<any | null>(null)
 const showTrackCommentsDrawer = ref(false)
 const commentsTrack = ref<{ id: number; title?: string } | null>(null)
 const commentsCollectionId = ref<number | null>(null)
+const showGenerateTrackVideoDrawer = ref(false)
+const generateVideoTrack = ref<Track | null>(null)
 const modalKey = ref(0)
 const pageRef = ref<PageRef | null>(null)
 const databaseRef = ref<DatabaseRef | null>(null)
@@ -321,8 +348,54 @@ const currentFilters = ref({
   key: [] as string[],
   mood: [] as string[],
   year: { min: null as number | null, max: null as number | null },
-  latestVersionOnly: false
+  latestVersionOnly: false,
+  status: [] as (number | null)[],
 })
+
+const musicFilterCookie = useFilterSortCookie('music')
+const softwareFilterCookie = useFilterSortCookie('software')
+const kitsFilterCookie = useFilterSortCookie('kits')
+
+const activeFilterSortCookie = computed(() => {
+  const ctx = filterSortContext.value
+  if (ctx === 'music') return musicFilterCookie
+  if (ctx === 'software') return softwareFilterCookie
+  if (ctx === 'kits') return kitsFilterCookie
+  return null
+})
+
+const hasActiveFilterSortState = computed(() => {
+  const ctx = filterSortContext.value
+  if (!ctx) return false
+  return hasActiveFilterSort(activeFilterSortCookie.value?.value, ctx)
+})
+
+const clearFilterSort = () => {
+  const ctx = filterSortContext.value
+  if (!ctx) return
+
+  const cookie = activeFilterSortCookie.value
+  if (cookie) {
+    cookie.value = null
+  }
+
+  const defaults = getDefaultFilterSortParams()
+  currentSort.value = { ...defaults.sort }
+  currentFilters.value = {
+    price: { ...defaults.filters.price },
+    os: [...defaults.filters.os],
+    tags: [...defaults.filters.tags],
+    genre: [...defaults.filters.genre],
+    bpm: { ...defaults.filters.bpm },
+    key: [...defaults.filters.key],
+    mood: [...defaults.filters.mood],
+    year: { ...defaults.filters.year },
+    latestVersionOnly: defaults.filters.latestVersionOnly,
+    status: [...defaults.filters.status],
+  }
+
+  handleFiltersAndSort(defaults)
+}
 
 const handleToggleNav = () => {
   if (navRef.value && navRef.value.toggleMobileNav) {
@@ -511,6 +584,15 @@ const onOpenTrackCommentsEvent = (event: Event) => {
   handleOpenTrackComments((event as CustomEvent<OpenTrackCommentsDetail>).detail)
 }
 
+const handleOpenGenerateTrackVideo = (detail: { track: Track }) => {
+  generateVideoTrack.value = detail.track
+  showGenerateTrackVideoDrawer.value = true
+}
+
+const onOpenGenerateTrackVideoEvent = (event: Event) => {
+  handleOpenGenerateTrackVideo((event as CustomEvent<{ track: Track }>).detail)
+}
+
 const closeModal = () => {
   showModal.value = false
   editingResource.value = null
@@ -566,7 +648,8 @@ const handleFiltersAndSort = (params: FilterSortParams) => {
       key: [...(params.filters.key || [])],
       mood: [...(params.filters.mood || [])],
       year: { ...(params.filters.year || {}) },
-      latestVersionOnly: params.filters.latestVersionOnly ?? false
+      latestVersionOnly: params.filters.latestVersionOnly ?? false,
+      status: [...(params.filters.status || [])],
     }
   }
   
@@ -725,6 +808,8 @@ const openAuthModal = (mode: 'signin' | 'signup' | 'forgot' = 'signin') => {
 
 // Provide functions for child layouts
 provide('openFilterModal', openFilterModal)
+provide('clearFilterSort', clearFilterSort)
+provide('hasActiveFilterSort', hasActiveFilterSortState)
 provide('handleSearch', handleSearch)
 provide('registerSearchHandler', registerSearchHandler)
 provide('unregisterSearchHandler', unregisterSearchHandler)
@@ -751,6 +836,10 @@ onMounted(async () => {
     console.error('Auth init error:', error)
   }
 
+  migrateFilterSortFromLocalStorage('music', musicFilterCookie)
+  migrateFilterSortFromLocalStorage('software', softwareFilterCookie)
+  migrateFilterSortFromLocalStorage('kits', kitsFilterCookie)
+
   openAuthFromQuery()
   
   // Wait for next tick to ensure router is initialized
@@ -762,6 +851,7 @@ onMounted(async () => {
   }) as EventListener)
 
   window.addEventListener('open-track-comments', onOpenTrackCommentsEvent)
+  window.addEventListener('open-generate-track-video', onOpenGenerateTrackVideoEvent)
   
   // Listen for upload modal open events
   window.addEventListener('open-upload-modal', (() => {
@@ -774,6 +864,7 @@ onUnmounted(() => {
   auth.cleanup()
   window.removeEventListener('edit-track', handleEditTrack as EventListener)
   window.removeEventListener('open-track-comments', onOpenTrackCommentsEvent)
+  window.removeEventListener('open-generate-track-video', onOpenGenerateTrackVideoEvent)
   window.removeEventListener('open-upload-modal', openModal as EventListener)
 })
 </script>
