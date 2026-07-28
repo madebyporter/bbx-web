@@ -568,11 +568,11 @@ const profileSocialLinks = ref<{
   linkedin?: string
   [key: string]: string | undefined
 }>((initialData.value?.profile?.social_links as any) || {})
-const tracks = ref<any[]>([])
+const tracks = ref<TrackWithCollections[]>([])
 const totalTrackCount = ref(0)
 const currentPage = ref(0)
 const loadingMore = ref(false)
-const clientTrackCache = ref<any[] | null>(null)
+const clientTrackCache = ref<TrackWithCollections[] | null>(null)
 const lastAppliedParams = ref<{ filters: any; sort: any } | null>(null)
 const loading = ref(true)
 // searchQuery removed - search is now handled by SearchModal
