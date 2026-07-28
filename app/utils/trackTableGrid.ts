@@ -57,3 +57,7 @@ export function buildTrackGridStyle(options: TrackGridColumnOptions) {
     gridTemplateColumns: buildTrackGridTemplateColumns(options),
   }
 }
+
+/** Sticky right-frozen actions cell (same grid row as data cells). */
+export const TRACK_TABLE_STICKY_ACTIONS_CLASS =
+  'sticky right-0 z-[1] flex items-center justify-end self-stretch bg-neutral-900 group-hover:bg-neutral-800 group-[.is-playing]:bg-neutral-800/70'

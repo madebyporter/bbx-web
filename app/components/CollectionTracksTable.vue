@@ -69,16 +69,14 @@
         </template>
       </Modal>
       
-      <div class="flex w-full min-w-0">
-        <div class="min-w-0 flex-1 overflow-x-auto overflow-y-hidden no-scrollbar">
-          <div class="w-max min-w-full h-fit">
+      <div class="w-full min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar">
+        <div class="w-max min-w-full h-fit">
         <!-- Header -->
         <div
-          ref="mainTableHeaderRef"
           :class="[
             'text-sm text-left text-neutral-500 border-b border-neutral-800 bg-neutral-900 *:flex *:items-center *:p-4 min-h-[65px]',
           ]"
-          :style="tableMainGridStyle"
+          :style="tableGridStyle"
         >
           <div class="flex items-center justify-center">
             <Button
@@ -113,13 +111,27 @@
             <div>Duration</div>
             <div v-if="isOwnProfile && profileUserType === 'audio_pro'">Status</div>
           </template>
+          <div
+            v-if="showActionsColumn"
+            :class="[TRACK_TABLE_STICKY_ACTIONS_CLASS, 'justify-start min-h-[65px]']"
+          >
+            <Button
+              v-if="isOwnProfile && hasSelections"
+              variant="primary"
+              size="sm"
+              class="!px-2 !py-0.5 !bg-amber-400 hover:!bg-amber-500 text-neutral-900 text-xs whitespace-nowrap"
+              @click="showBulkActionsDrawer = true"
+            >
+              Bulk ({{ selectedTrackIds.size }})
+            </Button>
+          </div>
         </div>
 
         <!-- Tracks -->
         <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
-            'text-sm border-b border-neutral-900 *:flex *:items-center *:p-4 items-center',
-            isCurrentlyPlaying(track) ? 'bg-neutral-800/70  lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
-          ]" :style="tableMainGridStyle">
+            'group text-sm border-b border-neutral-900 *:flex *:items-center *:p-4 items-stretch',
+            isCurrentlyPlaying(track) ? 'is-playing bg-neutral-800/70 lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800'
+          ]" :style="tableGridStyle">
         <div class="flex items-center justify-center">
           <!-- Bulk Selection Mode: Show Checkbox -->
           <template v-if="bulkSelectionMode">
@@ -201,47 +213,7 @@
           <div v-else class="text-xs px-2 py-1">Loading...</div>
         </div>
         </template>
-        </div>
-
-        <div
-          v-if="hasMore"
-          ref="loadMoreSentinelRef"
-          class="flex items-center justify-center p-4 border-b border-neutral-900"
-        >
-          <div v-if="loadingMore" class="size-5 rounded-full border-2 border-neutral-600 border-t-amber-400 animate-spin" />
-        </div>
-          </div>
-        </div>
-
-        <div
-          v-if="showActionsColumn"
-          class="shrink-0 border-l border-neutral-800 bg-neutral-900"
-          :style="{ width: TRACK_GRID_WIDTH.tiny }"
-        >
-          <div
-            ref="actionsTableHeaderRef"
-            class="flex items-center justify-start p-4 border-b border-neutral-800 shrink-0 box-border min-h-[65px]"
-            :style="actionsHeaderHeightStyle"
-          >
-            <Button
-              v-if="isOwnProfile && hasSelections"
-              variant="primary"
-              size="sm"
-              class="!px-2 !py-0.5 !bg-amber-400 hover:!bg-amber-500 text-neutral-900 text-xs whitespace-nowrap"
-              @click="showBulkActionsDrawer = true"
-            >
-              Bulk ({{ selectedTrackIds.size }})
-            </Button>
-          </div>
-
-          <div
-            v-for="track in tracks"
-            :key="`${track.id}-actions`"
-            :class="[
-              'flex items-center justify-end p-4 border-b border-neutral-900',
-              isCurrentlyPlaying(track) ? 'bg-neutral-800/70' : 'hover:bg-neutral-800'
-            ]"
-          >
+        <div v-if="showActionsColumn" :class="TRACK_TABLE_STICKY_ACTIONS_CLASS">
           <div class="flex flex-row items-center justify-end gap-1">
           <TrackRowActionsMenu
             :track="track"
@@ -263,7 +235,16 @@
             Remove
           </Button>
         </div>
-          </div>
+        </div>
+        </div>
+
+        <div
+          v-if="hasMore"
+          ref="loadMoreSentinelRef"
+          class="flex items-center justify-center p-4 border-b border-neutral-900"
+        >
+          <div v-if="loadingMore" class="size-5 rounded-full border-2 border-neutral-600 border-t-amber-400 animate-spin" />
+        </div>
         </div>
       </div>
       </div>
@@ -289,8 +270,7 @@ import {
 } from '~/composables/useTrackAnalyticsData'
 import { Plus } from '@iconoir/vue'
 import TrackRowActionsMenu from '~/components/TrackRowActionsMenu.vue'
-import { buildTrackGridStyle, TRACK_GRID_WIDTH } from '~/utils/trackTableGrid'
-import { useTrackTableHeaderHeight } from '~/composables/useTrackTableHeaderHeight'
+import { buildTrackGridStyle, TRACK_TABLE_STICKY_ACTIONS_CLASS } from '~/utils/trackTableGrid'
 import { useInfiniteScroll } from '~/composables/useInfiniteScroll'
 import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 
@@ -367,21 +347,6 @@ const hasSelections = computed(() => selectedTrackIds.value.size > 0)
 
 const showActionsColumn = computed(() => !!(user.value || props.isOwnProfile))
 
-const mainTableHeaderRef = ref<HTMLElement | null>(null)
-const actionsTableHeaderRef = ref<HTMLElement | null>(null)
-
-const { targetHeight: actionsHeaderHeight } = useTrackTableHeaderHeight(
-  mainTableHeaderRef,
-  actionsTableHeaderRef,
-  () => showActionsColumn.value
-)
-
-const actionsHeaderHeightStyle = computed(() => {
-  if (!actionsHeaderHeight.value) return undefined
-  const height = `${actionsHeaderHeight.value}px`
-  return { height, minHeight: height }
-})
-
 const loadMoreSentinelRef = ref<HTMLElement | null>(null)
 
 useInfiniteScroll({
@@ -402,11 +367,11 @@ const showStatusColumn = computed(
     !(props.analyticsMode && props.isOwnProfile)
 )
 
-const tableMainGridStyle = computed(() =>
+const tableGridStyle = computed(() =>
   buildTrackGridStyle({
     showCollection: showCollectionColumn.value,
     showStatus: showStatusColumn.value,
-    showActions: false,
+    showActions: showActionsColumn.value,
     analyticsMode: props.analyticsMode && props.isOwnProfile,
   })
 )

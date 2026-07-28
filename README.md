@@ -199,3 +199,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Fixed admin Manage Submissions empty queue when admin role loads after mount
 - 0.55.0
   - Global shell loading orchestration: nav paints immediately, search and page skeletons until route ready, player defers until content reveals
+- 0.55.1
+  - Sticky actions column merged into track table grid rows for correct row alignment
