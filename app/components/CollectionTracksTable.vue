@@ -105,7 +105,7 @@
           </template>
           <div v-if="showActionsColumn" :class="[
             'flex items-center justify-start',
-            'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[88px]'
+            'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[48px]'
           ]">
             <Button
               v-if="isOwnProfile && hasSelections"
@@ -207,32 +207,18 @@
         </div>
         </template>
         <div v-if="showActionsColumn" :class="[
-          'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4 min-w-[88px]',
+          'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4 min-w-[48px]',
           isCurrentlyPlaying(track) ? '!bg-neutral-800' : ''
         ]">
-          <div class="flex flex-row items-center gap-1">
-          <!-- Edit for audio_pro owners -->
-          <Button
-            v-if="isOwnProfile && profileUserType === 'audio_pro'"
-            variant="ghost"
-            size="sm"
-            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2"
-            title="Edit track"
-            @click="$emit('edit-track', track)"
-          >
-            <EditPencil class="w-4 h-4" />
-          </Button>
-          <!-- Comments for logged-in users -->
-          <Button
-            v-if="user"
-            variant="ghost"
-            size="sm"
-            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2"
-            title="Comments"
-            @click="openTrackComments(track)"
-          >
-            <ChatBubble class="w-4 h-4" />
-          </Button>
+          <div class="flex flex-row items-center justify-end gap-1">
+          <TrackRowActionsMenu
+            :track="track"
+            :is-own-profile="isOwnProfile"
+            :profile-user-type="profileUserType"
+            :is-logged-in="!!user"
+            :collection-id="collectionId"
+            @edit-track="$emit('edit-track', $event)"
+          />
           <!-- Remove button for creators (remove from collection) -->
           <Button
             v-if="profileUserType === 'creator' && collectionId && !isOwnProfile"
@@ -270,7 +256,8 @@ import {
   formatAnalyticsDuration,
   type TrackAnalyticsRow,
 } from '~/composables/useTrackAnalyticsData'
-import { EditPencil, ChatBubble, Plus } from '@iconoir/vue'
+import { Plus } from '@iconoir/vue'
+import TrackRowActionsMenu from '~/components/TrackRowActionsMenu.vue'
 
 interface ActiveFilterChip {
   id: string
@@ -348,18 +335,6 @@ const tableGridClass = computed(() => {
   if (user.value) return 'collectionTrackGrid-with-actions'
   return 'collectionTrackGrid-loggedOut'
 })
-
-const openTrackComments = (track: any) => {
-  const event = new CustomEvent('open-track-comments', {
-    detail: {
-      track: { id: track.id, title: track.title },
-      collectionId: props.collectionId ?? null,
-    },
-    bubbles: true,
-    composed: true,
-  })
-  window.dispatchEvent(event)
-}
 
 function formatTrackStat(trackId: number, field: 'plays' | 'listeners' | 'avgListen' | 'completion'): string {
   if (props.analyticsLoading) return '—'

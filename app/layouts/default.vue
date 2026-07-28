@@ -151,6 +151,12 @@
       :collection-id="commentsCollectionId"
     />
 
+    <!-- Generate Track Video Drawer -->
+    <GenerateTrackVideoDrawer
+      v-model:show="showGenerateTrackVideoDrawer"
+      :track="generateVideoTrack"
+    />
+
     <!-- Toast Notifications -->
     <Toast />
   </div>
@@ -173,6 +179,8 @@ import {
 import Player from '~/components/Player.vue'
 import Toast from '~/components/Toast.vue'
 import TrackCommentsDrawer from '~/components/TrackCommentsDrawer.vue'
+import GenerateTrackVideoDrawer from '~/components/GenerateTrackVideoDrawer.vue'
+import type { Track } from '~/types/track'
 
 // Define interfaces
 interface DatabaseComponent {
@@ -300,6 +308,8 @@ const editingTrack = ref<any | null>(null)
 const showTrackCommentsDrawer = ref(false)
 const commentsTrack = ref<{ id: number; title?: string } | null>(null)
 const commentsCollectionId = ref<number | null>(null)
+const showGenerateTrackVideoDrawer = ref(false)
+const generateVideoTrack = ref<Track | null>(null)
 const modalKey = ref(0)
 const pageRef = ref<PageRef | null>(null)
 const databaseRef = ref<DatabaseRef | null>(null)
@@ -564,6 +574,15 @@ const onOpenTrackCommentsEvent = (event: Event) => {
   handleOpenTrackComments((event as CustomEvent<OpenTrackCommentsDetail>).detail)
 }
 
+const handleOpenGenerateTrackVideo = (detail: { track: Track }) => {
+  generateVideoTrack.value = detail.track
+  showGenerateTrackVideoDrawer.value = true
+}
+
+const onOpenGenerateTrackVideoEvent = (event: Event) => {
+  handleOpenGenerateTrackVideo((event as CustomEvent<{ track: Track }>).detail)
+}
+
 const closeModal = () => {
   showModal.value = false
   editingResource.value = null
@@ -822,6 +841,7 @@ onMounted(async () => {
   }) as EventListener)
 
   window.addEventListener('open-track-comments', onOpenTrackCommentsEvent)
+  window.addEventListener('open-generate-track-video', onOpenGenerateTrackVideoEvent)
   
   // Listen for upload modal open events
   window.addEventListener('open-upload-modal', (() => {
@@ -834,6 +854,7 @@ onUnmounted(() => {
   auth.cleanup()
   window.removeEventListener('edit-track', handleEditTrack as EventListener)
   window.removeEventListener('open-track-comments', onOpenTrackCommentsEvent)
+  window.removeEventListener('open-generate-track-video', onOpenGenerateTrackVideoEvent)
   window.removeEventListener('open-upload-modal', openModal as EventListener)
 })
 </script>

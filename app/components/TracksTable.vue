@@ -99,7 +99,7 @@
           </template>
           <div :class="[
             'flex items-center justify-start',
-            showActionsColumn ? 'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[88px]' : ''
+            showActionsColumn ? 'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[48px]' : ''
           ]">
             <Button
               v-if="isOwnProfile && hasSelections"
@@ -228,36 +228,21 @@
           <div v-else class="text-xs px-2 py-1">Loading...</div>
         </div>
         </template>
-        <!-- Action Button: Edit / Comment / Add / Remove -->
+        <!-- Action Button: Menu / Add / Remove -->
         <div :class="[
           showActionsColumn
-            ? 'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4 min-w-[88px]'
+            ? 'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4 min-w-[48px]'
             : '',
           isCurrentlyPlaying(track) ? '!bg-neutral-800' : ''
         ]">
-          <div class="flex flex-row items-center gap-1">
-          <!-- Edit for audio_pro owners -->
-          <Button
-            v-if="isOwnProfile && profileUserType === 'audio_pro'"
-            variant="ghost"
-            size="sm"
-            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2"
-            title="Edit track"
-            @click="$emit('edit-track', track)"
-          >
-            <EditPencil class="w-4 h-4" />
-          </Button>
-          <!-- Comments for logged-in users -->
-          <Button
-            v-if="user"
-            variant="ghost"
-            size="sm"
-            class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2"
-            title="Comments"
-            @click="openTrackComments(track)"
-          >
-            <ChatBubble class="w-4 h-4" />
-          </Button>
+          <div class="flex flex-row items-center justify-end gap-1">
+          <TrackRowActionsMenu
+            :track="track"
+            :is-own-profile="isOwnProfile"
+            :profile-user-type="profileUserType"
+            :is-logged-in="!!user"
+            @edit-track="$emit('edit-track', $event)"
+          />
           <!-- Add button for creators viewing audio_pro profiles -->
           <Button
             v-if="!isOwnProfile && viewerUserType === 'creator' && profileUserType === 'audio_pro' && !shortlistedTrackIds.has(track.id)"
@@ -322,7 +307,8 @@ import {
   formatAnalyticsDuration,
   type TrackAnalyticsRow,
 } from '~/composables/useTrackAnalyticsData'
-import { Plus, EditPencil, ChatBubble } from '@iconoir/vue'
+import { Plus } from '@iconoir/vue'
+import TrackRowActionsMenu from '~/components/TrackRowActionsMenu.vue'
 
 interface Props {
   tracks: any[]
@@ -427,18 +413,6 @@ const showActionsColumn = computed(() => {
     (props.viewerUserType === 'creator' && props.profileUserType === 'audio_pro')
   )
 })
-
-const openTrackComments = (track: any) => {
-  const event = new CustomEvent('open-track-comments', {
-    detail: {
-      track: { id: track.id, title: track.title },
-      collectionId: null,
-    },
-    bubbles: true,
-    composed: true,
-  })
-  window.dispatchEvent(event)
-}
 
 function formatTrackStat(trackId: number, field: 'plays' | 'listeners' | 'avgListen' | 'completion'): string {
   if (props.analyticsLoading) return '—'

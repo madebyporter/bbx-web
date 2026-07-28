@@ -5,7 +5,13 @@ export default defineNuxtConfig({
   vite: {
     plugins: [
       tailwindcss()
-    ]
+    ],
+    optimizeDeps: {
+      exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],
+    },
+    worker: {
+      format: 'es',
+    },
   },
   
   css: ['~/assets/css/tailwind.css'],

@@ -24,6 +24,16 @@
   [headers.values]
     cache-control = "public, max-age=31536000, immutable"
 
+[[headers]]
+  for = "/ffmpeg/*"
+  [headers.values]
+    cache-control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/ffmpeg/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+
 # Note: Content-Type headers removed for dev mode compatibility
 # Vite dev server handles MIME types automatically
 # These headers would interfere with Vite's module serving in development
