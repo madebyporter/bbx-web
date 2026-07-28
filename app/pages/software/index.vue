@@ -1,6 +1,7 @@
 <template>
   <!-- Only show list content when on /software exactly, not on child routes -->
-  <div v-if="route.path === '/software'" class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-0 text-neutral-300">
+  <PageContentSkeleton v-if="route.path === '/software' && !pageShellReady" />
+  <div v-else-if="route.path === '/software'" class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-0 text-neutral-300">
     <LibraryHeader 
       title="Music production software" 
       :count="resourceCount"
@@ -21,11 +22,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, onMounted, onUnmounted, computed, watch, type ComputedRef } from 'vue'
+import { ref, inject, onMounted, onUnmounted, computed, watch, nextTick, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import Database from '~/components/Database.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
+import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
+import { usePageShellReady } from '~/composables/usePageShellReady'
 
 // Define page meta to ensure this only matches /software exactly
 definePageMeta({
@@ -33,6 +36,8 @@ definePageMeta({
 })
 
 const route = useRoute()
+const pageShellReady = ref(false)
+usePageShellReady(pageShellReady)
 
 // SSR SEO metadata for the software list page
 const siteOrigin = useSiteOrigin()
@@ -124,7 +129,13 @@ watch(() => database.value?.resources, (resources) => {
 }, { immediate: true, deep: true })
 
 // Register context items on mount
-onMounted(() => {
+onMounted(async () => {
+  await nextTick()
+  if (database.value?.fetchResources) {
+    await database.value.fetchResources()
+  }
+  pageShellReady.value = true
+
   // Register initial context items
   if (registerContextItems && database.value?.resources) {
     registerContextItems(database.value.resources, ['name', 'creator', 'tags'])

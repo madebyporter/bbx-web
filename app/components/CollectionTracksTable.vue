@@ -1,6 +1,5 @@
 <template>
   <div class="w-full min-w-0 overflow-x-hidden h-full">
-    <template v-if="layoutReady">
       <TracksTableSkeleton
         v-if="loading"
         :is-own-profile="isOwnProfile"
@@ -268,7 +267,6 @@
         </div>
       </div>
       </div>
-    </template>
   </div>
 </template>
 
@@ -338,7 +336,7 @@ const emit = defineEmits<{
 }>()
 
 const { loadQueue, currentTrack, isPlaying, togglePlayPause } = usePlayer()
-const { user, isReady } = useAuth()
+const { user } = useAuth()
 const { supabase } = useSupabase()
 const { getArtworkUrl } = useArtwork()
 const { showProcessing, showSuccess, showError, removeToast } = useToast()
@@ -366,8 +364,6 @@ const collectionModalTitle = computed(() => {
 })
 
 const hasSelections = computed(() => selectedTrackIds.value.size > 0)
-
-const layoutReady = computed(() => isReady.value)
 
 const showActionsColumn = computed(() => !!(user.value || props.isOwnProfile))
 

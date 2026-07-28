@@ -1,8 +1,12 @@
 <template>
   <div class="flex flex-col gap-0 text-neutral-300 grow">
-    <div v-if="!profileUserId && tracksLoading" class="flex items-center justify-center p-8">
-      <LoadingLogo />
-    </div>
+    <template v-if="!pageShellReady">
+      <div class="p-4 border-b border-neutral-800">
+        <div class="h-8 lg:h-10 w-48 max-w-full rounded bg-neutral-800 animate-pulse mb-2" />
+        <div class="h-4 w-64 max-w-full rounded bg-neutral-800 animate-pulse" />
+      </div>
+      <TracksTableSkeleton :is-own-profile="isOwnProfile" :show-actions="!!(user || isOwnProfile)" />
+    </template>
 
     <template v-else>
       <div class="p-4 border-b border-neutral-800">
@@ -88,8 +92,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import TracksTable from '~/components/TracksTable.vue'
+import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 import StemPlayer from '~/components/StemPlayer.vue'
-import LoadingLogo from '~/components/LoadingLogo.vue'
 import { useFilterSortCookie } from '~/composables/useFilterSortPersistence'
 import { Xmark } from '@iconoir/vue'
 import { trackPageRange } from '~/utils/trackPagination'
@@ -98,6 +102,7 @@ import {
   type MusicFilterSortParams,
 } from '~/utils/trackQueryFilters'
 import { enrichTracksWithCollections } from '~/utils/trackCollectionEnrichment'
+import { usePageShellReady } from '~/composables/usePageShellReady'
 
 const route = useRoute()
 const router = useRouter()
@@ -179,6 +184,9 @@ const newGroupName = ref(initialData.value?.groupName || '')
 const isOwnProfile = computed(() => {
   return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)
 })
+
+const pageShellReady = computed(() => !!profileUserId.value && !tracksLoading.value)
+usePageShellReady(pageShellReady)
 
 const hasMoreTracks = computed(() => tracks.value.length < totalTrackCount.value)
 

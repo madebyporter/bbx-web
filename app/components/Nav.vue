@@ -1,7 +1,6 @@
 <template>
   <nav ref="mobileNav" id="navbar"
-    class="border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between overflow-auto shrink-0 min-w-[250px] lg:max-w-[250px] lg:relative lg:translate-x-0 fixed inset-y-0 left-0 z-40 lg:z-40 w-full lg:w-fit"
-    style="transform: translateX(-100%)">
+    class="border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between overflow-auto shrink-0 min-w-[250px] lg:max-w-[250px] fixed inset-y-0 left-0 z-40 w-full -translate-x-full lg:relative lg:translate-x-0 lg:w-fit lg:z-40">
     <div class="sticky top-0 p-4 flex justify-between items-center">
       <NuxtLink to="/" @click="closeMobileNavOnClick" class="cursor-pointer">
         <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-[44px] lg:size-12" />
@@ -252,18 +251,14 @@ const fetchUsername = async () => {
 
 const handleResize = () => {
   const isDesktop = window.innerWidth >= 1024
-  
+
   if (isDesktop) {
-    // On desktop, clear transforms and let CSS handle positioning
     gsap.set(mobileNav.value, { clearProps: 'transform' })
     wasDesktop.value = true
-  } else {
-    // On mobile - only hide if switching from desktop to mobile
-    if (wasDesktop.value) {
-      gsap.set(mobileNav.value, { x: '-100%' })
-      showMobileNav.value = false
-      emit('toggle-mobile-nav', false)
-    }
+  } else if (wasDesktop.value) {
+    gsap.set(mobileNav.value, { x: '-100%' })
+    showMobileNav.value = false
+    emit('toggle-mobile-nav', false)
     wasDesktop.value = false
   }
 }

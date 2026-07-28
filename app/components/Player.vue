@@ -1,5 +1,5 @@
 <template>
-  <div v-if="hasEverHadTrack" ref="playerRef"
+  <div v-if="canShowPlayer" ref="playerRef"
     class="w-full bg-neutral-900 border-t border-neutral-800 z-30 h-fit lg:h-fit relative"
     style="transform: translateY(100%)">
     
@@ -148,9 +148,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
 import { useStemPlayer } from '~/composables/useStemPlayer'
+import { useShellContentReady } from '~/composables/usePageShellReady'
 import gsap from 'gsap'
 
 const {
@@ -181,6 +182,9 @@ const {
 } = usePlayer()
 
 const { isStemPlayerActive } = useStemPlayer()
+const shellContentReady = useShellContentReady()
+
+const canShowPlayer = computed(() => shellContentReady.value && hasEverHadTrack.value)
 
 const playerRef = ref<HTMLDivElement | null>(null)
 const audioEl = ref<HTMLAudioElement | null>(null)
@@ -209,7 +213,9 @@ watch(isStemPlayerActive, (isActive) => {
 })
 
 // Track when a track is first loaded and animate player in/out
-watch(currentTrack, async (newTrack) => {
+watch([shellContentReady, currentTrack], async ([shellReady, newTrack]) => {
+  if (!shellReady) return
+
   // Wait for DOM to update if this is the first track
   if (newTrack && !playerRef.value) {
     await nextTick()

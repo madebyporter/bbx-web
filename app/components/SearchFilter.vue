@@ -1,5 +1,6 @@
 <template>
-  <div ref="searchFilterRef" class="relative lg:h-20 bg-neutral-900 flex flex-col sm:flex-row gap-2 lg:gap-4 p-4 border-b border-neutral-800">
+  <SearchFilterSkeleton v-if="shellLoading" />
+  <div v-else ref="searchFilterRef" class="relative lg:h-20 bg-neutral-900 flex flex-col sm:flex-row gap-2 lg:gap-4 p-4 border-b border-neutral-800">
     <div class="flex flex-row gap-4 w-full justify-between lg:w-full">
       <Button variant="secondary" class="btn w-fit !px-2 flex items-center lg:hidden rounded-sm" @click="$emit('toggle-nav')">
         <svg viewBox="0 0 13 11" fill="none" xmlns="http://www.w3.org/2000/svg" class="min-w-4">
@@ -42,17 +43,20 @@ import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import SearchModal from '~/components/SearchModal.vue'
+import SearchFilterSkeleton from '~/components/SearchFilterSkeleton.vue'
 
 interface Props {
   showSearchModal?: boolean
   contextItems?: any[]
   contextSearchFields?: string[]
+  shellLoading?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showSearchModal: false,
   contextItems: () => [],
-  contextSearchFields: () => []
+  contextSearchFields: () => [],
+  shellLoading: false,
 })
 
 // Use v-model for showSearchModal
