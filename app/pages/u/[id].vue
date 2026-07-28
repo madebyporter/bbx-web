@@ -406,8 +406,11 @@ import {
   needsClientOnlyPagination,
   type MusicFilterSortParams,
 } from '~/utils/trackQueryFilters'
-import { enrichTracksWithCollections } from '~/utils/trackCollectionEnrichment'
-import { usePageShellReady } from '~/composables/usePageShellReady'
+import {
+  enrichTracksWithCollections,
+  type TrackWithCollections,
+} from '~/utils/trackCollectionEnrichment'
+import type { Track } from '~/types/track'
 import gsap from 'gsap'
 import { Plus, EditPencil, Trash, Check, Xmark, StatsReport } from '@iconoir/vue'
 const route = useRoute()
@@ -587,11 +590,11 @@ const profileSocialLinks = ref<{
   linkedin?: string
   [key: string]: string | undefined
 }>((initialData.value?.profile?.social_links as any) || {})
-const tracks = ref<any[]>([])
+const tracks = ref<TrackWithCollections[]>([])
 const totalTrackCount = ref(0)
 const currentPage = ref(0)
 const loadingMore = ref(false)
-const clientTrackCache = ref<any[] | null>(null)
+const clientTrackCache = ref<TrackWithCollections[] | null>(null)
 const lastAppliedParams = ref<{ filters: any; sort: any } | null>(null)
 const loading = ref(true)
 // searchQuery removed - search is now handled by SearchModal
@@ -1538,26 +1541,26 @@ function isShortlistMode() {
   return !!(isOwnProfile.value && viewerUserType.value === 'creator' && user.value)
 }
 
-function applySortToTracks(arr: any[], sort: MusicFilterSortParams['sort']) {
+function applySortToTracks(arr: Track[], sort: MusicFilterSortParams['sort']) {
   const sortBy = sort?.sortBy || 'created_at'
   const sortDirection = sort?.sortDirection || 'desc'
   if (sortBy === 'created_at') {
-    arr.sort((a: any, b: any) => {
-      const aTime = new Date(a.shortlisted_at || a.created_at).getTime()
-      const bTime = new Date(b.shortlisted_at || b.created_at).getTime()
+    arr.sort((a, b) => {
+      const aTime = new Date(String(a.shortlisted_at || a.created_at || 0)).getTime()
+      const bTime = new Date(String(b.shortlisted_at || b.created_at || 0)).getTime()
       return sortDirection === 'asc' ? aTime - bTime : bTime - aTime
     })
   } else {
-    arr.sort((a: any, b: any) => {
-      const aVal = a[sortBy] || ''
-      const bVal = b[sortBy] || ''
+    arr.sort((a, b) => {
+      const aVal = a[sortBy] ?? ''
+      const bVal = b[sortBy] ?? ''
       if (sortDirection === 'asc') return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
       return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
     })
   }
 }
 
-async function fetchFullTrackList(params: MusicFilterSortParams): Promise<any[]> {
+async function fetchFullTrackList(params: MusicFilterSortParams): Promise<TrackWithCollections[]> {
   if (!supabase || !profileUserId.value) return []
 
   const sort = params.sort || { sortBy: 'created_at', sortDirection: 'desc' }
@@ -1566,7 +1569,7 @@ async function fetchFullTrackList(params: MusicFilterSortParams): Promise<any[]>
     const { getShortlistedTracks } = await import('~/utils/shortlist')
     const result = await getShortlistedTracks(user.value!.id)
     if (result.error) throw result.error
-    const data = [...(result.data || [])]
+    const data = [...(result.data || [])] as Track[]
     applySortToTracks(data, sort)
     return enrichTracksWithCollections(supabase, data, { collectionOwnerId: user.value!.id })
   }
@@ -1584,11 +1587,11 @@ async function fetchFullTrackList(params: MusicFilterSortParams): Promise<any[]>
 
   const { data, error } = await query
   if (error) throw error
-  return enrichTracksWithCollections(supabase, data || [])
+  return enrichTracksWithCollections(supabase, (data || []) as unknown as Track[])
 }
 
 async function fetchServerTrackPage(params: MusicFilterSortParams, page: number) {
-  if (!supabase || !profileUserId.value) return { tracks: [], count: 0 }
+  if (!supabase || !profileUserId.value) return { tracks: [] as TrackWithCollections[], count: 0 }
 
   const sort = params.sort || { sortBy: 'created_at', sortDirection: 'desc' }
   const { from, to } = trackPageRange(page)
@@ -1608,11 +1611,11 @@ async function fetchServerTrackPage(params: MusicFilterSortParams, page: number)
   const { data, error, count } = await query
   if (error) throw error
 
-  const enriched = await enrichTracksWithCollections(supabase, data || [])
+  const enriched = await enrichTracksWithCollections(supabase, (data || []) as unknown as Track[])
   return { tracks: enriched, count: count ?? enriched.length }
 }
 
-function applyLatestVersionOnlyFilter(list: any[]): any[] {
+function applyLatestVersionOnlyFilter<T extends Track>(list: T[]): T[] {
   const keepIds = new Set(getUniqueGroupTracks(list).map((t) => t.id))
   return list.filter((t) => keepIds.has(t.id))
 }

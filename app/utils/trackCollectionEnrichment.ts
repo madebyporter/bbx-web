@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Track } from '~/types/track'
 
 interface CollectionRef {
   name: string
@@ -6,12 +7,21 @@ interface CollectionRef {
   user_id?: string
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function enrichTracksWithCollections(
+export type TrackWithCollections = Track & {
+  collections: Array<{ name: string; slug: string }>
+}
+
+type EnrichableTrack = {
+  id: number
+  track_status?: Track['track_status']
+  track_statuses?: Track['track_status']
+} & Record<string, unknown>
+
+export async function enrichTracksWithCollections<T extends EnrichableTrack>(
   supabase: SupabaseClient,
-  rawTracks: any[],
+  rawTracks: T[],
   options?: { collectionOwnerId?: string | null }
-): Promise<any[]> {
+): Promise<Array<T & { collections: Array<{ name: string; slug: string }>; track_status: Track['track_status'] }>> {
   if (rawTracks.length === 0) return []
 
   const soundIds = rawTracks.map((t) => t.id)
@@ -23,8 +33,9 @@ export async function enrichTracksWithCollections(
   const collectionIdsBySoundId = new Map<number, number[]>()
   const allCollectionIds = new Set<number>()
   for (const row of allJunctionData || []) {
-    const sid = (row as { sound_id: number; collection_id: number }).sound_id
-    const cid = (row as { sound_id: number; collection_id: number }).collection_id
+    const junction = row as { sound_id: number; collection_id: number }
+    const sid = junction.sound_id
+    const cid = junction.collection_id
     if (!collectionIdsBySoundId.has(sid)) collectionIdsBySoundId.set(sid, [])
     collectionIdsBySoundId.get(sid)!.push(cid)
     allCollectionIds.add(cid)
@@ -46,7 +57,7 @@ export async function enrichTracksWithCollections(
     const collectionIds = collectionIdsBySoundId.get(track.id) || []
     const cols = collectionIds
       .map((id) => collectionMap.get(id))
-      .filter(Boolean) as CollectionRef[]
+      .filter((c): c is CollectionRef & { id: number } => !!c)
     const collections = collectionOwnerId
       ? cols
           .filter((c) => c.user_id === collectionOwnerId)
@@ -55,7 +66,7 @@ export async function enrichTracksWithCollections(
     return {
       ...track,
       collections,
-      track_status: track.track_statuses ?? track.track_status,
+      track_status: track.track_statuses ?? track.track_status ?? null,
     }
   })
 }
