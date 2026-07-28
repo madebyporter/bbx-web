@@ -1,7 +1,7 @@
 <template>
   <nav ref="mobileNav" id="navbar"
     class="border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between overflow-auto shrink-0 min-w-[250px] lg:max-w-[250px] fixed inset-y-0 left-0 z-40 w-full -translate-x-full lg:relative lg:translate-x-0 lg:w-fit lg:z-40">
-    <div class="sticky top-0 p-4 flex justify-between items-center">
+    <div ref="logoSection" class="sticky top-0 p-4 flex justify-between items-center opacity-0 pointer-events-none">
       <NuxtLink to="/" @click="closeMobileNavOnClick" class="cursor-pointer">
         <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-[44px] lg:size-12" />
       </NuxtLink>
@@ -15,7 +15,7 @@
         </svg>
       </Button>
     </div>
-    <div class="grow flex flex-col gap-16 p-4">
+    <div ref="navItemsSection" class="grow flex flex-col gap-16 p-4 opacity-0 pointer-events-none">
       <div v-if="user" class="flex flex-col gap-4">
         <span class="nav-header">Library</span>
         <NuxtLink v-if="username" :to="`/u/${username}`" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">
@@ -67,7 +67,8 @@
 
     <!-- Account UI -->
     <div
-      class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit rounded-sm flex flex-row items-center overflow-hidden m-2 p-2">
+      ref="userNavSection"
+      class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit rounded-sm flex flex-row items-center overflow-hidden m-2 p-2 opacity-0 pointer-events-none">
       <div class="flex flex-row gap-0 items-center w-full">
         <template v-if="user">
           <div class="flex flex-col gap-0 justify-start items-start w-full">
@@ -131,26 +132,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
 import gsap from 'gsap'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import { useSupabase } from '~/utils/supabase'
+import { useSetNavShellReady } from '~/composables/usePageShellReady'
 import SettingsDrawer from '~/components/SettingsDrawer.vue'
 import SupportPopup from '~/components/SupportPopup.vue'
 
 
 const auth = useAuth()
-const { user, isAdmin } = auth
+const { user, isAdmin, isReady } = auth
 const { showSuccess, showError } = useToast()
 const { supabase } = useSupabase()
 
-const mobileNav = ref(null)
+const mobileNav = ref<HTMLElement | null>(null)
+const logoSection = ref<HTMLElement | null>(null)
+const navItemsSection = ref<HTMLElement | null>(null)
+const userNavSection = ref<HTMLElement | null>(null)
 const showMobileNav = ref(false)
 const username = ref<string | null>(null)
+const usernameLoaded = ref(false)
 const wasDesktop = ref(false)
 const showSettingsDrawer = ref(false)
 const showSupportPopup = ref(false)
+const hasRevealedNav = ref(false)
+const setNavShellReady = useSetNavShellReady()
+
+const navDataReady = computed(() => isReady.value && usernameLoaded.value)
 
 // Emit events to parent layout
 const emit = defineEmits(['show-auth-modal', 'show-admin-modal', 'toggle-mobile-nav'])
@@ -226,16 +236,19 @@ const closeMobileNavOnClick = () => {
 const fetchUsername = async () => {
   if (!user.value || !supabase) {
     username.value = null
+    usernameLoaded.value = true
     return
   }
-  
+
+  usernameLoaded.value = false
+
   try {
     const { data, error } = await supabase
       .from('user_profiles')
       .select('username')
       .eq('id', user.value.id)
       .maybeSingle()
-    
+
     if (data && !error) {
       const profileData = data as { username: string | null } | null
       if (profileData?.username) {
@@ -246,7 +259,62 @@ const fetchUsername = async () => {
     }
   } catch (error) {
     console.error('Error fetching username:', error)
+  } finally {
+    usernameLoaded.value = true
   }
+}
+
+const revealNavSections = async () => {
+  if (hasRevealedNav.value || !navDataReady.value) return
+
+  await nextTick()
+
+  if (!logoSection.value || !navItemsSection.value || !userNavSection.value) return
+
+  hasRevealedNav.value = true
+
+  const enableSection = (element: HTMLElement) => {
+    element.classList.remove('pointer-events-none')
+  }
+
+  gsap
+    .timeline({
+      onComplete: () => {
+        setNavShellReady?.(true)
+      },
+    })
+    .to(logoSection.value, {
+      opacity: 1,
+      duration: 0.25,
+      ease: 'power2.out',
+      onStart: () => {
+        if (logoSection.value) enableSection(logoSection.value)
+      },
+    })
+    .to(
+      navItemsSection.value,
+      {
+        opacity: 1,
+        duration: 0.25,
+        ease: 'power2.out',
+        onStart: () => {
+          if (navItemsSection.value) enableSection(navItemsSection.value)
+        },
+      },
+      '+=0.1'
+    )
+    .to(
+      userNavSection.value,
+      {
+        opacity: 1,
+        duration: 0.25,
+        ease: 'power2.out',
+        onStart: () => {
+          if (userNavSection.value) enableSection(userNavSection.value)
+        },
+      },
+      '+=0.1'
+    )
 }
 
 const handleResize = () => {
@@ -268,6 +336,12 @@ watch(user, () => {
   fetchUsername()
 }, { immediate: true })
 
+watch(navDataReady, (ready) => {
+  if (ready) {
+    revealNavSections()
+  }
+}, { immediate: true })
+
 // Expose mobile nav ref and toggle function for parent to control
 defineExpose({
   mobileNav,
@@ -280,6 +354,10 @@ onMounted(() => {
   // Set initial position based on screen size
   handleResize()
   window.addEventListener('resize', handleResize)
+
+  if (navDataReady.value) {
+    revealNavSections()
+  }
 })
 
 onUnmounted(() => {

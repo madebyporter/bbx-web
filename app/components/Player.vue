@@ -151,7 +151,7 @@
 import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
 import { useStemPlayer } from '~/composables/useStemPlayer'
-import { useShellContentReady } from '~/composables/usePageShellReady'
+import { useShellContentReady, useNavShellReadyState } from '~/composables/usePageShellReady'
 import gsap from 'gsap'
 
 const {
@@ -183,21 +183,25 @@ const {
 
 const { isStemPlayerActive } = useStemPlayer()
 const shellContentReady = useShellContentReady()
+const navShellReady = useNavShellReadyState()
 
-const canShowPlayer = computed(() => shellContentReady.value && hasEverHadTrack.value)
+const canShowPlayer = computed(
+  () => shellContentReady.value && navShellReady.value && hasEverHadTrack.value
+)
 
 const playerRef = ref<HTMLDivElement | null>(null)
 const audioEl = ref<HTMLAudioElement | null>(null)
+const playerEstablishedOnLoad = ref(false)
+
+const ESTABLISHED_PLAYER_DELAY = 1
 
 // Set audio element reference
 onMounted(async () => {
   if (audioEl.value) {
     setAudioElement(audioEl.value)
     await loadState()
+    playerEstablishedOnLoad.value = hasEverHadTrack.value
   }
-  
-  // Don't auto-show player just because there's state in localStorage
-  // Only show when user actively plays something in this session
 })
 
 // Clean up audio element on unmount
@@ -213,8 +217,8 @@ watch(isStemPlayerActive, (isActive) => {
 })
 
 // Track when a track is first loaded and animate player in/out
-watch([shellContentReady, currentTrack], async ([shellReady, newTrack]) => {
-  if (!shellReady) return
+watch([shellContentReady, navShellReady, currentTrack], async ([shellReady, navReady, newTrack]) => {
+  if (!shellReady || !navReady) return
 
   // Wait for DOM to update if this is the first track
   if (newTrack && !playerRef.value) {
@@ -225,18 +229,20 @@ watch([shellContentReady, currentTrack], async ([shellReady, newTrack]) => {
   if (!playerRef.value) return
 
   if (newTrack) {
-    // Slide up
-    gsap.to(playerRef.value, { 
-      y: 0, 
-      duration: 0.3, 
-      ease: 'power2.out' 
+    const delay = playerEstablishedOnLoad.value ? ESTABLISHED_PLAYER_DELAY : 0
+    playerEstablishedOnLoad.value = false
+
+    gsap.to(playerRef.value, {
+      y: 0,
+      duration: 0.3,
+      ease: 'power2.out',
+      delay,
     })
   } else {
-    // Slide down
-    gsap.to(playerRef.value, { 
-      y: '100%', 
-      duration: 0.3, 
-      ease: 'power2.in' 
+    gsap.to(playerRef.value, {
+      y: '100%',
+      duration: 0.3,
+      ease: 'power2.in',
     })
   }
 })
