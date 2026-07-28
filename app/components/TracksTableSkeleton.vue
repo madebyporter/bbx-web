@@ -1,7 +1,7 @@
 <template>
   <div class="w-full min-w-0 overflow-x-hidden">
     <div class="w-full min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar">
-      <div class="w-full h-fit">
+      <div :class="TRACK_TABLE_INNER_CLASS">
         <div
           class="text-sm text-left text-neutral-500 border-b border-neutral-800 bg-neutral-900 *:flex *:items-center *:p-4 min-h-[65px]"
           :style="tableGridStyle"
@@ -81,7 +81,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { buildTrackGridStyle, TRACK_TABLE_STICKY_ACTIONS_CLASS } from '~/utils/trackTableGrid'
+import { buildTrackGridStyle, TRACK_TABLE_INNER_CLASS, TRACK_TABLE_STICKY_ACTIONS_CLASS } from '~/utils/trackTableGrid'
 import { TRACK_PAGE_SIZE } from '~/utils/trackPagination'
 
 const props = withDefaults(

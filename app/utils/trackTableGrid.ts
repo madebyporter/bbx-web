@@ -56,12 +56,16 @@ export function buildTrackGridTemplateColumns({
 export function buildTrackGridStyle(options: TrackGridColumnOptions) {
   return {
     display: 'grid',
-    width: '100%',
+    width: 'max-content',
+    minWidth: '100%',
     gap: '0',
     gridTemplateColumns: buildTrackGridTemplateColumns(options),
   }
 }
 
+/** Inner table width: fill viewport when narrow, grow with columns when scrolling. */
+export const TRACK_TABLE_INNER_CLASS = 'min-w-full w-max h-fit'
+
 /** Sticky right-frozen actions cell (same grid row as data cells). */
 export const TRACK_TABLE_STICKY_ACTIONS_CLASS =
-  'sticky right-0 z-[1] flex items-center justify-end self-stretch bg-neutral-900 group-hover:bg-neutral-800 group-[.is-playing]:bg-neutral-800'
+  'sticky right-0 z-[1] flex items-center justify-end self-stretch bg-neutral-900 group-hover:bg-neutral-800 group-[.is-playing]:bg-neutral-800/70'

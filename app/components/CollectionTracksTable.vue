@@ -70,7 +70,7 @@
       </Modal>
       
       <div class="w-full min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar">
-        <div class="w-full h-fit">
+        <div :class="TRACK_TABLE_INNER_CLASS">
         <!-- Header -->
         <div
           :class="[
@@ -270,7 +270,7 @@ import {
 } from '~/composables/useTrackAnalyticsData'
 import { Plus } from '@iconoir/vue'
 import TrackRowActionsMenu from '~/components/TrackRowActionsMenu.vue'
-import { buildTrackGridStyle, TRACK_TABLE_STICKY_ACTIONS_CLASS } from '~/utils/trackTableGrid'
+import { buildTrackGridStyle, TRACK_TABLE_INNER_CLASS, TRACK_TABLE_STICKY_ACTIONS_CLASS } from '~/utils/trackTableGrid'
 import { useInfiniteScroll } from '~/composables/useInfiniteScroll'
 import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 import type { Track } from '~/types/track'
