@@ -213,7 +213,7 @@
         <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>
         <div v-if="showStatusColumn" class="text-neutral-400 overflow-hidden">
           <select v-if="statuses.length > 0" :value="track.status_id || ''"
-            @change="updateTrackStatus(track.id, $event.target.value ? parseInt($event.target.value) : null)"
+            @change="handleStatusChange(track.id, $event)"
             class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-xs text-neutral-200 cursor-pointer outline-none">
             <option value="">No Status</option>
             <option v-for="status in statuses" :key="status.id" :value="status.id">
@@ -342,9 +342,10 @@ import { buildTrackGridStyle, TRACK_GRID_WIDTH } from '~/utils/trackTableGrid'
 import { useTrackTableHeaderHeight } from '~/composables/useTrackTableHeaderHeight'
 import { useInfiniteScroll } from '~/composables/useInfiniteScroll'
 import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
+import type { Track } from '~/types/track'
 
 interface Props {
-  tracks: any[]
+  tracks: Track[]
   sourceId: string
   isOwnProfile: boolean
   loading: boolean
@@ -365,7 +366,7 @@ const props = withDefaults(defineProps<Props>(), {
   loadingMore: false,
 })
 const emit = defineEmits<{
-  'edit-track': [track: any]
+  'edit-track': [track: Track]
   'tracks-deleted': []
   'track-shortlisted': [trackId: number]
   'track-unshortlisted': [trackId: number]
@@ -611,6 +612,12 @@ const handleUploadClick = () => {
   // Dispatch event to open upload modal
   const event = new CustomEvent('open-upload-modal')
   window.dispatchEvent(event)
+}
+
+function handleStatusChange(trackId: number, event: Event) {
+  const target = event.target as HTMLSelectElement | null
+  const value = target?.value
+  void updateTrackStatus(trackId, value ? parseInt(value, 10) : null)
 }
 
 // Update track status immediately

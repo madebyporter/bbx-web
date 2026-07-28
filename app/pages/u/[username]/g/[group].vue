@@ -233,7 +233,10 @@ const loadTracksPage = async (options: { page?: number; append?: boolean; params
     const { data, error, count } = await query
     if (error) throw error
 
-    const enriched = await enrichTracksWithCollections(supabase, data || [])
+    const enriched = await enrichTracksWithCollections(
+      supabase,
+      (data || []) as unknown as Array<{ id: number } & Record<string, unknown>>
+    )
     tracks.value = append ? [...tracks.value, ...enriched] : enriched
     totalTrackCount.value = count ?? enriched.length
     currentPage.value = page

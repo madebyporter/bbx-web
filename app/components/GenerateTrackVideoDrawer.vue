@@ -526,11 +526,11 @@ async function loadTrackArtwork() {
     coverPreview.value = preview
     usingTrackArtwork.value = true
     coverError.value = null
-  } catch (err: any) {
+  } catch (err: unknown) {
     coverPreview.value = null
     coverFile.value = null
     usingTrackArtwork.value = false
-    coverError.value = err.message || 'Could not load track artwork'
+    coverError.value = err instanceof Error ? err.message : 'Could not load track artwork'
   }
 }
 
@@ -563,8 +563,8 @@ async function preloadEncoder() {
   try {
     await preloadTrackVideoEncoder()
     encoderReady.value = true
-  } catch (err: any) {
-    generationError.value = err?.message || 'Failed to load encoder'
+  } catch (err: unknown) {
+    generationError.value = err instanceof Error ? err.message : 'Failed to load encoder'
   } finally {
     encoderLoading.value = false
   }
@@ -602,8 +602,8 @@ async function handleCoverUpload(event: Event) {
     coverPreview.value = preview
     usingTrackArtwork.value = false
     coverError.value = null
-  } catch (err: any) {
-    coverError.value = err.message || 'Invalid image file'
+  } catch (err: unknown) {
+    coverError.value = err instanceof Error ? err.message : 'Invalid image file'
     if (!usingTrackArtwork.value) {
       coverFile.value = null
       coverPreview.value = null
@@ -665,9 +665,10 @@ async function handleGenerate() {
     await saveExport(exportRecord)
     await loadHistory()
     showSuccess('Video generated')
-  } catch (err: any) {
-    if (err?.name === 'AbortError') return
-    const message = err.message || 'Failed to generate video'
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === 'AbortError') return
+    if (err instanceof Error && err.name === 'AbortError') return
+    const message = err instanceof Error ? err.message : 'Failed to generate video'
     generationError.value = message
     showError(message)
   } finally {

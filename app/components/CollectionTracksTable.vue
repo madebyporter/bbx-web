@@ -191,7 +191,7 @@
           <select 
             v-if="statuses.length > 0"
             :value="track.status_id || ''"
-            @change="updateTrackStatus(track.id, $event.target.value ? parseInt($event.target.value) : null)"
+            @change="handleStatusChange(track.id, $event)"
             class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-xs text-neutral-200 cursor-pointer outline-none"
           >
             <option value="">No Status</option>
@@ -295,6 +295,7 @@ import { buildTrackGridStyle, TRACK_GRID_WIDTH } from '~/utils/trackTableGrid'
 import { useTrackTableHeaderHeight } from '~/composables/useTrackTableHeaderHeight'
 import { useInfiniteScroll } from '~/composables/useInfiniteScroll'
 import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
+import type { Track } from '~/types/track'
 
 interface ActiveFilterChip {
   id: string
@@ -304,7 +305,7 @@ interface ActiveFilterChip {
 
 const props = withDefaults(
   defineProps<{
-    tracks: any[]
+    tracks: Track[]
     sourceId: string
     isOwnProfile: boolean
     loading: boolean
@@ -331,7 +332,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  'edit-track': [track: any]
+  'edit-track': [track: Track]
   'tracks-removed': []
   'track-removed-from-collection': [trackId: number]
   'load-more': []
@@ -476,6 +477,12 @@ const fetchStatuses = async () => {
     console.error('Error fetching statuses:', error)
     statuses.value = []
   }
+}
+
+function handleStatusChange(trackId: number, event: Event) {
+  const target = event.target as HTMLSelectElement | null
+  const value = target?.value
+  void updateTrackStatus(trackId, value ? parseInt(value, 10) : null)
 }
 
 // Update track status immediately

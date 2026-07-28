@@ -54,9 +54,10 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { MoreVert } from '@iconoir/vue'
 import Button from '~/components/Button.vue'
+import type { Track } from '~/types/track'
 
 const props = defineProps<{
-  track: { id: number; title?: string; [key: string]: unknown }
+  track: Track
   isOwnProfile: boolean
   profileUserType?: 'creator' | 'audio_pro' | null
   isLoggedIn: boolean
@@ -64,7 +65,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'edit-track': [track: typeof props.track]
+  'edit-track': [track: Track]
 }>()
 
 const menuAnchorRef = ref<HTMLElement | null>(null)
