@@ -15,6 +15,30 @@ export interface TrackVideoGenerationProgress {
 
 export type TrackVideoQuality = 'standard' | 'high' | 'maximum'
 
+export type TrackVideoDimension = 'square' | 'portrait' | 'landscape'
+
+export const TRACK_VIDEO_DIMENSION_OPTIONS: Array<{
+  value: TrackVideoDimension
+  label: string
+  description: string
+}> = [
+  {
+    value: 'square',
+    label: 'Square',
+    description: '1080×1080 (Standard) or 1600×1600 (High/Maximum)',
+  },
+  {
+    value: 'portrait',
+    label: 'Portrait',
+    description: '1080×1920 · Stories, Reels, TikTok',
+  },
+  {
+    value: 'landscape',
+    label: 'Landscape',
+    description: '1920×1080 · YouTube, X, Reddit',
+  },
+]
+
 export const TRACK_VIDEO_QUALITY_OPTIONS: Array<{
   value: TrackVideoQuality
   label: string
@@ -23,12 +47,12 @@ export const TRACK_VIDEO_QUALITY_OPTIONS: Array<{
   {
     value: 'standard',
     label: 'Standard',
-    description: '1080×1080 · faster encode, smaller file',
+    description: 'Faster encode, smaller file',
   },
   {
     value: 'high',
     label: 'High',
-    description: '1600×1600 · full artwork resolution',
+    description: 'Balanced quality and speed',
   },
   {
     value: 'maximum',
@@ -38,7 +62,6 @@ export const TRACK_VIDEO_QUALITY_OPTIONS: Array<{
 ]
 
 interface TrackVideoQualityPreset {
-  scale: number
   preset: string
   crf: number
   audioBitrate: string
@@ -46,23 +69,51 @@ interface TrackVideoQualityPreset {
 
 const TRACK_VIDEO_QUALITY_PRESETS: Record<TrackVideoQuality, TrackVideoQualityPreset> = {
   standard: {
-    scale: 1080,
     preset: 'ultrafast',
     crf: 23,
     audioBitrate: '192k',
   },
   high: {
-    scale: 1600,
     preset: 'fast',
     crf: 20,
     audioBitrate: '256k',
   },
   maximum: {
-    scale: 1600,
     preset: 'medium',
     crf: 18,
     audioBitrate: '320k',
   },
+}
+
+export interface TrackVideoOutputSize {
+  width: number
+  height: number
+}
+
+export function resolveOutputSize(
+  dimension: TrackVideoDimension,
+  quality: TrackVideoQuality
+): TrackVideoOutputSize {
+  if (dimension === 'portrait') {
+    return { width: 1080, height: 1920 }
+  }
+  if (dimension === 'landscape') {
+    return { width: 1920, height: 1080 }
+  }
+
+  const squareSize = quality === 'standard' ? 1080 : 1600
+  return { width: squareSize, height: squareSize }
+}
+
+export function clampPaddingPx(
+  paddingPx: number,
+  outputSize: TrackVideoOutputSize
+): number {
+  const maxPadding = Math.floor(Math.min(outputSize.width, outputSize.height) / 2) - 1
+  if (!Number.isFinite(paddingPx) || paddingPx <= 0 || maxPadding <= 0) {
+    return 0
+  }
+  return Math.min(Math.floor(paddingPx), maxPadding)
 }
 
 const CORE_JS = '/ffmpeg/ffmpeg-core.js'
@@ -110,9 +161,22 @@ export function buildTrackVideoFilename(artistName: string, trackTitle: string):
   return `${artist}-${title}-video.mp4`
 }
 
-function buildVideoFilter(scale: number, isGif: boolean): string {
-  const scaleFilter = `scale=${scale}:${scale}:flags=lanczos`
-  return isGif ? scaleFilter : `${scaleFilter},format=yuv420p`
+function buildVideoFilter({
+  width,
+  height,
+  paddingPx,
+  isGif,
+}: {
+  width: number
+  height: number
+  paddingPx: number
+  isGif: boolean
+}): string {
+  const innerW = Math.max(1, width - paddingPx * 2)
+  const innerH = Math.max(1, height - paddingPx * 2)
+  const scaleFilter = `scale=${innerW}:${innerH}:force_original_aspect_ratio=decrease:flags=lanczos`
+  const padFilter = `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black`
+  return isGif ? `${scaleFilter},${padFilter}` : `${scaleFilter},${padFilter},format=yuv420p`
 }
 
 function buildEncodeArgs({
@@ -121,15 +185,26 @@ function buildEncodeArgs({
   outputName,
   isGif,
   quality,
+  dimension,
+  paddingPx,
 }: {
   coverName: string
   audioName: string
   outputName: string
   isGif: boolean
   quality: TrackVideoQuality
+  dimension: TrackVideoDimension
+  paddingPx: number
 }): string[] {
   const preset = TRACK_VIDEO_QUALITY_PRESETS[quality]
-  const videoFilter = buildVideoFilter(preset.scale, isGif)
+  const outputSize = resolveOutputSize(dimension, quality)
+  const clampedPadding = clampPaddingPx(paddingPx, outputSize)
+  const videoFilter = buildVideoFilter({
+    width: outputSize.width,
+    height: outputSize.height,
+    paddingPx: clampedPadding,
+    isGif,
+  })
 
   if (isGif) {
     return [
@@ -359,6 +434,8 @@ export function useTrackVideoGenerator() {
     trackTitle,
     audioDurationSeconds,
     quality,
+    dimension,
+    paddingPx,
     onProgress,
     signal,
   }: {
@@ -369,6 +446,8 @@ export function useTrackVideoGenerator() {
     trackTitle: string
     audioDurationSeconds: number
     quality: TrackVideoQuality
+    dimension: TrackVideoDimension
+    paddingPx: number
     onProgress?: (progress: TrackVideoGenerationProgress) => void
     signal?: AbortSignal
   }): Promise<TrackVideoGenerationResult> => {
@@ -423,6 +502,8 @@ export function useTrackVideoGenerator() {
         outputName,
         isGif,
         quality,
+        dimension,
+        paddingPx,
       })
 
       try {

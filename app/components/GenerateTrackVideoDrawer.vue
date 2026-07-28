@@ -16,13 +16,17 @@
         <div class="flex flex-col gap-3">
           <div
             v-if="coverPreview"
-            class="w-full max-w-[240px] aspect-square rounded-md overflow-hidden border border-neutral-800 bg-neutral-950"
+            class="w-full max-w-[240px] rounded-md overflow-hidden border border-neutral-800 bg-black flex items-center justify-center"
+            :class="previewAspectClass"
           >
-            <img :src="coverPreview" alt="Cover preview" class="w-full h-full object-cover" />
+            <div class="w-full h-full flex items-center justify-center" :style="previewCoverWrapperStyle">
+              <img :src="coverPreview" alt="Cover preview" class="w-full h-full object-contain" />
+            </div>
           </div>
           <div
             v-else
-            class="w-full max-w-[240px] aspect-square rounded-md border border-dashed border-neutral-700 bg-neutral-950 flex items-center justify-center text-sm text-neutral-500 text-center p-4"
+            class="w-full max-w-[240px] rounded-md border border-dashed border-neutral-700 bg-neutral-950 flex items-center justify-center text-sm text-neutral-500 text-center p-4"
+            :class="previewAspectClass"
           >
             {{ coverPlaceholderText }}
           </div>
@@ -55,6 +59,42 @@
 
       <!-- Generate -->
       <section class="flex flex-col gap-3 shrink-0 border-t border-neutral-800 pt-4">
+        <div class="flex flex-col gap-2">
+          <label for="video-dimension" class="text-sm font-medium text-neutral-200">Dimensions</label>
+          <select
+            id="video-dimension"
+            v-model="selectedDimension"
+            :disabled="isGenerating"
+            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option
+              v-for="option in TRACK_VIDEO_DIMENSION_OPTIONS"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+          <p class="text-xs text-neutral-500">{{ selectedDimensionDescription }} · {{ outputSizeLabel }}</p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label for="video-padding" class="text-sm font-medium text-neutral-200">Padding (px)</label>
+          <input
+            id="video-padding"
+            v-model.number="coverPaddingPx"
+            type="number"
+            min="0"
+            :max="maxPaddingPx"
+            placeholder="0"
+            :disabled="isGenerating"
+            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+          <p class="text-xs text-neutral-500">
+            Shrinks cover art inside the frame. Video size stays the same.
+          </p>
+        </div>
+
         <div class="flex flex-col gap-2">
           <label for="video-quality" class="text-sm font-medium text-neutral-200">Quality</label>
           <select
@@ -175,8 +215,12 @@ import {
   preloadTrackVideoEncoder,
   terminateTrackVideoGenerator,
   useTrackVideoGenerator,
+  TRACK_VIDEO_DIMENSION_OPTIONS,
   TRACK_VIDEO_QUALITY_OPTIONS,
+  clampPaddingPx,
+  resolveOutputSize,
   type TrackVideoGenerationProgress,
+  type TrackVideoDimension,
   type TrackVideoQuality,
 } from '~/composables/useTrackVideoGenerator.client'
 import {
@@ -223,7 +267,11 @@ const historyLoading = ref(false)
 const deletingId = ref<string | null>(null)
 const encoderReady = ref(false)
 const encoderLoading = ref(false)
+const selectedDimension = ref<TrackVideoDimension>('square')
 const selectedQuality = ref<TrackVideoQuality>('maximum')
+const coverPaddingPx = ref(0)
+
+const PREVIEW_MAX_WIDTH = 240
 
 let abortController: AbortController | null = null
 let previewObjectUrl: string | null = null
@@ -252,6 +300,42 @@ const selectedQualityDescription = computed(() => {
     TRACK_VIDEO_QUALITY_OPTIONS.find((option) => option.value === selectedQuality.value)
       ?.description || ''
   )
+})
+
+const selectedDimensionDescription = computed(() => {
+  return (
+    TRACK_VIDEO_DIMENSION_OPTIONS.find((option) => option.value === selectedDimension.value)
+      ?.description || ''
+  )
+})
+
+const outputSize = computed(() => resolveOutputSize(selectedDimension.value, selectedQuality.value))
+
+const outputSizeLabel = computed(() => {
+  const { width, height } = outputSize.value
+  return `${width}×${height}`
+})
+
+const maxPaddingPx = computed(() => {
+  const max = Math.floor(Math.min(outputSize.value.width, outputSize.value.height) / 2) - 1
+  return Math.max(0, max)
+})
+
+const clampedCoverPaddingPx = computed(() =>
+  clampPaddingPx(coverPaddingPx.value, outputSize.value)
+)
+
+const previewAspectClass = computed(() => {
+  if (selectedDimension.value === 'portrait') return 'aspect-[9/16]'
+  if (selectedDimension.value === 'landscape') return 'aspect-video'
+  return 'aspect-square'
+})
+
+const previewCoverWrapperStyle = computed(() => {
+  const scaledPadding = Math.round(
+    clampedCoverPaddingPx.value * (PREVIEW_MAX_WIDTH / outputSize.value.width)
+  )
+  return scaledPadding > 0 ? { padding: `${scaledPadding}px` } : undefined
 })
 
 function formatDuration(seconds: number): string {
@@ -452,6 +536,8 @@ async function handleGenerate() {
       trackTitle: props.track.title,
       audioDurationSeconds: props.track.duration || 0,
       quality: selectedQuality.value,
+      dimension: selectedDimension.value,
+      paddingPx: clampedCoverPaddingPx.value,
       onProgress: handleProgress,
       signal: abortController.signal,
     })

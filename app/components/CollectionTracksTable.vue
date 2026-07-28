@@ -67,10 +67,10 @@
       <div class="w-fit md:w-full h-fit">
         <!-- Header -->
         <div :class="[
-            'text-sm text-left text-neutral-500 border-b border-neutral-800 py-2 bg-neutral-900 *:flex *:items-center',
+            'text-sm text-left text-neutral-500 border-b border-neutral-800 bg-neutral-900 *:flex *:items-center *:p-4',
             tableGridClass
           ]">
-          <div class="px-2 flex items-center justify-center">
+          <div class="flex items-center justify-center">
             <Button
               v-if="isOwnProfile"
               variant="ghost"
@@ -105,7 +105,7 @@
           </template>
           <div v-if="showActionsColumn" :class="[
             'flex items-center justify-start',
-            'sticky right-0 bg-neutral-900 z-20 pl-2 pr-4 min-w-[48px]'
+            'sticky right-0 bg-neutral-900 z-20 min-w-[48px]'
           ]">
             <Button
               v-if="isOwnProfile && hasSelections"
@@ -121,11 +121,11 @@
 
         <!-- Tracks -->
         <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
-            'text-sm border-b border-neutral-900 *:py-4 items-center',
+            'text-sm border-b border-neutral-900 *:p-4 items-center',
             tableGridClass,
             isCurrentlyPlaying(track) ? 'bg-neutral-800/70  lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
           ]">
-        <div class="px-2 flex items-center justify-center">
+        <div class="flex items-center justify-center">
           <!-- Bulk Selection Mode: Show Checkbox -->
           <template v-if="bulkSelectionMode">
             <Button variant="ghost" class="!p-0 text-neutral-400 hover:text-neutral-200" @click="toggleTrackSelection(track.id)">
@@ -207,7 +207,7 @@
         </div>
         </template>
         <div v-if="showActionsColumn" :class="[
-          'sticky right-0 bg-neutral-900 z-10 pl-2 pr-4 min-w-[48px]',
+          'sticky right-0 bg-neutral-900 z-10 min-w-[48px]',
           isCurrentlyPlaying(track) ? '!bg-neutral-800' : ''
         ]">
           <div class="flex flex-row items-center justify-end gap-1">
