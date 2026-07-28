@@ -101,7 +101,8 @@ import {
   applyMusicFiltersToSoundsQuery,
   type MusicFilterSortParams,
 } from '~/utils/trackQueryFilters'
-import { enrichTracksWithCollections } from '~/utils/trackCollectionEnrichment'
+import { enrichTracksWithCollections, type TrackWithCollections } from '~/utils/trackCollectionEnrichment'
+import type { Track } from '~/types/track'
 import { usePageShellReady } from '~/composables/usePageShellReady'
 
 const route = useRoute()
@@ -169,7 +170,7 @@ const { data: initialData } = await useAsyncData(
   { server: true }
 )
 
-const tracks = ref<any[]>([])
+const tracks = ref<TrackWithCollections[]>([])
 const totalTrackCount = ref(0)
 const currentPage = ref(0)
 const tracksLoading = ref(true)
@@ -243,7 +244,7 @@ const loadTracksPage = async (options: { page?: number; append?: boolean; params
 
     const enriched = await enrichTracksWithCollections(
       supabase,
-      (data || []) as unknown as Array<{ id: number } & Record<string, unknown>>
+      (data || []) as unknown as Track[]
     )
     tracks.value = append ? [...tracks.value, ...enriched] : enriched
     totalTrackCount.value = count ?? enriched.length

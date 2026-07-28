@@ -443,18 +443,25 @@ const fetchStatuses = async () => {
 function handleStatusChange(trackId: number, event: Event) {
   const target = event.target as HTMLSelectElement | null
   const value = target?.value
-  void updateTrackStatus(trackId, value ? parseInt(value, 10) : null)
+  if (!value) {
+    void updateTrackStatus(trackId, null)
+    return
+  }
+  const parsed = Number.parseInt(value, 10)
+  if (Number.isNaN(parsed)) return
+  void updateTrackStatus(trackId, parsed)
 }
 
 // Update track status immediately
 const updateTrackStatus = async (trackId: number, statusId: number | null) => {
-  if (!supabase) return
+  if (!supabase || !user.value || !props.isOwnProfile) return
   
   try {
     const { error } = await supabase
       .from('sounds')
       .update({ status_id: statusId })
       .eq('id', trackId)
+      .eq('user_id', user.value.id)
     
     if (error) throw error
     
@@ -463,11 +470,14 @@ const updateTrackStatus = async (trackId: number, statusId: number | null) => {
     if (track) {
       track.status_id = statusId
       if (statusId === null) {
+        track.track_status = null
         track.track_statuses = null
       } else {
         const status = statuses.value.find(s => s.id === statusId)
         if (status) {
-          track.track_statuses = { id: status.id, name: status.name }
+          const nextStatus = { id: status.id, name: status.name }
+          track.track_status = nextStatus
+          track.track_statuses = nextStatus
         }
       }
     }
