@@ -116,6 +116,46 @@ export function clampPaddingPx(
   return Math.min(Math.floor(paddingPx), maxPadding)
 }
 
+export type TrackVideoBackgroundPresetId = 'white' | 'black' | 'red' | 'yellow' | 'custom'
+
+export const TRACK_VIDEO_BACKGROUND_PRESETS: Array<{
+  id: Exclude<TrackVideoBackgroundPresetId, 'custom'>
+  label: string
+  color: string
+}> = [
+  { id: 'white', label: 'White', color: '#FFFFFF' },
+  { id: 'black', label: 'Black', color: '#000000' },
+  { id: 'red', label: 'Red', color: '#E52800' },
+  { id: 'yellow', label: 'Yellow', color: '#FBBF24' },
+]
+
+export function normalizeHexColor(value: string): string {
+  const trimmed = value.trim()
+  if (/^#[0-9A-Fa-f]{6}$/.test(trimmed)) {
+    return trimmed.toUpperCase()
+  }
+  if (/^[0-9A-Fa-f]{6}$/.test(trimmed)) {
+    return `#${trimmed.toUpperCase()}`
+  }
+  return '#000000'
+}
+
+export function toFfmpegPadColor(hex: string): string {
+  return `0x${normalizeHexColor(hex).replace('#', '')}`
+}
+
+export function resolveTrackVideoBackgroundColor(
+  presetId: TrackVideoBackgroundPresetId,
+  customColor: string
+): string {
+  if (presetId === 'custom') {
+    return normalizeHexColor(customColor)
+  }
+  return (
+    TRACK_VIDEO_BACKGROUND_PRESETS.find((preset) => preset.id === presetId)?.color ?? '#000000'
+  )
+}
+
 const CORE_JS = '/ffmpeg/ffmpeg-core.js'
 const CORE_WASM = '/ffmpeg/ffmpeg-core.wasm'
 const LOAD_TIMEOUT_MS = 300_000
@@ -165,17 +205,20 @@ function buildVideoFilter({
   width,
   height,
   paddingPx,
+  backgroundColor,
   isGif,
 }: {
   width: number
   height: number
   paddingPx: number
+  backgroundColor: string
   isGif: boolean
 }): string {
   const innerW = Math.max(1, width - paddingPx * 2)
   const innerH = Math.max(1, height - paddingPx * 2)
   const scaleFilter = `scale=${innerW}:${innerH}:force_original_aspect_ratio=decrease:flags=lanczos`
-  const padFilter = `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black`
+  const padColor = toFfmpegPadColor(backgroundColor)
+  const padFilter = `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=${padColor}`
   return isGif ? `${scaleFilter},${padFilter}` : `${scaleFilter},${padFilter},format=yuv420p`
 }
 
@@ -187,6 +230,7 @@ function buildEncodeArgs({
   quality,
   dimension,
   paddingPx,
+  backgroundColor,
 }: {
   coverName: string
   audioName: string
@@ -195,6 +239,7 @@ function buildEncodeArgs({
   quality: TrackVideoQuality
   dimension: TrackVideoDimension
   paddingPx: number
+  backgroundColor: string
 }): string[] {
   const preset = TRACK_VIDEO_QUALITY_PRESETS[quality]
   const outputSize = resolveOutputSize(dimension, quality)
@@ -203,6 +248,7 @@ function buildEncodeArgs({
     width: outputSize.width,
     height: outputSize.height,
     paddingPx: clampedPadding,
+    backgroundColor,
     isGif,
   })
 
@@ -436,6 +482,7 @@ export function useTrackVideoGenerator() {
     quality,
     dimension,
     paddingPx,
+    backgroundColor,
     onProgress,
     signal,
   }: {
@@ -448,6 +495,7 @@ export function useTrackVideoGenerator() {
     quality: TrackVideoQuality
     dimension: TrackVideoDimension
     paddingPx: number
+    backgroundColor: string
     onProgress?: (progress: TrackVideoGenerationProgress) => void
     signal?: AbortSignal
   }): Promise<TrackVideoGenerationResult> => {
@@ -504,6 +552,7 @@ export function useTrackVideoGenerator() {
         quality,
         dimension,
         paddingPx,
+        backgroundColor: normalizeHexColor(backgroundColor),
       })
 
       try {

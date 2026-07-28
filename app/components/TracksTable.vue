@@ -1,5 +1,5 @@
 <template>
-  <div class="overflow-x-auto w-full h-fit">
+  <div class="w-full min-w-0 overflow-x-hidden">
     <div v-if="loading" class="flex items-center justify-center p-8 h-full w-full grow">
       <LoadingLogo />
     </div>
@@ -25,7 +25,7 @@
       </div>
     </div>
 
-    <div v-else class="w-full overflow-x-auto">
+    <div v-else class="w-full min-w-0">
       <!-- Bulk Actions Drawer -->
       <BulkActionsDrawer v-model:show="showBulkActionsDrawer" :selected-tracks="selectedTracksArray"
         :selected-count="selectedTrackIds.size" @tracks-deleted="handleTracksDeleted"
@@ -54,14 +54,16 @@
         </template>
       </Modal>
 
-      <!-- Single Grid Container - wraps header and all rows -->
-      <div class="w-fit md:w-full h-fit">
+      <div class="flex w-full min-w-0">
+        <div class="min-w-0 flex-1 overflow-x-auto">
+          <div class="w-max min-w-full h-fit">
         <!-- Header -->
         <div
+          ref="mainTableHeaderRef"
           :class="[
             'text-sm text-left text-neutral-500 border-b border-neutral-800 bg-neutral-900 *:flex *:items-center *:p-4',
           ]"
-          :style="tableGridStyle"
+          :style="tableMainGridStyle"
         >
           <div class="flex items-center justify-center">
             <Button
@@ -97,27 +99,13 @@
           <div>Duration</div>
             <div v-if="showStatusColumn">Status</div>
           </template>
-          <div :class="[
-            'flex items-center justify-start',
-            showActionsColumn ? 'sticky right-0 bg-neutral-900 z-20 min-w-[48px]' : ''
-          ]">
-            <Button
-              v-if="isOwnProfile && hasSelections"
-              variant="primary"
-              size="sm"
-              class="!px-2 !py-0.5 !bg-amber-400 hover:!bg-amber-500 text-neutral-900 text-xs whitespace-nowrap"
-              @click="showBulkActionsDrawer = true"
-            >
-              Bulk ({{ selectedTrackIds.size }})
-            </Button>
-          </div>
         </div>
 
         <!-- Tracks -->
         <div v-for="(track, index) in tracks" :key="track.id" :data-track-id="track.id" :class="[
           'text-sm border-b border-neutral-900 *:p-4 items-center',
           isCurrentlyPlaying(track) ? 'bg-neutral-800/70  lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800 hover:*:bg-neutral-800'
-        ]" :style="tableGridStyle">
+        ]" :style="tableMainGridStyle">
         <div class="flex items-center justify-center gap-1">
           <!-- Bulk Selection Mode: Show Checkbox -->
           <template v-if="bulkSelectionMode">
@@ -181,7 +169,7 @@
             </svg>
           </PlayerButton>
         </div>
-        <div class="overflow-hidden">
+        <div class="overflow-hidden min-w-0">
           <NuxtLink
             :to="`/u/${getTrackOwnerUsername(track)}/t/${generateTrackSlug(track)}`"
             class="flex min-w-0 w-full items-center justify-between gap-2 text-neutral-300 hover:text-white hover:underline"
@@ -191,7 +179,7 @@
             <span v-if="track.is_public === false" class="text-xs text-neutral-500 flex-shrink-0">[private]</span>
           </NuxtLink>
         </div>
-        <div class="text-neutral-400 overflow-hidden truncate">{{ track.artist || 'Unknown' }}</div>
+        <div class="text-neutral-400 overflow-hidden truncate min-w-0">{{ track.artist || 'Unknown' }}</div>
         <div class="text-neutral-400">{{ track.version || 'v1.0' }}</div>
         <template v-if="analyticsMode && isOwnProfile">
           <div class="text-neutral-300">{{ formatTrackStat(track.id, 'plays') }}</div>
@@ -200,7 +188,7 @@
           <div class="text-neutral-300">{{ formatTrackStat(track.id, 'completion') }}</div>
         </template>
         <template v-else>
-        <div v-if="showCollectionColumn" class="text-neutral-400 overflow-visible flex justify-start items-center gap-1">
+        <div v-if="showCollectionColumn" class="text-neutral-400 overflow-visible flex justify-start items-center gap-1 min-w-0">
           <CollectionTagsCell
             :collections="track.collections"
             :owner-username="getTrackOwnerUsername(track)"
@@ -213,7 +201,7 @@
             <Plus class="size-3" />
         </div>
         </div>
-        <div class="text-neutral-400 overflow-hidden truncate">{{ track.genre || '-' }}</div>
+        <div class="text-neutral-400 overflow-hidden truncate min-w-0">{{ track.genre || '-' }}</div>
         <div class="text-neutral-400">{{ track.bpm || '-' }}</div>
         <div class="text-neutral-400">{{ formatDuration(track.duration) }}</div>
         <div v-if="showStatusColumn" class="text-neutral-400 overflow-hidden">
@@ -228,13 +216,39 @@
           <div v-else class="text-xs px-2 py-1">Loading...</div>
         </div>
         </template>
-        <!-- Action Button: Menu / Add / Remove -->
-        <div :class="[
-          showActionsColumn
-            ? 'sticky right-0 bg-neutral-900 z-10 min-w-[48px]'
-            : '',
-          isCurrentlyPlaying(track) ? '!bg-neutral-800' : ''
-        ]">
+        </div>
+          </div>
+        </div>
+
+        <div
+          v-if="showActionsColumn"
+          class="shrink-0 border-l border-neutral-800 bg-neutral-900"
+          :style="{ width: TRACK_GRID_WIDTH.tiny }"
+        >
+          <div
+            ref="actionsTableHeaderRef"
+            class="flex items-center justify-start p-4 border-b border-neutral-800 shrink-0 box-border"
+            :style="actionsHeaderHeightStyle"
+          >
+            <Button
+              v-if="isOwnProfile && hasSelections"
+              variant="primary"
+              size="sm"
+              class="!px-2 !py-0.5 !bg-amber-400 hover:!bg-amber-500 text-neutral-900 text-xs whitespace-nowrap"
+              @click="showBulkActionsDrawer = true"
+            >
+              Bulk ({{ selectedTrackIds.size }})
+            </Button>
+          </div>
+
+          <div
+            v-for="track in tracks"
+            :key="`${track.id}-actions`"
+            :class="[
+              'flex items-center justify-end p-4 border-b border-neutral-900',
+              isCurrentlyPlaying(track) ? 'bg-neutral-800/70' : 'hover:bg-neutral-800'
+            ]"
+          >
           <div class="flex flex-row items-center justify-end gap-1">
           <TrackRowActionsMenu
             :track="track"
@@ -279,10 +293,10 @@
             {{ shortlistLoading.has(track.id) ? 'Removing...' : 'Remove' }}
           </Button>
         </div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
   </div>
 </template>
 
@@ -309,6 +323,8 @@ import {
 } from '~/composables/useTrackAnalyticsData'
 import { Plus } from '@iconoir/vue'
 import TrackRowActionsMenu from '~/components/TrackRowActionsMenu.vue'
+import { buildTrackGridStyle, TRACK_GRID_WIDTH } from '~/utils/trackTableGrid'
+import { useTrackTableHeaderHeight } from '~/composables/useTrackTableHeaderHeight'
 
 interface Props {
   tracks: any[]
@@ -378,33 +394,14 @@ const showCollectionColumn = computed(() =>
   props.isOwnProfile && !props.analyticsMode
 )
 
-const tableGridStyle = computed(() => {
-  const cols = [
-    'minmax(70px, auto)',
-    'minmax(250px, 1fr)',
-    '100px',
-    '70px',
-  ]
-
-  if (props.analyticsMode && props.isOwnProfile) {
-    cols.push('70px', '70px', '120px', '90px', '100px')
-  } else {
-    if (showCollectionColumn.value) {
-      cols.push('minmax(140px, max-content)')
-    }
-    cols.push('70px', '50px', '70px')
-    if (showStatusColumn.value) {
-      cols.push('100px')
-    }
-    cols.push('88px')
-  }
-
-  return {
-    display: 'grid',
-    gap: '0',
-    gridTemplateColumns: cols.join(' '),
-  }
-})
+const tableMainGridStyle = computed(() =>
+  buildTrackGridStyle({
+    showCollection: showCollectionColumn.value,
+    showStatus: showStatusColumn.value,
+    showActions: false,
+    analyticsMode: props.analyticsMode && props.isOwnProfile,
+  })
+)
 
 const showActionsColumn = computed(() => {
   return !!(
@@ -412,6 +409,21 @@ const showActionsColumn = computed(() => {
     props.isOwnProfile ||
     (props.viewerUserType === 'creator' && props.profileUserType === 'audio_pro')
   )
+})
+
+const mainTableHeaderRef = ref<HTMLElement | null>(null)
+const actionsTableHeaderRef = ref<HTMLElement | null>(null)
+
+const { targetHeight: actionsHeaderHeight } = useTrackTableHeaderHeight(
+  mainTableHeaderRef,
+  actionsTableHeaderRef,
+  () => showActionsColumn.value
+)
+
+const actionsHeaderHeightStyle = computed(() => {
+  if (!actionsHeaderHeight.value) return undefined
+  const height = `${actionsHeaderHeight.value}px`
+  return { height, minHeight: height }
 })
 
 function formatTrackStat(trackId: number, field: 'plays' | 'listeners' | 'avgListen' | 'completion'): string {

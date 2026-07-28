@@ -16,8 +16,9 @@
         <div class="flex flex-col gap-3">
           <div
             v-if="coverPreview"
-            class="w-full max-w-[240px] rounded-md overflow-hidden border border-neutral-800 bg-black flex items-center justify-center"
+            class="w-full max-w-[240px] rounded-md overflow-hidden border border-neutral-800 flex items-center justify-center"
             :class="previewAspectClass"
+            :style="previewBackgroundStyle"
           >
             <div class="w-full h-full flex items-center justify-center" :style="previewCoverWrapperStyle">
               <img :src="coverPreview" alt="Cover preview" class="w-full h-full object-contain" />
@@ -76,6 +77,81 @@
             </option>
           </select>
           <p class="text-xs text-neutral-500">{{ selectedDimensionDescription }} · {{ outputSizeLabel }}</p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="text-sm font-medium text-neutral-200">Background</span>
+          <div class="flex flex-row flex-wrap items-center gap-3">
+            <button
+              v-for="preset in TRACK_VIDEO_BACKGROUND_PRESETS"
+              :key="preset.id"
+              type="button"
+              :disabled="isGenerating"
+              class="relative size-8 shrink-0 rounded-full border border-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              :class="preset.id === 'white' ? 'border-neutral-500' : ''"
+              :style="{ backgroundColor: preset.color }"
+              :title="preset.label"
+              :aria-label="`${preset.label} background`"
+              :aria-pressed="selectedBackgroundPreset === preset.id"
+              @click="selectBackgroundPreset(preset.id)"
+            >
+              <span
+                v-if="selectedBackgroundPreset === preset.id"
+                class="absolute inset-1 flex items-center justify-center rounded-full bg-black"
+              >
+                <svg class="size-3 text-white" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path
+                    fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              :disabled="isGenerating"
+              class="relative size-8 shrink-0 rounded-full border border-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
+              :style="
+                selectedBackgroundPreset === 'custom'
+                  ? { backgroundColor: customBackgroundColor }
+                  : undefined
+              "
+              title="Custom color"
+              aria-label="Custom background color"
+              :aria-pressed="selectedBackgroundPreset === 'custom'"
+              @click="openCustomBackgroundPicker"
+            >
+              <span
+                v-if="selectedBackgroundPreset !== 'custom'"
+                class="absolute inset-0 rounded-full bg-[conic-gradient(#E52800,#FBBF24,#FFFFFF,#000000,#E52800)]"
+                aria-hidden="true"
+              />
+              <span
+                v-if="selectedBackgroundPreset === 'custom'"
+                class="absolute inset-1 flex items-center justify-center rounded-full bg-black"
+              >
+                <svg class="size-3 text-white" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path
+                    fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </span>
+            </button>
+
+            <input
+              ref="customBackgroundInputRef"
+              type="color"
+              class="sr-only"
+              :value="customBackgroundColor"
+              :disabled="isGenerating"
+              @input="handleCustomBackgroundInput"
+            />
+          </div>
+          <p class="text-xs text-neutral-500">Beatbox presets or pick a custom color.</p>
         </div>
 
         <div class="flex flex-col gap-2">
@@ -217,8 +293,12 @@ import {
   useTrackVideoGenerator,
   TRACK_VIDEO_DIMENSION_OPTIONS,
   TRACK_VIDEO_QUALITY_OPTIONS,
+  TRACK_VIDEO_BACKGROUND_PRESETS,
   clampPaddingPx,
+  normalizeHexColor,
   resolveOutputSize,
+  resolveTrackVideoBackgroundColor,
+  type TrackVideoBackgroundPresetId,
   type TrackVideoGenerationProgress,
   type TrackVideoDimension,
   type TrackVideoQuality,
@@ -249,6 +329,7 @@ const { showError, showSuccess } = useToast()
 
 const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
 const coverInputRef = ref<HTMLInputElement | null>(null)
+const customBackgroundInputRef = ref<HTMLInputElement | null>(null)
 const previewVideoRef = ref<HTMLVideoElement | null>(null)
 
 const coverPreview = ref<string | null>(null)
@@ -269,6 +350,8 @@ const encoderReady = ref(false)
 const encoderLoading = ref(false)
 const selectedDimension = ref<TrackVideoDimension>('square')
 const selectedQuality = ref<TrackVideoQuality>('maximum')
+const selectedBackgroundPreset = ref<TrackVideoBackgroundPresetId>('black')
+const customBackgroundColor = ref('#808080')
 const coverPaddingPx = ref(0)
 
 const PREVIEW_MAX_WIDTH = 240
@@ -337,6 +420,29 @@ const previewCoverWrapperStyle = computed(() => {
   )
   return scaledPadding > 0 ? { padding: `${scaledPadding}px` } : undefined
 })
+
+const resolvedBackgroundColor = computed(() =>
+  resolveTrackVideoBackgroundColor(selectedBackgroundPreset.value, customBackgroundColor.value)
+)
+
+const previewBackgroundStyle = computed(() => ({
+  backgroundColor: resolvedBackgroundColor.value,
+}))
+
+function selectBackgroundPreset(presetId: Exclude<TrackVideoBackgroundPresetId, 'custom'>) {
+  selectedBackgroundPreset.value = presetId
+}
+
+function openCustomBackgroundPicker() {
+  selectedBackgroundPreset.value = 'custom'
+  customBackgroundInputRef.value?.click()
+}
+
+function handleCustomBackgroundInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  customBackgroundColor.value = normalizeHexColor(input.value)
+  selectedBackgroundPreset.value = 'custom'
+}
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -538,6 +644,7 @@ async function handleGenerate() {
       quality: selectedQuality.value,
       dimension: selectedDimension.value,
       paddingPx: clampedCoverPaddingPx.value,
+      backgroundColor: resolvedBackgroundColor.value,
       onProgress: handleProgress,
       signal: abortController.signal,
     })

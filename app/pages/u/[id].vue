@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-0 text-neutral-300 grow">
+  <div class="flex flex-col gap-0 text-neutral-300 grow min-w-0">
 
     <!-- Profile Header -->
     <div class="flex flex-col md:flex-row justify-start md:justify-between items-stretch gap-2 p-4">
@@ -280,7 +280,7 @@
       </div>
     </div>
     <!-- Tracks Section -->
-    <div v-if="musicSectionOpen" class="grow border-t border-neutral-800">
+    <div v-if="musicSectionOpen" class="grow min-w-0 overflow-x-hidden border-t border-neutral-800">
       <div class="flex flex-row justify-between items-center gap-4 p-4 border-b border-neutral-800">
         <div class="flex flex-col overflow-auto">
           <h2 class="text-lg lg:text-xl font-bold truncate">Music</h2>

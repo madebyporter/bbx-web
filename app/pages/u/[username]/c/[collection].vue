@@ -38,7 +38,7 @@
       </template>
 
       <!-- Tracks in Collection -->
-      <div class="grow overflow-x-auto overflow-y-hidden h-fit w-full">
+      <div class="grow min-w-0 overflow-x-hidden h-fit w-full">
         <CollectionTracksTable 
           :tracks="displayedTracks" 
           :source-id="`collection-${collection?.id}`" 
