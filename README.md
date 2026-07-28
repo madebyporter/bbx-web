@@ -203,3 +203,6 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Sticky actions column merged into track table grid rows for correct row alignment
 - 0.55.2
   - Video generator falls back to CDN when local FFmpeg assets are missing on deploy
+- 0.55.3
+  - Resource detail pages (software/kits) always mount during SSR so crawlers get title, description, and canonical
+  - Canonical URLs always use https://beatbox.studio (not www)

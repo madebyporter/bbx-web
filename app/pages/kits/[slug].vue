@@ -1,8 +1,21 @@
 <template>
-  <PageContentSkeleton v-if="!pageShellReady" />
-  <div v-else class="grid grid-cols-1 md:grid-cols-[250px_1fr] grow overflow-hidden">
-    <ResourceSidebar type-slug="kits" :current-slug="slug" />
-    <ResourceDetailPage :key="slug" :type-slug="'kits'" :slug="slug" />
+  <div class="relative grid grid-cols-1 md:grid-cols-[250px_1fr] grow overflow-hidden">
+    <PageContentSkeleton
+      v-if="!pageShellReady"
+      class="absolute inset-0 z-10 bg-neutral-900"
+    />
+    <ResourceSidebar
+      type-slug="kits"
+      :current-slug="slug"
+      :class="{ invisible: !pageShellReady }"
+    />
+    <!-- Always mounted so useAsyncData + useHead run during SSR -->
+    <ResourceDetailPage
+      :key="slug"
+      :type-slug="'kits'"
+      :slug="slug"
+      :class="{ invisible: !pageShellReady }"
+    />
   </div>
 </template>
 

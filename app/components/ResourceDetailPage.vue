@@ -117,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, inject, onMounted, ref } from 'vue'
+import { computed, watch, inject, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSupabase } from '~/utils/supabase'
 import { fetchResourceBySlug, deleteResource, getResourceUseStatus } from '~/utils/resourceQueries'
@@ -137,25 +137,6 @@ const props = defineProps<{
 
 const route = useRoute()
 
-// [SEO-TIMING] Top of script setup - log execution context
-const startTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
-const context = process.server ? 'SERVER' : process.client ? 'CLIENT' : 'UNKNOWN'
-const routePath = typeof window !== 'undefined' ? window.location.pathname : (route?.path || 'SSR')
-
-// [SEO-TIMING] Critical: Check if this is SSR or client-side navigation
-if (process.server) {
-} else if (process.client) {
-  // Check if this is initial page load or client-side navigation
-  if (typeof window !== 'undefined' && window.performance) {
-    try {
-      const navEntries = (window.performance as any).getEntriesByType?.('navigation') || []
-      const navType = navEntries[0]?.type
-      const isInitialLoad = navType === 'navigate' || navType === 'reload'
-    } catch (e) {
-      // Navigation timing API might not be available
-    }
-  }
-}
 const { supabase } = useSupabase()
 const siteUrl = useSiteOrigin()
 
@@ -290,7 +271,7 @@ watch(() => props.typeSlug, async (newType, oldType) => {
   }
 })
 
-// Helper function - must be defined before watch that uses it
+// Helper function - must be defined before SEO computeds
 const getImageUrl = (url: string) => {
   if (!url) return '/img/placeholder.png'
   if (url.startsWith('http')) return url
@@ -299,130 +280,70 @@ const getImageUrl = (url: string) => {
   return `${supabaseUrl}/storage/v1/object/public/resource-images/${url}`
 }
 
-// SEO meta tags and structured data - watch for changes
-watch(() => [resource.value, useCount.value], ([newResource, count]) => {
-  const watchContext = process.server ? 'SERVER' : process.client ? 'CLIENT' : 'UNKNOWN'
-  const watchTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
-  
-  if (!newResource) {
-    return
+// SSR SEO — same pattern as profile pages: reactive useHead after useAsyncData resolves
+useHead(() => {
+  const currentResource = resource.value
+  if (!currentResource) {
+    return {}
   }
-  
-  // [SEO-TIMING] Before useHead - log what SEO values exist
-  const seoTitle = `${newResource.name} - ${typeConfig.value.seoLabel}`
-  const seoDescription = `${newResource.name} by ${newResource.creator}. ${newResource.price}. ${newResource.tags?.join(', ')}.`
-  const seoUrl = `${siteUrl}${route.path}`
-  const seoImage = newResource.image_url ? getImageUrl(newResource.image_url) : `${siteUrl}/img/og-image.jpg`
-  
-  
-  // Structured data (JSON-LD) for rich snippets
-  const structuredData = {
+
+  const title = `${currentResource.name} - ${typeConfig.value.seoLabel}`
+  const description = `${currentResource.name} by ${currentResource.creator}. ${currentResource.price}. ${currentResource.tags?.join(', ') || ''}.`
+  const url = `${siteUrl}${route.path}`
+  const image = currentResource.image_url
+    ? getImageUrl(currentResource.image_url)
+    : `${siteUrl}/img/og-image.jpg`
+
+  const structuredData: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: newResource.name,
-    description: `${newResource.name} by ${newResource.creator}. ${newResource.price}.`,
+    name: currentResource.name,
+    description: `${currentResource.name} by ${currentResource.creator}. ${currentResource.price}.`,
     applicationCategory: typeConfig.value.seoLabel,
     creator: {
       '@type': 'Person',
-      name: newResource.creator
+      name: currentResource.creator,
     },
     offers: {
       '@type': 'Offer',
-      price: newResource.price,
-      priceCurrency: 'USD'
+      price: currentResource.price,
+      priceCurrency: 'USD',
     },
-    image: seoImage,
-    url: seoUrl
+    image,
+    url,
   }
-  
-  // Add aggregate rating if we have use counts
-  if (count && count > 0) {
+
+  if (useCount.value > 0) {
     structuredData.aggregateRating = {
       '@type': 'AggregateRating',
-      ratingValue: '4.5', // Could be calculated from actual ratings if available
-      ratingCount: count.toString()
+      ratingValue: '4.5',
+      ratingCount: useCount.value.toString(),
     }
   }
-  
-  const beforeUseHeadTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
-  
-  useHead({
-    title: seoTitle,
+
+  return {
+    title,
     meta: [
-      { name: 'description', content: seoDescription },
-      { property: 'og:title', content: seoTitle },
-      { property: 'og:description', content: seoDescription },
-      { property: 'og:url', content: seoUrl },
+      { name: 'description', content: description },
+      { property: 'og:title', content: title },
+      { property: 'og:description', content: description },
+      { property: 'og:url', content: url },
       { property: 'og:type', content: 'website' },
-      { property: 'og:image', content: seoImage },
+      { property: 'og:image', content: image },
       { name: 'twitter:card', content: 'summary_large_image' },
-      { name: 'twitter:title', content: seoTitle },
-      { name: 'twitter:description', content: seoDescription },
-      { name: 'twitter:image', content: seoImage }
+      { name: 'twitter:title', content: title },
+      { name: 'twitter:description', content: description },
+      { name: 'twitter:image', content: image },
     ],
-    link: [
-      { rel: 'canonical', href: seoUrl, key: 'canonical' }
-    ],
+    link: [{ rel: 'canonical', href: url, key: 'canonical' }],
     script: [
       {
         type: 'application/ld+json',
-        children: JSON.stringify(structuredData)
-      }
-    ]
-  })
-  
-  // [SEO-TIMING] After useHead - log confirmation
-  const afterUseHeadTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
-  const useHeadDuration = afterUseHeadTime - beforeUseHeadTime
-}, { immediate: true })
-
-/*
- * [SEO-TIMING] LOG ANALYSIS - What to look for in the logs:
- * 
- * ===== CRITICAL FINDING FROM CURRENT LOGS =====
- * All logs show "Context: CLIENT" - NO SERVER execution detected.
- * This means:
- * - Component is NOT running on server during SSR
- * - SEO meta tags are set via JavaScript after page load
- * - Search engines/crawlers will NOT see the SEO tags (they read initial HTML only)
- * - Social media bots will NOT see OG tags (they don't execute JavaScript)
- * 
- * ===== ROOT CAUSE =====
- * The navigation is client-side (SPA routing), not a direct page load.
- * When clicking a link from another page, Nuxt does client-side navigation
- * which skips SSR and runs everything on the client.
- * 
- * ===== HOW TO TEST SSR PROPERLY =====
- * 1. Open browser DevTools → Network tab
- * 2. Do a HARD REFRESH (Cmd+Shift+R / Ctrl+Shift+R) on /software/lala
- *    OR navigate directly to http://localhost:3000/software/lala in a new tab
- * 3. Check SERVER CONSOLE (terminal running `npm run dev`) for SERVER logs
- * 4. Check BROWSER CONSOLE for CLIENT logs (during hydration)
- * 
- * ===== EXPECTED BEHAVIOR FOR PROPER SSR =====
- * 1. SERVER console should show:
- *    - "Context: SERVER" logs first
- *    - useAsyncData resolving on SERVER
- *    - useHead executing on SERVER
- * 
- * 2. BROWSER console should show:
- *    - "Context: CLIENT" logs second (during hydration)
- *    - Data should already be available (no fetch needed)
- * 
- * ===== WHAT TO LOOK FOR =====
- * ✅ GOOD: "BEFORE useHead | Context: SERVER" with valid data
- *    → SEO tags ARE in the initial HTML
- * 
- * ❌ BAD: "BEFORE useHead | Context: CLIENT" only
- *    → SEO tags are set via JS, NOT in initial HTML
- *    → Current situation - needs fixing
- * 
- * ===== POTENTIAL FIXES =====
- * 1. Ensure SSR is enabled: nuxt.config.ts has `ssr: true` ✅ (already set)
- * 2. Check if route has `ssr: false` or is wrapped in `<ClientOnly>`
- * 3. For SSG/prerendering: ensure routes are being prerendered at build time
- * 4. Consider using `navigateTo` with `external: true` for critical SEO pages
- */
+        children: JSON.stringify(structuredData),
+      },
+    ],
+  }
+})
 
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
@@ -452,20 +373,5 @@ const onDelete = async () => {
     showError(e?.message || 'Failed to delete resource.')
   }
 }
-
-// [SEO-TIMING] onMounted - client-side hydration timing
-onMounted(() => {
-  const mountedTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
-  const mountedContext = process.server ? 'SERVER' : process.client ? 'CLIENT' : 'UNKNOWN'
-  
-  // Check if SEO tags are in DOM
-  if (typeof document !== 'undefined') {
-    const title = document.querySelector('title')?.textContent
-    const metaDescription = document.querySelector('meta[name="description"]')?.getAttribute('content')
-    const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content')
-    const jsonLd = document.querySelector('script[type="application/ld+json"]')?.textContent
-    
-  }
-})
 </script>
 
