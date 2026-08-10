@@ -32,7 +32,7 @@
     
     <!-- Comment Form -->
     <div class="flex flex-col gap-2 col-span-2 lg:col-span-1 order-2 lg:order-3">
-      <div v-if="user" class="flex flex-col gap-2 md:sticky md:top-4">
+      <div v-if="showCommentForm" class="flex flex-col gap-2 md:sticky md:top-4">
         <textarea v-model="newComment" placeholder="Add a comment..."
           class="w-full p-3 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[100px]"
           rows="4" />
@@ -73,16 +73,19 @@ const props = defineProps<{
   category?: ResourceCategory
 }>()
 
-const { user } = useAuth()
-const { capture } = useAnalytics()
-const route = useRoute()
+const { user, isReady } = useAuth()
 const openAuthModal = inject<(mode?: 'signin' | 'signup' | 'forgot') => void>('openAuthModal')
+
+const isClientReady = ref(false)
+const showCommentForm = computed(() => isClientReady.value && isReady.value && !!user.value)
 
 const resourceCategory = computed((): ResourceCategory => {
   if (props.category) return props.category
+  const route = useRoute()
   if (route.path.includes('/kits')) return 'kits'
   return 'software'
 })
+const { capture } = useAnalytics()
 const newComment = ref('')
 const submitting = ref(false)
 
@@ -157,6 +160,7 @@ const formatDate = (dateString: string): string => {
 }
 
 onMounted(() => {
+  isClientReady.value = true
   fetchComments()
 })
 </script>

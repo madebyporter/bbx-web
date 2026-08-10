@@ -29,6 +29,10 @@ import Database from '~/components/Database.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
 import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
 import { usePageShellReady } from '~/composables/usePageShellReady'
+import { fetchApprovedResourcesForSearch } from '~/utils/resourceQueries'
+import { unwrapExposedRef } from '~/utils/unwrapExposedRef'
+
+const RESOURCE_SEARCH_FIELDS = ['name', 'creator', 'tags']
 
 // Define page meta to ensure this only matches /software exactly
 definePageMeta({
@@ -36,7 +40,8 @@ definePageMeta({
 })
 
 const route = useRoute()
-const pageShellReady = ref(false)
+const isDetailRoute = computed(() => route.path.startsWith('/software/'))
+const pageShellReady = ref(isDetailRoute.value)
 usePageShellReady(pageShellReady)
 
 // SSR SEO metadata for the software list page
@@ -62,6 +67,13 @@ useHead({
     { rel: 'canonical', href: softwareCanonical, key: 'canonical' }
   ]
 })
+
+// Detail pages don't wait on the list fetch — keep the search bar visible immediately.
+watch(isDetailRoute, (onDetail) => {
+  if (onDetail) {
+    pageShellReady.value = true
+  }
+}, { immediate: true })
 
 // Debug logging
 
@@ -94,9 +106,16 @@ interface FilterSortParams {
 const { isAdmin } = useAuth()
 const database = ref<InstanceType<typeof Database> | null>(null)
 
+const { data: searchContextData } = await useAsyncData(
+  'software-search-context',
+  () => fetchApprovedResourcesForSearch('software'),
+  { server: true, default: () => [] }
+)
+
 // Computed property for resource count
 const resourceCount = computed(() => {
-  return database.value?.resources?.length || 0
+  const resources = unwrapExposedRef(database.value?.resources)
+  return Array.isArray(resources) ? resources.length : 0
 })
 
 // Inject context items registration functions from layout
@@ -119,26 +138,38 @@ const handleClearFilterSort = () => {
   clearFilterSort?.()
 }
 
-// Watch resources to update context items for search
-watch(() => database.value?.resources, (resources) => {
-  if (registerContextItems && resources && resources.length > 0) {
-    // For software, search by name, creator, tags
-    // Note: type is an object, so we'll search name and creator primarily, tags as array
-    registerContextItems(resources, ['name', 'creator', 'tags'])
+const syncSearchContext = () => {
+  if (!registerContextItems) {
+    return
   }
-}, { immediate: true, deep: true })
 
-// Register context items on mount
+  const fromList = unwrapExposedRef(database.value?.resources)
+  if (route.path === '/software' && Array.isArray(fromList) && fromList.length > 0) {
+    registerContextItems(fromList, RESOURCE_SEARCH_FIELDS)
+    return
+  }
+
+  if (searchContextData.value?.length) {
+    registerContextItems(searchContextData.value, RESOURCE_SEARCH_FIELDS)
+  }
+}
+
+// Keep search context in sync on list, detail, and sidebar-only routes.
+watch(() => database.value?.resources, () => syncSearchContext(), { deep: true })
+watch(() => route.path, () => syncSearchContext())
+watch(searchContextData, () => syncSearchContext(), { immediate: true })
+
+// Register context items on mount — unblock search bar before data fetch
 onMounted(async () => {
-  await nextTick()
-  if (database.value?.fetchResources) {
-    await database.value.fetchResources()
-  }
   pageShellReady.value = true
-
-  // Register initial context items
-  if (registerContextItems && database.value?.resources) {
-    registerContextItems(database.value.resources, ['name', 'creator', 'tags'])
+  await nextTick()
+  if (route.path === '/software') {
+    if (database.value?.fetchResources) {
+      await database.value.fetchResources()
+    }
+    syncSearchContext()
+  } else {
+    syncSearchContext()
   }
 })
 

@@ -177,7 +177,7 @@ import {
   migrateFilterSortFromLocalStorage,
   useFilterSortCookie,
 } from '~/composables/useFilterSortPersistence'
-import { providePageShellReady } from '~/composables/usePageShellReady'
+import { providePageShellReady, isResourceShellRoute } from '~/composables/usePageShellReady'
 import Player from '~/components/Player.vue'
 import Toast from '~/components/Toast.vue'
 import TrackCommentsDrawer from '~/components/TrackCommentsDrawer.vue'
@@ -268,9 +268,17 @@ const isInitialized = ref(true)
 const route = useRoute()
 const { shellContentReady } = providePageShellReady()
 
+if (isResourceShellRoute(route.path)) {
+  shellContentReady.value = true
+}
+
 watch(
   () => route.fullPath,
-  () => {
+  (newPath) => {
+    if (isResourceShellRoute(newPath)) {
+      shellContentReady.value = true
+      return
+    }
     shellContentReady.value = false
   }
 )

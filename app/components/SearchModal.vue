@@ -139,12 +139,17 @@ const selectedIndex = ref<{ column: 'site' | 'context', index: number } | null>(
 
 const { siteResults, contextResults, isSearching, hasContext, performSearch, clearSearch } = useSearch()
 
-// Clear search when modal closes
+// Clear search when modal closes; run search when modal opens with an existing query
 watch(() => props.show, (newVal) => {
   if (!newVal) {
     clearSearch()
     localQuery.value = ''
     selectedIndex.value = null
+    return
+  }
+
+  if (localQuery.value.trim()) {
+    performSearch(localQuery.value, props.contextItems, props.contextSearchFields)
   }
 })
 
@@ -161,6 +166,16 @@ watch(localQuery, (newVal) => {
     performSearch(newVal, props.contextItems, props.contextSearchFields)
   }
 })
+
+watch(
+  () => [props.contextItems, props.contextSearchFields] as const,
+  () => {
+    if (props.show && localQuery.value.trim()) {
+      performSearch(localQuery.value, props.contextItems, props.contextSearchFields)
+    }
+  },
+  { deep: true }
+)
 
 function handleInput() {
   selectedIndex.value = null

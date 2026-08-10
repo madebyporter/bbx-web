@@ -16,7 +16,7 @@
       </Button>
     </div>
     <div ref="navItemsSection" class="grow flex flex-col gap-16 p-4 opacity-0 pointer-events-none">
-      <div v-if="user" class="flex flex-col gap-4">
+      <div v-if="isReady && user" class="flex flex-col gap-4">
         <span class="nav-header">Library</span>
         <NuxtLink v-if="username" :to="`/u/${username}`" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">
           All Music</NuxtLink>
@@ -70,7 +70,7 @@
       ref="userNavSection"
       class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit rounded-sm flex flex-row items-center overflow-hidden m-2 p-2 opacity-0 pointer-events-none">
       <div class="flex flex-row gap-0 items-center w-full">
-        <template v-if="user">
+        <template v-if="isReady && user">
           <div class="flex flex-col gap-0 justify-start items-start w-full">
             <div class="w-full flex items-center overflow-auto text-ellipsis p-2 pt-3 bg-neutral-800">
               <span class="block text-xs font-medium w-full text-neutral-400 truncate">{{ user.email }}</span>

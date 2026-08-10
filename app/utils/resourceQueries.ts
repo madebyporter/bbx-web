@@ -28,6 +28,69 @@ export interface Resource {
   status?: 'pending' | 'approved' | 'rejected'
 }
 
+export interface ResourceSearchItem {
+  id: number
+  name: string
+  slug: string
+  creator: string
+  tags: string[]
+}
+
+/**
+ * Lightweight resource list for in-page search context (software/kits).
+ */
+export async function fetchApprovedResourcesForSearch(
+  typeSlug: 'software' | 'sounds'
+): Promise<ResourceSearchItem[]> {
+  const { supabase } = useSupabase()
+
+  if (!supabase) {
+    return []
+  }
+
+  try {
+    const { data: typeData, error: typeError } = await supabase
+      .from('resource_types')
+      .select('id')
+      .eq('slug', typeSlug)
+      .single()
+
+    const typeId = (typeData as { id: number } | null)?.id
+    if (typeError || !typeId) {
+      return []
+    }
+
+    const { data, error } = await supabase
+      .from('resources')
+      .select(`
+        id,
+        name,
+        slug,
+        creator:creators(name),
+        resource_tags(tags(name))
+      `)
+      .eq('status', 'approved')
+      .eq('type_id', typeId)
+      .not('slug', 'is', null)
+      .order('name', { ascending: true })
+
+    if (error || !data) {
+      return []
+    }
+
+    return data.map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      slug: item.slug,
+      creator: item.creator?.name || '',
+      tags: item.resource_tags?.map((rt: any) => rt.tags?.name).filter(Boolean) || [],
+    }))
+  } catch (error) {
+    console.error('Error fetching resources for search context:', error)
+    return []
+  }
+}
+
 export interface UserProfile {
   id: string
   username: string

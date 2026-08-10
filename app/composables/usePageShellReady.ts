@@ -47,19 +47,27 @@ export function useSetNavShellReady() {
   return inject(setNavShellReadyKey, null)
 }
 
+/** Routes where the search bar should not wait on list/detail data fetches */
+export function isResourceShellRoute(path: string): boolean {
+  return /^\/(software|kits)(\/|$)/.test(path)
+}
+
 export function usePageShellReady(ready: MaybeRef<boolean>) {
   const setShellContentReady = inject(setShellContentReadyKey, null)
+  const route = useRoute()
 
-  const stop = watch(
-    () => unref(ready),
-    (isReady) => {
-      setShellContentReady?.(isReady)
-    },
-    { immediate: true }
-  )
+  const sync = () => {
+    setShellContentReady?.(unref(ready))
+  }
+
+  const stopReady = watch(() => unref(ready), sync, { immediate: true })
+
+  // Layout resets shellContentReady on navigation; re-assert when this page stays mounted
+  // (e.g. software/index.vue parent while swapping /software/:slug routes).
+  const stopRoute = watch(() => route.fullPath, sync)
 
   onUnmounted(() => {
-    stop()
-    setShellContentReady?.(false)
+    stopReady()
+    stopRoute()
   })
 }

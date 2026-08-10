@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col grow justify-between overflow-hidden">
-    <div v-if="loading" class="flex items-center justify-center p-8 h-full w-full grow">
+    <div v-if="showLoading" class="flex items-center justify-center p-8 h-full w-full grow">
       <LoadingLogo />
     </div>
 
@@ -90,7 +90,7 @@
               
             </div>
           </div>
-          <div v-if="isAdmin" class="p-4 border-b border-neutral-800 grid grid-cols-2 gap-4 items-center">
+          <div v-if="isReady && isAdmin" class="p-4 border-b border-neutral-800 grid grid-cols-2 gap-4 items-center">
             <div><h2 class="text-white text-lg font-bold">Admin</h2></div>
             <div class="flex flex-row gap-4">
               <Button variant="secondary" class="btn" @click="onEdit">Edit</Button>
@@ -172,14 +172,14 @@ const typeConfig = computed(() => {
 
 const resourceTypeLabel = computed(() => typeConfig.value.label)
 const listPath = computed(() => typeConfig.value.listPath)
-const { isAdmin } = useAuth()
+const { isAdmin, isReady } = useAuth()
 const { showSuccess, showError } = useToast()
 const { capture } = useAnalytics()
 const detailViewTracked = ref(false)
 const handleEdit = inject<(resource: Resource) => void>('handleEdit')
 
 // Fetch resource data server-side for SEO
-const { data: resourceData, pending: loading, refresh } = await useAsyncData(
+const { data: resourceData, pending: resourcePending, refresh } = await useAsyncData(
   () => `resource-${props.typeSlug}-${props.slug}`,
   async () => {
     const fetchStartTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
@@ -207,6 +207,7 @@ const { data: resourceData, pending: loading, refresh } = await useAsyncData(
 )
 
 const resource = computed(() => resourceData.value)
+const showLoading = computed(() => resourcePending.value && !resourceData.value)
 
 watch(
   () => resource.value?.id,

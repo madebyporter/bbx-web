@@ -31,10 +31,21 @@ import DatabaseGrid from '~/components/DatabaseGrid.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
 import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
 import { usePageShellReady } from '~/composables/usePageShellReady'
+import { fetchApprovedResourcesForSearch } from '~/utils/resourceQueries'
+import { unwrapExposedRef } from '~/utils/unwrapExposedRef'
+
+const RESOURCE_SEARCH_FIELDS = ['name', 'creator', 'tags']
 
 const route = useRoute()
-const pageShellReady = ref(false)
+const isDetailRoute = computed(() => route.path.startsWith('/kits/'))
+const pageShellReady = ref(isDetailRoute.value)
 usePageShellReady(pageShellReady)
+
+watch(isDetailRoute, (onDetail) => {
+  if (onDetail) {
+    pageShellReady.value = true
+  }
+}, { immediate: true })
 
 // SSR SEO metadata for the kits list page
 const siteOrigin = useSiteOrigin()
@@ -76,9 +87,16 @@ interface FilterSortParams {
 const { isAdmin } = useAuth()
 const databaseGrid = ref<InstanceType<typeof DatabaseGrid> | null>(null)
 
+const { data: searchContextData } = await useAsyncData(
+  'kits-search-context',
+  () => fetchApprovedResourcesForSearch('sounds'),
+  { server: true, default: () => [] }
+)
+
 // Computed property for resource count
 const resourceCount = computed(() => {
-  return databaseGrid.value?.resources?.length || 0
+  const resources = unwrapExposedRef(databaseGrid.value?.resources)
+  return Array.isArray(resources) ? resources.length : 0
 })
 
 // Inject context items registration functions from layout
@@ -101,25 +119,37 @@ const handleClearFilterSort = () => {
   clearFilterSort?.()
 }
 
-// Watch resources to update context items for search
-watch(() => databaseGrid.value?.resources, (resources) => {
-  if (registerContextItems && resources && resources.length > 0) {
-    // For kits, search by name, creator, tags
-    registerContextItems(resources, ['name', 'creator', 'tags'])
+const syncSearchContext = () => {
+  if (!registerContextItems) {
+    return
   }
-}, { immediate: true, deep: true })
 
-// Register context items on mount
+  const fromList = unwrapExposedRef(databaseGrid.value?.resources)
+  if (route.path === '/kits' && Array.isArray(fromList) && fromList.length > 0) {
+    registerContextItems(fromList, RESOURCE_SEARCH_FIELDS)
+    return
+  }
+
+  if (searchContextData.value?.length) {
+    registerContextItems(searchContextData.value, RESOURCE_SEARCH_FIELDS)
+  }
+}
+
+watch(() => databaseGrid.value?.resources, () => syncSearchContext(), { deep: true })
+watch(() => route.path, () => syncSearchContext())
+watch(searchContextData, () => syncSearchContext(), { immediate: true })
+
+// Register context items on mount — unblock search bar before data fetch
 onMounted(async () => {
-  await nextTick()
-  if (databaseGrid.value?.fetchResources) {
-    await databaseGrid.value.fetchResources()
-  }
   pageShellReady.value = true
-
-  // Register initial context items
-  if (registerContextItems && databaseGrid.value?.resources) {
-    registerContextItems(databaseGrid.value.resources, ['name', 'creator', 'tags'])
+  await nextTick()
+  if (route.path === '/kits') {
+    if (databaseGrid.value?.fetchResources) {
+      await databaseGrid.value.fetchResources()
+    }
+    syncSearchContext()
+  } else {
+    syncSearchContext()
   }
 })
 
