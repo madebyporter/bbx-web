@@ -1,6 +1,11 @@
 <template>
-  <nav ref="mobileNav" id="navbar"
-    class="border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between overflow-auto shrink-0 min-w-[250px] lg:max-w-[250px] fixed inset-y-0 left-0 z-40 w-full -translate-x-full lg:relative lg:translate-x-0 lg:w-fit lg:z-40">
+  <nav
+    ref="mobileNav"
+    id="navbar"
+    class="border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between overflow-auto shrink-0 min-w-[250px] w-[250px] min-h-0
+      max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-40 max-lg:w-full max-lg:-translate-x-full
+      lg:relative lg:translate-x-0 lg:self-stretch lg:h-auto"
+  >
     <div
       ref="logoSection"
       class="sticky top-0 p-4 flex justify-between items-center"
@@ -337,9 +342,11 @@ const revealNavSections = async () => {
 
 const handleResize = () => {
   const isDesktop = window.innerWidth >= 1024
+  if (!mobileNav.value) return
 
   if (isDesktop) {
-    gsap.set(mobileNav.value, { clearProps: 'transform' })
+    // Clear GSAP mobile drawer styles so flex stretch can fill main height
+    gsap.set(mobileNav.value, { clearProps: 'transform,height,top,bottom,flex,width,margin' })
     wasDesktop.value = true
   } else if (wasDesktop.value) {
     gsap.set(mobileNav.value, { x: '-100%' })

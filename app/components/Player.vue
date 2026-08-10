@@ -166,6 +166,7 @@ const {
   loopOne,
   hasEverHadTrack,
   playerHasEntered,
+  shouldReservePlayerChrome,
   formattedCurrentTime,
   formattedDuration,
   progress,
@@ -187,7 +188,8 @@ const {
 
 const { isStemPlayerActive } = useStemPlayer()
 
-const canShowPlayer = computed(() => hasEverHadTrack.value)
+// Cookie-backed on SSR so the player slot keeps height across hydrate (no sidebar jump)
+const canShowPlayer = computed(() => shouldReservePlayerChrome.value)
 
 const audioEl = ref<HTMLAudioElement | null>(null)
 

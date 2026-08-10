@@ -224,6 +224,6 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 - 0.56.2
   - Fixed GA4 gtag stub so config and page views actually send to Google Analytics
 - 0.56.3
-  - Keep the bottom music player outside page layout so it stays mounted across navigations
-  - Shell/search/nav ready state is session-sticky (module-level) so page skeletons no longer hide or reanimate global chrome
-  - Player visibility hydrates synchronously from saved state so it does not disappear during per-page skeleton loading
+  - Keep the bottom music player stable across navigations (session-sticky shell/player state)
+  - Page skeletons no longer hide or reanimate global chrome; player visibility hydrates from saved state
+  - Fix sidebar account block jumping by removing main height transitions and keeping player in the layout flex column

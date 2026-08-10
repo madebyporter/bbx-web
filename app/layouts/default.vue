@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full min-h-0">
+  <div class="flex flex-col max-h-dvh min-h-dvh">
     <!-- Mobile Nav Backdrop -->
     <div 
       v-if="isMobileNavOpen" 
@@ -7,7 +7,8 @@
       class="fixed inset-0 bg-black/50 z-30 lg:hidden"
     ></div>
 
-    <main class="flex flex-row justify-stretch items-stretch gap-0 transition-all duration-300 grow overflow-hidden">
+    <!-- No transition-all: height changes (player slot) were animating the sidebar account block -->
+    <main class="flex flex-row items-stretch gap-0 flex-1 min-h-0 overflow-hidden">
       <Nav ref="navRef" @show-auth-modal="showAuthModal = true" @show-admin-modal="showAdminModal = true"
         @toggle-mobile-nav="handleMobileNavToggle" />
       <section id="content" class="gap-0 grow w-full min-w-0 flex flex-col overflow-x-hidden overflow-y-auto">
@@ -27,6 +28,9 @@
         <slot />
       </section>
     </main>
+
+    <!-- In-layout sibling of main so nav height and player slot stay one flex column -->
+    <Player />
 
     <!-- Auth Modal -->
     <div v-if="showAuthModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -175,6 +179,7 @@ import {
   useFilterSortCookie,
 } from '~/composables/useFilterSortPersistence'
 import { providePageShellReady, useShellContentReady, isResourceShellRoute } from '~/composables/usePageShellReady'
+import Player from '~/components/Player.vue'
 import Toast from '~/components/Toast.vue'
 import TrackCommentsDrawer from '~/components/TrackCommentsDrawer.vue'
 import GenerateTrackVideoDrawer from '~/components/GenerateTrackVideoDrawer.vue'

@@ -1,14 +1,8 @@
 <template>
   <IconoirProvider>
-    <div class="flex flex-col max-h-dvh min-h-dvh">
-      <div class="grow min-h-0 overflow-hidden flex flex-col">
-        <NuxtLayout>
-          <NuxtPage />
-        </NuxtLayout>
-      </div>
-      <!-- Outside NuxtLayout: page skeletons must never unmount the player -->
-      <Player />
-    </div>
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
   </IconoirProvider>
 </template>
 

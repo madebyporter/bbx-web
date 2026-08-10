@@ -48,6 +48,7 @@ const preloadedUrls = ref<Set<string>>(new Set())
 const loopCheckAnimationFrame = ref<number | null>(null)
 
 const STORAGE_KEY = 'player_state'
+const CHROME_COOKIE = 'bbx_player_chrome'
 
 function readStoredPlayerFlags(): { hasEverHadTrack: boolean; hasTrack: boolean } {
   if (!import.meta.client) {
@@ -66,14 +67,37 @@ function readStoredPlayerFlags(): { hasEverHadTrack: boolean; hasTrack: boolean 
   }
 }
 
-// Hydrate visibility flags synchronously so the player does not wait on async loadState
-// (async restore was hiding the bar during every page skeleton phase).
-const storedFlags = readStoredPlayerFlags()
-hasEverHadTrack.value = storedFlags.hasEverHadTrack
-playerHasEntered.value = storedFlags.hasTrack
+// Client module init: hydrate visibility before first paint (avoids async loadState flash)
+if (import.meta.client) {
+  const storedFlags = readStoredPlayerFlags()
+  hasEverHadTrack.value = storedFlags.hasEverHadTrack
+  playerHasEntered.value = storedFlags.hasTrack
+  // Keep SSR cookie in sync so the next full load reserves player height
+  if (storedFlags.hasEverHadTrack) {
+    try {
+      document.cookie = `${CHROME_COOKIE}=1; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`
+    } catch {
+      // ignore
+    }
+  }
+}
 
 export function usePlayer() {
   const { supabase } = useSupabase()
+  // Cookie lets SSR reserve player height so the sidebar account block does not jump on hydrate
+  const playerChromeCookie = useCookie<string | null>(CHROME_COOKIE, {
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 365,
+  })
+
+  const syncPlayerChromeCookie = () => {
+    playerChromeCookie.value = hasEverHadTrack.value ? '1' : null
+  }
+
+  // Expose cookie for Player chrome visibility during SSR (do not mutate shared module flags on server)
+  const shouldReservePlayerChrome = computed(
+    () => hasEverHadTrack.value || playerChromeCookie.value === '1'
+  )
 
   // Format time helper
   const formatTime = (seconds: number): string => {
@@ -205,6 +229,7 @@ export function usePlayer() {
 
     // Mark that we've had a track loaded (for UI persistence)
     hasEverHadTrack.value = true
+    syncPlayerChromeCookie()
 
     // Store original queue
     originalQueue.value = [...tracks]
@@ -521,6 +546,7 @@ export function usePlayer() {
         hasEverHadTrack: hasEverHadTrack.value
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      syncPlayerChromeCookie()
     } catch (err) {
       console.error('Error saving player state:', err)
     }
@@ -549,6 +575,7 @@ export function usePlayer() {
         if (hasEverHadTrack.value && currentTrack.value) {
           playerHasEntered.value = true
         }
+        syncPlayerChromeCookie()
 
         // Don't auto-play on load, but load the track
         if (currentTrack.value && audioElement.value) {
@@ -584,6 +611,7 @@ export function usePlayer() {
     playerHasEntered.value = false
     playerStateLoaded.value = true
     localStorage.removeItem(STORAGE_KEY)
+    syncPlayerChromeCookie()
   }
 
   // Frame-perfect loop check using requestAnimationFrame
@@ -750,6 +778,7 @@ export function usePlayer() {
     loopOne,
     hasEverHadTrack,
     playerHasEntered,
+    shouldReservePlayerChrome,
     audioElement,
     
     // Computed
