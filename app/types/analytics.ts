@@ -16,7 +16,18 @@ export type AnalyticsPage =
   | 'software'
   | 'kits'
   | 'resource_detail'
+  | 'homepage'
   | 'other'
+
+export type HomepageCtaSection = 'hero' | 'catalog' | 'final_cta'
+
+export type HomepageCtaId =
+  | 'create_account'
+  | 'sign_in'
+  | 'browse_tools'
+  | 'browse_software'
+  | 'browse_kits'
+  | 'software_card'
 
 /** PostHog event names — snake_case object_action convention */
 export type AnalyticsEventName =
@@ -32,6 +43,7 @@ export type AnalyticsEventName =
   | 'resource_comment_created'
   | 'resource_submitted'
   | 'signup_cta_clicked'
+  | 'homepage_cta_clicked'
   | 'track_uploaded'
   | 'track_played'
   | 'track_play_qualified'
@@ -68,7 +80,19 @@ export interface AnalyticsEventProperties {
   }
   resource_comment_created: { resource_id: number; category?: ResourceCategory }
   resource_submitted: { category: ResourceCategory; status: 'pending' }
-  signup_cta_clicked: { source_page: string; source_resource_id?: number }
+  signup_cta_clicked: {
+    source_page: string
+    source_section?: HomepageCtaSection | string
+    cta?: HomepageCtaId | string
+    source_resource_id?: number
+  }
+  homepage_cta_clicked: {
+    section: HomepageCtaSection
+    cta: HomepageCtaId
+    destination?: string
+    resource_id?: number
+    resource_slug?: string
+  }
   track_uploaded: {
     track_id: number
     has_metadata?: boolean

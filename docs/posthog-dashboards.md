@@ -12,6 +12,8 @@ Create these four dashboards in your PostHog project after deploying with `NUXT_
 | Resource detail views | Trends | Event `resource_detail_viewed`, breakdown by `category` |
 | Search usage | Trends | Event `resource_search`, breakdown by `query` (top 20) |
 | Signup from resources | Trends | `signup_cta_clicked` where `source_page` contains `/software` or `/kits` |
+| Homepage CTA clicks | Trends | `homepage_cta_clicked`, breakdown by `section` then `cta` |
+| Homepage signup by section | Trends | `signup_cta_clicked` where `source_page` = `/`, breakdown by `source_section` |
 | Return visitors | Retention | First event `resource_detail_viewed`, return within 7 days |
 
 ## 2. Activation & Onboarding

@@ -75,9 +75,13 @@
           </p>
         </div>
         <div ref="heroCtas" class="flex flex-wrap items-center gap-3">
-          <Button @click="openSignup">Create free account</Button>
-          <Button variant="secondary" @click="openSignin">Sign in</Button>
-          <NuxtLink to="/software" class="text-link text-sm no-underline ml-1">
+          <Button @click="onHeroSignup">Create free account</Button>
+          <Button variant="secondary" @click="onHeroSignin">Sign in</Button>
+          <NuxtLink
+            to="/software"
+            class="text-link text-sm no-underline ml-1"
+            @click="trackHomepageCta('hero', 'browse_tools', { destination: '/software' })"
+          >
             Browse tools
           </NuxtLink>
         </div>
@@ -189,10 +193,16 @@
           DAWs, plugins, and kits producers actually use — mark what you use and show it on your profile.
         </p>
         <div class="flex flex-wrap gap-3">
-          <NuxtLink to="/software">
+          <NuxtLink
+            to="/software"
+            @click="trackHomepageCta('catalog', 'browse_software', { destination: '/software' })"
+          >
             <Button variant="secondary">Browse software</Button>
           </NuxtLink>
-          <NuxtLink to="/kits">
+          <NuxtLink
+            to="/kits"
+            @click="trackHomepageCta('catalog', 'browse_kits', { destination: '/kits' })"
+          >
             <Button variant="ghost">Sounds &amp; kits</Button>
           </NuxtLink>
         </div>
@@ -208,6 +218,11 @@
           :key="resource.id"
           :to="`/software/${resource.slug}`"
           class="bg-neutral-800/20 hover:bg-neutral-800/50 p-4 relative rounded-lg flex flex-col justify-between gap-4  transition-colors min-w-0"
+          @click="trackHomepageCta('catalog', 'software_card', {
+            destination: `/software/${resource.slug}`,
+            resource_id: resource.id,
+            resource_slug: resource.slug,
+          })"
         >
           <div class="w-full h-full rounded-md overflow-hidden flex items-end grow">
             <img
@@ -254,7 +269,7 @@
         Project management for music producers — free to start.
       </p>
       <div>
-        <Button @click="openSignup">Create free account</Button>
+        <Button @click="onFinalSignup">Create free account</Button>
       </div>
     </section>
   </div>
@@ -267,18 +282,21 @@ import gsap from 'gsap'
 import Button from '~/components/Button.vue'
 import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
 import { useAuth } from '~/composables/useAuth'
+import { useAnalytics } from '~/composables/useAnalytics'
 import { usePageShellReady } from '~/composables/usePageShellReady'
 import { useSupabase } from '~/utils/supabase'
 import {
   fetchLatestApprovedResources,
   type Resource,
 } from '~/utils/resourceQueries'
+import type { HomepageCtaId, HomepageCtaSection } from '~/types/analytics'
 import imgAudioProsWebp from '~/assets/img/landing/who-audio-pros.webp'
 import imgAudioProsJpg from '~/assets/img/landing/who-audio-pros.jpg'
 import imgCreatorsWebp from '~/assets/img/landing/who-creators.webp'
 import imgCreatorsJpg from '~/assets/img/landing/who-creators.jpg'
 
 const { user, isReady, init } = useAuth()
+const { capture } = useAnalytics()
 const { supabase } = useSupabase()
 const username = ref<string | null>(null)
 const latestSoftware = ref<Resource[]>([])
@@ -296,6 +314,43 @@ const finalCta = ref<HTMLElement | null>(null)
 /** Shell ready for anon landing immediately; logged-in users stay in loading until redirect */
 const pageShellReady = computed(() => !user.value)
 usePageShellReady(pageShellReady)
+
+const trackHomepageCta = (
+  section: HomepageCtaSection,
+  cta: HomepageCtaId,
+  extras?: {
+    destination?: string
+    resource_id?: number
+    resource_slug?: string
+  }
+) => {
+  capture('homepage_cta_clicked', {
+    section,
+    cta,
+    ...(extras?.destination ? { destination: extras.destination } : {}),
+    ...(extras?.resource_id != null ? { resource_id: extras.resource_id } : {}),
+    ...(extras?.resource_slug ? { resource_slug: extras.resource_slug } : {}),
+  })
+}
+
+const openSignupFrom = (section: HomepageCtaSection) => {
+  trackHomepageCta(section, 'create_account')
+  capture('signup_cta_clicked', {
+    source_page: '/',
+    source_section: section,
+    cta: 'create_account',
+  })
+  openAuthModal('signup')
+}
+
+const openSigninFrom = (section: HomepageCtaSection) => {
+  trackHomepageCta(section, 'sign_in')
+  openAuthModal('signin')
+}
+
+const onHeroSignup = () => openSignupFrom('hero')
+const onHeroSignin = () => openSigninFrom('hero')
+const onFinalSignup = () => openSignupFrom('final_cta')
 
 const resourceImageUrl = (url: string) =>
   url.startsWith('http') ? url : `https://storage.googleapis.com/bbx-resources/${url}`
@@ -394,14 +449,6 @@ const capabilities = [
     body: 'Mark what’s WIP, in review, or done — then gather comments without losing the thread.',
   },
 ]
-
-const openSignup = () => {
-  openAuthModal('signup')
-}
-
-const openSignin = () => {
-  openAuthModal('signin')
-}
 
 const fetchUsername = async () => {
   if (!user.value || !supabase) {

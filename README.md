@@ -234,3 +234,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Landing catalog section shows three latest software cards below the browse CTAs
 - 0.57.2
   - Who it’s for section includes optimized Audio Pros and Creators photos beside each point
+- 0.57.3
+  - Homepage CTAs send PostHog `homepage_cta_clicked` with section and CTA id (hero, catalog, final_cta)
