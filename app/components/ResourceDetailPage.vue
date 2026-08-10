@@ -21,10 +21,11 @@
             <div class="flex flex-col gap-8 md:gap-16">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- Name -->
-                <div>
+                <div class="flex flex-col gap-4">
                   <h1 class="text-white text-2xl md:text-5xl">
                     {{ resource.name }}
                   </h1>
+                  <p class="text-neutral-500">Description</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="flex flex-col gap-1 border-t border-neutral-800 pt-2">

@@ -67,11 +67,21 @@ export function getItemUrl(item: SearchResult, view: 'detail' | 'listing' = 'lis
       return '/'
     
     case 'software':
-      // Software has no detail pages, always go to listing
+      if (item.metadata?.slug) {
+        return `/software/${item.metadata.slug}`
+      }
+      if (item.url?.startsWith('/software/')) {
+        return item.url
+      }
       return '/software'
     
     case 'kit':
-      // Kits have no detail pages, always go to listing
+      if (item.metadata?.slug) {
+        return `/kits/${item.metadata.slug}`
+      }
+      if (item.url?.startsWith('/kits/')) {
+        return item.url
+      }
       return '/kits'
     
     case 'user':
@@ -189,16 +199,19 @@ export function handleSearchResultClick(
   if (action === 'scroll') {
     scrollToItemInPage(item)
   } else if (action === 'navigate') {
-    // For items with detail pages, navigate to detail. Otherwise, navigate to listing.
-    const hasDetailPage = item.type === 'track' || item.type === 'collection'
-    navigateToItem(item, hasDetailPage ? 'detail' : 'listing')
+    navigateToItem(item, hasDetailPage(item) ? 'detail' : 'listing')
   } else {
     // 'both' - try to scroll first, if that fails or item not found, navigate
     const scrolled = scrollToItemInPage(item)
     if (!scrolled) {
-      const hasDetailPage = item.type === 'track' || item.type === 'collection'
-      navigateToItem(item, hasDetailPage ? 'detail' : 'listing')
+      navigateToItem(item, hasDetailPage(item) ? 'detail' : 'listing')
     }
   }
+}
+
+function hasDetailPage(item: SearchResult): boolean {
+  if (item.type === 'track' || item.type === 'collection') return true
+  if ((item.type === 'software' || item.type === 'kit') && item.metadata?.slug) return true
+  return false
 }
 

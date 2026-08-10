@@ -97,8 +97,10 @@ export function useSearch() {
           id: item.id,
           title: item.name,
           subtitle: item.creator || 'Unknown Creator',
-          url: '/software',
-          metadata: {}
+          url: item.slug ? `/software/${item.slug}` : '/software',
+          metadata: {
+            slug: item.slug
+          }
         }))
 
       case 'kits':
@@ -107,8 +109,10 @@ export function useSearch() {
           id: item.id,
           title: item.name,
           subtitle: item.creator || 'Unknown Creator',
-          url: '/kits',
-          metadata: {}
+          url: item.slug ? `/kits/${item.slug}` : '/kits',
+          metadata: {
+            slug: item.slug
+          }
         }))
 
       case 'tracks':

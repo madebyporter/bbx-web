@@ -202,7 +202,9 @@ function navigateToDetail(result: SearchResult) {
 }
 
 function hasDetailPage(result: SearchResult): boolean {
-  return result.type === 'track' || result.type === 'collection'
+  if (result.type === 'track' || result.type === 'collection') return true
+  if ((result.type === 'software' || result.type === 'kit') && result.metadata?.slug) return true
+  return false
 }
 
 function getTypeLabel(type: SearchResult['type']): string {

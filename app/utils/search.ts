@@ -20,6 +20,33 @@ function generateTrackSlug(track: { title?: string; id: number }): string {
 }
 
 /**
+ * Resolve usernames for a set of user IDs (no nested FK from sounds/collections → user_profiles)
+ */
+async function resolveUsernamesByIds(userIds: string[]): Promise<Map<string, string>> {
+  const { supabase } = useSupabase()
+  if (!supabase) return new Map()
+
+  const uniqueIds = [...new Set(userIds.filter(Boolean))]
+  if (uniqueIds.length === 0) return new Map()
+
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('id, username')
+    .in('id', uniqueIds)
+
+  if (error) {
+    console.error('Error resolving usernames:', error)
+    return new Map()
+  }
+
+  return new Map(
+    (data || [])
+      .filter((row: any) => typeof row?.username === 'string' && row.username)
+      .map((row: any) => [String(row.id), String(row.username)] as [string, string])
+  )
+}
+
+/**
  * Search software resources
  */
 export async function searchSoftware(query: string, limit: number = 20): Promise<SearchResult[]> {
@@ -44,11 +71,12 @@ export async function searchSoftware(query: string, limit: number = 20): Promise
       .select(`
         id,
         name,
-        creators(name),
+        slug,
+        creator:creators(id, name),
         type_id
       `)
       .eq('status', 'approved')
-      .eq('type_id', typeData.id)
+      .eq('type_id', typeData.id as number)
       .ilike('name', `%${searchTerm}%`)
       .limit(limit)
 
@@ -57,14 +85,19 @@ export async function searchSoftware(query: string, limit: number = 20): Promise
       return []
     }
 
-    return (data || []).map((item: any) => ({
-      type: 'software' as const,
-      id: item.id,
-      title: item.name,
-      subtitle: (Array.isArray(item.creators) && item.creators[0]?.name) || 'Unknown Creator',
-      url: '/software',
-      metadata: {}
-    }))
+    return (data || []).map((item: any) => {
+      const slug = item.slug as string | undefined
+      return {
+        type: 'software' as const,
+        id: item.id,
+        title: item.name,
+        subtitle: item.creator?.name || 'Unknown Creator',
+        url: slug ? `/software/${slug}` : '/software',
+        metadata: {
+          slug
+        }
+      }
+    })
   } catch (error) {
     console.error('Error searching software:', error)
     return []
@@ -83,6 +116,7 @@ export async function searchTracks(query: string, limit: number = 20): Promise<S
 
   try {
     // Search in title and artist - use separate queries and combine results
+    // Do not nest user_profiles — there is no PostgREST FK from sounds → user_profiles
     const [titleResults, artistResults] = await Promise.all([
       supabase
         .from('sounds')
@@ -90,8 +124,7 @@ export async function searchTracks(query: string, limit: number = 20): Promise<S
           id,
           title,
           artist,
-          user_id,
-          user_profiles(username)
+          user_id
         `)
         .eq('is_public', true)
         .ilike('title', `%${searchTerm}%`)
@@ -102,8 +135,7 @@ export async function searchTracks(query: string, limit: number = 20): Promise<S
           id,
           title,
           artist,
-          user_id,
-          user_profiles(username)
+          user_id
         `)
         .eq('is_public', true)
         .ilike('artist', `%${searchTerm}%`)
@@ -121,17 +153,25 @@ export async function searchTracks(query: string, limit: number = 20): Promise<S
       new Map(combinedData.map((item: any) => [item.id, item])).values()
     )
 
-    return uniqueData.map((item: any) => ({
-      type: 'track' as const,
-      id: item.id,
-      title: item.title || 'Untitled',
-      subtitle: item.artist || 'Unknown Artist',
-      url: `/u/${item.user_profiles?.username || item.user_id}/t/${generateTrackSlug({ title: item.title, id: item.id })}`,
-      metadata: {
-        username: item.user_profiles?.username,
-        ownerId: item.user_id
+    const usernames = await resolveUsernamesByIds(
+      uniqueData.map((item: any) => item.user_id as string)
+    )
+
+    return uniqueData.map((item: any) => {
+      const username = usernames.get(item.user_id)
+      const ownerKey = username || item.user_id
+      return {
+        type: 'track' as const,
+        id: item.id,
+        title: item.title || 'Untitled',
+        subtitle: item.artist || 'Unknown Artist',
+        url: `/u/${ownerKey}/t/${generateTrackSlug({ title: item.title, id: item.id })}`,
+        metadata: {
+          username,
+          ownerId: item.user_id
+        }
       }
-    }))
+    })
   } catch (error) {
     console.error('Error searching tracks:', error)
     return []
@@ -150,6 +190,7 @@ export async function searchCollections(query: string, limit: number = 20): Prom
 
   try {
     // Search in name and description - use separate queries and combine results
+    // Do not nest user_profiles — there is no PostgREST FK from collections → user_profiles
     const [nameResults, descResults] = await Promise.all([
       supabase
         .from('collections')
@@ -158,8 +199,7 @@ export async function searchCollections(query: string, limit: number = 20): Prom
           name,
           description,
           slug,
-          user_id,
-          user_profiles(username)
+          user_id
         `)
         .ilike('name', `%${searchTerm}%`)
         .limit(limit),
@@ -170,8 +210,7 @@ export async function searchCollections(query: string, limit: number = 20): Prom
           name,
           description,
           slug,
-          user_id,
-          user_profiles(username)
+          user_id
         `)
         .ilike('description', `%${searchTerm}%`)
         .limit(limit)
@@ -188,17 +227,25 @@ export async function searchCollections(query: string, limit: number = 20): Prom
       new Map(combinedData.map((item: any) => [item.id, item])).values()
     )
 
-    return uniqueData.map((item: any) => ({
-      type: 'collection' as const,
-      id: item.id,
-      title: item.name,
-      subtitle: item.description || undefined,
-      url: `/u/${item.user_profiles?.username || item.user_id}/c/${item.slug}`,
-      metadata: {
-        username: item.user_profiles?.username,
-        slug: item.slug
+    const usernames = await resolveUsernamesByIds(
+      uniqueData.map((item: any) => item.user_id as string)
+    )
+
+    return uniqueData.map((item: any) => {
+      const username = usernames.get(item.user_id)
+      const ownerKey = username || item.user_id
+      return {
+        type: 'collection' as const,
+        id: item.id,
+        title: item.name,
+        subtitle: item.description || undefined,
+        url: `/u/${ownerKey}/c/${item.slug}`,
+        metadata: {
+          username,
+          slug: item.slug
+        }
       }
-    }))
+    })
   } catch (error) {
     console.error('Error searching collections:', error)
     return []
@@ -316,4 +363,3 @@ export function searchItems<T>(
 
   return limit ? filtered.slice(0, limit) : filtered
 }
-

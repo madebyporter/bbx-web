@@ -208,3 +208,6 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Canonical URLs always use https://beatbox.studio (not www)
 - 0.55.4
   - Fix video encoder hang by using ffmpeg's bundled worker instead of Vite's broken worker?url bundle
+- 0.55.5
+  - Fixed site search navigation to software/kit detail pages
+  - Fixed 400 errors searching tracks and collections (removed invalid user_profiles join)
