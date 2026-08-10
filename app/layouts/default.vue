@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col max-h-dvh min-h-dvh">
+  <div class="flex flex-col h-full min-h-0">
     <!-- Mobile Nav Backdrop -->
     <div 
       v-if="isMobileNavOpen" 
@@ -27,9 +27,6 @@
         <slot />
       </section>
     </main>
-
-    <!-- Music Player -->
-    <Player />
 
     <!-- Auth Modal -->
     <div v-if="showAuthModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -177,8 +174,7 @@ import {
   migrateFilterSortFromLocalStorage,
   useFilterSortCookie,
 } from '~/composables/useFilterSortPersistence'
-import { providePageShellReady, isResourceShellRoute } from '~/composables/usePageShellReady'
-import Player from '~/components/Player.vue'
+import { providePageShellReady, useShellContentReady, isResourceShellRoute } from '~/composables/usePageShellReady'
 import Toast from '~/components/Toast.vue'
 import TrackCommentsDrawer from '~/components/TrackCommentsDrawer.vue'
 import GenerateTrackVideoDrawer from '~/components/GenerateTrackVideoDrawer.vue'
@@ -266,7 +262,9 @@ const { showSuccess, showError, showProcessing, showInfo } = useToast()
 // Auth initialization happens separately in onMounted without blocking layout
 const isInitialized = ref(true)
 const route = useRoute()
-const { shellContentReady } = providePageShellReady()
+// Re-provide module-level shell refs for layout children (app.vue already provided them)
+providePageShellReady()
+const shellContentReady = useShellContentReady()
 
 if (isResourceShellRoute(route.path)) {
   shellContentReady.value = true
@@ -277,9 +275,7 @@ watch(
   (newPath) => {
     if (isResourceShellRoute(newPath)) {
       shellContentReady.value = true
-      return
     }
-    shellContentReady.value = false
   }
 )
 

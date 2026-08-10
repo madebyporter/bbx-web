@@ -1,7 +1,11 @@
 <template>
   <nav ref="mobileNav" id="navbar"
     class="border-r border-neutral-800 bg-neutral-900 flex flex-col justify-between overflow-auto shrink-0 min-w-[250px] lg:max-w-[250px] fixed inset-y-0 left-0 z-40 w-full -translate-x-full lg:relative lg:translate-x-0 lg:w-fit lg:z-40">
-    <div ref="logoSection" class="sticky top-0 p-4 flex justify-between items-center opacity-0 pointer-events-none">
+    <div
+      ref="logoSection"
+      class="sticky top-0 p-4 flex justify-between items-center"
+      :class="hasRevealedNav ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+    >
       <NuxtLink to="/" @click="closeMobileNavOnClick" class="cursor-pointer">
         <img src="~/assets/img/bbx-logo.svg" alt="BBX Logo" class="size-[44px] lg:size-12" />
       </NuxtLink>
@@ -15,7 +19,11 @@
         </svg>
       </Button>
     </div>
-    <div ref="navItemsSection" class="grow flex flex-col gap-16 p-4 opacity-0 pointer-events-none">
+    <div
+      ref="navItemsSection"
+      class="grow flex flex-col gap-16 p-4"
+      :class="hasRevealedNav ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+    >
       <div v-if="isReady && user" class="flex flex-col gap-4">
         <span class="nav-header">Library</span>
         <NuxtLink v-if="username" :to="`/u/${username}`" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">
@@ -68,7 +76,9 @@
     <!-- Account UI -->
     <div
       ref="userNavSection"
-      class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit rounded-sm flex flex-row items-center overflow-hidden m-2 p-2 opacity-0 pointer-events-none">
+      class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit rounded-sm flex flex-row items-center overflow-hidden m-2 p-2"
+      :class="hasRevealedNav ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+    >
       <div class="flex flex-row gap-0 items-center w-full">
         <template v-if="isReady && user">
           <div class="flex flex-col gap-0 justify-start items-start w-full">
@@ -157,7 +167,8 @@ const usernameLoaded = ref(false)
 const wasDesktop = ref(false)
 const showSettingsDrawer = ref(false)
 const showSupportPopup = ref(false)
-const hasRevealedNav = ref(false)
+// Module-level so layout/Nav remounts do not re-run the session entrance animation
+const hasRevealedNav = useState('nav-has-revealed', () => false)
 const setNavShellReady = useSetNavShellReady()
 
 const navDataReady = computed(() => isReady.value && usernameLoaded.value)
@@ -265,11 +276,18 @@ const fetchUsername = async () => {
 }
 
 const revealNavSections = async () => {
-  if (hasRevealedNav.value || !navDataReady.value) return
+  if (!navDataReady.value) return
 
   await nextTick()
 
   if (!logoSection.value || !navItemsSection.value || !userNavSection.value) return
+
+  // Already revealed this session (e.g. layout remounted) — show instantly, no re-animation
+  if (hasRevealedNav.value) {
+    gsap.set([logoSection.value, navItemsSection.value, userNavSection.value], { opacity: 1 })
+    setNavShellReady?.(true)
+    return
+  }
 
   hasRevealedNav.value = true
 

@@ -1,8 +1,12 @@
 <template>
-  <div v-if="canShowPlayer" ref="playerRef"
+  <!--
+    Always in-flow under app chrome. Visibility is sticky session state — never tied to
+    page skeletons. No slide animation on route changes.
+  -->
+  <div
+    v-show="canShowPlayer"
     class="w-full bg-neutral-900 border-t border-neutral-800 z-30 h-fit lg:h-fit relative"
-    style="transform: translateY(100%)">
-    
+  >
     <!-- Stem Player Active Overlay -->
     <div v-if="isStemPlayerActive"
       class="absolute inset-0 bg-neutral-900/95 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -148,11 +152,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { usePlayer } from '~/composables/usePlayer'
 import { useStemPlayer } from '~/composables/useStemPlayer'
-import { useShellContentReady, useNavShellReadyState } from '~/composables/usePageShellReady'
-import gsap from 'gsap'
 
 const {
   currentTrack,
@@ -163,6 +165,7 @@ const {
   isShuffled,
   loopOne,
   hasEverHadTrack,
+  playerHasEntered,
   formattedCurrentTime,
   formattedDuration,
   progress,
@@ -176,90 +179,54 @@ const {
   updateTime,
   updateDuration,
   handleTrackEnd,
+  audioElement,
   setAudioElement,
   loadState,
   pause
 } = usePlayer()
 
 const { isStemPlayerActive } = useStemPlayer()
-const shellContentReady = useShellContentReady()
-const navShellReady = useNavShellReadyState()
 
-const canShowPlayer = computed(
-  () => shellContentReady.value && navShellReady.value && hasEverHadTrack.value
-)
+const canShowPlayer = computed(() => hasEverHadTrack.value)
 
-const playerRef = ref<HTMLDivElement | null>(null)
 const audioEl = ref<HTMLAudioElement | null>(null)
-const playerEstablishedOnLoad = ref(false)
 
-const ESTABLISHED_PLAYER_DELAY = 1
-
-// Set audio element reference
 onMounted(async () => {
   if (audioEl.value) {
     setAudioElement(audioEl.value)
     await loadState()
-    playerEstablishedOnLoad.value = hasEverHadTrack.value
   }
 })
 
-// Clean up audio element on unmount
 onUnmounted(() => {
-  setAudioElement(null)
+  if (audioEl.value && audioElement.value === audioEl.value) {
+    setAudioElement(null)
+  }
 })
 
-// Pause main player when stem player becomes active
 watch(isStemPlayerActive, (isActive) => {
   if (isActive && isPlaying.value) {
     pause()
   }
 })
 
-// Track when a track is first loaded and animate player in/out
-watch([shellContentReady, navShellReady, currentTrack], async ([shellReady, navReady, newTrack]) => {
-  if (!shellReady || !navReady) return
-
-  // Wait for DOM to update if this is the first track
-  if (newTrack && !playerRef.value) {
-    await nextTick()
-  }
-
-  // Now animate if playerRef is available
-  if (!playerRef.value) return
-
+watch(currentTrack, (newTrack) => {
   if (newTrack) {
-    const delay = playerEstablishedOnLoad.value ? ESTABLISHED_PLAYER_DELAY : 0
-    playerEstablishedOnLoad.value = false
-
-    gsap.to(playerRef.value, {
-      y: 0,
-      duration: 0.3,
-      ease: 'power2.out',
-      delay,
-    })
-  } else {
-    gsap.to(playerRef.value, {
-      y: '100%',
-      duration: 0.3,
-      ease: 'power2.in',
-    })
+    playerHasEntered.value = true
+  } else if (!hasEverHadTrack.value) {
+    playerHasEntered.value = false
   }
-})
+}, { immediate: true })
 
-// Handle seek
 const handleSeek = (event: Event) => {
   const target = event.target as HTMLInputElement
   seekTo(parseFloat(target.value))
 }
 
-// Handle audio errors
 const handleAudioError = (event: Event) => {
   console.error('Audio playback error:', event)
-  // Could implement auto-skip to next track on error
 }
 
-// Scroll to current track in the library
 const scrollToCurrentTrack = () => {
   if (currentTrack.value?.id) {
     const event = new CustomEvent('scroll-to-track', {
@@ -271,4 +238,3 @@ const scrollToCurrentTrack = () => {
   }
 }
 </script>
-

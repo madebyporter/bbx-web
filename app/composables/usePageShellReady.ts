@@ -15,16 +15,22 @@ const setShellContentReadyKey: InjectionKey<(ready: boolean) => void> = Symbol('
 const navShellReadyKey: InjectionKey<Ref<boolean>> = Symbol('navShellReady')
 const setNavShellReadyKey: InjectionKey<(ready: boolean) => void> = Symbol('setNavShellReady')
 
-export function providePageShellReady() {
-  const shellContentReady = ref(false)
-  const navShellReady = ref(false)
+// Module-level — survive layout remounts so search/nav chrome does not reset per page
+const shellContentReady = ref(false)
+const navShellReady = ref(false)
 
+export function providePageShellReady() {
   const setShellContentReady = (ready: boolean) => {
-    shellContentReady.value = ready
+    // Sticky: once the app shell is ready, page navigations must not hide it again
+    if (ready) {
+      shellContentReady.value = true
+    }
   }
 
   const setNavShellReady = (ready: boolean) => {
-    navShellReady.value = ready
+    if (ready) {
+      navShellReady.value = true
+    }
   }
 
   provide(shellContentReadyKey, shellContentReady)
@@ -36,11 +42,11 @@ export function providePageShellReady() {
 }
 
 export function useShellContentReady() {
-  return inject(shellContentReadyKey, ref(true))
+  return inject(shellContentReadyKey, shellContentReady)
 }
 
 export function useNavShellReadyState() {
-  return inject(navShellReadyKey, ref(true))
+  return inject(navShellReadyKey, navShellReady)
 }
 
 export function useSetNavShellReady() {
@@ -57,13 +63,14 @@ export function usePageShellReady(ready: MaybeRef<boolean>) {
   const route = useRoute()
 
   const sync = () => {
-    setShellContentReady?.(unref(ready))
+    if (unref(ready)) {
+      setShellContentReady?.(true)
+    }
   }
 
   const stopReady = watch(() => unref(ready), sync, { immediate: true })
 
-  // Layout resets shellContentReady on navigation; re-assert when this page stays mounted
-  // (e.g. software/index.vue parent while swapping /software/:slug routes).
+  // Re-assert when this page stays mounted across child route swaps (e.g. /software/:slug).
   const stopRoute = watch(() => route.fullPath, sync)
 
   onUnmounted(() => {

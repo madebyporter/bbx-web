@@ -39,12 +39,38 @@ const isMuted = ref(false)
 const isShuffled = ref(false)
 const loopOne = ref(false)
 const hasEverHadTrack = ref(false)
+/** Survives Player remounts so the chrome does not re-animate on navigation */
+const playerHasEntered = ref(false)
+const playerStateLoaded = ref(false)
 const audioElement = ref<HTMLAudioElement | null>(null)
 const signedUrlCache = ref<Map<string, { url: string; expiry: number }>>(new Map())
 const preloadedUrls = ref<Set<string>>(new Set())
 const loopCheckAnimationFrame = ref<number | null>(null)
 
 const STORAGE_KEY = 'player_state'
+
+function readStoredPlayerFlags(): { hasEverHadTrack: boolean; hasTrack: boolean } {
+  if (!import.meta.client) {
+    return { hasEverHadTrack: false, hasTrack: false }
+  }
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (!saved) return { hasEverHadTrack: false, hasTrack: false }
+    const state = JSON.parse(saved) as Partial<PlayerState>
+    return {
+      hasEverHadTrack: !!state.hasEverHadTrack,
+      hasTrack: !!state.currentTrack && !!state.hasEverHadTrack,
+    }
+  } catch {
+    return { hasEverHadTrack: false, hasTrack: false }
+  }
+}
+
+// Hydrate visibility flags synchronously so the player does not wait on async loadState
+// (async restore was hiding the bar during every page skeleton phase).
+const storedFlags = readStoredPlayerFlags()
+hasEverHadTrack.value = storedFlags.hasEverHadTrack
+playerHasEntered.value = storedFlags.hasTrack
 
 export function usePlayer() {
   const { supabase } = useSupabase()
@@ -500,8 +526,11 @@ export function usePlayer() {
     }
   }
 
-  // Load state from localStorage
+  // Load state from localStorage (once per session — safe across Player remounts)
   const loadState = async () => {
+    if (playerStateLoaded.value) return
+    playerStateLoaded.value = true
+
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
@@ -517,6 +546,9 @@ export function usePlayer() {
         loopOne.value = state.loopOne ?? false
         queueSourceId.value = state.queueSourceId || null
         hasEverHadTrack.value = state.hasEverHadTrack ?? false
+        if (hasEverHadTrack.value && currentTrack.value) {
+          playerHasEntered.value = true
+        }
 
         // Don't auto-play on load, but load the track
         if (currentTrack.value && audioElement.value) {
@@ -549,6 +581,8 @@ export function usePlayer() {
     currentTime.value = 0
     duration.value = 0
     hasEverHadTrack.value = false
+    playerHasEntered.value = false
+    playerStateLoaded.value = true
     localStorage.removeItem(STORAGE_KEY)
   }
 
@@ -715,6 +749,7 @@ export function usePlayer() {
     isShuffled,
     loopOne,
     hasEverHadTrack,
+    playerHasEntered,
     audioElement,
     
     // Computed
