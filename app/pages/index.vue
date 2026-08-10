@@ -135,18 +135,46 @@
       <div class="max-w-3xl flex flex-col gap-2 mb-10">
         <h2 class="text-xl sm:text-2xl font-bold text-white">Who it’s for</h2>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-3xl">
-        <div class="flex flex-col gap-2">
-          <h3 class="text-lg font-semibold text-white">Audio Pros</h3>
-          <p class="text-sm text-neutral-400 leading-relaxed">
-            Producers and engineers who need statuses, versions, analytics, and a library built to ship.
-          </p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-5xl">
+        <div class="flex flex-row gap-4 items-start min-w-0">
+          <picture class="shrink-0 size-20 sm:size-24 rounded-md overflow-hidden bg-neutral-900">
+            <source :srcset="imgAudioProsWebp" type="image/webp" />
+            <img
+              :src="imgAudioProsJpg"
+              alt="Audio professional mixing in a studio"
+              class="size-full object-cover"
+              width="640"
+              height="640"
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
+          <div class="flex flex-col gap-2 min-w-0">
+            <h3 class="text-lg font-semibold text-white">Audio Pros</h3>
+            <p class="text-sm text-neutral-400 leading-relaxed">
+              Producers and engineers who need statuses, versions, analytics, and a library built to ship.
+            </p>
+          </div>
         </div>
-        <div class="flex flex-col gap-2">
-          <h3 class="text-lg font-semibold text-white">Creators</h3>
-          <p class="text-sm text-neutral-400 leading-relaxed">
-            Artists and writers who want a lighter home for music and feedback.
-          </p>
+        <div class="flex flex-row gap-4 items-start min-w-0">
+          <picture class="shrink-0 size-20 sm:size-24 rounded-md overflow-hidden bg-neutral-900">
+            <source :srcset="imgCreatorsWebp" type="image/webp" />
+            <img
+              :src="imgCreatorsJpg"
+              alt="Creator in a home studio with headphones"
+              class="size-full object-cover"
+              width="640"
+              height="640"
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
+          <div class="flex flex-col gap-2 min-w-0">
+            <h3 class="text-lg font-semibold text-white">Creators</h3>
+            <p class="text-sm text-neutral-400 leading-relaxed">
+              Artists and writers who want a lighter home for music and feedback.
+            </p>
+          </div>
         </div>
       </div>
     </section>
@@ -173,36 +201,39 @@
       <!-- Latest software cards (DatabaseGrid card pattern, read-only) -->
       <div
         v-if="latestSoftware.length > 0"
-        class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-5xl"
+        class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-2"
       >
         <NuxtLink
           v-for="resource in latestSoftware"
           :key="resource.id"
           :to="`/software/${resource.slug}`"
-          class="relative border border-neutral-800 p-4 rounded-lg flex flex-col gap-4 hover:border-neutral-700 transition-colors min-w-0"
+          class="bg-neutral-800/20 hover:bg-neutral-800/50 p-4 relative rounded-lg flex flex-col justify-between gap-4  transition-colors min-w-0"
         >
-          <div class="w-full aspect-square bg-neutral-800 rounded-md overflow-hidden">
+          <div class="w-full h-full rounded-md overflow-hidden flex items-end grow">
             <img
               v-if="resource.image_url"
               :src="resourceImageUrl(resource.image_url)"
               :alt="resource.name"
-              class="w-full h-full object-cover"
+              class="w-full h-auto object-cover"
               @error="onResourceImageError"
             />
           </div>
-          <div class="flex flex-col gap-1 min-w-0">
-            <span class="text-lg font-medium text-white truncate">{{ resource.name }}</span>
-            <div class="flex items-center gap-2 text-sm text-neutral-400 min-w-0">
-              <span class="truncate">{{ resource.creator }}</span>
-              <span v-if="resource.price">•</span>
-              <span v-if="resource.price" class="shrink-0">{{ resource.price }}</span>
+          <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-0">
+              <h3 class="text-lg font-medium text-white truncate">{{ resource.name }}</h3>
+              <div class="flex items-center gap-2 text-sm text-neutral-400">
+                <span class="truncate">{{ resource.creator }}</span>
+                <span v-if="resource.price">•</span>
+                <span v-if="resource.price" class="shrink-0">{{ resource.price }}</span>
+              </div>
+            </div>
+            <div v-if="resource.tags.length" class="flex flex-wrap gap-2">
+              <span v-for="tag in resource.tags.slice(0, 3)" :key="tag" class="tag">
+                {{ tag }}
+              </span>
             </div>
           </div>
-          <div v-if="resource.tags.length" class="flex flex-wrap gap-2">
-            <span v-for="tag in resource.tags.slice(0, 3)" :key="tag" class="tag">
-              {{ tag }}
-            </span>
-          </div>
+          
         </NuxtLink>
       </div>
     </section>
@@ -242,6 +273,10 @@ import {
   fetchLatestApprovedResources,
   type Resource,
 } from '~/utils/resourceQueries'
+import imgAudioProsWebp from '~/assets/img/landing/who-audio-pros.webp'
+import imgAudioProsJpg from '~/assets/img/landing/who-audio-pros.jpg'
+import imgCreatorsWebp from '~/assets/img/landing/who-creators.webp'
+import imgCreatorsJpg from '~/assets/img/landing/who-creators.jpg'
 
 const { user, isReady, init } = useAuth()
 const { supabase } = useSupabase()

@@ -232,3 +232,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Logged-in users still redirect to their library; software catalog linked as secondary CTA
 - 0.57.1
   - Landing catalog section shows three latest software cards below the browse CTAs
+- 0.57.2
+  - Who it’s for section includes optimized Audio Pros and Creators photos beside each point
