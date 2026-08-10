@@ -26,11 +26,11 @@
           class="absolute inset-x-0 top-[12%] bottom-0 px-2 sm:px-4 lg:px-8 flex items-start justify-center"
         >
           <div class="w-full max-w-5xl border border-neutral-800 bg-neutral-900/90 shadow-2xl shadow-black/40 overflow-hidden">
-            <div class="flex items-center justify-between gap-4 px-3 py-2 border-b border-neutral-800 bg-neutral-900">
+            <div class="flex items-center justify-between gap-4 p-2 border-b border-neutral-800 bg-neutral-900">
               <div class="text-sm font-semibold text-white">All Music</div>
               <div class="text-xs text-neutral-500 uppercase tracking-wider">12 tracks</div>
             </div>
-            <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_72px_88px] gap-0 text-xs text-neutral-500 border-b border-neutral-800 px-3 py-2">
+            <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_72px_88px] gap-0 text-xs text-neutral-500 border-b border-neutral-800 p-2">
               <span>Title</span>
               <span class="hidden sm:block">Collection</span>
               <span>Key</span>
@@ -114,7 +114,7 @@
 
     <!-- Capabilities -->
     <section class="border-b border-neutral-800 px-4 sm:px-6 lg:px-10 py-16 sm:py-20">
-      <div class="max-w-3xl flex flex-col gap-2 mb-10">
+      <div class="max-w-5xl flex flex-col gap-2 mb-10">
         <h2 class="text-xl sm:text-2xl font-bold text-white">
           Built for how producers actually work
         </h2>
@@ -122,14 +122,140 @@
           Library ops without the spreadsheet chaos.
         </p>
       </div>
-      <div class="flex flex-col gap-10 max-w-3xl">
+      <div class="flex flex-col gap-10 max-w-5xl">
         <div
           v-for="cap in capabilities"
-          :key="cap.title"
-          class="flex flex-col gap-2 border-t border-neutral-800 pt-6"
+          :key="cap.key"
+          class="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start border-t border-neutral-800 pt-6"
         >
-          <h3 class="text-lg font-semibold text-white">{{ cap.title }}</h3>
-          <p class="text-sm text-neutral-400 leading-relaxed">{{ cap.body }}</p>
+          <div
+            class="w-full max-w-sm sm:w-[40%] h-fit shrink-0 overflow-hidden rounded-md border border-neutral-800 bg-neutral-900/90 pointer-events-none select-none"
+            aria-hidden="true"
+          >
+            <!-- Music library close-up -->
+            <div
+              v-if="cap.key === 'library'"
+              class="w-full flex flex-col"
+            >
+              <div class="flex items-center justify-between gap-4 p-2 border-b border-neutral-800 bg-neutral-900">
+                <div class="text-xs font-semibold text-white">All Music</div>
+                <div class="text-[10px] text-neutral-500 uppercase tracking-wider">12 tracks</div>
+              </div>
+              <div class="flex flex-col gap-0 p-2">
+                <div
+                  v-for="(row, i) in heroLibraryRows"
+                  :key="i"
+                  class="flex items-center gap-3 px-3 py-3 border border-neutral-800/80 rounded-sm"
+                  :class="[
+                    i > 0 ? 'mt-2' : '',
+                    row.playing ? 'bg-neutral-800/40' : '',
+                  ]"
+                >
+                  <div
+                    class="relative size-10 shrink-0 rounded-sm flex items-center justify-center"
+                    :style="{ background: row.swatch }"
+                  >
+                    <div class="absolute inset-0 bg-black/30 rounded-sm" />
+                    <svg
+                      v-if="row.playing"
+                      class="relative z-10 size-4 text-orange-400"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                    </svg>
+                    <svg
+                      v-else
+                      class="relative z-10 size-4 text-neutral-200"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="truncate text-sm font-medium text-neutral-100">{{ row.title }}</div>
+                    <div class="truncate text-xs text-neutral-500">{{ row.version }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Collections & versions close-up -->
+            <div
+              v-else-if="cap.key === 'collections'"
+              class="w-full flex flex-col"
+            >
+              <div class="flex items-center justify-between gap-4 p-2 border-b border-neutral-800 bg-neutral-900">
+                <div class="text-xs font-semibold text-white">EP Masters</div>
+                <div class="text-[10px] text-neutral-500 uppercase tracking-wider">Latest only</div>
+              </div>
+              <div class="flex flex-col gap-0 px-2 py-2">
+                <div
+                  v-for="(row, i) in heroCollectionRows"
+                  :key="i"
+                  class="flex items-center gap-2 px-2 py-3 border-b border-neutral-800/80 text-sm"
+                  :class="i === 0 ? 'bg-neutral-800/40' : ''"
+                >
+                  <div
+                    class="size-8 shrink-0 rounded-sm"
+                    :style="{ background: row.swatch }"
+                  />
+                  <div class="min-w-0 flex-1">
+                    <div class="truncate text-neutral-100">{{ row.title }}</div>
+                    <div class="truncate text-xs text-neutral-500">{{ row.version }}</div>
+                  </div>
+                  <span class="inline-flex items-center px-2 py-0.5 bg-neutral-700 rounded text-[10px] text-neutral-200 shrink-0">
+                    {{ row.collection }}
+                  </span>
+                </div>
+                <div class="px-2 py-2 text-[10px] text-neutral-500">
+                  Group: <span class="text-blue-400">Night Drive</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Status & feedback close-up -->
+            <div
+              v-else-if="cap.key === 'status'"
+              class="w-full flex flex-col"
+            >
+              <div class="flex items-center justify-between gap-4 p-2 border-b border-neutral-800 bg-neutral-900">
+                <div class="text-xs font-semibold text-white">Night Drive — Vocal Up</div>
+                <div class="text-[10px] text-neutral-500 uppercase tracking-wider">Comments</div>
+              </div>
+              <div class="flex flex-col gap-2 p-2">
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="row in heroRows.slice(0, 3)"
+                    :key="row.status"
+                    class="tag w-fit !normal-case"
+                    :class="row.status === 'Review' ? 'tag-active' : ''"
+                  >
+                    {{ row.status }}
+                  </span>
+                </div>
+                <div class="flex flex-col gap-2 p-3 border border-neutral-800 rounded-md bg-neutral-900/50">
+                  <div class="flex items-baseline justify-between gap-2">
+                    <span class="text-xs font-medium text-neutral-200">alex@studio</span>
+                    <span class="text-[10px] text-neutral-500">2h ago</span>
+                  </div>
+                  <p class="text-xs text-neutral-400 leading-relaxed">
+                    Vocal sits great — maybe pull the ad-libs up 1dB on the hook?
+                  </p>
+                </div>
+                <div class="px-2 py-2 border border-neutral-700 rounded text-[10px] text-neutral-500 focus-within:border-amber-500/50">
+                  Add a comment…
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2 min-w-0 flex-1 max-w-96">
+            <h3 class="text-lg font-semibold text-white">{{ cap.title }}</h3>
+            <p class="text-sm text-neutral-400 leading-relaxed">{{ cap.body }}</p>
+          </div>
         </div>
       </div>
     </section>
@@ -420,6 +546,13 @@ const heroRows = [
   },
 ]
 
+const heroPlayingRow = heroRows[1]!
+const heroCollectionRows = heroRows.slice(0, 2)
+const heroLibraryRows = [
+  { ...heroPlayingRow, playing: true },
+  { ...heroRows[0]!, playing: false },
+]
+
 const howSteps = [
   {
     title: 'Collect',
@@ -437,14 +570,17 @@ const howSteps = [
 
 const capabilities = [
   {
+    key: 'library' as const,
     title: 'Music library',
     body: 'Filter, sort, and play your catalog in one place — built like a studio tool, not a generic file dump.',
   },
   {
+    key: 'collections' as const,
     title: 'Collections & versions',
     body: 'Keep every bounce of a track together, focus on latest versions, and ship collections that actually make sense.',
   },
   {
+    key: 'status' as const,
     title: 'Status & feedback',
     body: 'Mark what’s WIP, in review, or done — then gather comments without losing the thread.',
   },

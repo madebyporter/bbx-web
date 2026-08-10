@@ -236,3 +236,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Who it’s for section includes optimized Audio Pros and Creators photos beside each point
 - 0.57.3
   - Homepage CTAs send PostHog `homepage_cta_clicked` with section and CTA id (hero, catalog, final_cta)
+- 0.57.4
+  - Capabilities section adds hero-style HTML close-ups for music library, collections, and status/feedback
