@@ -238,3 +238,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Homepage CTAs send PostHog `homepage_cta_clicked` with section and CTA id (hero, catalog, final_cta)
 - 0.57.4
   - Capabilities section adds hero-style HTML close-ups for music library, collections, and status/feedback
+- 0.57.5
+  - Accept: text/markdown content negotiation for landing, resource detail, and producer library pages (curated markdown for agents)
