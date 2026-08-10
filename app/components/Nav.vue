@@ -185,6 +185,8 @@ const handleAuth = async () => {
   if (user.value) {
     try {
       await auth.signOut()
+      username.value = null
+      usernameLoaded.value = true
       showSuccess('Logged out successfully')
     } catch (error) {
       console.error('Logout error:', error)

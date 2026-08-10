@@ -873,7 +873,8 @@ onMounted(async () => {
 
 // Cleanup on unmount
 onUnmounted(() => {
-  auth.cleanup()
+  // Do not auth.cleanup() here — auth is an app singleton; layout remounts
+  // were unsubscribing onAuthStateChange and then skipping re-init.
   window.removeEventListener('edit-track', handleEditTrack as EventListener)
   window.removeEventListener('open-track-comments', onOpenTrackCommentsEvent)
   window.removeEventListener('open-generate-track-video', onOpenGenerateTrackVideoEvent)

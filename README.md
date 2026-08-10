@@ -227,3 +227,6 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Keep the bottom music player stable across navigations (session-sticky shell/player state)
   - Page skeletons no longer hide or reanimate global chrome; player visibility hydrates from saved state
   - Fix sidebar account block jumping by removing main height transitions and keeping player in the layout flex column
+- 0.57.0
+  - Anonymous homepage landing page for Beatbox as project management for music producers
+  - Logged-in users still redirect to their library; software catalog linked as secondary CTA

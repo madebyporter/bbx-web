@@ -37,43 +37,46 @@ const createAuth = () => {
       return
     }
 
-    if (isReady.value) {
+    // Re-attach listener if layout remount cleaned it up; do not skip forever after first init
+    const needsListener = !subscription
+
+    if (isReady.value && !needsListener) {
       return
     }
 
     try {
-      // Get initial session
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (session?.user) {
-        user.value = session.user as AuthUser
-        isAdmin.value = session.user.app_metadata.roles?.includes('admin') || false
+      if (!isReady.value) {
+        const { data: { session } } = await supabase.auth.getSession()
+
+        if (session?.user) {
+          user.value = session.user as AuthUser
+          isAdmin.value = session.user.app_metadata.roles?.includes('admin') || false
+        } else {
+          user.value = null
+          isAdmin.value = false
+        }
       }
 
-  // Set up auth state change listener
-  const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((event, session) => {
-    
-    if (session?.user) {
-      user.value = session.user as AuthUser
-      isAdmin.value = session.user.app_metadata.roles?.includes('admin') || false
-      
-      // Handle successful email confirmation
-      if (event === 'SIGNED_IN') {
+      if (needsListener) {
+        const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (session?.user) {
+            user.value = session.user as AuthUser
+            isAdmin.value = session.user.app_metadata.roles?.includes('admin') || false
+          } else if (event === 'SIGNED_OUT') {
+            user.value = null
+            isAdmin.value = false
+          } else if (!session) {
+            user.value = null
+            isAdmin.value = false
+          }
+        })
+        subscription = sub
       }
-    } else if (event === 'SIGNED_OUT') {
-      user.value = null
-      isAdmin.value = false
-    } else if (event === 'TOKEN_REFRESHED') {
-      if (session?.user) {
-        user.value = session.user as AuthUser
-        isAdmin.value = session.user.app_metadata.roles?.includes('admin') || false
-      }
-    }
-  })
-      subscription = sub
+
       isReady.value = true
     } catch (error) {
       console.error('Auth initialization error:', error)
+      isReady.value = true
     }
   }
 
@@ -153,6 +156,9 @@ const createAuth = () => {
 
   const signOut = async () => {
     if (!supabase) throw new Error('Supabase not initialized')
+    // Clear immediately so nav/UI update without waiting on the auth listener
+    user.value = null
+    isAdmin.value = false
     const { error } = await supabase.auth.signOut()
     if (error) throw error
   }
