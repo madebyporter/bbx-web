@@ -231,6 +231,28 @@
           <span v-if="errors.link" class="text-red-500 text-sm">{{ errors.link }}</span>
         </fieldset>
         <fieldset class="flex flex-col gap-2">
+          <div class="flex flex-row items-center justify-between gap-4">
+            <label>Description</label>
+            <Button
+              type="button"
+              variant="secondary"
+              class="!px-3 !py-1 text-sm"
+              :disabled="!formData.link.trim() || isPullingDescription"
+              @click="pullDescriptionFromLink"
+            >
+              {{ isPullingDescription ? 'Pulling...' : 'Pull from link' }}
+            </Button>
+          </div>
+          <textarea
+            v-model="formData.description"
+            name="resourceDescription"
+            rows="4"
+            class="p-4 border border-neutral-800 hover:border-neutral-700 rounded-lg resize-y min-h-[120px]"
+            placeholder="Optional product description"
+          />
+          <span v-if="descriptionPullError" class="text-red-500 text-sm">{{ descriptionPullError }}</span>
+        </fieldset>
+        <fieldset class="flex flex-col gap-2">
           <label class="flex items-center gap-1">
             Image
             <span class="text-red-500">*</span>
@@ -315,6 +337,7 @@ interface ResourceToEdit {
   creator: string;
   price: string;
   link: string;
+  description?: string | null;
   image_url: string | null;
   os: string[];
   tags: string[];
@@ -326,6 +349,7 @@ interface Resource {
   creator_id: number;
   price: string;
   link: string;
+  description?: string | null;
   image_url?: string;
   os: string[];
   type_id: number;
@@ -358,6 +382,8 @@ const filteredTags = ref<string[]>([])
 const selectedOS = ref<string[]>([])
 const resourceTypes = ref<ResourceType[]>([])
 const isDragging = ref(false)
+const isPullingDescription = ref(false)
+const descriptionPullError = ref('')
 
 const errors = ref({
   name: '',
@@ -381,6 +407,7 @@ const formData = ref({
   creator: '',
   price: '',
   link: '',
+  description: '',
   image_url: '',
   os: [] as string[]
 })
@@ -400,6 +427,7 @@ watch(() => props.resourceToEdit, (newResource) => {
       creator: newResource.creator,
       price: newResource.price,
       link: newResource.link,
+      description: newResource.description || '',
       image_url: newResource.image_url || '',
       os: newResource.os
     }
@@ -425,6 +453,7 @@ const resetForm = () => {
       creator: '',
       price: '',
       link: '',
+      description: '',
       image_url: '',
       os: []
     }
@@ -432,6 +461,7 @@ const resetForm = () => {
     imageFile.value = null
     imagePreview.value = null
     imageError.value = null
+    descriptionPullError.value = ''
     errors.value = {
       name: '',
       creator: '',
@@ -742,6 +772,7 @@ const submitResource = async () => {
       creator_id: creatorId,
       price: formData.value.price,
       link: formData.value.link,
+      description: formData.value.description.trim() || null,
       image_url: imageUrl || undefined,
       os: selectedOS.value,
       type_id: formData.value.type_id
@@ -824,6 +855,7 @@ const updateResource = async () => {
         creator_id: creatorData.id as number,
         price: formData.value.price,
         link: formData.value.link,
+        description: formData.value.description.trim() || null,
         image_url: imageUrl,
         os: selectedOS.value,
         type_id: formData.value.type_id
@@ -888,6 +920,32 @@ const updateResource = async () => {
     }
   } finally {
     isSubmitting.value = false
+  }
+}
+
+const pullDescriptionFromLink = async () => {
+  const link = formData.value.link.trim()
+  if (!link) return
+
+  descriptionPullError.value = ''
+  isPullingDescription.value = true
+
+  try {
+    const response = await $fetch<{ description: string }>('/api/resources/meta-description', {
+      method: 'POST',
+      body: { url: link },
+    })
+
+    formData.value.description = response.description
+  } catch (error: unknown) {
+    const fetchError = error as { statusMessage?: string; data?: { statusMessage?: string }; message?: string }
+    descriptionPullError.value =
+      fetchError?.data?.statusMessage ||
+      fetchError?.statusMessage ||
+      fetchError?.message ||
+      'Could not pull description from link'
+  } finally {
+    isPullingDescription.value = false
   }
 }
 

@@ -16,6 +16,7 @@ export interface Resource {
   creator_id?: number
   price: string
   link: string
+  description?: string | null
   image_url?: string
   os: string[]
   type_id: number
@@ -166,6 +167,7 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
       creator_id: resource.creator_id,
       price: resource.price,
       link: resource.link,
+      description: resource.description?.trim() || null,
       image_url: resource.image_url,
       os: resource.os,
       type_id: resource.type_id,
@@ -457,6 +459,7 @@ export const fetchResourceBySlug = async (slug: string, typeSlug?: string): Prom
         slug,
         price,
         link,
+        description,
         image_url,
         os,
         status,
@@ -499,6 +502,7 @@ export const fetchResourceBySlug = async (slug: string, typeSlug?: string): Prom
       creator_id: data.creator?.id,
       price: data.price,
       link: data.link,
+      description: data.description || null,
       image_url: data.image_url,
       os: data.os || [],
       type_id: data.type_id,

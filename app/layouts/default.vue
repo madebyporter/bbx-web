@@ -249,6 +249,7 @@ interface Resource {
   creator: string
   price: string
   link: string
+  description?: string | null
   image_url: string | null
   os: string[]
   tags: string[]

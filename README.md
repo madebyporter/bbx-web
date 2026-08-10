@@ -211,3 +211,7 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 - 0.55.5
   - Fixed site search navigation to software/kit detail pages
   - Fixed 400 errors searching tracks and collections (removed invalid user_profiles join)
+- 0.55.6
+  - Added stored resource descriptions scraped from product link meta tags
+  - Resource detail pages and SEO use description when available
+  - Submit/Edit Resource drawer includes Description field with Pull from link

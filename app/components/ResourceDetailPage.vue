@@ -25,7 +25,9 @@
                   <h1 class="text-white text-2xl md:text-5xl">
                     {{ resource.name }}
                   </h1>
-                  <p class="text-neutral-500">Description</p>
+                  <p v-if="resource.description" class="text-neutral-400 text-sm md:text-base leading-relaxed">
+                    {{ resource.description }}
+                  </p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="flex flex-col gap-1 border-t border-neutral-800 pt-2">
@@ -289,7 +291,8 @@ useHead(() => {
   }
 
   const title = `${currentResource.name} - ${typeConfig.value.seoLabel}`
-  const description = `${currentResource.name} by ${currentResource.creator}. ${currentResource.price}. ${currentResource.tags?.join(', ') || ''}.`
+  const fallbackDescription = `${currentResource.name} by ${currentResource.creator}. ${currentResource.price}. ${currentResource.tags?.join(', ') || ''}.`
+  const description = currentResource.description?.trim() || fallbackDescription
   const url = `${siteUrl}${route.path}`
   const image = currentResource.image_url
     ? getImageUrl(currentResource.image_url)
@@ -299,7 +302,7 @@ useHead(() => {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
     name: currentResource.name,
-    description: `${currentResource.name} by ${currentResource.creator}. ${currentResource.price}.`,
+    description: currentResource.description?.trim() || `${currentResource.name} by ${currentResource.creator}. ${currentResource.price}.`,
     applicationCategory: typeConfig.value.seoLabel,
     creator: {
       '@type': 'Person',
