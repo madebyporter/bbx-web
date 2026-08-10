@@ -39,7 +39,32 @@ export function getDefaultFilterSortParams(): FilterSortParams {
       mood: [],
       year: { min: null, max: null },
       status: [],
-      latestVersionOnly: false,
+      latestVersionOnly: true,
+    },
+  }
+}
+
+export function resolveStoredFilterSortParams(
+  saved: FilterSortParams | null | undefined,
+  options?: { defaultSort?: FilterSortParams['sort'] }
+): FilterSortParams {
+  const defaults = getDefaultFilterSortParams()
+  if (options?.defaultSort) {
+    defaults.sort = { ...options.defaultSort }
+  }
+
+  if (!saved) {
+    return defaults
+  }
+
+  return {
+    sort: { ...defaults.sort, ...(saved.sort || {}) },
+    filters: {
+      ...defaults.filters,
+      ...(saved.filters || {}),
+      price: { ...defaults.filters.price, ...(saved.filters?.price || {}) },
+      bpm: { ...defaults.filters.bpm, ...(saved.filters?.bpm || {}) },
+      year: { ...defaults.filters.year, ...(saved.filters?.year || {}) },
     },
   }
 }
@@ -83,8 +108,9 @@ export function hasActiveFilterSort(
   const nonDefaultSort = sort.sortBy !== 'created_at' || sort.sortDirection !== 'desc'
 
   if (context === 'music') {
+    const defaults = getDefaultFilterSortParams()
     return nonDefaultSort || !!(
-      filters.latestVersionOnly ||
+      filters.latestVersionOnly !== defaults.filters.latestVersionOnly ||
       filters.genre?.length > 0 ||
       filters.bpm?.min != null ||
       filters.bpm?.max != null ||

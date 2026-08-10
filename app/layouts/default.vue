@@ -346,6 +346,8 @@ const currentSort = ref<{ sortBy: string; sortDirection: SortDirection }>({
   sortDirection: 'desc' 
 })
 
+const defaultFilterParams = getDefaultFilterSortParams()
+
 const currentFilters = ref({
   // Software/Kits filters
   price: { free: false, paid: false },
@@ -357,7 +359,7 @@ const currentFilters = ref({
   key: [] as string[],
   mood: [] as string[],
   year: { min: null as number | null, max: null as number | null },
-  latestVersionOnly: false,
+  latestVersionOnly: defaultFilterParams.filters.latestVersionOnly,
   status: [] as (number | null)[],
 })
 
@@ -657,7 +659,7 @@ const handleFiltersAndSort = (params: FilterSortParams) => {
       key: [...(params.filters.key || [])],
       mood: [...(params.filters.mood || [])],
       year: { ...(params.filters.year || {}) },
-      latestVersionOnly: params.filters.latestVersionOnly ?? false,
+      latestVersionOnly: params.filters.latestVersionOnly ?? getDefaultFilterSortParams().filters.latestVersionOnly,
       status: [...(params.filters.status || [])],
     }
   }

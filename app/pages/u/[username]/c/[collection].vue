@@ -104,7 +104,7 @@ import {
 } from '~/composables/useTrackAnalyticsData'
 import { getUniqueGroupTracks } from '~/utils/uniqueGroupShuffle'
 import { TRACK_PAGE_SIZE } from '~/utils/trackPagination'
-import { useFilterSortCookie } from '~/composables/useFilterSortPersistence'
+import { useFilterSortCookie, resolveStoredFilterSortParams, getDefaultFilterSortParams } from '~/composables/useFilterSortPersistence'
 import { usePageShellReady } from '~/composables/usePageShellReady'
 
 const route = useRoute()
@@ -316,7 +316,7 @@ const activeFiltersForDisplay = computed<ActiveFilterChip[]>(() => {
       remove: () => removeFilter('status', s, 'array')
     })
   })
-  if (f.latestVersionOnly) {
+  if (f.latestVersionOnly && f.latestVersionOnly !== getDefaultFilterSortParams().filters.latestVersionOnly) {
     chips.push({
       id: 'latest-version-only',
       label: 'Latest versions only',
@@ -847,12 +847,7 @@ onMounted(async () => {
 
   await fetchTracks()
 
-  const saved = musicFilterCookie.value
-  if (saved && (saved.sort || saved.filters)) {
-    await updateFiltersAndSort(saved)
-  } else {
-    tracksLoading.value = false
-  }
+  await updateFiltersAndSort(resolveStoredFilterSortParams(musicFilterCookie.value))
 
   registerSearchHandler?.(handleSearch)
   registerFiltersAndSortHandler?.(updateFiltersAndSort)

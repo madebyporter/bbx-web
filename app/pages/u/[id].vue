@@ -397,7 +397,7 @@ import {
   loadStoredAnalyticsRangeLabel,
   useTrackAnalyticsData,
 } from '~/composables/useTrackAnalyticsData'
-import { useFilterSortCookie } from '~/composables/useFilterSortPersistence'
+import { useFilterSortCookie, resolveStoredFilterSortParams } from '~/composables/useFilterSortPersistence'
 import { getUniqueGroupTracks } from '~/utils/uniqueGroupShuffle'
 import { usePlayer } from '~/composables/usePlayer'
 import { trackPageRange } from '~/utils/trackPagination'
@@ -1524,17 +1524,7 @@ const hasMoreTracks = computed(() => tracks.value.length < totalTrackCount.value
 function resolveFilterParams(override?: MusicFilterSortParams): MusicFilterSortParams {
   if (override) return override
   if (lastAppliedParams.value) return lastAppliedParams.value
-  const saved = musicFilterCookie.value
-  if (saved && (saved.sort || saved.filters)) {
-    return {
-      filters: saved.filters || {},
-      sort: saved.sort || { sortBy: 'created_at', sortDirection: 'desc' },
-    }
-  }
-  return {
-    filters: {},
-    sort: { sortBy: 'created_at', sortDirection: 'desc' },
-  }
+  return resolveStoredFilterSortParams(musicFilterCookie.value)
 }
 
 function isShortlistMode() {

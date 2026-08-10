@@ -345,7 +345,7 @@ const props = defineProps({
       mood: [],
       year: { min: null, max: null },
       status: [],
-      latestVersionOnly: false
+      latestVersionOnly: true
     })
   },
   initialSort: {
@@ -383,7 +383,7 @@ const filters = reactive({
     max: props.initialFilters.year?.max || null
   },
   status: [...(props.initialFilters.status || [])],
-  latestVersionOnly: props.initialFilters.latestVersionOnly || false
+  latestVersionOnly: props.initialFilters.latestVersionOnly ?? getDefaultFilterSortParams().filters.latestVersionOnly
 })
 
 // Tags state
@@ -513,9 +513,7 @@ const loadSavedFilters = () => {
           filters.year.max = parsed.filters.year.max
         }
         if (parsed.filters.status) filters.status = [...parsed.filters.status]
-        if (parsed.filters.latestVersionOnly != null) {
-          filters.latestVersionOnly = parsed.filters.latestVersionOnly
-        }
+        filters.latestVersionOnly = parsed.filters.latestVersionOnly ?? getDefaultFilterSortParams().filters.latestVersionOnly
       }
     }
   } catch (error) {

@@ -94,7 +94,7 @@ import { useSupabase } from '~/utils/supabase'
 import TracksTable from '~/components/TracksTable.vue'
 import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 import StemPlayer from '~/components/StemPlayer.vue'
-import { useFilterSortCookie } from '~/composables/useFilterSortPersistence'
+import { useFilterSortCookie, resolveStoredFilterSortParams } from '~/composables/useFilterSortPersistence'
 import { Xmark } from '@iconoir/vue'
 import { trackPageRange } from '~/utils/trackPagination'
 import {
@@ -193,17 +193,9 @@ const hasMoreTracks = computed(() => tracks.value.length < totalTrackCount.value
 function resolveFilterParams(override?: MusicFilterSortParams): MusicFilterSortParams {
   if (override) return override
   if (lastAppliedParams.value) return lastAppliedParams.value
-  const saved = musicFilterCookie.value
-  if (saved && (saved.sort || saved.filters)) {
-    return {
-      filters: saved.filters || {},
-      sort: saved.sort || { sortBy: 'version', sortDirection: 'desc' },
-    }
-  }
-  return {
-    filters: {},
-    sort: { sortBy: 'version', sortDirection: 'desc' },
-  }
+  return resolveStoredFilterSortParams(musicFilterCookie.value, {
+    defaultSort: { sortBy: 'version', sortDirection: 'desc' },
+  })
 }
 
 const loadTracksPage = async (options: { page?: number; append?: boolean; params?: MusicFilterSortParams } = {}) => {
