@@ -169,6 +169,42 @@
           </NuxtLink>
         </div>
       </div>
+
+      <!-- Latest software cards (DatabaseGrid card pattern, read-only) -->
+      <div
+        v-if="latestSoftware.length > 0"
+        class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-5xl"
+      >
+        <NuxtLink
+          v-for="resource in latestSoftware"
+          :key="resource.id"
+          :to="`/software/${resource.slug}`"
+          class="relative border border-neutral-800 p-4 rounded-lg flex flex-col gap-4 hover:border-neutral-700 transition-colors min-w-0"
+        >
+          <div class="w-full aspect-square bg-neutral-800 rounded-md overflow-hidden">
+            <img
+              v-if="resource.image_url"
+              :src="resourceImageUrl(resource.image_url)"
+              :alt="resource.name"
+              class="w-full h-full object-cover"
+              @error="onResourceImageError"
+            />
+          </div>
+          <div class="flex flex-col gap-1 min-w-0">
+            <span class="text-lg font-medium text-white truncate">{{ resource.name }}</span>
+            <div class="flex items-center gap-2 text-sm text-neutral-400 min-w-0">
+              <span class="truncate">{{ resource.creator }}</span>
+              <span v-if="resource.price">•</span>
+              <span v-if="resource.price" class="shrink-0">{{ resource.price }}</span>
+            </div>
+          </div>
+          <div v-if="resource.tags.length" class="flex flex-wrap gap-2">
+            <span v-for="tag in resource.tags.slice(0, 3)" :key="tag" class="tag">
+              {{ tag }}
+            </span>
+          </div>
+        </NuxtLink>
+      </div>
     </section>
 
     <!-- Final CTA -->
@@ -202,10 +238,15 @@ import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
 import { useAuth } from '~/composables/useAuth'
 import { usePageShellReady } from '~/composables/usePageShellReady'
 import { useSupabase } from '~/utils/supabase'
+import {
+  fetchLatestApprovedResources,
+  type Resource,
+} from '~/utils/resourceQueries'
 
 const { user, isReady, init } = useAuth()
 const { supabase } = useSupabase()
 const username = ref<string | null>(null)
+const latestSoftware = ref<Resource[]>([])
 
 const openAuthModal = inject<(mode?: 'signin' | 'signup' | 'forgot') => void>('openAuthModal', () => {})
 
@@ -220,6 +261,18 @@ const finalCta = ref<HTMLElement | null>(null)
 /** Shell ready for anon landing immediately; logged-in users stay in loading until redirect */
 const pageShellReady = computed(() => !user.value)
 usePageShellReady(pageShellReady)
+
+const resourceImageUrl = (url: string) =>
+  url.startsWith('http') ? url : `https://storage.googleapis.com/bbx-resources/${url}`
+
+const onResourceImageError = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  img.src = '/img/db/placeholder.png'
+}
+
+const loadLatestSoftware = async () => {
+  latestSoftware.value = await fetchLatestApprovedResources('software', 3)
+}
 
 const siteOrigin = useSiteOrigin()
 const seoTitle = 'Project management for music producers'
@@ -414,7 +467,7 @@ onMounted(async () => {
     await redirectLoggedInUser()
     return
   }
-  await runEntranceMotion()
+  await Promise.all([loadLatestSoftware(), runEntranceMotion()])
 })
 
 watch(isReady, async (ready) => {

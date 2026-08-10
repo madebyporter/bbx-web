@@ -91,6 +91,75 @@ export async function fetchApprovedResourcesForSearch(
   }
 }
 
+/** Latest approved resources for marketing surfaces (e.g. landing catalog preview). */
+export async function fetchLatestApprovedResources(
+  typeSlug: 'software' | 'sounds',
+  limit = 3
+): Promise<Resource[]> {
+  const { supabase } = useSupabase()
+
+  if (!supabase) {
+    return []
+  }
+
+  try {
+    const { data: typeData, error: typeError } = await supabase
+      .from('resource_types')
+      .select('id, slug, display_name, created_at')
+      .eq('slug', typeSlug)
+      .single()
+
+    const typeRow = typeData as ResourceType | null
+    if (typeError || !typeRow) {
+      return []
+    }
+
+    const { data, error } = await supabase
+      .from('resources')
+      .select(`
+        id,
+        name,
+        slug,
+        price,
+        link,
+        image_url,
+        os,
+        created_at,
+        type_id,
+        creator:creators(name),
+        resource_tags(tags(name))
+      `)
+      .eq('status', 'approved')
+      .eq('type_id', typeRow.id)
+      .not('slug', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (error || !data) {
+      return []
+    }
+
+    return data.map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      slug: item.slug,
+      creator: item.creator?.name || '',
+      price: item.price || '',
+      link: item.link || '',
+      image_url: item.image_url || null,
+      os: item.os || [],
+      type_id: item.type_id,
+      type: typeRow,
+      tags: item.resource_tags?.map((rt: any) => rt.tags?.name).filter(Boolean) || [],
+      created_at: item.created_at,
+      status: 'approved' as const,
+    }))
+  } catch (error) {
+    console.error('Error fetching latest approved resources:', error)
+    return []
+  }
+}
+
 export interface UserProfile {
   id: string
   username: string

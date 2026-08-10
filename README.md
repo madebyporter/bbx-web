@@ -230,3 +230,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 - 0.57.0
   - Anonymous homepage landing page for Beatbox as project management for music producers
   - Logged-in users still redirect to their library; software catalog linked as secondary CTA
+- 0.57.1
+  - Landing catalog section shows three latest software cards below the browse CTAs
