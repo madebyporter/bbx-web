@@ -1,11 +1,13 @@
 import { ref, computed } from 'vue'
 import { useSupabase } from '~/utils/supabase'
+import { getAudioCacheKey, getPlaybackUrl } from '~/utils/trackAudioStorage'
 
 export interface StemTrack {
   id: number
   title: string
   artist: string
   storage_path: string
+  storage_provider?: 'supabase' | 'r2'
   duration: number
   isMuted: boolean
   isSolo: boolean
@@ -44,39 +46,25 @@ export function useStemPlayer() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Get signed URL from Supabase Storage (with caching)
-  const getSignedUrl = async (filepath: string): Promise<string | null> => {
-    // Check cache first - check if URL is still valid
-    const cached = urlCache.value.get(filepath)
+  const getTrackPlaybackUrl = async (track: Pick<StemTrack, 'id' | 'storage_path' | 'storage_provider'>): Promise<string | null> => {
+    const cacheKey = getAudioCacheKey(track)
+    const cached = urlCache.value.get(cacheKey)
     if (cached && cached.expiry > Date.now()) {
       return cached.url
     }
 
     try {
-      // Request 24-hour expiry for signed URLs
-      const { data, error } = await supabase.storage
-        .from('sounds')
-        .createSignedUrl(filepath, 86400) // 24 hours
+      const url = await getPlaybackUrl(track, supabase)
+      if (!url) return null
 
-      if (error) {
-        console.error('[StemPlayer] Error getting signed URL:', error)
-        return null
-      }
-
-      if (!data?.signedUrl) {
-        console.error('[StemPlayer] No signed URL returned for:', filepath)
-        return null
-      }
-
-      // Cache the URL for 23 hours (safe margin)
-      urlCache.value.set(filepath, {
-        url: data.signedUrl,
-        expiry: Date.now() + (23 * 60 * 60 * 1000)
+      urlCache.value.set(cacheKey, {
+        url,
+        expiry: Date.now() + (23 * 60 * 60 * 1000),
       })
 
-      return data.signedUrl
+      return url
     } catch (err) {
-      console.error('[StemPlayer] Error getting signed URL:', err)
+      console.error('[StemPlayer] Error getting playback URL:', err)
       return null
     }
   }
@@ -119,6 +107,7 @@ export function useStemPlayer() {
       title: track.title,
       artist: track.artist,
       storage_path: track.storage_path,
+      storage_provider: track.storage_provider,
       duration: track.duration,
       isMuted: false,
       isSolo: false,
@@ -132,7 +121,7 @@ export function useStemPlayer() {
     let maxDuration = 0
 
     for (const track of stemTracks.value) {
-      const url = await getSignedUrl(track.storage_path)
+      const url = await getTrackPlaybackUrl(track)
       if (!url) {
         console.error('[StemPlayer] Failed to get signed URL for track:', track.title)
         continue

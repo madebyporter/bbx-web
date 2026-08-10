@@ -215,3 +215,9 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Added stored resource descriptions scraped from product link meta tags
   - Resource detail pages and SEO use description when available
   - Submit/Edit Resource drawer includes Description field with Pull from link
+- 0.56.0
+  - New music uploads route to Cloudflare R2 while existing tracks stay on Supabase
+  - Added storage_provider on sounds and server presign APIs for R2 upload, playback, and delete
+- 0.56.1
+  - Resource descriptions fall back to OpenAI generation from product name and creator when link meta is missing
+  - Backfill script uses meta scrape first, then AI generation for remaining resources

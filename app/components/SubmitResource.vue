@@ -933,7 +933,15 @@ const pullDescriptionFromLink = async () => {
   try {
     const response = await $fetch<{ description: string }>('/api/resources/meta-description', {
       method: 'POST',
-      body: { url: link },
+      body: {
+        url: link,
+        name: formData.value.name.trim() || undefined,
+        creator: formData.value.creator.trim() || creatorInput.value.trim() || undefined,
+        price: formData.value.price.trim() || undefined,
+        tags: selectedTags.value,
+        optimize: true,
+        generateIfMissing: true,
+      },
     })
 
     formData.value.description = response.description

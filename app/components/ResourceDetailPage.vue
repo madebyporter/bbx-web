@@ -19,13 +19,13 @@
           <!-- Resource Header -->
           <div class="p-4 md:p-8 border-b border-neutral-800">
             <div class="flex flex-col gap-8 md:gap-16">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <!-- Name -->
                 <div class="flex flex-col gap-4">
                   <h1 class="text-white text-2xl md:text-5xl">
                     {{ resource.name }}
                   </h1>
-                  <p v-if="resource.description" class="text-neutral-400 text-sm md:text-base leading-relaxed">
+                  <p v-if="resource.description" class="text-neutral-400 text-xs md:text-sm leading-relaxed">
                     {{ resource.description }}
                   </p>
                 </div>

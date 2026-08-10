@@ -380,7 +380,7 @@ import CollectionSelect from './CollectionSelect.vue'
 import Button from './Button.vue'
 import { generateUniqueSlug } from '~/utils/collections'
 import { findOrCreateTrackGroup } from '~/utils/trackGroups'
-import { sanitizeStorageFilename } from '~/utils/sanitizeStorageFilename'
+import { uploadAudio } from '~/utils/trackAudioStorage'
 
 interface Props {
   show: boolean
@@ -941,20 +941,9 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
     }
 
     fileData.progress = 10
-    
-    const timestamp = Date.now()
-    const safeName = sanitizeStorageFilename(fileData.file.name)
-    const filePath = `${user.value.id}/${timestamp}-${safeName}`
-    
-    fileData.progress = 30
-    const { error: uploadError } = await supabase.storage
-      .from('sounds')
-      .upload(filePath, fileData.file, {
-        cacheControl: '3600',
-        upsert: false
-      })
-    
-    if (uploadError) throw uploadError
+
+    const uploadResult = await uploadAudio(fileData.file, supabase)
+    const filePath = uploadResult.storage_path
     
     fileData.progress = 60
     
@@ -975,6 +964,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       .insert({
         user_id: user.value.id,
         storage_path: filePath,
+        storage_provider: uploadResult.storage_provider,
         artwork_path: artworkPath,
         title: fileData.metadata.title || null,
         artist: fileData.metadata.artist || null,
@@ -1027,6 +1017,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         title: fileData.metadata.title || 'Untitled',
         artist: fileData.metadata.artist || 'Unknown',
         storage_path: filePath,
+        storage_provider: uploadResult.storage_provider,
         artwork_path: artworkPath,
         duration: fileData.duration || 0,
         version: fileData.metadata.version || 'v1.0',

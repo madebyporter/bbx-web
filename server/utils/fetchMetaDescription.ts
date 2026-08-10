@@ -1,6 +1,7 @@
 const MAX_DESCRIPTION_LENGTH = 500
 const FETCH_TIMEOUT_MS = 10_000
-const MAX_HTML_BYTES = 512_000
+/** Only read enough HTML to capture <head> meta tags; avoids "response too large" on heavy pages */
+const HEAD_SCAN_BYTES = 256_000
 
 const BLOCKED_HOSTNAMES = new Set([
   'localhost',
@@ -36,7 +37,7 @@ function extractMetaContent(html: string, patterns: RegExp[]): string | null {
   return null
 }
 
-function extractDescriptionFromHtml(html: string): string | null {
+export function extractDescriptionFromHtml(html: string): string | null {
   const ogDescription = extractMetaContent(html, [
     /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']*)["'][^>]*>/i,
     /<meta[^>]+content=["']([^"']*)["'][^>]+property=["']og:description["'][^>]*>/i,
@@ -69,6 +70,56 @@ function isBlockedHostname(hostname: string): boolean {
   return false
 }
 
+function concatChunks(chunks: Uint8Array[]): Uint8Array {
+  const total = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0)
+  const merged = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return merged
+}
+
+export async function readHtmlForMeta(response: Response): Promise<string> {
+  if (!response.body) {
+    const buffer = await response.arrayBuffer()
+    const slice = buffer.byteLength > HEAD_SCAN_BYTES
+      ? buffer.slice(0, HEAD_SCAN_BYTES)
+      : buffer
+    return new TextDecoder('utf-8', { fatal: false }).decode(slice)
+  }
+
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let totalBytes = 0
+
+  try {
+    while (totalBytes < HEAD_SCAN_BYTES) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value?.byteLength) continue
+
+      chunks.push(value)
+      totalBytes += value.byteLength
+
+      const partialHtml = new TextDecoder('utf-8', { fatal: false }).decode(concatChunks(chunks))
+      if (partialHtml.includes('</head>')) {
+        break
+      }
+    }
+  } finally {
+    await reader.cancel().catch(() => {})
+  }
+
+  const merged = concatChunks(chunks)
+  const capped = merged.byteLength > HEAD_SCAN_BYTES
+    ? merged.slice(0, HEAD_SCAN_BYTES)
+    : merged
+
+  return new TextDecoder('utf-8', { fatal: false }).decode(capped)
+}
+
 export function validateMetaDescriptionUrl(rawUrl: string): URL {
   let parsed: URL
   try {
@@ -88,51 +139,23 @@ export function validateMetaDescriptionUrl(rawUrl: string): URL {
   return parsed
 }
 
+export interface FetchMetaDescriptionOptions {
+  name?: string
+  creator?: string
+  tags?: string[]
+  price?: string
+  optimize?: boolean
+  generateIfMissing?: boolean
+}
+
 export type FetchMetaDescriptionResult =
-  | { description: string }
+  | { description: string; source: 'meta' | 'meta-optimized' | 'generated' }
   | { description: null; error: string }
 
-export async function fetchMetaDescription(rawUrl: string): Promise<FetchMetaDescriptionResult> {
-  try {
-    const parsed = validateMetaDescriptionUrl(rawUrl)
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-
-    const response = await fetch(parsed.toString(), {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'BeatboxBot/1.0 (+https://beatbox.studio)',
-        Accept: 'text/html,application/xhtml+xml',
-      },
-      redirect: 'follow',
-    })
-
-    clearTimeout(timeout)
-
-    if (!response.ok) {
-      return { description: null, error: `Request failed with status ${response.status}` }
-    }
-
-    const contentType = response.headers.get('content-type') || ''
-    if (!contentType.includes('text/html') && !contentType.includes('application/xhtml')) {
-      return { description: null, error: 'URL did not return HTML' }
-    }
-
-    const buffer = await response.arrayBuffer()
-    if (buffer.byteLength > MAX_HTML_BYTES) {
-      return { description: null, error: 'Response too large' }
-    }
-
-    const html = new TextDecoder('utf-8', { fatal: false }).decode(buffer)
-    const description = extractDescriptionFromHtml(html)
-
-    if (!description) {
-      return { description: null, error: 'No meta description found on page' }
-    }
-
-    return { description }
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch URL'
-    return { description: null, error: message }
-  }
+export async function fetchMetaDescription(
+  rawUrl: string,
+  options: FetchMetaDescriptionOptions = {}
+): Promise<FetchMetaDescriptionResult> {
+  const { resolveResourceDescription } = await import('./resolveResourceDescription')
+  return resolveResourceDescription(rawUrl, options)
 }

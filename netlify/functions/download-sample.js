@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import ffmpeg from 'fluent-ffmpeg'
 import ffmpegStatic from 'ffmpeg-static'
 import fs from 'fs'
@@ -44,6 +45,47 @@ function getFfmpegPath() {
 // Set ffmpeg path globally
 const resolvedFfmpegPath = getFfmpegPath()
 ffmpeg.setFfmpegPath(resolvedFfmpegPath)
+
+function getR2Client() {
+  const accountId = process.env.R2_ACCOUNT_ID?.trim() || ''
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim() || ''
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim() || ''
+  const endpoint =
+    process.env.R2_ENDPOINT?.trim() ||
+    (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : '')
+
+  if (!accessKeyId || !secretAccessKey || !endpoint) {
+    throw new Error('R2 configuration missing')
+  }
+
+  return new S3Client({
+    region: 'auto',
+    endpoint,
+    credentials: { accessKeyId, secretAccessKey },
+  })
+}
+
+async function downloadR2Object(key) {
+  const bucket = process.env.R2_BUCKET?.trim()
+  if (!bucket) {
+    throw new Error('R2_BUCKET is not configured')
+  }
+
+  const client = getR2Client()
+  const response = await client.send(
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    }),
+  )
+
+  if (!response.Body) {
+    throw new Error('Empty R2 response body')
+  }
+
+  const bytes = await response.Body.transformToByteArray()
+  return Buffer.from(bytes)
+}
 
 const downloadSampleHandler = async (event, context) => {
   try {
@@ -103,6 +145,30 @@ const downloadSampleHandler = async (event, context) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey)
 
+    const { data: trackRow, error: trackError } = await supabase
+      .from('sounds')
+      .select('id, storage_path, storage_provider, title, artist')
+      .eq('id', parseInt(trackId, 10))
+      .maybeSingle()
+
+    if (trackError || !trackRow?.storage_path) {
+      return {
+        statusCode: 404,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Track not found' }),
+      }
+    }
+
+    if (trackRow.storage_path !== storagePath) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Storage path mismatch' }),
+      }
+    }
+
+    const storageProvider = trackRow.storage_provider || 'supabase'
+
     // Create temp directory for processing
     const tempDir = path.join(tmpdir(), `sample-${Date.now()}`)
     fs.mkdirSync(tempDir, { recursive: true })
@@ -114,18 +180,24 @@ const downloadSampleHandler = async (event, context) => {
     const outputPath = path.join(tempDir, 'sample.mp3')
 
     try {
-      // Step 1: Download original audio file from Supabase
-      const { data: audioData, error: downloadError } = await supabase.storage
-        .from('sounds')
-        .download(storagePath)
+      // Step 1: Download original audio file from storage
+      let audioBuffer
+      if (storageProvider === 'r2') {
+        audioBuffer = await downloadR2Object(storagePath)
+      } else {
+        const { data: audioData, error: downloadError } = await supabase.storage
+          .from('sounds')
+          .download(storagePath)
 
-      if (downloadError || !audioData) {
-        throw new Error(`Failed to download audio: ${downloadError?.message || 'Unknown error'}`)
+        if (downloadError || !audioData) {
+          throw new Error(`Failed to download audio: ${downloadError?.message || 'Unknown error'}`)
+        }
+
+        const arrayBuffer = await audioData.arrayBuffer()
+        audioBuffer = Buffer.from(arrayBuffer)
       }
 
-      // Convert blob to buffer and save
-      const arrayBuffer = await audioData.arrayBuffer()
-      fs.writeFileSync(originalPath, Buffer.from(arrayBuffer))
+      fs.writeFileSync(originalPath, audioBuffer)
 
       // Step 2: Generate watermark audio using OpenAI TTS
       // Note: OpenRouter doesn't support TTS endpoints, so we use OpenAI's API directly
@@ -210,23 +282,16 @@ const downloadSampleHandler = async (event, context) => {
       // Cleanup temp files
       fs.rmSync(tempDir, { recursive: true, force: true })
 
-      // Get track title and artist for filename
-      const { data: trackData } = await supabase
-        .from('sounds')
-        .select('title, artist')
-        .eq('id', parseInt(trackId))
-        .single()
+      let filename = `sample-${trackId}.mp3`
 
-      let filename = `sample-${trackId}.mp3` // Default fallback
-      
-      if (trackData) {
-        const trackName = trackData.title 
-          ? trackData.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+      if (trackRow.title || trackRow.artist) {
+        const trackName = trackRow.title
+          ? trackRow.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()
           : 'untitled'
-        const artistName = trackData.artist
-          ? trackData.artist.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+        const artistName = trackRow.artist
+          ? trackRow.artist.replace(/[^a-z0-9]/gi, '-').toLowerCase()
           : 'unknown'
-        
+
         filename = `${trackName}-${artistName}.mp3`
       }
 

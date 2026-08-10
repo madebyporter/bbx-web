@@ -86,6 +86,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useSupabase } from '~/utils/supabase'
+import { deleteAudio } from '~/utils/trackAudioStorage'
 import { useToast } from '~/composables/useToast'
 import MasterDrawer from '~/components/MasterDrawer.vue'
 import ConfirmDialog from '~/components/ConfirmDialog.vue'
@@ -256,11 +257,9 @@ const handleDelete = async () => {
       try {
         // Delete file from storage
         if (track.storage_path) {
-          const { error: storageError } = await supabase.storage
-            .from('sounds')
-            .remove([track.storage_path])
-
-          if (storageError) {
+          try {
+            await deleteAudio(track, supabase)
+          } catch (storageError) {
             console.error('Storage deletion error:', storageError)
             deleteErrors++
             continue

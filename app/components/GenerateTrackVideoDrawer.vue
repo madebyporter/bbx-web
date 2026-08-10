@@ -314,6 +314,7 @@ import {
   type TrackVideoExport,
 } from '~/composables/useTrackVideoHistory'
 import { useSupabase } from '~/utils/supabase'
+import { downloadAudioBlob } from '~/utils/trackAudioStorage'
 import { useToast } from '~/composables/useToast'
 import type { Track } from '~/types/track'
 
@@ -637,12 +638,7 @@ async function handleGenerate() {
   try {
     if (!supabase) throw new Error('Storage is not available')
 
-    const { data: audioData, error: downloadError } = await supabase.storage
-      .from('sounds')
-      .download(props.track.storage_path)
-
-    if (downloadError) throw downloadError
-    if (!audioData) throw new Error('Failed to download audio file')
+    const audioData = await downloadAudioBlob(props.track, supabase)
 
     const result = await generateTrackVideo({
       coverFile: coverFile.value,

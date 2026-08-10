@@ -396,7 +396,7 @@ import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
 import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
-import { sanitizeStorageFilename } from '~/utils/sanitizeStorageFilename'
+import { deleteAudio, downloadAudioBlob, uploadAudio } from '~/utils/trackAudioStorage'
 import { CircleSpark } from '@iconoir/vue'
 
 interface Props {
@@ -873,12 +873,7 @@ const analyzeBPMForTrack = async () => {
   
   try {
     // Get the audio file from Supabase storage
-    const { data: audioData, error: downloadError } = await supabase.storage
-      .from('sounds')
-      .download(props.trackToEdit.storage_path)
-    
-    if (downloadError) throw downloadError
-    if (!audioData) throw new Error('Failed to download audio file')
+    const audioData = await downloadAudioBlob(props.trackToEdit, supabase)
     
     // Analyze BPM
     const detectedBPM = await analyzeBPM(audioData)
@@ -906,12 +901,7 @@ const analyzeKeyForTrack = async () => {
   
   try {
     // Get the audio file from Supabase storage
-    const { data: audioData, error: downloadError } = await supabase.storage
-      .from('sounds')
-      .download(props.trackToEdit.storage_path)
-    
-    if (downloadError) throw downloadError
-    if (!audioData) throw new Error('Failed to download audio file')
+    const audioData = await downloadAudioBlob(props.trackToEdit, supabase)
     
     // Analyze Key
     const detectedKey = await analyzeKey(audioData)
@@ -1133,39 +1123,21 @@ const onSubmit = async () => {
     }
     // Handle file replacement if a new file was selected
     let newStoragePath: string | null = null
+    let newStorageProvider: 'r2' | null = null
     let newFileSize: number | null = null
     let newDuration: number | null = null
     
     if (newFile.value) {
-      // Generate new file path
-      const timestamp = Date.now()
-      const safeName = sanitizeStorageFilename(newFile.value.name)
-      const filePath = `${user.value.id}/${timestamp}-${safeName}`
-      
-      // Upload new file to storage
-      const { error: uploadError } = await supabase.storage
-        .from('sounds')
-        .upload(filePath, newFile.value, {
-          cacheControl: '3600',
-          upsert: false
-        })
-      
-      if (uploadError) {
-        throw new Error(`Failed to upload new file: ${uploadError.message}`)
-      }
-      
-      newStoragePath = filePath
+      const uploadResult = await uploadAudio(newFile.value, supabase)
+      newStoragePath = uploadResult.storage_path
+      newStorageProvider = uploadResult.storage_provider
       newFileSize = newFile.value.size
       newDuration = newFileDuration.value
       
-      // Delete old file if it exists
       if (props.trackToEdit.storage_path) {
-        const { error: deleteError } = await supabase.storage
-          .from('sounds')
-          .remove([props.trackToEdit.storage_path])
-        
-        // Don't fail if old file deletion fails (might already be deleted)
-        if (deleteError) {
+        try {
+          await deleteAudio(props.trackToEdit, supabase)
+        } catch (deleteError) {
           console.warn('Failed to delete old file:', deleteError)
         }
       }
@@ -1195,6 +1167,7 @@ const onSubmit = async () => {
     // Add file-related fields if file was replaced
     if (newFile.value) {
       updateData.storage_path = newStoragePath
+      updateData.storage_provider = newStorageProvider
       updateData.file_size = newFileSize
       if (newDuration !== null) {
         updateData.duration = newDuration
@@ -1288,11 +1261,7 @@ const handleDelete = async () => {
   try {
     // Delete from storage
     if (props.trackToEdit.storage_path) {
-      const { error: storageError } = await supabase.storage
-        .from('sounds')
-        .remove([props.trackToEdit.storage_path])
-      
-      if (storageError) throw storageError
+      await deleteAudio(props.trackToEdit, supabase)
     }
 
     if (props.trackToEdit.artwork_path) {

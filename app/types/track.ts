@@ -1,9 +1,12 @@
+export type StorageProvider = 'supabase' | 'r2'
+
 export interface Track {
   id: number
   user_id: string
   title: string
   artist: string
   storage_path: string
+  storage_provider?: StorageProvider
   artwork_path?: string | null
   duration: number
   version?: string

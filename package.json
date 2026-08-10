@@ -1,6 +1,6 @@
 {
   "name": "nuxt-app",
-  "version": "0.55.6",
+  "version": "0.56.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -17,6 +17,8 @@
     "diagnose:seo": "node scripts/diagnose-seo.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1106.0",
+    "@aws-sdk/s3-request-presigner": "^3.1106.0",
     "@ffmpeg/core": "^0.12.6",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",

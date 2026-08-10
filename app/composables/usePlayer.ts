@@ -10,6 +10,7 @@ import {
 import { useAuth } from '~/composables/useAuth'
 import { useAnalytics } from '~/composables/useAnalytics'
 import type { Track } from '~/types/track'
+import { getAudioCacheKey, getPlaybackUrl } from '~/utils/trackAudioStorage'
 
 interface PlayerState {
   currentTrack: Track | null
@@ -56,40 +57,26 @@ export function usePlayer() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Get signed URL from Supabase Storage with long-term caching
-  // Service worker handles caching the actual audio files (the main egress saver)
-  const getSignedUrl = async (filepath: string): Promise<string | null> => {
-    // Check cache first - cached URLs are still valid
-    const cached = signedUrlCache.value.get(filepath)
+  // Get playback URL from Supabase Storage or R2 with long-term caching
+  const getTrackPlaybackUrl = async (track: Pick<Track, 'id' | 'storage_path' | 'storage_provider'>): Promise<string | null> => {
+    const cacheKey = getAudioCacheKey(track)
+    const cached = signedUrlCache.value.get(cacheKey)
     if (cached && cached.expiry > Date.now()) {
       return cached.url
     }
 
     try {
-      // Request 24-hour expiry for signed URLs (longer cache period)
-      const { data, error } = await supabase.storage
-        .from('sounds')
-        .createSignedUrl(filepath, 86400) // 24 hours
+      const url = await getPlaybackUrl(track, supabase)
+      if (!url) return null
 
-      if (error) {
-        console.error('Error getting signed URL:', error)
-        return null
-      }
-
-      if (!data?.signedUrl) {
-        console.error('No signed URL returned for:', filepath)
-        return null
-      }
-
-      // Cache the URL for 23 hours (safe margin before expiry)
-      signedUrlCache.value.set(filepath, {
-        url: data.signedUrl,
-        expiry: Date.now() + (23 * 60 * 60 * 1000)
+      signedUrlCache.value.set(cacheKey, {
+        url,
+        expiry: Date.now() + (23 * 60 * 60 * 1000),
       })
 
-      return data.signedUrl
+      return url
     } catch (err) {
-      console.error('Error getting signed URL:', err)
+      console.error('Error getting playback URL:', err)
       return null
     }
   }
@@ -104,8 +91,8 @@ export function usePlayer() {
     }
 
     const nextTrack = queue.value[nextIndex]
-    if (nextTrack && !preloadedUrls.value.has(nextTrack.storage_path)) {
-      const url = await getSignedUrl(nextTrack.storage_path)
+    if (nextTrack && !preloadedUrls.value.has(getAudioCacheKey(nextTrack))) {
+      const url = await getTrackPlaybackUrl(nextTrack)
       if (url && typeof window !== 'undefined') {
         // Use link preload for audio
         const link = document.createElement('link')
@@ -113,7 +100,7 @@ export function usePlayer() {
         link.as = 'audio'
         link.href = url
         document.head.appendChild(link)
-        preloadedUrls.value.add(nextTrack.storage_path)
+        preloadedUrls.value.add(getAudioCacheKey(nextTrack))
       }
     }
   }
@@ -226,7 +213,7 @@ export function usePlayer() {
     
     // Load the track
     if (currentTrack.value) {
-      const url = await getSignedUrl(currentTrack.value.storage_path)
+      const url = await getTrackPlaybackUrl(currentTrack.value)
       if (url && audioElement.value) {
         audioElement.value.src = url
         audioElement.value.loop = false // Always false - we handle looping manually
@@ -309,7 +296,7 @@ export function usePlayer() {
     currentTime.value = 0
 
     if (currentTrack.value) {
-      const url = await getSignedUrl(currentTrack.value.storage_path)
+      const url = await getTrackPlaybackUrl(currentTrack.value)
       if (url && audioElement.value) {
         audioElement.value.src = url
         audioElement.value.loop = false // Always false - we handle looping manually
@@ -533,7 +520,7 @@ export function usePlayer() {
 
         // Don't auto-play on load, but load the track
         if (currentTrack.value && audioElement.value) {
-          const url = await getSignedUrl(currentTrack.value.storage_path)
+          const url = await getTrackPlaybackUrl(currentTrack.value)
           if (url) {
             audioElement.value.src = url
             audioElement.value.loop = false // Always false - we handle looping manually
@@ -654,11 +641,10 @@ export function usePlayer() {
     if (String(currentTrack.value.id) === String(updatedTrack.id)) {
       const oldPath = currentTrack.value.storage_path
       const newPath = updatedTrack.storage_path
+      const oldCacheKey = getAudioCacheKey(currentTrack.value)
       
-      
-      // Clear the signed URL cache for the old path
-      if (oldPath) {
-        signedUrlCache.value.delete(oldPath)
+      if (oldCacheKey) {
+        signedUrlCache.value.delete(oldCacheKey)
       }
       
       // Update the current track with new data
@@ -673,7 +659,10 @@ export function usePlayer() {
         const savedTime = audioElement.value.currentTime
         
         // Get new signed URL
-        const url = await getSignedUrl(newPath)
+        const url = await getTrackPlaybackUrl({
+          ...currentTrack.value,
+          ...updatedTrack,
+        })
         if (url) {
           audioElement.value.src = url
           audioElement.value.load()
