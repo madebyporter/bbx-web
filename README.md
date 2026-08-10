@@ -221,3 +221,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 - 0.56.1
   - Resource descriptions fall back to OpenAI generation from product name and creator when link meta is missing
   - Backfill script uses meta scrape first, then AI generation for remaining resources
+- 0.56.2
+  - Fixed GA4 gtag stub so config and page views actually send to Google Analytics

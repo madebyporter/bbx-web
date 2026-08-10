@@ -9,8 +9,10 @@ export default defineNuxtPlugin(() => {
   }
 
   window.dataLayer = window.dataLayer || []
-  window.gtag = function gtag(...args: unknown[]) {
-    window.dataLayer.push(args)
+  // gtag.js only processes queue entries that are Arguments objects (not Arrays).
+  // Rest-parameter arrays are ignored, so config/page_view never reach GA4.
+  window.gtag = function gtag(..._args: unknown[]) {
+    window.dataLayer.push(arguments)
   }
 
   window.gtag('js', new Date())
