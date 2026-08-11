@@ -251,3 +251,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 - 0.57.10
   - Fix post-login homepage stuck on skeleton by redirecting when auth becomes ready mid-page
   - Declare MasterDrawer `close` emit so SubmitResource close listener is valid
+- 0.57.11
+  - Publish A2A Agent Card at `/.well-known/agent-card.json` for agent-to-agent discovery
