@@ -255,3 +255,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Publish A2A Agent Card at `/.well-known/agent-card.json` for agent-to-agent discovery
 - 0.57.12
   - Publish Agent Skills discovery index at `/.well-known/agent-skills/index.json` (v0.2.0)
+- 0.57.13
+  - Publish Web Bot Auth JWKS at `/.well-known/http-message-signatures-directory` with Ed25519 key and request signing helper
