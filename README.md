@@ -240,3 +240,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Capabilities section adds hero-style HTML close-ups for music library, collections, and status/feedback
 - 0.57.5
   - Accept: text/markdown content negotiation for landing, resource detail, and producer library pages (curated markdown for agents)
+- 0.57.6
+  - Publish RFC 9727 API catalog at `/.well-known/api-catalog` with OpenAPI, docs, and health links
