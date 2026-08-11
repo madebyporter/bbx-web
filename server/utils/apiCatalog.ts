@@ -112,6 +112,27 @@ export function buildApiCatalogDocument() {
   }
 }
 
+/** RFC 8288 Link values for homepage agent discovery (root-relative). */
+export function buildHomepageLinkHeaderValue(): string {
+  const links = [
+    '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"',
+    '</.well-known/api-catalog>; rel="describedby"; type="application/linkset+json"',
+    ...API_CATALOG_ENTRIES.flatMap((entry) => {
+      const parts: string[] = []
+      for (const target of entry['service-desc']) {
+        const path = new URL(target.href).pathname
+        parts.push(`<${path}>; rel="service-desc"; type="${target.type}"`)
+      }
+      for (const target of entry['service-doc']) {
+        const path = new URL(target.href).pathname
+        parts.push(`<${path}>; rel="service-doc"; type="${target.type}"`)
+      }
+      return parts
+    }),
+  ]
+  return links.join(', ')
+}
+
 export function getApiCatalogEntry(id: string): ApiCatalogEntry | undefined {
   return API_CATALOG_ENTRIES.find((entry) => entry.id === id)
 }

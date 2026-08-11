@@ -242,3 +242,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Accept: text/markdown content negotiation for landing, resource detail, and producer library pages (curated markdown for agents)
 - 0.57.6
   - Publish RFC 9727 API catalog at `/.well-known/api-catalog` with OpenAPI, docs, and health links
+- 0.57.7
+  - Homepage Link response headers for agent discovery (api-catalog, describedby, service-desc, service-doc)

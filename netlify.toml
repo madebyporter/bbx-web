@@ -12,6 +12,12 @@
   targetPort = 3000
   port = 8888
 
+# Homepage agent discovery (RFC 8288 / RFC 9727) — covers prerendered `/` responses
+[[headers]]
+  for = "/"
+  [headers.values]
+    Link = '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json", </.well-known/api-catalog>; rel="describedby"; type="application/linkset+json", </openapi/support.json>; rel="service-desc"; type="application/json", </docs/api/support>; rel="service-doc"; type="text/markdown", </openapi/storage.json>; rel="service-desc"; type="application/json", </docs/api/storage>; rel="service-doc"; type="text/markdown", </openapi/resources.json>; rel="service-desc"; type="application/json", </docs/api/resources>; rel="service-doc"; type="text/markdown"'
+
 # Cache audio files from Supabase aggressively
 [[headers]]
   for = "https://*.supabase.co/storage/v1/object/public/sounds/*"
