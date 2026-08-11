@@ -1,0 +1,12 @@
+import { createError } from 'h3'
+import { buildAgentSkillsIndex } from '../../../utils/agentSkills'
+
+export default defineEventHandler((event) => {
+  if (event.method !== 'GET' && event.method !== 'HEAD') {
+    throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })
+  }
+
+  setHeader(event, 'Content-Type', 'application/json; charset=utf-8')
+  setHeader(event, 'Cache-Control', 'public, max-age=3600, s-maxage=3600')
+  return buildAgentSkillsIndex()
+})

@@ -253,3 +253,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Declare MasterDrawer `close` emit so SubmitResource close listener is valid
 - 0.57.11
   - Publish A2A Agent Card at `/.well-known/agent-card.json` for agent-to-agent discovery
+- 0.57.12
+  - Publish Agent Skills discovery index at `/.well-known/agent-skills/index.json` (v0.2.0)
