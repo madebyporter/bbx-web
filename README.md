@@ -248,3 +248,6 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Auth.md agent registration discovery with OAuth Protected Resource and Authorization Server metadata
 - 0.57.9
   - Publish OpenID Connect discovery at `/.well-known/openid-configuration` (issuer, token, JWKS, grants)
+- 0.57.10
+  - Fix post-login homepage stuck on skeleton by redirecting when auth becomes ready mid-page
+  - Declare MasterDrawer `close` emit so SubmitResource close listener is valid

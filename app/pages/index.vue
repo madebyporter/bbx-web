@@ -679,19 +679,33 @@ const runEntranceMotion = async () => {
   }
 }
 
+let redirecting = false
+
+const maybeRedirectLoggedInUser = async () => {
+  if (!isReady.value || !user.value || redirecting) return
+  redirecting = true
+  try {
+    await redirectLoggedInUser()
+  } finally {
+    redirecting = false
+  }
+}
+
 onMounted(async () => {
   await init()
   if (user.value) {
-    await redirectLoggedInUser()
+    await maybeRedirectLoggedInUser()
     return
   }
   await Promise.all([loadLatestSoftware(), runEntranceMotion()])
 })
 
-watch(isReady, async (ready) => {
-  if (!ready) return
-  if (user.value) {
-    await redirectLoggedInUser()
-  }
-})
+// Cover session restore and mid-page sign-in (isReady is often already true then)
+watch(
+  [isReady, user],
+  async ([ready, currentUser]) => {
+    if (!ready || !currentUser) return
+    await maybeRedirectLoggedInUser()
+  },
+)
 </script>

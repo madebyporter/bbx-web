@@ -33,7 +33,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-const emit = defineEmits(['update:show'])
+const emit = defineEmits(['update:show', 'close'])
 
 const modal = ref<HTMLElement | null>(null)
 const initialX = ref(100)
@@ -61,6 +61,7 @@ const animateOut = () => {
     ease: 'power2.in',
     onComplete: () => {
       emit('update:show', false)
+      emit('close')
       initialX.value = 100
       modalOpacity.value = 0
     }
