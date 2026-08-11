@@ -246,3 +246,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Homepage Link response headers for agent discovery (api-catalog, describedby, service-desc, service-doc)
 - 0.57.8
   - Auth.md agent registration discovery with OAuth Protected Resource and Authorization Server metadata
+- 0.57.9
+  - Publish OpenID Connect discovery at `/.well-known/openid-configuration` (issuer, token, JWKS, grants)

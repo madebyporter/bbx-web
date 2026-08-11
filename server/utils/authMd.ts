@@ -3,6 +3,7 @@ import { SITE_ORIGIN } from './apiCatalog'
 export const AUTH_MD_PATH = '/auth.md'
 export const OAUTH_PRM_PATH = '/.well-known/oauth-protected-resource'
 export const OAUTH_AS_PATH = '/.well-known/oauth-authorization-server'
+export const OIDC_DISCOVERY_PATH = '/.well-known/openid-configuration'
 export const AGENT_REGISTER_PATH = '/agent/auth'
 export const AGENT_CLAIM_PATH = '/agent/auth/claim'
 
@@ -39,11 +40,15 @@ export interface AuthorizationServerMetadata {
   authorization_endpoint: string
   token_endpoint: string
   revocation_endpoint: string
-  jwks_uri?: string
+  jwks_uri: string
+  userinfo_endpoint?: string
   response_types_supported: string[]
   grant_types_supported: string[]
   scopes_supported: string[]
+  subject_types_supported: string[]
+  id_token_signing_alg_values_supported: string[]
   token_endpoint_auth_methods_supported: string[]
+  claims_supported?: string[]
   agent_auth: {
     skill: string
     register_uri: string
@@ -60,7 +65,7 @@ export interface AuthorizationServerMetadata {
 export function buildAuthorizationServerMetadata(): AuthorizationServerMetadata {
   const supabaseAuth = supabaseAuthBase()
 
-  const metadata: AuthorizationServerMetadata = {
+  return {
     issuer: SITE_ORIGIN,
     authorization_endpoint: `${SITE_ORIGIN}/`,
     token_endpoint: supabaseAuth
@@ -69,14 +74,32 @@ export function buildAuthorizationServerMetadata(): AuthorizationServerMetadata 
     revocation_endpoint: supabaseAuth
       ? `${supabaseAuth}/logout`
       : `${SITE_ORIGIN}/oauth2/revoke`,
-    response_types_supported: ['code', 'token'],
+    jwks_uri: supabaseAuth
+      ? `${supabaseAuth}/.well-known/jwks.json`
+      : `${SITE_ORIGIN}/.well-known/jwks.json`,
+    userinfo_endpoint: supabaseAuth
+      ? `${supabaseAuth}/userinfo`
+      : `${SITE_ORIGIN}/oauth2/userinfo`,
+    response_types_supported: ['code', 'token', 'id_token'],
     grant_types_supported: [
       'password',
       'refresh_token',
       'authorization_code',
     ],
     scopes_supported: [...SCOPES_SUPPORTED],
+    subject_types_supported: ['public'],
+    id_token_signing_alg_values_supported: ['RS256', 'ES256', 'HS256'],
     token_endpoint_auth_methods_supported: ['none', 'client_secret_post'],
+    claims_supported: [
+      'sub',
+      'iss',
+      'aud',
+      'exp',
+      'iat',
+      'email',
+      'email_verified',
+      'name',
+    ],
     agent_auth: {
       skill: `${SITE_ORIGIN}${AUTH_MD_PATH}`,
       register_uri: `${SITE_ORIGIN}${AGENT_REGISTER_PATH}`,
@@ -89,12 +112,11 @@ export function buildAuthorizationServerMetadata(): AuthorizationServerMetadata 
       },
     },
   }
+}
 
-  if (supabaseAuth) {
-    metadata.jwks_uri = `${supabaseAuth}/.well-known/jwks.json`
-  }
-
-  return metadata
+/** OIDC Discovery 1.0 document (same core fields as RFC 8414 AS metadata). */
+export function buildOpenIdConfiguration() {
+  return buildAuthorizationServerMetadata()
 }
 
 export function buildAuthMdMarkdown(): string {
@@ -108,6 +130,7 @@ Beatbox supports agent registration discovery for AI agents acting on behalf of 
 - **Resource server:** \`${SITE_ORIGIN}\`
 - **Authorization server issuer:** \`${as.issuer}\`
 - **Protected Resource Metadata (OAuth):** \`${SITE_ORIGIN}${OAUTH_PRM_PATH}\`
+- **OpenID Connect discovery:** \`${SITE_ORIGIN}${OIDC_DISCOVERY_PATH}\`
 - **Authorization Server metadata:** \`${SITE_ORIGIN}${OAUTH_AS_PATH}\`
 - **API catalog:** \`${SITE_ORIGIN}/.well-known/api-catalog\`
 
@@ -119,7 +142,7 @@ Two-hop OAuth discovery:
 
 1. On \`401 Unauthorized\`, read \`WWW-Authenticate: Bearer resource_metadata="…"\` when present, otherwise fetch \`${SITE_ORIGIN}${OAUTH_PRM_PATH}\`.
 2. From PRM, read \`resource\`, \`authorization_servers\`, \`scopes_supported\`, and \`bearer_methods_supported\` (\`header\`).
-3. Fetch \`${SITE_ORIGIN}${OAUTH_AS_PATH}\` and read \`issuer\`, \`token_endpoint\`, \`grant_types_supported\`, and the \`agent_auth\` block (\`skill\`, \`register_uri\`, \`claim_uri\`, identity types).
+3. Fetch \`${SITE_ORIGIN}${OIDC_DISCOVERY_PATH}\` or \`${SITE_ORIGIN}${OAUTH_AS_PATH}\` and read \`issuer\`, \`authorization_endpoint\`, \`token_endpoint\`, \`jwks_uri\`, \`grant_types_supported\`, \`response_types_supported\`, and the \`agent_auth\` block (\`skill\`, \`register_uri\`, \`claim_uri\`, identity types).
 
 Current PRM summary:
 
