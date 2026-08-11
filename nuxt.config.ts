@@ -66,8 +66,8 @@ export default defineNuxtConfig({
       },
       viewport: 'width=device-width, initial-scale=1.0',
       // Use titleTemplate to allow pages to override title
-      titleTemplate: '%s | Beatbox',
-      title: 'Beatbox - A curated collection of music production tools.',
+      titleTemplate: '%s | Beatbox Studio',
+      title: 'Project management for music producers',
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
