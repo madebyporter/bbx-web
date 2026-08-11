@@ -257,3 +257,7 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Publish Agent Skills discovery index at `/.well-known/agent-skills/index.json` (v0.2.0)
 - 0.57.13
   - Publish Web Bot Auth JWKS at `/.well-known/http-message-signatures-directory` with Ed25519 key and request signing helper
+- 0.57.14
+  - Register WebMCP tools on page load via navigator.modelContext (search, navigate, catalog, API discovery)
+- 0.57.15
+  - Add `npm run publish:dns-aid` to publish DNS-AID HTTPS records (`_index._agents`, `_a2a._agents`) via Cloudflare API

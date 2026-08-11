@@ -112,7 +112,8 @@ export default defineNuxtConfig({
     '~/plugins/supabase.client.ts',
     '~/plugins/ga4.client.ts',
     '~/plugins/posthog.client.ts',
-    '~/plugins/service-worker.client.ts'
+    '~/plugins/service-worker.client.ts',
+    '~/plugins/webmcp.client.ts',
   ],
 
   // Set compatibility date and Netlify preset
