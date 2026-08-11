@@ -244,3 +244,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Publish RFC 9727 API catalog at `/.well-known/api-catalog` with OpenAPI, docs, and health links
 - 0.57.7
   - Homepage Link response headers for agent discovery (api-catalog, describedby, service-desc, service-doc)
+- 0.57.8
+  - Auth.md agent registration discovery with OAuth Protected Resource and Authorization Server metadata
