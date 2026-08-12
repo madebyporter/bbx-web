@@ -261,3 +261,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Register WebMCP tools on page load via navigator.modelContext (search, navigate, catalog, API discovery)
 - 0.57.15
   - Add `npm run publish:dns-aid` to publish DNS-AID HTTPS records (`_index._agents`, `_a2a._agents`) via Cloudflare API
+- 0.57.16
+  - Fix R2 browser uploads: disable SDK flexible checksums on presigned PUTs and add `npm run r2:set-cors` / dashboard CORS for localhost + production origins

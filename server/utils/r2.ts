@@ -50,6 +50,9 @@ export function getR2Client(config: R2Config = requireR2Config()): S3Client {
       accessKeyId: config.accessKeyId,
       secretAccessKey: config.secretAccessKey,
     },
+    // Browser PUTs to presigned URLs must not include SDK flexible-checksum
+    // query params (x-amz-checksum-crc32 / x-amz-sdk-checksum-algorithm).
+    requestChecksumCalculation: 'WHEN_REQUIRED',
   })
 }
 
@@ -65,7 +68,11 @@ export async function presignR2Upload(
     Key: key,
     ContentType: contentType,
   })
-  return getSignedUrl(client, command, { expiresIn })
+  return getSignedUrl(client, command, {
+    expiresIn,
+    // Require the browser to send the same Content-Type that was signed.
+    signableHeaders: new Set(['content-type']),
+  })
 }
 
 export async function presignR2Download(
