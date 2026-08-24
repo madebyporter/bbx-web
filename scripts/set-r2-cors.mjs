@@ -2,7 +2,7 @@
  * Apply browser CORS rules on the R2 bucket used for direct PUT uploads.
  *
  * Requires an R2 API token with Admin Read & Write (object-only keys get AccessDenied).
- * Or paste the same JSON in Cloudflare Dashboard → R2 → bbx-sounds → Settings → CORS Policy.
+ * Or paste the same JSON in Cloudflare Dashboard → R2 → your bucket → Settings → CORS Policy.
  *
  * Usage: node --env-file=.env scripts/set-r2-cors.mjs
  */

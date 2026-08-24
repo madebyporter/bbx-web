@@ -265,3 +265,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Fix R2 browser uploads: disable SDK flexible checksums on presigned PUTs and add `npm run r2:set-cors` / dashboard CORS for localhost + production origins
 - 0.57.17
   - Fix collection list and detail meta titles (`{username}'s Collections`, `{name} Collection by {username}`)
+- 0.57.18
+  - Remove hardcoded R2 bucket name from `scripts/set-r2-cors.mjs` so Netlify secrets scan can pass
