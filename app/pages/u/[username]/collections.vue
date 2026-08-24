@@ -235,6 +235,18 @@ const handleSearch = (query: string) => {
   searchQuery.value = query
 }
 
+// Set SEO meta title — titleTemplate adds "| Beatbox Studio"
+const usernameParam = route.params.username as string
+const seoTitle = computed(() =>
+  usernameParam ? `${usernameParam}'s Collections` : 'Collections'
+)
+
+useSeoMeta({
+  title: seoTitle,
+  ogTitle: seoTitle,
+  twitterTitle: seoTitle,
+})
+
 // Expose handleSearch for parent to call
 defineExpose({
   handleSearch

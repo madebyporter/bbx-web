@@ -586,11 +586,11 @@ const handleSearch = (query: string) => {
 const username = route.params.username as string
 
 // Calculate SEO values as computed properties
-// Note: titleTemplate in nuxt.config will add "| Beatbox" automatically
+// Note: titleTemplate in nuxt.config will add "| Beatbox Studio" automatically
 const seoTitle = computed(() => {
   const collectionForSEO = initialData.value?.collection || collection.value
   return collectionForSEO 
-    ? `${collectionForSEO.name} by ${username}`
+    ? `${collectionForSEO.name} Collection by ${username}`
     : `Collection by ${username}`
 })
 
