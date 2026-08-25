@@ -1,13 +1,17 @@
-/** Cache-bust query so social crawlers refetch after a failed/stale image scrape. */
-export const DEFAULT_OG_IMAGE_VERSION = '20260824'
+/**
+ * Static OG asset host.
+ * Custom domain (beatbox.studio) is Cloudflare-proxied; X's image crawler often
+ * fails there while HTML meta still works — producing the gray-icon summary card.
+ * Netlify's *.netlify.app origin serves the same file without Cloudflare.
+ */
+export const OG_IMAGE_ASSET_ORIGIN = 'https://beatboxstudio.netlify.app'
 
-export const DEFAULT_OG_IMAGE_TYPE = 'image/jpeg'
+export const DEFAULT_OG_IMAGE_TYPE = 'image/png'
 
 /**
  * Absolute default Open Graph / Twitter card image URL.
- * Bump DEFAULT_OG_IMAGE_VERSION when the asset changes or crawlers need a fresh fetch.
+ * Served from Netlify origin so Twitterbot is not blocked by Cloudflare.
  */
-export function getDefaultOgImageUrl(siteOrigin = 'https://beatbox.studio'): string {
-  const base = siteOrigin.replace(/\/$/, '')
-  return `${base}/img/og-image.jpg?v=${DEFAULT_OG_IMAGE_VERSION}`
+export function getDefaultOgImageUrl(_siteOrigin?: string): string {
+  return `${OG_IMAGE_ASSET_ORIGIN}/og.png`
 }

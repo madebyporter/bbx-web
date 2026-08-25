@@ -269,3 +269,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Remove hardcoded R2 bucket name from `scripts/set-r2-cors.mjs` so Netlify secrets scan can pass
 - 0.57.19
   - Cache-bust default OG/Twitter image URL and allow Twitterbot so X link previews can show the large card
+- 0.57.20
+  - Serve default OG/Twitter image from Netlify origin (bypass Cloudflare) as `/og.png` so X can fetch the card image
