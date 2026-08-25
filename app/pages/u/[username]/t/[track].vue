@@ -539,13 +539,14 @@ useHead({
     { property: 'og:description', content: seoDescriptionValue },
     { property: 'og:url', content: seoUrlValue },
     { property: 'og:type', content: 'music.song' },
-    { property: 'og:image', content: `${siteUrl}/img/og-image.jpg` },
+    { property: 'og:image', content: getDefaultOgImageUrl(siteUrl) },
+    { property: 'og:image:type', content: DEFAULT_OG_IMAGE_TYPE },
     { property: 'og:image:width', content: '1200' },
     { property: 'og:image:height', content: '630' },
     { name: 'twitter:card', content: 'summary_large_image' },
     { name: 'twitter:title', content: seoTitleValue },
     { name: 'twitter:description', content: seoDescriptionValue },
-    { name: 'twitter:image', content: `${siteUrl}/img/og-image.jpg` }
+    { name: 'twitter:image', content: getDefaultOgImageUrl(siteUrl) }
   ],
   link: [
     { rel: 'canonical', href: seoUrlValue }

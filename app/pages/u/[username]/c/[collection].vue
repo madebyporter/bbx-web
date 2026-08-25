@@ -620,13 +620,14 @@ useSeoMeta({
   ogDescription: seoDescription,
   ogUrl: seoUrl,
   ogType: 'music.playlist',
-  ogImage: `${siteUrl}/img/og-image.jpg`,
+  ogImage: getDefaultOgImageUrl(siteUrl),
+  ogImageType: DEFAULT_OG_IMAGE_TYPE,
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
   twitterTitle: seoTitle,
   twitterDescription: seoDescription,
-  twitterImage: `${siteUrl}/img/og-image.jpg`
+  twitterImage: getDefaultOgImageUrl(siteUrl)
 })
 
 useHead({

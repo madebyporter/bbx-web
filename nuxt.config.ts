@@ -1,4 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
+import { DEFAULT_OG_IMAGE_TYPE, getDefaultOgImageUrl } from './app/utils/ogImage'
+
+const defaultOgImageUrl = getDefaultOgImageUrl('https://beatbox.studio')
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -80,7 +83,8 @@ export default defineNuxtConfig({
         // NOTE: og:title, og:description removed - pages must set their own
         { property: 'og:site_name', content: 'Beatbox' },
         // og:image kept as fallback, but pages can override with same key
-        { property: 'og:image', content: 'https://beatbox.studio/img/og-image.jpg', key: 'og-image' },
+        { property: 'og:image', content: defaultOgImageUrl, key: 'og-image' },
+        { property: 'og:image:type', content: DEFAULT_OG_IMAGE_TYPE },
         { property: 'og:image:width', content: '1200' },
         { property: 'og:image:height', content: '630' },
         { property: 'og:image:alt', content: 'Beatbox - A curated collection of music production tools' },
@@ -89,7 +93,7 @@ export default defineNuxtConfig({
         // NOTE: twitter:title, twitter:description removed - pages must set their own
         { name: 'twitter:card', content: 'summary_large_image' },
         // twitter:image kept as fallback, but pages can override with same key
-        { name: 'twitter:image', content: 'https://beatbox.studio/img/og-image.jpg', key: 'twitter-image' },
+        { name: 'twitter:image', content: defaultOgImageUrl, key: 'twitter-image' },
         { name: 'twitter:image:alt', content: 'Beatbox - A curated collection of music production tools' },
         { name: 'twitter:site', content: '@beatboxstudio' }
       ],

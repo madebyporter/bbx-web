@@ -297,7 +297,7 @@ useHead(() => {
   const url = `${siteUrl}${route.path}`
   const image = currentResource.image_url
     ? getImageUrl(currentResource.image_url)
-    : `${siteUrl}/img/og-image.jpg`
+    : getDefaultOgImageUrl(siteUrl)
 
   const structuredData: Record<string, unknown> = {
     '@context': 'https://schema.org',
@@ -335,6 +335,13 @@ useHead(() => {
       { property: 'og:url', content: url },
       { property: 'og:type', content: 'website' },
       { property: 'og:image', content: image },
+      ...(currentResource.image_url
+        ? []
+        : [
+            { property: 'og:image:type', content: DEFAULT_OG_IMAGE_TYPE },
+            { property: 'og:image:width', content: '1200' },
+            { property: 'og:image:height', content: '630' },
+          ]),
       { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:title', content: title },
       { name: 'twitter:description', content: description },

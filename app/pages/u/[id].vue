@@ -1802,13 +1802,14 @@ useHead({
     { property: 'og:description', content: seoDescription },
     { property: 'og:url', content: seoUrl },
     { property: 'og:type', content: 'profile' },
-    { property: 'og:image', content: `${siteUrl}/img/og-image.jpg` },
+    { property: 'og:image', content: getDefaultOgImageUrl(siteUrl) },
+    { property: 'og:image:type', content: DEFAULT_OG_IMAGE_TYPE },
     { property: 'og:image:width', content: '1200' },
     { property: 'og:image:height', content: '630' },
     { name: 'twitter:card', content: 'summary_large_image' },
     { name: 'twitter:title', content: seoTitle },
     { name: 'twitter:description', content: seoDescription },
-    { name: 'twitter:image', content: `${siteUrl}/img/og-image.jpg` }
+    { name: 'twitter:image', content: getDefaultOgImageUrl(siteUrl) }
   ],
   link: [
     { rel: 'canonical', href: seoUrl, key: 'canonical' }
