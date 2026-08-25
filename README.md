@@ -271,3 +271,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Cache-bust default OG/Twitter image URL and allow Twitterbot so X link previews can show the large card
 - 0.57.20
   - Serve default OG/Twitter image from Netlify origin (bypass Cloudflare) as `/og.png` so X can fetch the card image
+- 0.57.21
+  - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots

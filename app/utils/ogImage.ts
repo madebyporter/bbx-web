@@ -1,17 +1,15 @@
 /**
- * Static OG asset host.
- * Custom domain (beatbox.studio) is Cloudflare-proxied; X's image crawler often
- * fails there while HTML meta still works — producing the gray-icon summary card.
- * Netlify's *.netlify.app origin serves the same file without Cloudflare.
+ * OG/Twitter card image hosted on jsDelivr (GitHub), not beatbox.studio.
+ * Custom domain is Cloudflare-proxied; X often scrapes title/description but fails
+ * the image fetch (gray placeholder). jsDelivr is crawler-friendly with CORP/CORS.
  */
-export const OG_IMAGE_ASSET_ORIGIN = 'https://beatboxstudio.netlify.app'
+export const OG_IMAGE_ASSET_ORIGIN = 'https://cdn.jsdelivr.net/gh/madebyporter/bbx-web@main'
 
 export const DEFAULT_OG_IMAGE_TYPE = 'image/png'
 
 /**
  * Absolute default Open Graph / Twitter card image URL.
- * Served from Netlify origin so Twitterbot is not blocked by Cloudflare.
  */
 export function getDefaultOgImageUrl(_siteOrigin?: string): string {
-  return `${OG_IMAGE_ASSET_ORIGIN}/og.png`
+  return `${OG_IMAGE_ASSET_ORIGIN}/public/og.png`
 }

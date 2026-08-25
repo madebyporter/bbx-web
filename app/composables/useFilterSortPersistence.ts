@@ -74,6 +74,19 @@ export function useFilterSortCookie(context: FilterSortContext) {
     maxAge: COOKIE_MAX_AGE,
     sameSite: 'lax',
     default: () => null,
+    // Avoid Set-Cookie: undefined when JSON.stringify(undefined) returns undefined
+    encode: (value) => {
+      if (value == null) return ''
+      return JSON.stringify(value)
+    },
+    decode: (value) => {
+      if (!value) return null
+      try {
+        return JSON.parse(value) as FilterSortParams
+      } catch {
+        return null
+      }
+    },
   })
 }
 

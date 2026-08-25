@@ -91,7 +91,12 @@ export function usePlayer() {
   })
 
   const syncPlayerChromeCookie = () => {
-    playerChromeCookie.value = hasEverHadTrack.value ? '1' : null
+    // Only write a real value; clearing via null can emit Set-Cookie: undefined on SSR
+    if (hasEverHadTrack.value) {
+      playerChromeCookie.value = '1'
+    } else if (playerChromeCookie.value != null) {
+      playerChromeCookie.value = null
+    }
   }
 
   // Expose cookie for Player chrome visibility during SSR (do not mutate shared module flags on server)
