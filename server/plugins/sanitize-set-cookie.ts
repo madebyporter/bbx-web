@@ -1,29 +1,46 @@
 /**
- * Strip invalid Set-Cookie headers (literal "undefined") that Nuxt/useCookie can emit
- * during SSR. Malformed Set-Cookie confuses some crawlers including Twitterbot.
+ * Strip invalid Set-Cookie headers (literal "undefined") emitted during Nuxt SSR.
+ * Runs on both render:response and beforeResponse — Netlify/Nitro can attach
+ * cookies via either path, and a malformed header confuses social crawlers.
  */
+function cleanSetCookieHeader(value: string | number | string[] | undefined): string[] | null {
+  if (value == null) return null
+  const values = Array.isArray(value) ? value : [value]
+  const cleaned = values
+    .map((v) => String(v).trim())
+    .filter((v) => {
+      if (!v || v === 'undefined' || v === 'null') return false
+      return v.includes('=')
+    })
+  return cleaned
+}
+
 export default defineNitroPlugin((nitroApp) => {
-  nitroApp.hooks.hook('beforeResponse', (event) => {
-    const raw = event.node.res.getHeader('set-cookie')
-    if (raw == null) return
-
-    const values = Array.isArray(raw) ? raw : [raw]
-    const cleaned = values
-      .map((v) => String(v))
-      .filter((v) => {
-        const trimmed = v.trim()
-        if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return false
-        // Real cookies are name=value; reject header values with no "="
-        return trimmed.includes('=')
-      })
-
-    if (cleaned.length === 0) {
-      event.node.res.removeHeader('set-cookie')
-      return
+  nitroApp.hooks.hook('render:response', (response) => {
+    if (!response?.headers) return
+    const headers = response.headers as Record<string, string | string[] | undefined>
+    const key = Object.keys(headers).find((k) => k.toLowerCase() === 'set-cookie')
+    if (!key) return
+    const cleaned = cleanSetCookieHeader(headers[key])
+    if (!cleaned || cleaned.length === 0) {
+      delete headers[key]
+    } else {
+      headers[key] = cleaned.length === 1 ? cleaned[0]! : cleaned
     }
+  })
 
-    if (cleaned.length !== values.length) {
-      event.node.res.setHeader('set-cookie', cleaned)
+  nitroApp.hooks.hook('beforeResponse', (event) => {
+    try {
+      const raw = getResponseHeader(event, 'set-cookie')
+      const cleaned = cleanSetCookieHeader(raw as string | string[] | undefined)
+      if (cleaned == null) return
+      if (cleaned.length === 0) {
+        removeResponseHeader(event, 'set-cookie')
+        return
+      }
+      setResponseHeader(event, 'set-cookie', cleaned)
+    } catch {
+      // ignore — never block responses
     }
   })
 })
