@@ -35,6 +35,7 @@
               <th class="p-4">Name</th>
               <th class="p-4">Description</th>
               <th class="p-4">Tracks</th>
+              <th class="p-4 w-0"></th>
             </tr>
           </thead>
           <tbody>
@@ -73,11 +74,35 @@
               <td class="p-4 text-neutral-400">
                 {{ collection.sound_count || 0 }}
               </td>
+              <td class="p-4 w-0">
+                <Button
+                  v-if="isOwnProfile && !collection.is_shared"
+                  variant="ghost"
+                  size="sm"
+                  class="!p-0 text-neutral-400 hover:text-neutral-200"
+                  title="Collection settings"
+                  @click="openCollectionSettings(collection)"
+                >
+                  <Settings class="w-5 h-5" />
+                </Button>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
     </template>
+
+    <CollectionSettingsDrawer
+      v-if="selectedCollection"
+      v-model:show="showSettingsDrawer"
+      :collection-id="selectedCollection.id"
+      :collection-name="selectedCollection.name"
+      :collection-slug="selectedCollection.slug"
+      :collection-artwork-path="selectedCollection.artwork_path"
+      :collection-artwork-provider="selectedCollection.artwork_provider"
+      @collection-updated="handleCollectionUpdated"
+      @collection-deleted="handleCollectionDeleted"
+    />
   </div>
 </template>
 
@@ -87,6 +112,9 @@ import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
+import CollectionSettingsDrawer from '~/components/CollectionSettingsDrawer.vue'
+import Button from '~/components/Button.vue'
+import { Settings } from '@iconoir/vue'
 import { usePageShellReady } from '~/composables/usePageShellReady'
 import { prefetchArtworkUrls } from '~/composables/useArtworkUrlCache'
 
@@ -104,6 +132,8 @@ const loading = ref(true)
 const profileUserId = ref<string | null>(null)
 const username = ref('')
 const searchQuery = ref('')
+const showSettingsDrawer = ref(false)
+const selectedCollection = ref<any | null>(null)
 
 const pageShellReady = computed(() => !loading.value)
 usePageShellReady(pageShellReady)
@@ -260,6 +290,51 @@ const fetchCollections = async () => {
 
 const handleSearch = (query: string) => {
   searchQuery.value = query
+}
+
+const openCollectionSettings = (collection: any) => {
+  selectedCollection.value = collection
+  showSettingsDrawer.value = true
+}
+
+const handleCollectionUpdated = (
+  newName: string,
+  newSlug: string,
+  artworkPath: string | null = null,
+  artworkProvider: string | null = null,
+) => {
+  if (!selectedCollection.value) return
+
+  const collectionId = selectedCollection.value.id
+  const index = collections.value.findIndex((collection) => collection.id === collectionId)
+
+  if (index >= 0) {
+    collections.value[index] = {
+      ...collections.value[index],
+      name: newName,
+      slug: newSlug,
+      artwork_path: artworkPath,
+      artwork_provider: artworkProvider,
+    }
+  }
+
+  selectedCollection.value = {
+    ...selectedCollection.value,
+    name: newName,
+    slug: newSlug,
+    artwork_path: artworkPath,
+    artwork_provider: artworkProvider,
+  }
+}
+
+const handleCollectionDeleted = () => {
+  if (!selectedCollection.value) return
+
+  collections.value = collections.value.filter(
+    (collection) => collection.id !== selectedCollection.value.id,
+  )
+  selectedCollection.value = null
+  showSettingsDrawer.value = false
 }
 
 // Set SEO meta title — titleTemplate adds "| Beatbox Studio"
