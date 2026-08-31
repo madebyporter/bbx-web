@@ -30,44 +30,28 @@
       </div>
 
       <!-- Section Toggles -->
-      <div class="flex flex-row gap-2 items-center">
-        <div
-          @click="toggleBioSection"
-          class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
-          :class="bioSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+      <PanelNav>
+        <PanelNavItem :active="bioSectionOpen" @click="toggleBioSection">
           Bio
-        </div>
-        <div
-          @click="toggleCollectionsSection"
-          class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
-          :class="collectionsSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+        </PanelNavItem>
+        <PanelNavItem :active="collectionsSectionOpen" @click="toggleCollectionsSection">
           Collections
-        </div>
-        <div
-          @click="toggleSoftwareSection"
-          class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
-          :class="softwareSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+        </PanelNavItem>
+        <PanelNavItem :active="softwareSectionOpen" @click="toggleSoftwareSection">
           Software
-        </div>
-        <div
-          @click="toggleMusicSection"
-          class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
-          :class="musicSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+        </PanelNavItem>
+        <PanelNavItem :active="musicSectionOpen" @click="toggleMusicSection">
           Music
-        </div>
-        <div
+        </PanelNavItem>
+        <PanelNavItem
           v-if="isOwnProfile"
-          role="button"
-          tabindex="0"
+          :active="showLibrarySettingsDrawer"
           aria-label="Library settings"
-          class="h-9 rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
-          :class="showLibrarySettingsDrawer ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'"
           @click="showLibrarySettingsDrawer = true"
-          @keyup.enter="showLibrarySettingsDrawer = true"
         >
           <Settings class="w-3.5 h-3.5" />
-        </div>
-      </div>
+        </PanelNavItem>
+      </PanelNav>
     </div>
 
     <!-- Bio Section -->
