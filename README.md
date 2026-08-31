@@ -273,3 +273,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Serve default OG/Twitter image from Netlify origin (bypass Cloudflare) as `/og.png` so X can fetch the card image
 - 0.57.21
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
+- 0.57.22
+  - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination

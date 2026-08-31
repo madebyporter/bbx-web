@@ -1,9 +1,6 @@
 <template>
-  <!-- Logged-in users redirect to library; keep shell quiet while navigating -->
-  <PageContentSkeleton v-if="user" />
-
   <div
-    v-else
+    v-if="!user"
     ref="landingRoot"
     class="col-span-full max-w-full lg:max-w-none flex flex-col text-neutral-300"
   >
@@ -406,7 +403,6 @@ import { computed, inject, nextTick, onMounted, ref, watch } from 'vue'
 import { navigateTo } from '#app'
 import gsap from 'gsap'
 import Button from '~/components/Button.vue'
-import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
 import { useAuth } from '~/composables/useAuth'
 import { useAnalytics } from '~/composables/useAnalytics'
 import { usePageShellReady } from '~/composables/usePageShellReady'
@@ -437,8 +433,8 @@ const howHeading = ref<HTMLElement | null>(null)
 const howStepsEls = ref<HTMLElement[]>([])
 const finalCta = ref<HTMLElement | null>(null)
 
-/** Shell ready for anon landing immediately; logged-in users stay in loading until redirect */
-const pageShellReady = computed(() => !user.value)
+/** Unlock search chrome only once auth is known and the visitor homepage may paint */
+const pageShellReady = computed(() => isReady.value && !user.value)
 usePageShellReady(pageShellReady)
 
 const trackHomepageCta = (
