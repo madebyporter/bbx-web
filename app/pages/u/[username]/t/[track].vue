@@ -62,25 +62,17 @@
       <!-- Playback Section -->
       <div class="p-4 border-b border-neutral-800">
         <div class="flex items-center gap-4">
-          <div :class="['flex-1 grid grid-cols-1 gap-4 text-sm', trackArtworkUrl ? 'lg:grid-cols-3' : 'lg:grid-cols-2']">
-            <div v-if="trackArtworkUrl" class="flex justify-center lg:justify-start">
-              <div class="size-40 rounded-sm overflow-hidden bg-neutral-800">
-                <video
-                  v-if="trackArtworkIsVideo"
-                  :src="trackArtworkUrl"
-                  autoplay
-                  muted
-                  loop
-                  playsinline
-                  class="size-full object-cover"
-                />
-                <img
-                  v-else
-                  :src="trackArtworkUrl"
-                  :alt="`${track.title || 'Track'} artwork`"
-                  class="size-full object-cover"
-                />
-              </div>
+          <div :class="['flex-1 grid grid-cols-1 gap-4 text-sm', track?.artwork_path ? 'lg:grid-cols-3' : 'lg:grid-cols-2']">
+            <div v-if="track?.artwork_path" class="flex justify-center lg:justify-start">
+              <ArtworkMedia
+                :path="track.artwork_path"
+                :provider="track.artwork_provider"
+                :entity-id="track.id"
+                kind="track"
+                size-class="size-40"
+                wrapper-class="bg-neutral-800"
+                :alt="`${track.title || 'Track'} artwork`"
+              />
             </div>
 
             <div class="flex flex-col gap-4">
@@ -156,7 +148,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import { usePlayer } from '~/composables/usePlayer'
 import { useToast } from '~/composables/useToast'
-import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
+import ArtworkMedia from '~/components/ArtworkMedia.vue'
 import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
 import { usePageShellReady } from '~/composables/usePageShellReady'
 import { recordPageView, setPlaybackContext } from '~/composables/useTrackAnalytics'
@@ -170,7 +162,6 @@ const { user } = useAuth()
 const { supabase } = useSupabase()
 const { loadQueue, currentTrack, isPlaying, togglePlayPause } = usePlayer()
 const { showSuccess, showError } = useToast()
-const { getArtworkUrl } = useArtwork()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
 
@@ -279,9 +270,6 @@ const track = computed(() => trackData.value)
 
 const pageShellReady = computed(() => !loading.value)
 usePageShellReady(pageShellReady)
-
-const trackArtworkUrl = computed(() => getArtworkUrl(track.value?.artwork_path))
-const trackArtworkIsVideo = computed(() => isVideoArtwork(track.value?.artwork_path))
 
 const isOwnProfile = computed(() => {
   return !!(user.value && profileUserId.value && user.value.id === profileUserId.value)

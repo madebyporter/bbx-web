@@ -357,6 +357,121 @@ export function buildOpenApiSpec(id: ApiCatalogId) {
             },
           },
         },
+        '/api/storage/presign-artwork-upload': {
+          post: {
+            operationId: 'presignArtworkUpload',
+            summary: 'Create a presigned R2 upload URL for track or collection artwork',
+            security: bearerSecurity(),
+            requestBody: {
+              required: true,
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['filename', 'kind'],
+                    properties: {
+                      filename: { type: 'string' },
+                      contentType: { type: 'string' },
+                      kind: { type: 'string', enum: ['track', 'collection'] },
+                      collectionId: { oneOf: [{ type: 'integer' }, { type: 'string' }] },
+                    },
+                  },
+                },
+              },
+            },
+            responses: {
+              '200': { description: 'Presigned artwork upload details' },
+              '401': { description: 'Authentication required' },
+            },
+          },
+        },
+        '/api/storage/presign-artwork-play': {
+          post: {
+            operationId: 'presignArtworkPlay',
+            summary: 'Create a presigned R2 artwork URL for a track or collection',
+            requestBody: {
+              required: true,
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['kind'],
+                    properties: {
+                      kind: { type: 'string', enum: ['track', 'collection'] },
+                      trackId: { oneOf: [{ type: 'integer' }, { type: 'string' }] },
+                      collectionId: { oneOf: [{ type: 'integer' }, { type: 'string' }] },
+                    },
+                  },
+                },
+              },
+            },
+            responses: {
+              '200': { description: 'Presigned artwork URL' },
+              '404': { description: 'Artwork not found' },
+            },
+          },
+        },
+        '/api/storage/presign-artwork-batch': {
+          post: {
+            operationId: 'presignArtworkBatch',
+            summary: 'Batch presign artwork URLs for visible tracks or collections',
+            requestBody: {
+              required: true,
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['items'],
+                    properties: {
+                      items: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            kind: { type: 'string', enum: ['track', 'collection'] },
+                            id: { oneOf: [{ type: 'integer' }, { type: 'string' }] },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            responses: {
+              '200': { description: 'Map of entity keys to presigned artwork URLs' },
+            },
+          },
+        },
+        '/api/storage/delete-artwork-object': {
+          post: {
+            operationId: 'deleteArtworkObject',
+            summary: 'Delete an R2 artwork object owned by the caller',
+            security: bearerSecurity(),
+            requestBody: {
+              required: true,
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['kind', 'path'],
+                    properties: {
+                      kind: { type: 'string', enum: ['track', 'collection'] },
+                      path: { type: 'string' },
+                      trackId: { oneOf: [{ type: 'integer' }, { type: 'string' }] },
+                      collectionId: { oneOf: [{ type: 'integer' }, { type: 'string' }] },
+                    },
+                  },
+                },
+              },
+            },
+            responses: {
+              '200': { description: 'Artwork object deleted' },
+              '401': { description: 'Authentication required' },
+              '403': { description: 'Forbidden' },
+            },
+          },
+        },
       },
     }
   }

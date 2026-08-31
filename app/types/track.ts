@@ -8,6 +8,7 @@ export interface Track {
   storage_path: string
   storage_provider?: StorageProvider
   artwork_path?: string | null
+  artwork_provider?: StorageProvider
   duration: number
   version?: string
   genre?: string

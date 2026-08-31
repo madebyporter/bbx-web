@@ -327,7 +327,7 @@ const emit = defineEmits<{
   'update:show': [value: boolean]
 }>()
 
-const { getArtworkUrl, validateAndProcessArtwork } = useArtwork()
+const { getArtworkUrl, validateAndProcessArtwork, resolveArtworkUrlForEntity } = useArtwork()
 const { generateTrackVideo, isGenerating } = useTrackVideoGenerator()
 const { supabase } = useSupabase()
 const { showError, showSuccess } = useToast()
@@ -522,7 +522,14 @@ async function loadTrackArtwork() {
     return
   }
 
-  const url = getArtworkUrl(props.track.artwork_path)
+  const url = await resolveArtworkUrlForEntity(
+    {
+      id: props.track.id,
+      artwork_path: props.track.artwork_path,
+      artwork_provider: props.track.artwork_provider,
+    },
+    'track',
+  )
   if (!url) return
 
   try {

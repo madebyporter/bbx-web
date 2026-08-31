@@ -1,26 +1,16 @@
 <template>
   <div class="flex flex-row justify-between items-center gap-4 py-2 px-4 lg:py-4 border-b border-neutral-800">
     <div class="flex flex-row items-center gap-4 min-w-0 overflow-auto">
-      <div
+      <ArtworkMedia
         v-if="showArtwork"
-        class="size-20 rounded-sm overflow-hidden bg-neutral-700 shrink-0"
-      >
-        <video
-          v-if="artworkUrl && artworkIsVideo"
-          :src="artworkUrl"
-          autoplay
-          muted
-          loop
-          playsinline
-          class="size-full object-cover"
-        />
-        <img
-          v-else-if="artworkUrl"
-          :src="artworkUrl"
-          :alt="`${title} artwork`"
-          class="size-full object-cover"
-        />
-      </div>
+        :path="artworkPath"
+        :provider="artworkProvider"
+        :entity-id="artworkEntityId"
+        kind="collection"
+        :preview-url="artworkUrl"
+        size-class="size-20"
+        :alt="`${title} artwork`"
+      />
       <div class="flex flex-col overflow-auto min-w-0">
         <h1 class="text-xl lg:text-3xl font-bold truncate">{{ title }}</h1>
         <p v-if="description" class="text-neutral-400 text-sm mt-1 truncate">
@@ -118,6 +108,7 @@
 <script setup lang="ts">
 import { StatsReport, Xmark } from '@iconoir/vue'
 import { useAnalytics } from '~/composables/useAnalytics'
+import ArtworkMedia from '~/components/ArtworkMedia.vue'
 
 const props = withDefaults(defineProps<{
   title: string
@@ -135,8 +126,10 @@ const props = withDefaults(defineProps<{
   analyticsPage?: 'profile' | 'collection'
   showClearFilters?: boolean
   showArtwork?: boolean
+  artworkPath?: string | null
+  artworkProvider?: string | null
+  artworkEntityId?: number | null
   artworkUrl?: string | null
-  artworkIsVideo?: boolean
 }>(), {
   itemLabel: 'track',
   showViewModeSelector: true,
@@ -147,8 +140,10 @@ const props = withDefaults(defineProps<{
   analyticsPage: 'profile',
   showClearFilters: false,
   showArtwork: false,
+  artworkPath: null,
+  artworkProvider: null,
+  artworkEntityId: null,
   artworkUrl: null,
-  artworkIsVideo: false,
 })
 
 const { capture } = useAnalytics()

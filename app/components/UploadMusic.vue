@@ -933,11 +933,14 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
   }
 
   let artworkPath: string | null = null
+  let artworkProvider: 'r2' | null = null
   
   try {
     if (fileData.artworkFile) {
       fileData.progress = 5
-      artworkPath = await uploadArtwork(fileData.artworkFile, user.value.id)
+      const uploadedArtwork = await uploadArtwork(fileData.artworkFile, 'track')
+      artworkPath = uploadedArtwork.artwork_path
+      artworkProvider = uploadedArtwork.artwork_provider
     }
 
     fileData.progress = 10
@@ -966,6 +969,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         storage_path: filePath,
         storage_provider: uploadResult.storage_provider,
         artwork_path: artworkPath,
+        artwork_provider: artworkProvider,
         title: fileData.metadata.title || null,
         artist: fileData.metadata.artist || null,
         version: fileData.metadata.version || 'v1.0',
@@ -1019,6 +1023,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         storage_path: filePath,
         storage_provider: uploadResult.storage_provider,
         artwork_path: artworkPath,
+        artwork_provider: artworkProvider,
         duration: fileData.duration || 0,
         version: fileData.metadata.version || 'v1.0',
         genre: fileData.metadata.genre || null,
@@ -1034,7 +1039,13 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
   } catch (error: any) {
     console.error('Upload error:', error)
     if (artworkPath) {
-      await deleteArtwork(artworkPath)
+      await deleteArtwork(
+        {
+          artwork_path: artworkPath,
+          artwork_provider: artworkProvider,
+        },
+        'track',
+      )
     }
     fileData.error = error.message || 'Upload failed'
     showError(`Failed to upload "${fileData.metadata.title}": ${error.message || 'Unknown error'}`)

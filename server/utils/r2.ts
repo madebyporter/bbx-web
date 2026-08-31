@@ -15,14 +15,21 @@ export interface R2Config {
   endpoint: string
 }
 
-export function readR2Env(): R2Config | null {
+export type ArtworkKind = 'track' | 'collection'
+
+function readR2Credentials() {
   const accountId = process.env.R2_ACCOUNT_ID?.trim() || ''
   const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim() || ''
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim() || ''
-  const bucket = process.env.R2_BUCKET?.trim() || ''
   const endpoint =
     process.env.R2_ENDPOINT?.trim() ||
     (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : '')
+
+  return { accountId, accessKeyId, secretAccessKey, endpoint }
+}
+
+export function readR2Env(bucket = process.env.R2_BUCKET?.trim() || ''): R2Config | null {
+  const { accountId, accessKeyId, secretAccessKey, endpoint } = readR2Credentials()
 
   if (!accessKeyId || !secretAccessKey || !bucket || !endpoint) {
     return null
@@ -31,8 +38,31 @@ export function readR2Env(): R2Config | null {
   return { accountId, accessKeyId, secretAccessKey, bucket, endpoint }
 }
 
-export function requireR2Config(): R2Config {
-  const config = readR2Env()
+export function readTrackArtworkBucket(): string {
+  return process.env.R2_TRACK_ARTWORK_BUCKET?.trim() || ''
+}
+
+export function readCollectionArtworkBucket(): string {
+  return process.env.R2_COLLECTION_ARTWORK_BUCKET?.trim() || ''
+}
+
+export function readArtworkBucket(kind: ArtworkKind): string {
+  const bucket =
+    kind === 'track' ? readTrackArtworkBucket() : readCollectionArtworkBucket()
+
+  if (!bucket) {
+    throw createError({
+      statusCode: 503,
+      statusMessage: `R2 artwork bucket is not configured for ${kind}`,
+    })
+  }
+
+  return bucket
+}
+
+export function requireR2Config(bucket?: string): R2Config {
+  const resolvedBucket = bucket || process.env.R2_BUCKET?.trim() || ''
+  const config = readR2Env(resolvedBucket)
   if (!config) {
     throw createError({
       statusCode: 503,
@@ -50,8 +80,6 @@ export function getR2Client(config: R2Config = requireR2Config()): S3Client {
       accessKeyId: config.accessKeyId,
       secretAccessKey: config.secretAccessKey,
     },
-    // Browser PUTs to presigned URLs must not include SDK flexible-checksum
-    // query params (x-amz-checksum-crc32 / x-amz-sdk-checksum-algorithm).
     requestChecksumCalculation: 'WHEN_REQUIRED',
   })
 }
@@ -60,8 +88,9 @@ export async function presignR2Upload(
   key: string,
   contentType: string,
   expiresIn = 3600,
+  bucket?: string,
 ): Promise<string> {
-  const config = requireR2Config()
+  const config = requireR2Config(bucket)
   const client = getR2Client(config)
   const command = new PutObjectCommand({
     Bucket: config.bucket,
@@ -70,7 +99,6 @@ export async function presignR2Upload(
   })
   return getSignedUrl(client, command, {
     expiresIn,
-    // Require the browser to send the same Content-Type that was signed.
     signableHeaders: new Set(['content-type']),
   })
 }
@@ -78,8 +106,9 @@ export async function presignR2Upload(
 export async function presignR2Download(
   key: string,
   expiresIn = 86400,
+  bucket?: string,
 ): Promise<string> {
-  const config = requireR2Config()
+  const config = requireR2Config(bucket)
   const client = getR2Client(config)
   const command = new GetObjectCommand({
     Bucket: config.bucket,
@@ -88,8 +117,8 @@ export async function presignR2Download(
   return getSignedUrl(client, command, { expiresIn })
 }
 
-export async function deleteR2Object(key: string): Promise<void> {
-  const config = requireR2Config()
+export async function deleteR2Object(key: string, bucket?: string): Promise<void> {
+  const config = requireR2Config(bucket)
   const client = getR2Client(config)
   await client.send(
     new DeleteObjectCommand({
@@ -99,8 +128,26 @@ export async function deleteR2Object(key: string): Promise<void> {
   )
 }
 
-export async function downloadR2Object(key: string): Promise<Buffer> {
-  const config = requireR2Config()
+export async function uploadR2Object(
+  key: string,
+  body: Buffer | Uint8Array,
+  contentType: string,
+  bucket?: string,
+): Promise<void> {
+  const config = requireR2Config(bucket)
+  const client = getR2Client(config)
+  await client.send(
+    new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    }),
+  )
+}
+
+export async function downloadR2Object(key: string, bucket?: string): Promise<Buffer> {
+  const config = requireR2Config(bucket)
   const client = getR2Client(config)
   const response = await client.send(
     new GetObjectCommand({

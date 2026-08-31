@@ -33,8 +33,10 @@
         filter-context="music"
         :show-clear-filters="hasActiveFilterSort"
         :show-artwork="true"
+        :artwork-path="collection.artwork_path"
+        :artwork-provider="collection.artwork_provider"
+        :artwork-entity-id="collection.id"
         :artwork-url="collectionArtworkUrl"
-        :artwork-is-video="collectionArtworkIsVideo"
         @open-filter-sort="handleOpenFilterSort"
         @clear-filters="handleClearFilterSort"
         @open-settings="showSettingsDrawer = true"
@@ -83,6 +85,7 @@
       :collection-name="collection.name"
       :collection-slug="collection.slug"
       :collection-artwork-path="collection.artwork_path"
+      :collection-artwork-provider="collection.artwork_provider"
       @collection-updated="handleCollectionUpdated"
       @collection-deleted="handleCollectionDeleted"
     />
@@ -110,13 +113,12 @@ import { getUniqueGroupTracks } from '~/utils/uniqueGroupShuffle'
 import { TRACK_PAGE_SIZE } from '~/utils/trackPagination'
 import { useFilterSortCookie, resolveStoredFilterSortParams, getDefaultFilterSortParams } from '~/composables/useFilterSortPersistence'
 import { usePageShellReady } from '~/composables/usePageShellReady'
-import { useArtwork, isVideoArtwork } from '~/composables/useArtwork'
+import { resolveArtworkUrl } from '~/composables/useArtworkUrlCache'
 
 const route = useRoute()
 const router = useRouter()
 const { user } = useAuth()
 const { supabase } = useSupabase()
-const { getArtworkUrl } = useArtwork()
 const { updateQueue, queueSourceId } = usePlayer()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
@@ -198,8 +200,29 @@ const isCollectionOwner = computed(() => {
   return !!(user.value && collection.value && user.value.id === collection.value.user_id)
 })
 
-const collectionArtworkUrl = computed(() => getArtworkUrl(collection.value?.artwork_path))
-const collectionArtworkIsVideo = computed(() => isVideoArtwork(collection.value?.artwork_path))
+const collectionArtworkUrl = ref<string | null>(null)
+
+watch(
+  collection,
+  async (value) => {
+    if (!value?.artwork_path) {
+      collectionArtworkUrl.value = null
+      return
+    }
+
+    collectionArtworkUrl.value = await resolveArtworkUrl(
+      {
+        id: value.id,
+        artwork_path: value.artwork_path,
+        artwork_provider: value.artwork_provider,
+      },
+      'collection',
+      supabase,
+      config.public.supabaseUrl,
+    )
+  },
+  { immediate: true },
+)
 
 const pageShellReady = computed(() => !loading.value && !tracksLoading.value)
 usePageShellReady(pageShellReady)
@@ -820,11 +843,17 @@ const handleTrackUpdate = (event?: CustomEvent) => {
 }
 
 // Handle collection updates
-const handleCollectionUpdated = async (newName: string, newSlug: string, artworkPath: string | null = null) => {
+const handleCollectionUpdated = async (
+  newName: string,
+  newSlug: string,
+  artworkPath: string | null = null,
+  artworkProvider: string | null = null,
+) => {
   if (collection.value) {
     collection.value.name = newName
     collection.value.slug = newSlug
     collection.value.artwork_path = artworkPath
+    collection.value.artwork_provider = artworkProvider
     
     // Update URL if slug changed
     if (newSlug !== route.params.collection) {

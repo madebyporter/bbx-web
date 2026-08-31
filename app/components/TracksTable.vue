@@ -173,7 +173,10 @@
           <PlayerButton
             v-else
             variant="art"
-            :artwork-url="getArtworkUrl(track.artwork_path)"
+            :artwork-path="track.artwork_path"
+            :artwork-provider="track.artwork_provider"
+            :artwork-entity-id="track.id"
+            artwork-kind="track"
             :artwork-is-video="isVideoArtwork(track.artwork_path)"
             :class="isCurrentlyPlaying(track) ? 'text-orange-400' : ''"
             :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'"
@@ -302,7 +305,8 @@ import { useStemPlayer } from '~/composables/useStemPlayer'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
-import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
+import { isVideoArtwork } from '~/composables/useArtwork'
+import { prefetchArtworkUrls } from '~/composables/useArtworkUrlCache'
 import BulkActionsDrawer from '~/components/BulkActionsDrawer.vue'
 import Modal from '~/components/Modal.vue'
 import type { AnchorRect } from '~/components/Modal.vue'
@@ -355,7 +359,6 @@ const { currentTrack, isPlaying, loadQueue, togglePlayPause } = usePlayer()
 const { isStemPlayerActive, stemTracks, toggleMute, toggleSolo } = useStemPlayer()
 const { supabase } = useSupabase()
 const { user } = useAuth()
-const { getArtworkUrl } = useArtwork()
 const { showProcessing, showSuccess, showError, removeToast } = useToast()
 const { capture } = useAnalytics()
 
@@ -405,6 +408,22 @@ const showActionsColumn = computed(() => {
     (props.viewerUserType === 'creator' && props.profileUserType === 'audio_pro')
   )
 })
+
+watch(
+  () => props.tracks,
+  (tracks) => {
+    void prefetchArtworkUrls(
+      tracks.map((track) => ({
+        id: track.id,
+        artwork_path: track.artwork_path,
+        artwork_provider: track.artwork_provider,
+      })),
+      'track',
+      supabase,
+    )
+  },
+  { immediate: true, deep: true },
+)
 
 const tableGridStyle = computed(() =>
   buildTrackGridStyle({

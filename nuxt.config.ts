@@ -50,6 +50,8 @@ export default defineNuxtConfig({
     r2AccessKeyId: process.env.R2_ACCESS_KEY_ID,
     r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     r2Bucket: process.env.R2_BUCKET,
+    r2TrackArtworkBucket: process.env.R2_TRACK_ARTWORK_BUCKET,
+    r2CollectionArtworkBucket: process.env.R2_COLLECTION_ARTWORK_BUCKET,
     r2Endpoint: process.env.R2_ENDPOINT,
     // Public keys that are exposed to the client
     public: {

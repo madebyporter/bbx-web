@@ -267,6 +267,8 @@ import {
   type CollectionMember
 } from '~/utils/collections'
 import { useArtwork, isVideoArtwork } from '~/composables/useArtwork'
+import { normalizeArtworkProvider } from '~/utils/artworkStorage'
+import type { StorageProvider } from '~/types/track'
 import type { UserSearchResult } from '~/types/userSearch'
 
 interface Props {
@@ -275,12 +277,13 @@ interface Props {
   collectionName: string
   collectionSlug: string
   collectionArtworkPath?: string | null
+  collectionArtworkProvider?: StorageProvider | null
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
   'update:show': [value: boolean]
-  'collection-updated': [name: string, slug: string, artworkPath: string | null]
+  'collection-updated': [name: string, slug: string, artworkPath: string | null, artworkProvider: StorageProvider | null]
   'collection-deleted': []
 }>()
 
@@ -288,7 +291,7 @@ const router = useRouter()
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const { showSuccess, showError } = useToast()
-const { getArtworkUrl, validateAndProcessArtwork, uploadArtwork, deleteArtwork } = useArtwork()
+const { getArtworkUrl, validateAndProcessArtwork, uploadArtwork, deleteArtwork, resolveArtworkUrlForEntity } = useArtwork()
 
 const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
 
@@ -296,6 +299,9 @@ const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
 const collectionName = ref(props.collectionName)
 const originalName = ref(props.collectionName)
 const originalArtworkPath = ref<string | null>(props.collectionArtworkPath ?? null)
+const originalArtworkProvider = ref<StorageProvider | null>(
+  props.collectionArtworkProvider ? normalizeArtworkProvider(props.collectionArtworkProvider) : null,
+)
 const nameError = ref<string | null>(null)
 const isSaving = ref(false)
 
@@ -305,8 +311,23 @@ const newArtworkFile = ref<File | null>(null)
 const artworkPreview = ref<string | null>(null)
 const artworkError = ref<string | null>(null)
 const removeArtworkFlag = ref(false)
+const currentArtworkUrl = ref<string | null>(null)
 
-const currentArtworkUrl = computed(() => getArtworkUrl(originalArtworkPath.value))
+const loadCurrentArtworkUrl = async () => {
+  if (!originalArtworkPath.value || removeArtworkFlag.value) {
+    currentArtworkUrl.value = getArtworkUrl(originalArtworkPath.value, originalArtworkProvider.value)
+    return
+  }
+
+  currentArtworkUrl.value = await resolveArtworkUrlForEntity(
+    {
+      id: props.collectionId,
+      artwork_path: originalArtworkPath.value,
+      artwork_provider: originalArtworkProvider.value,
+    },
+    'collection',
+  )
+}
 
 const displayArtworkPreview = computed(() => {
   if (artworkPreview.value) return artworkPreview.value
@@ -363,8 +384,12 @@ const hasChanges = computed(() => {
   return hasNameChanges.value || hasArtworkChanges.value
 })
 
-const resetArtworkState = (artworkPath: string | null = originalArtworkPath.value) => {
+const resetArtworkState = (
+  artworkPath: string | null = originalArtworkPath.value,
+  artworkProvider: StorageProvider | null = originalArtworkProvider.value,
+) => {
   originalArtworkPath.value = artworkPath
+  originalArtworkProvider.value = artworkProvider
   newArtworkFile.value = null
   artworkPreview.value = null
   artworkError.value = null
@@ -372,6 +397,7 @@ const resetArtworkState = (artworkPath: string | null = originalArtworkPath.valu
   if (artworkInput.value) {
     artworkInput.value.value = ''
   }
+  void loadCurrentArtworkUrl()
 }
 
 const handleArtworkSelect = async (event: Event) => {
@@ -426,7 +452,12 @@ const handleSave = async () => {
   artworkError.value = null
   
   try {
-    const updateData: { name: string; slug: string; artwork_path?: string | null } = {
+    const updateData: {
+      name: string
+      slug: string
+      artwork_path?: string | null
+      artwork_provider?: StorageProvider | null
+    } = {
       name: trimmedName,
       slug: props.collectionSlug,
     }
@@ -452,18 +483,39 @@ const handleSave = async () => {
     }
 
     let nextArtworkPath = originalArtworkPath.value
+    let nextArtworkProvider = originalArtworkProvider.value
 
     if (newArtworkFile.value) {
-      const uploadedArtworkPath = await uploadArtwork(newArtworkFile.value, user.value.id)
+      const uploadedArtwork = await uploadArtwork(newArtworkFile.value, 'collection', {
+        collectionId: props.collectionId,
+      })
       if (originalArtworkPath.value) {
-        await deleteArtwork(originalArtworkPath.value)
+        await deleteArtwork(
+          {
+            id: props.collectionId,
+            artwork_path: originalArtworkPath.value,
+            artwork_provider: originalArtworkProvider.value,
+          },
+          'collection',
+        )
       }
-      updateData.artwork_path = uploadedArtworkPath
-      nextArtworkPath = uploadedArtworkPath
+      updateData.artwork_path = uploadedArtwork.artwork_path
+      updateData.artwork_provider = uploadedArtwork.artwork_provider
+      nextArtworkPath = uploadedArtwork.artwork_path
+      nextArtworkProvider = uploadedArtwork.artwork_provider
     } else if (removeArtworkFlag.value && originalArtworkPath.value) {
-      await deleteArtwork(originalArtworkPath.value)
+      await deleteArtwork(
+        {
+          id: props.collectionId,
+          artwork_path: originalArtworkPath.value,
+          artwork_provider: originalArtworkProvider.value,
+        },
+        'collection',
+      )
       updateData.artwork_path = null
+      updateData.artwork_provider = null
       nextArtworkPath = null
+      nextArtworkProvider = null
     }
 
     const { error } = await supabase
@@ -475,9 +527,9 @@ const handleSave = async () => {
     if (error) throw error
     
     originalName.value = trimmedName
-    resetArtworkState(nextArtworkPath)
+    resetArtworkState(nextArtworkPath, nextArtworkProvider)
     showSuccess('Collection updated successfully')
-    emit('collection-updated', trimmedName, updateData.slug, nextArtworkPath)
+    emit('collection-updated', trimmedName, updateData.slug, nextArtworkPath, nextArtworkProvider)
   } catch (error: any) {
     console.error('Error updating collection:', error)
     nameError.value = error.message || 'Failed to update collection'
@@ -678,7 +730,14 @@ const handleDelete = async () => {
     }
     
     if (originalArtworkPath.value) {
-      await deleteArtwork(originalArtworkPath.value)
+      await deleteArtwork(
+        {
+          id: props.collectionId,
+          artwork_path: originalArtworkPath.value,
+          artwork_provider: originalArtworkProvider.value,
+        },
+        'collection',
+      )
     }
 
     // Delete collection (cascade will handle collections_sounds and collection_members)
@@ -722,7 +781,12 @@ watch(() => props.show, (newVal) => {
     inviteLink.value = generateCollectionInviteLink(props.collectionId)
     collectionName.value = props.collectionName
     originalName.value = props.collectionName
-    resetArtworkState(props.collectionArtworkPath ?? null)
+    resetArtworkState(
+      props.collectionArtworkPath ?? null,
+      props.collectionArtworkProvider
+        ? normalizeArtworkProvider(props.collectionArtworkProvider)
+        : null,
+    )
   }
 }, { immediate: true })
 
@@ -732,9 +796,12 @@ watch(() => props.collectionName, (newVal) => {
   originalName.value = newVal
 })
 
-watch(() => props.collectionArtworkPath, (newVal) => {
+watch(() => [props.collectionArtworkPath, props.collectionArtworkProvider], ([path, provider]) => {
   if (!hasArtworkChanges.value) {
-    resetArtworkState(newVal ?? null)
+    resetArtworkState(
+      path ?? null,
+      provider ? normalizeArtworkProvider(provider) : null,
+    )
   }
 })
 

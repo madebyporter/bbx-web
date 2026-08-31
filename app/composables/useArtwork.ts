@@ -1,9 +1,17 @@
 import { useSupabase } from '~/utils/supabase'
 import { sanitizeStorageFilename } from '~/utils/sanitizeStorageFilename'
-
-export const ARTWORK_BUCKET = 'artwork'
-export const ARTWORK_MAX_SIZE = 10 * 1024 * 1024
-export const ARTWORK_MAX_DIMENSION = 1600
+import {
+  ARTWORK_BUCKET,
+  ARTWORK_MAX_SIZE,
+  ARTWORK_MAX_DIMENSION,
+  deleteArtworkFromStorage,
+  getSupabaseArtworkPublicUrl,
+  normalizeArtworkProvider,
+  uploadArtworkToStorage,
+  type ArtworkEntity,
+  type ArtworkKind,
+} from '~/utils/artworkStorage'
+import { resolveArtworkUrl } from '~/composables/useArtworkUrlCache'
 
 const STATIC_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'mov'])
@@ -135,7 +143,7 @@ async function downscaleStaticImage(file: File): Promise<File> {
         }
       },
       mimeType,
-      0.9
+      0.9,
     )
   })
 
@@ -191,46 +199,43 @@ export async function validateAndProcessArtwork(file: File): Promise<ProcessedAr
 
 export const useArtwork = () => {
   const { supabase } = useSupabase()
+  const config = useRuntimeConfig()
 
-  const getArtworkUrl = (path: string | null | undefined): string | null => {
-    if (!path || !supabase) return null
+  const getArtworkUrl = (
+    path: string | null | undefined,
+    provider?: string | null,
+  ): string | null => {
+    if (!path) return null
 
-    const { data } = supabase.storage.from(ARTWORK_BUCKET).getPublicUrl(path)
-    return data.publicUrl
+    if (normalizeArtworkProvider(provider) === 'supabase') {
+      return getSupabaseArtworkPublicUrl(path, config.public.supabaseUrl)
+    }
+
+    return null
   }
 
-  const uploadArtwork = async (file: File, userId: string): Promise<string> => {
-    if (!supabase) {
-      throw new Error('Storage is not available')
-    }
-
-    const timestamp = Date.now()
-    const safeName = sanitizeStorageFilename(file.name)
-    const filePath = `${userId}/${timestamp}-${safeName}`
-
-    const { error } = await supabase.storage.from(ARTWORK_BUCKET).upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false,
-    })
-
-    if (error) {
-      throw new Error(`Failed to upload artwork: ${error.message}`)
-    }
-
-    return filePath
+  const resolveArtworkUrlForEntity = async (
+    entity: ArtworkEntity,
+    kind: ArtworkKind,
+  ): Promise<string | null> => {
+    return resolveArtworkUrl(entity, kind, supabase, config.public.supabaseUrl)
   }
 
-  const deleteArtwork = async (path: string | null | undefined): Promise<void> => {
-    if (!path || !supabase) return
+  const uploadArtwork = async (
+    file: File,
+    kind: ArtworkKind,
+    options: { collectionId?: number } = {},
+  ) => {
+    return uploadArtworkToStorage(file, kind, supabase, options)
+  }
 
-    const { error } = await supabase.storage.from(ARTWORK_BUCKET).remove([path])
-    if (error) {
-      console.warn('Failed to delete artwork:', error)
-    }
+  const deleteArtwork = async (entity: ArtworkEntity, kind: ArtworkKind) => {
+    return deleteArtworkFromStorage(entity, kind, supabase)
   }
 
   return {
     getArtworkUrl,
+    resolveArtworkUrlForEntity,
     isVideoArtwork,
     validateAndProcessArtwork,
     uploadArtwork,

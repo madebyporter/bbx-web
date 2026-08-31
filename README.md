@@ -275,6 +275,10 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.59.0
+  - Move track and collection artwork to private Cloudflare R2 buckets with presigned upload and playback URLs
+  - Add `artwork_provider` on sounds and collections; legacy Supabase artwork keeps working until backfill
+  - New `ArtworkMedia` component, batch presign API, and `npm run backfill:artwork-to-r2` migration script
 - 0.58.0
   - Collection cover art on index and detail headers (gray placeholder or uploaded image)
   - Upload, replace, or remove collection artwork in Collection Settings drawer

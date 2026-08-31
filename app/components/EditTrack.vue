@@ -440,6 +440,7 @@ const {
   validateAndProcessArtwork,
   uploadArtwork,
   deleteArtwork,
+  resolveArtworkUrlForEntity,
 } = useArtwork()
 
 const drawerRef = ref<any>(null)
@@ -484,7 +485,26 @@ const artworkPreview = ref<string | null>(null)
 const artworkError = ref<string | null>(null)
 const removeArtworkFlag = ref(false)
 
-const currentArtworkUrl = computed(() => getArtworkUrl(props.trackToEdit?.artwork_path))
+const currentArtworkUrl = ref<string | null>(null)
+
+const loadCurrentArtworkUrl = async () => {
+  if (!props.trackToEdit?.artwork_path || removeArtworkFlag.value) {
+    currentArtworkUrl.value = getArtworkUrl(
+      props.trackToEdit?.artwork_path,
+      props.trackToEdit?.artwork_provider,
+    )
+    return
+  }
+
+  currentArtworkUrl.value = await resolveArtworkUrlForEntity(
+    {
+      id: props.trackToEdit.id,
+      artwork_path: props.trackToEdit.artwork_path,
+      artwork_provider: props.trackToEdit.artwork_provider,
+    },
+    'track',
+  )
+}
 
 const displayArtworkPreview = computed(() => {
   if (artworkPreview.value) return artworkPreview.value
@@ -859,6 +879,7 @@ watch(() => props.trackToEdit, async (newTrack) => {
     
     // Load track's current collections
     await loadTrackCollections(newTrack.id)
+    await loadCurrentArtworkUrl()
   }
 }, { immediate: true })
 
@@ -1175,14 +1196,30 @@ const onSubmit = async () => {
     }
 
     if (newArtworkFile.value) {
-      const uploadedArtworkPath = await uploadArtwork(newArtworkFile.value, user.value.id)
+      const uploadedArtwork = await uploadArtwork(newArtworkFile.value, 'track')
       if (props.trackToEdit.artwork_path) {
-        await deleteArtwork(props.trackToEdit.artwork_path)
+        await deleteArtwork(
+          {
+            id: props.trackToEdit.id,
+            artwork_path: props.trackToEdit.artwork_path,
+            artwork_provider: props.trackToEdit.artwork_provider,
+          },
+          'track',
+        )
       }
-      updateData.artwork_path = uploadedArtworkPath
+      updateData.artwork_path = uploadedArtwork.artwork_path
+      updateData.artwork_provider = uploadedArtwork.artwork_provider
     } else if (removeArtworkFlag.value && props.trackToEdit.artwork_path) {
-      await deleteArtwork(props.trackToEdit.artwork_path)
+      await deleteArtwork(
+        {
+          id: props.trackToEdit.id,
+          artwork_path: props.trackToEdit.artwork_path,
+          artwork_provider: props.trackToEdit.artwork_provider,
+        },
+        'track',
+      )
       updateData.artwork_path = null
+      updateData.artwork_provider = null
     }
     
     const { data, error: updateError } = await supabase
@@ -1265,7 +1302,14 @@ const handleDelete = async () => {
     }
 
     if (props.trackToEdit.artwork_path) {
-      await deleteArtwork(props.trackToEdit.artwork_path)
+      await deleteArtwork(
+        {
+          id: props.trackToEdit.id,
+          artwork_path: props.trackToEdit.artwork_path,
+          artwork_provider: props.trackToEdit.artwork_provider,
+        },
+        'track',
+      )
     }
     
     // Delete from database

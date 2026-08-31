@@ -46,23 +46,14 @@
             >
               <td class="p-4">
                 <div class="flex items-center gap-3">
-                  <div class="size-10 rounded-sm overflow-hidden bg-neutral-700 shrink-0">
-                    <video
-                      v-if="getCollectionArtworkUrl(collection.artwork_path) && isVideoArtwork(collection.artwork_path)"
-                      :src="getCollectionArtworkUrl(collection.artwork_path)!"
-                      autoplay
-                      muted
-                      loop
-                      playsinline
-                      class="size-full object-cover"
-                    />
-                    <img
-                      v-else-if="getCollectionArtworkUrl(collection.artwork_path)"
-                      :src="getCollectionArtworkUrl(collection.artwork_path)!"
-                      :alt="`${collection.name} artwork`"
-                      class="size-full object-cover"
-                    />
-                  </div>
+                  <ArtworkMedia
+                    :path="collection.artwork_path"
+                    :provider="collection.artwork_provider"
+                    :entity-id="collection.id"
+                    kind="collection"
+                    size-class="size-10"
+                    :alt="`${collection.name} artwork`"
+                  />
                   <div class="flex items-center gap-2 min-w-0">
                     <NuxtLink 
                       :to="collection.is_shared ? `/u/${collection.owner_username || collection.user_id}/c/${collection.slug}` : `/u/${username}/c/${collection.slug}`"
@@ -91,20 +82,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
 import { usePageShellReady } from '~/composables/usePageShellReady'
-import { useArtwork, isVideoArtwork } from '~/composables/useArtwork'
+import { prefetchArtworkUrls } from '~/composables/useArtworkUrlCache'
 
 const route = useRoute()
 const { user } = useAuth()
 const { supabase } = useSupabase()
-const { getArtworkUrl } = useArtwork()
-
-const getCollectionArtworkUrl = (path: string | null | undefined) => getArtworkUrl(path)
 
 // Inject search handler registration functions
 const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
@@ -135,6 +123,22 @@ const filteredCollections = computed(() => {
     return name.includes(query) || description.includes(query)
   })
 })
+
+watch(
+  filteredCollections,
+  (items) => {
+    void prefetchArtworkUrls(
+      items.map((collection) => ({
+        id: collection.id,
+        artwork_path: collection.artwork_path,
+        artwork_provider: collection.artwork_provider,
+      })),
+      'collection',
+      supabase,
+    )
+  },
+  { immediate: true, deep: true },
+)
 
 // Methods
 const fetchProfile = async () => {
