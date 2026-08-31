@@ -125,6 +125,9 @@
           <div class="p-4 flex items-center justify-start whitespace-nowrap text-sm text-neutral-400" v-else-if="isOwnProfile">
             Mark a collection as Show on Profile in its Collection Settings to display it here.
           </div>
+          <div class="p-4 flex items-center justify-start whitespace-nowrap text-sm text-neutral-400" v-else>
+            This producer doesn't have any collections listed yet.
+          </div>
         </div>
       </div>
     </div>
