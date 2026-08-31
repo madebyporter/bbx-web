@@ -16,9 +16,97 @@
           :disabled="isSaving"
         />
         <p v-if="nameError" class="text-xs text-red-500">{{ nameError }}</p>
+
+        <!-- Artwork -->
+        <label class="font-semibold text-neutral-200">Artwork</label>
+        <div class="flex flex-col gap-2">
+          <input
+            ref="artworkInput"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov"
+            class="hidden"
+            :disabled="isSaving"
+            @change="handleArtworkSelect"
+          />
+
+          <div
+            v-if="displayArtworkPreview"
+            class="flex items-center justify-between p-3 border border-neutral-700 rounded bg-neutral-900/50"
+          >
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="size-16 rounded-sm overflow-hidden bg-neutral-800 shrink-0">
+                <video
+                  v-if="displayArtworkIsVideo"
+                  :src="displayArtworkPreview"
+                  autoplay
+                  muted
+                  loop
+                  playsinline
+                  class="size-full object-cover"
+                />
+                <img
+                  v-else
+                  :src="displayArtworkPreview"
+                  alt="Collection artwork"
+                  class="size-full object-cover"
+                />
+              </div>
+              <div class="flex flex-col gap-1 min-w-0">
+                <span class="text-sm text-neutral-300">
+                  {{ newArtworkFile ? 'New artwork:' : 'Current artwork' }}
+                </span>
+                <span v-if="newArtworkFile" class="text-xs text-amber-400 truncate">{{ newArtworkFile.name }}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                class="border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
+                :disabled="isSaving"
+                @click="artworkInput?.click()"
+              >
+                Choose New File
+              </Button>
+              <button
+                v-if="canRemoveArtwork"
+                type="button"
+                class="text-link text-sm text-red-400 hover:text-red-300 no-underline"
+                :disabled="isSaving"
+                @click="removeArtworkSelection"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+
+          <div
+            v-else
+            class="flex items-center justify-between p-3 border border-neutral-700 rounded bg-neutral-900/50"
+          >
+            <span class="text-sm text-neutral-500">No artwork</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
+              :disabled="isSaving"
+              @click="artworkInput?.click()"
+            >
+              Choose File
+            </Button>
+          </div>
+
+          <p v-if="artworkError" class="text-xs text-red-500">{{ artworkError }}</p>
+          <p class="text-xs text-neutral-500">
+            JPG, PNG, WebP, GIF, MP4, MOV. Max 10MB, 1600x1600.
+          </p>
+        </div>
+
         <Button
-          :disabled="isSaving || !hasNameChanges"
-          @click="handleSaveName"
+          :disabled="isSaving || !hasChanges"
+          @click="handleSave"
         >
           {{ isSaving ? 'Saving...' : 'Save Changes' }}
         </Button>
@@ -178,6 +266,7 @@ import {
   generateSlug,
   type CollectionMember
 } from '~/utils/collections'
+import { useArtwork, isVideoArtwork } from '~/composables/useArtwork'
 import type { UserSearchResult } from '~/types/userSearch'
 
 interface Props {
@@ -185,12 +274,13 @@ interface Props {
   collectionId: number
   collectionName: string
   collectionSlug: string
+  collectionArtworkPath?: string | null
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
   'update:show': [value: boolean]
-  'collection-updated': [name: string, slug: string]
+  'collection-updated': [name: string, slug: string, artworkPath: string | null]
   'collection-deleted': []
 }>()
 
@@ -198,14 +288,45 @@ const router = useRouter()
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const { showSuccess, showError } = useToast()
+const { getArtworkUrl, validateAndProcessArtwork, uploadArtwork, deleteArtwork } = useArtwork()
 
 const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
 
 // Collection name editing
 const collectionName = ref(props.collectionName)
 const originalName = ref(props.collectionName)
+const originalArtworkPath = ref<string | null>(props.collectionArtworkPath ?? null)
 const nameError = ref<string | null>(null)
 const isSaving = ref(false)
+
+// Artwork editing
+const artworkInput = ref<HTMLInputElement | null>(null)
+const newArtworkFile = ref<File | null>(null)
+const artworkPreview = ref<string | null>(null)
+const artworkError = ref<string | null>(null)
+const removeArtworkFlag = ref(false)
+
+const currentArtworkUrl = computed(() => getArtworkUrl(originalArtworkPath.value))
+
+const displayArtworkPreview = computed(() => {
+  if (artworkPreview.value) return artworkPreview.value
+  if (!removeArtworkFlag.value && currentArtworkUrl.value) return currentArtworkUrl.value
+  return null
+})
+
+const displayArtworkIsVideo = computed(() => {
+  if (newArtworkFile.value) return isVideoArtwork(newArtworkFile.value.name)
+  if (!removeArtworkFlag.value) return isVideoArtwork(originalArtworkPath.value)
+  return false
+})
+
+const canRemoveArtwork = computed(() => {
+  return !!newArtworkFile.value || (!!originalArtworkPath.value && !removeArtworkFlag.value)
+})
+
+const hasArtworkChanges = computed(() => {
+  return !!newArtworkFile.value || removeArtworkFlag.value
+})
 
 // Autocomplete state
 const searchQuery = ref('')
@@ -238,8 +359,56 @@ const hasNameChanges = computed(() => {
   return collectionName.value.trim() !== originalName.value.trim()
 })
 
+const hasChanges = computed(() => {
+  return hasNameChanges.value || hasArtworkChanges.value
+})
+
+const resetArtworkState = (artworkPath: string | null = originalArtworkPath.value) => {
+  originalArtworkPath.value = artworkPath
+  newArtworkFile.value = null
+  artworkPreview.value = null
+  artworkError.value = null
+  removeArtworkFlag.value = false
+  if (artworkInput.value) {
+    artworkInput.value.value = ''
+  }
+}
+
+const handleArtworkSelect = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+
+  if (!file) {
+    return
+  }
+
+  try {
+    const { file: processedFile, preview } = await validateAndProcessArtwork(file)
+    newArtworkFile.value = processedFile
+    artworkPreview.value = preview
+    artworkError.value = null
+    removeArtworkFlag.value = false
+  } catch (err: any) {
+    artworkError.value = err.message || 'Invalid artwork file'
+    newArtworkFile.value = null
+    artworkPreview.value = null
+  }
+
+  if (target) target.value = ''
+}
+
+const removeArtworkSelection = () => {
+  newArtworkFile.value = null
+  artworkPreview.value = null
+  artworkError.value = null
+  removeArtworkFlag.value = true
+  if (artworkInput.value) {
+    artworkInput.value.value = ''
+  }
+}
+
 // Methods
-const handleSaveName = async () => {
+const handleSave = async () => {
   if (!supabase || !props.collectionId || !user.value) return
   
   const trimmedName = collectionName.value.trim()
@@ -248,50 +417,70 @@ const handleSaveName = async () => {
     return
   }
   
-  if (trimmedName === originalName.value) {
+  if (!hasChanges.value) {
     return
   }
   
   isSaving.value = true
   nameError.value = null
+  artworkError.value = null
   
   try {
-    // Generate new slug
-    const newSlug = generateSlug(trimmedName)
-    
-    // Check if slug already exists for this user
-    const { data: existingCollection } = await supabase
-      .from('collections')
-      .select('id')
-      .eq('slug', newSlug)
-      .eq('user_id', user.value.id)
-      .neq('id', props.collectionId)
-      .maybeSingle()
-    
-    if (existingCollection) {
-      nameError.value = 'A collection with this name already exists'
-      isSaving.value = false
-      return
+    const updateData: { name: string; slug: string; artwork_path?: string | null } = {
+      name: trimmedName,
+      slug: props.collectionSlug,
     }
-    
-    // Update collection
+
+    if (hasNameChanges.value) {
+      const newSlug = generateSlug(trimmedName)
+
+      const { data: existingCollection } = await supabase
+        .from('collections')
+        .select('id')
+        .eq('slug', newSlug)
+        .eq('user_id', user.value.id)
+        .neq('id', props.collectionId)
+        .maybeSingle()
+
+      if (existingCollection) {
+        nameError.value = 'A collection with this name already exists'
+        isSaving.value = false
+        return
+      }
+
+      updateData.slug = newSlug
+    }
+
+    let nextArtworkPath = originalArtworkPath.value
+
+    if (newArtworkFile.value) {
+      const uploadedArtworkPath = await uploadArtwork(newArtworkFile.value, user.value.id)
+      if (originalArtworkPath.value) {
+        await deleteArtwork(originalArtworkPath.value)
+      }
+      updateData.artwork_path = uploadedArtworkPath
+      nextArtworkPath = uploadedArtworkPath
+    } else if (removeArtworkFlag.value && originalArtworkPath.value) {
+      await deleteArtwork(originalArtworkPath.value)
+      updateData.artwork_path = null
+      nextArtworkPath = null
+    }
+
     const { error } = await supabase
       .from('collections')
-      .update({
-        name: trimmedName,
-        slug: newSlug
-      })
+      .update(updateData)
       .eq('id', props.collectionId)
       .eq('user_id', user.value.id)
     
     if (error) throw error
     
     originalName.value = trimmedName
-    showSuccess('Collection name updated successfully')
-    emit('collection-updated', trimmedName, newSlug)
+    resetArtworkState(nextArtworkPath)
+    showSuccess('Collection updated successfully')
+    emit('collection-updated', trimmedName, updateData.slug, nextArtworkPath)
   } catch (error: any) {
-    console.error('Error updating collection name:', error)
-    nameError.value = error.message || 'Failed to update collection name'
+    console.error('Error updating collection:', error)
+    nameError.value = error.message || 'Failed to update collection'
   } finally {
     isSaving.value = false
   }
@@ -488,6 +677,10 @@ const handleDelete = async () => {
       throw new Error('Missing required data')
     }
     
+    if (originalArtworkPath.value) {
+      await deleteArtwork(originalArtworkPath.value)
+    }
+
     // Delete collection (cascade will handle collections_sounds and collection_members)
     const { error } = await supabase
       .from('collections')
@@ -529,6 +722,7 @@ watch(() => props.show, (newVal) => {
     inviteLink.value = generateCollectionInviteLink(props.collectionId)
     collectionName.value = props.collectionName
     originalName.value = props.collectionName
+    resetArtworkState(props.collectionArtworkPath ?? null)
   }
 }, { immediate: true })
 
@@ -536,6 +730,12 @@ watch(() => props.show, (newVal) => {
 watch(() => props.collectionName, (newVal) => {
   collectionName.value = newVal
   originalName.value = newVal
+})
+
+watch(() => props.collectionArtworkPath, (newVal) => {
+  if (!hasArtworkChanges.value) {
+    resetArtworkState(newVal ?? null)
+  }
 })
 
 // Lifecycle

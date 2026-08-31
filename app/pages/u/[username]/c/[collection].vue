@@ -32,6 +32,9 @@
         analytics-page="collection"
         filter-context="music"
         :show-clear-filters="hasActiveFilterSort"
+        :show-artwork="true"
+        :artwork-url="collectionArtworkUrl"
+        :artwork-is-video="collectionArtworkIsVideo"
         @open-filter-sort="handleOpenFilterSort"
         @clear-filters="handleClearFilterSort"
         @open-settings="showSettingsDrawer = true"
@@ -79,6 +82,7 @@
       :collection-id="collection.id"
       :collection-name="collection.name"
       :collection-slug="collection.slug"
+      :collection-artwork-path="collection.artwork_path"
       @collection-updated="handleCollectionUpdated"
       @collection-deleted="handleCollectionDeleted"
     />
@@ -106,11 +110,13 @@ import { getUniqueGroupTracks } from '~/utils/uniqueGroupShuffle'
 import { TRACK_PAGE_SIZE } from '~/utils/trackPagination'
 import { useFilterSortCookie, resolveStoredFilterSortParams, getDefaultFilterSortParams } from '~/composables/useFilterSortPersistence'
 import { usePageShellReady } from '~/composables/usePageShellReady'
+import { useArtwork, isVideoArtwork } from '~/composables/useArtwork'
 
 const route = useRoute()
 const router = useRouter()
 const { user } = useAuth()
 const { supabase } = useSupabase()
+const { getArtworkUrl } = useArtwork()
 const { updateQueue, queueSourceId } = usePlayer()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
@@ -191,6 +197,9 @@ const isOwnProfile = computed(() => {
 const isCollectionOwner = computed(() => {
   return !!(user.value && collection.value && user.value.id === collection.value.user_id)
 })
+
+const collectionArtworkUrl = computed(() => getArtworkUrl(collection.value?.artwork_path))
+const collectionArtworkIsVideo = computed(() => isVideoArtwork(collection.value?.artwork_path))
 
 const pageShellReady = computed(() => !loading.value && !tracksLoading.value)
 usePageShellReady(pageShellReady)
@@ -811,10 +820,11 @@ const handleTrackUpdate = (event?: CustomEvent) => {
 }
 
 // Handle collection updates
-const handleCollectionUpdated = async (newName: string, newSlug: string) => {
+const handleCollectionUpdated = async (newName: string, newSlug: string, artworkPath: string | null = null) => {
   if (collection.value) {
     collection.value.name = newName
     collection.value.slug = newSlug
+    collection.value.artwork_path = artworkPath
     
     // Update URL if slug changed
     if (newSlug !== route.params.collection) {

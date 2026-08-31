@@ -45,16 +45,35 @@
               class="border-b border-neutral-800/50 hover:bg-neutral-800/30"
             >
               <td class="p-4">
-                <div class="flex items-center gap-2">
-                  <NuxtLink 
-                    :to="collection.is_shared ? `/u/${collection.owner_username || collection.user_id}/c/${collection.slug}` : `/u/${username}/c/${collection.slug}`"
-                    class="text-amber-400 hover:text-amber-300"
-                  >
-                    {{ collection.name }}
-                  </NuxtLink>
-                  <span v-if="collection.is_shared" class="text-xs px-2 py-0.5 bg-neutral-700 text-neutral-300 rounded">
-                    Shared with me
-                  </span>
+                <div class="flex items-center gap-3">
+                  <div class="size-10 rounded-sm overflow-hidden bg-neutral-700 shrink-0">
+                    <video
+                      v-if="getCollectionArtworkUrl(collection.artwork_path) && isVideoArtwork(collection.artwork_path)"
+                      :src="getCollectionArtworkUrl(collection.artwork_path)!"
+                      autoplay
+                      muted
+                      loop
+                      playsinline
+                      class="size-full object-cover"
+                    />
+                    <img
+                      v-else-if="getCollectionArtworkUrl(collection.artwork_path)"
+                      :src="getCollectionArtworkUrl(collection.artwork_path)!"
+                      :alt="`${collection.name} artwork`"
+                      class="size-full object-cover"
+                    />
+                  </div>
+                  <div class="flex items-center gap-2 min-w-0">
+                    <NuxtLink 
+                      :to="collection.is_shared ? `/u/${collection.owner_username || collection.user_id}/c/${collection.slug}` : `/u/${username}/c/${collection.slug}`"
+                      class="text-amber-400 hover:text-amber-300 truncate"
+                    >
+                      {{ collection.name }}
+                    </NuxtLink>
+                    <span v-if="collection.is_shared" class="text-xs px-2 py-0.5 bg-neutral-700 text-neutral-300 rounded shrink-0">
+                      Shared with me
+                    </span>
+                  </div>
                 </div>
               </td>
               <td class="p-4 text-neutral-400">
@@ -78,10 +97,14 @@ import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
 import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
 import { usePageShellReady } from '~/composables/usePageShellReady'
+import { useArtwork, isVideoArtwork } from '~/composables/useArtwork'
 
 const route = useRoute()
 const { user } = useAuth()
 const { supabase } = useSupabase()
+const { getArtworkUrl } = useArtwork()
+
+const getCollectionArtworkUrl = (path: string | null | undefined) => getArtworkUrl(path)
 
 // Inject search handler registration functions
 const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
