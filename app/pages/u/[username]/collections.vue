@@ -100,6 +100,7 @@
       :collection-slug="selectedCollection.slug"
       :collection-artwork-path="selectedCollection.artwork_path"
       :collection-artwork-provider="selectedCollection.artwork_provider"
+      :collection-show-on-profile="!!selectedCollection.show_on_profile"
       @collection-updated="handleCollectionUpdated"
       @collection-deleted="handleCollectionDeleted"
     />
@@ -302,6 +303,7 @@ const handleCollectionUpdated = (
   newSlug: string,
   artworkPath: string | null = null,
   artworkProvider: string | null = null,
+  showOnProfile = false,
 ) => {
   if (!selectedCollection.value) return
 
@@ -315,6 +317,7 @@ const handleCollectionUpdated = (
       slug: newSlug,
       artwork_path: artworkPath,
       artwork_provider: artworkProvider,
+      show_on_profile: showOnProfile,
     }
   }
 
@@ -324,6 +327,7 @@ const handleCollectionUpdated = (
     slug: newSlug,
     artwork_path: artworkPath,
     artwork_provider: artworkProvider,
+    show_on_profile: showOnProfile,
   }
 }
 

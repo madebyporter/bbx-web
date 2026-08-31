@@ -86,6 +86,7 @@
       :collection-slug="collection.slug"
       :collection-artwork-path="collection.artwork_path"
       :collection-artwork-provider="collection.artwork_provider"
+      :collection-show-on-profile="!!collection.show_on_profile"
       @collection-updated="handleCollectionUpdated"
       @collection-deleted="handleCollectionDeleted"
     />
@@ -848,12 +849,14 @@ const handleCollectionUpdated = async (
   newSlug: string,
   artworkPath: string | null = null,
   artworkProvider: string | null = null,
+  showOnProfile = false,
 ) => {
   if (collection.value) {
     collection.value.name = newName
     collection.value.slug = newSlug
     collection.value.artwork_path = artworkPath
     collection.value.artwork_provider = artworkProvider
+    collection.value.show_on_profile = showOnProfile
     
     // Update URL if slug changed
     if (newSlug !== route.params.collection) {

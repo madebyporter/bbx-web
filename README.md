@@ -275,6 +275,15 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.61.0
+  - Profile Collections strip (like Software) with per-collection “Show on Profile”
+  - Library Settings drawer: panel first-view defaults (Bio/Collections/Software/Music) stored on the profile
+  - Members management moved into Library Settings; removed from profile panel nav
+- 0.60.1
+  - Reload the player from the start when a new version of the currently playing track is uploaded or its audio file is replaced
+- 0.60.0
+  - Reuse artwork from the latest same-name track version on upload so new versions inherit the current cover without re-uploading
+  - Shared artwork files are only deleted from storage when no other track or collection still references them
 - 0.59.0
   - Move track and collection artwork to private Cloudflare R2 buckets with presigned upload and playback URLs
   - Add `artwork_provider` on sounds and collections; legacy Supabase artwork keeps working until backfill
@@ -282,8 +291,3 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 - 0.58.0
   - Collection cover art on index and detail headers (gray placeholder or uploaded image)
   - Upload, replace, or remove collection artwork in Collection Settings drawer
-- 0.60.0
-  - Reuse artwork from the latest same-name track version on upload so new versions inherit the current cover without re-uploading
-  - Shared artwork files are only deleted from storage when no other track or collection still references them
-- 0.60.1
-  - Reload the player from the start when a new version of the currently playing track is uploaded or its audio file is replaced

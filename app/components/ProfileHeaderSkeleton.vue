@@ -8,20 +8,12 @@
     </div>
     <div class="flex flex-row gap-2 items-center">
       <div class="h-8 w-14 rounded-full bg-neutral-800 animate-pulse" />
+      <div class="h-8 w-24 rounded-full bg-neutral-800 animate-pulse" />
       <div class="h-8 w-20 rounded-full bg-neutral-800 animate-pulse" />
-      <div v-if="showMembers" class="h-8 w-20 rounded-full bg-neutral-800 animate-pulse" />
       <div class="h-8 w-16 rounded-full bg-neutral-800 animate-pulse" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-withDefaults(
-  defineProps<{
-    showMembers?: boolean
-  }>(),
-  {
-    showMembers: false,
-  }
-)
 </script>

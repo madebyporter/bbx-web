@@ -104,6 +104,19 @@
           </p>
         </div>
 
+        <label class="flex items-center gap-3 p-3 border border-neutral-700 rounded bg-neutral-900/50 cursor-pointer hover:border-neutral-600">
+          <input
+            v-model="showOnProfile"
+            type="checkbox"
+            class="size-4 rounded border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-400"
+            :disabled="isSaving"
+          />
+          <div class="flex flex-col gap-0.5 min-w-0">
+            <span class="text-sm text-neutral-200">Show Collection on Profile</span>
+            <span class="text-xs text-neutral-500">Appears in the Collections strip on your library</span>
+          </div>
+        </label>
+
         <Button
           :disabled="isSaving || !hasChanges"
           @click="handleSave"
@@ -278,12 +291,21 @@ interface Props {
   collectionSlug: string
   collectionArtworkPath?: string | null
   collectionArtworkProvider?: StorageProvider | null
+  collectionShowOnProfile?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  collectionShowOnProfile: false,
+})
 const emit = defineEmits<{
   'update:show': [value: boolean]
-  'collection-updated': [name: string, slug: string, artworkPath: string | null, artworkProvider: StorageProvider | null]
+  'collection-updated': [
+    name: string,
+    slug: string,
+    artworkPath: string | null,
+    artworkProvider: StorageProvider | null,
+    showOnProfile: boolean,
+  ]
   'collection-deleted': []
 }>()
 
@@ -302,6 +324,8 @@ const originalArtworkPath = ref<string | null>(props.collectionArtworkPath ?? nu
 const originalArtworkProvider = ref<StorageProvider | null>(
   props.collectionArtworkProvider ? normalizeArtworkProvider(props.collectionArtworkProvider) : null,
 )
+const showOnProfile = ref(!!props.collectionShowOnProfile)
+const originalShowOnProfile = ref(!!props.collectionShowOnProfile)
 const nameError = ref<string | null>(null)
 const isSaving = ref(false)
 
@@ -380,8 +404,12 @@ const hasNameChanges = computed(() => {
   return collectionName.value.trim() !== originalName.value.trim()
 })
 
+const hasShowOnProfileChanges = computed(() => {
+  return showOnProfile.value !== originalShowOnProfile.value
+})
+
 const hasChanges = computed(() => {
-  return hasNameChanges.value || hasArtworkChanges.value
+  return hasNameChanges.value || hasArtworkChanges.value || hasShowOnProfileChanges.value
 })
 
 const resetArtworkState = (
@@ -457,9 +485,14 @@ const handleSave = async () => {
       slug: string
       artwork_path?: string | null
       artwork_provider?: StorageProvider | null
+      show_on_profile?: boolean
     } = {
       name: trimmedName,
       slug: props.collectionSlug,
+    }
+
+    if (hasShowOnProfileChanges.value) {
+      updateData.show_on_profile = showOnProfile.value
     }
 
     if (hasNameChanges.value) {
@@ -527,9 +560,17 @@ const handleSave = async () => {
     if (error) throw error
     
     originalName.value = trimmedName
+    originalShowOnProfile.value = showOnProfile.value
     resetArtworkState(nextArtworkPath, nextArtworkProvider)
     showSuccess('Collection updated successfully')
-    emit('collection-updated', trimmedName, updateData.slug, nextArtworkPath, nextArtworkProvider)
+    emit(
+      'collection-updated',
+      trimmedName,
+      updateData.slug,
+      nextArtworkPath,
+      nextArtworkProvider,
+      showOnProfile.value,
+    )
   } catch (error: any) {
     console.error('Error updating collection:', error)
     nameError.value = error.message || 'Failed to update collection'
@@ -787,6 +828,8 @@ watch(() => props.show, (newVal) => {
         ? normalizeArtworkProvider(props.collectionArtworkProvider)
         : null,
     )
+    showOnProfile.value = !!props.collectionShowOnProfile
+    originalShowOnProfile.value = !!props.collectionShowOnProfile
   }
 }, { immediate: true })
 
@@ -794,6 +837,13 @@ watch(() => props.show, (newVal) => {
 watch(() => props.collectionName, (newVal) => {
   collectionName.value = newVal
   originalName.value = newVal
+})
+
+watch(() => props.collectionShowOnProfile, (newVal) => {
+  if (!hasShowOnProfileChanges.value) {
+    showOnProfile.value = !!newVal
+    originalShowOnProfile.value = !!newVal
+  }
 })
 
 watch(() => [props.collectionArtworkPath, props.collectionArtworkProvider], ([path, provider]) => {

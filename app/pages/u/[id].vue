@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-0 text-neutral-300 grow min-w-0">
     <template v-if="!pageShellReady">
-      <ProfileHeaderSkeleton :show-members="isOwnProfile && isAudioPro" />
+      <ProfileHeaderSkeleton />
       <div class="grow min-w-0 overflow-x-hidden border-t border-neutral-800">
         <div class="flex flex-row justify-between items-center gap-4 p-4 border-b border-neutral-800">
           <div class="h-6 w-16 rounded bg-neutral-800 animate-pulse" />
@@ -101,22 +101,26 @@
 
       <!-- Section Toggles -->
       <div class="flex flex-row gap-2 items-center">
-        <div @click="toggleBioSection"
+        <div
+          @click="toggleBioSection"
           class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
           :class="bioSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
           Bio
         </div>
-        <div @click="toggleSoftwareSection"
+        <div
+          @click="toggleCollectionsSection"
+          class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
+          :class="collectionsSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
+          Collections
+        </div>
+        <div
+          @click="toggleSoftwareSection"
           class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
           :class="softwareSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
           Software
         </div>
-        <div v-if="isOwnProfile && isAudioPro" @click="toggleMembersSection"
-          class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
-          :class="membersSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
-          Members
-        </div>
-        <div @click="toggleMusicSection"
+        <div
+          @click="toggleMusicSection"
           class="rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
           :class="musicSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
           Music
@@ -242,6 +246,42 @@
       </div>
     </div>
 
+    <!-- Collections Section -->
+    <div v-if="collectionsSectionOpen" class="flex flex-col gap-0 border-t border-neutral-800">
+      <div class="flex flex-row gap-0">
+        <div class="flex flex-row gap-2 w-full overflow-x-auto no-scrollbar snap-x snap-mandatory">
+          <div class="py-1 flex items-center justify-start whitespace-nowrap" v-if="loadingProfileCollections">
+            Loading collections...
+          </div>
+          <div
+            v-else-if="profileCollections.length > 0"
+            class="flex flex-row items-end w-fit *:p-4 *:last:pr-4 *:pr-0"
+          >
+            <NuxtLink
+              v-for="collection in profileCollections"
+              :key="collection.id"
+              :to="`/u/${username}/c/${collection.slug}`"
+              class="flex flex-col gap-2 items-start justify-start w-fit whitespace-nowrap max-md:snap-center snap-start snap-always hover:opacity-90 transition-opacity"
+            >
+              <ArtworkMedia
+                :path="collection.artwork_path"
+                :provider="collection.artwork_provider"
+                :entity-id="collection.id"
+                kind="collection"
+                size-class="size-40 md:size-48"
+                :alt="`${collection.name} artwork`"
+                wrapper-class="rounded-[2px]"
+              />
+              <div class="text-sm text-neutral-400">{{ collection.name }}</div>
+            </NuxtLink>
+          </div>
+          <div class="p-4 flex items-center justify-start whitespace-nowrap text-sm text-neutral-400" v-else-if="isOwnProfile">
+            Mark a collection as Show on Profile in its Collection Settings to display it here.
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Software Section -->
     <div v-if="softwareSectionOpen" class="flex flex-col gap-0 border-t border-neutral-800">
       <div v-if="!loadingSoftware && softwareList.length > 0"
@@ -292,12 +332,6 @@
         </div>
       </div>
     </div>
-    <!-- Members Section -->
-    <div v-if="isOwnProfile && isAudioPro && membersSectionOpen && profileUserId" class="grow border-b border-neutral-800">
-      <div class="p-4">
-        <ManageMembers :profile-id="profileUserId" />
-      </div>
-    </div>
     <!-- Tracks Section -->
     <div v-if="musicSectionOpen" class="grow min-w-0 overflow-x-hidden border-t border-neutral-800">
       <div class="flex flex-row justify-between items-center gap-4 p-4 border-b border-neutral-800">
@@ -345,6 +379,16 @@
           >
             <StatsReport class="w-4 h-4" />
           </Button>
+          <Button
+            v-if="isOwnProfile"
+            variant="secondary"
+            size="sm"
+            class="btn px-2.5! py-1.5! text-sm h-full max-h-10 self-stretch shrink-0"
+            title="Library settings"
+            @click="showLibrarySettingsDrawer = true"
+          >
+            <Settings class="w-4 h-4" />
+          </Button>
         </div>
       </div>
       <template v-if="analyticsMode && isOwnProfile && isAudioPro">
@@ -376,6 +420,15 @@
       />
     </div>
     </template>
+
+    <LibrarySettingsDrawer
+      v-if="profileUserId && isOwnProfile"
+      v-model:show="showLibrarySettingsDrawer"
+      :profile-id="profileUserId"
+      :is-audio-pro="isAudioPro"
+      :panels="profilePanels"
+      @panels-updated="handlePanelsUpdated"
+    />
   </div>
 </template>
 
@@ -388,7 +441,8 @@ import { getTrackVisibilityCondition } from '~/utils/trackVisibility'
 import TracksTable from '~/components/TracksTable.vue'
 import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 import ProfileHeaderSkeleton from '~/components/ProfileHeaderSkeleton.vue'
-import ManageMembers from '~/components/ManageMembers.vue'
+import LibrarySettingsDrawer from '~/components/LibrarySettingsDrawer.vue'
+import ArtworkMedia from '~/components/ArtworkMedia.vue'
 import TrackAnalyticsDateFilter from '~/components/TrackAnalyticsDateFilter.vue'
 import TrackAnalyticsSummary from '~/components/TrackAnalyticsSummary.vue'
 import { recordPageView } from '~/composables/useTrackAnalytics'
@@ -411,8 +465,16 @@ import {
   type TrackWithCollections,
 } from '~/utils/trackCollectionEnrichment'
 import type { Track } from '~/types/track'
+import {
+  DEFAULT_PROFILE_PANELS,
+  loadStoredPanelOpenState,
+  normalizeProfilePanels,
+  saveStoredPanelOpenState,
+  type ProfilePanels,
+} from '~/utils/profilePanels'
+import { prefetchArtworkUrls } from '~/composables/useArtworkUrlCache'
 import gsap from 'gsap'
-import { Plus, EditPencil, Trash, Check, Xmark, StatsReport } from '@iconoir/vue'
+import { Plus, EditPencil, Trash, Check, Xmark, StatsReport, Settings } from '@iconoir/vue'
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
@@ -448,7 +510,7 @@ const { data: initialData, refresh: refreshInitialData } = await useAsyncData(
         // Try to fetch by ID first
         const result = await supabase
           .from('user_profiles')
-          .select('id, username, display_name, bio, website, social_links, user_type')
+          .select('id, username, display_name, bio, website, social_links, user_type, profile_panels')
           .eq('id', usernameOrId)
           .single()
         data = result.data
@@ -457,7 +519,7 @@ const { data: initialData, refresh: refreshInitialData } = await useAsyncData(
         // Try to fetch by username
         const result = await supabase
           .from('user_profiles')
-          .select('id, username, display_name, bio, website, social_links, user_type')
+          .select('id, username, display_name, bio, website, social_links, user_type, profile_panels')
           .eq('username', usernameOrId)
           .single()
         data = result.data
@@ -468,7 +530,7 @@ const { data: initialData, refresh: refreshInitialData } = await useAsyncData(
       if ((error || !data) && !isUUID) {
         const result = await supabase
           .from('user_profiles')
-          .select('id, username, display_name, bio, website, social_links, user_type')
+          .select('id, username, display_name, bio, website, social_links, user_type, profile_panels')
           .eq('id', usernameOrId)
           .single()
         data = result.data
@@ -590,6 +652,18 @@ const profileSocialLinks = ref<{
   linkedin?: string
   [key: string]: string | undefined
 }>((initialData.value?.profile?.social_links as any) || {})
+const profilePanels = ref<ProfilePanels>(
+  normalizeProfilePanels(initialData.value?.profile?.profile_panels ?? DEFAULT_PROFILE_PANELS),
+)
+const showLibrarySettingsDrawer = ref(false)
+const profileCollections = ref<Array<{
+  id: number
+  name: string
+  slug: string
+  artwork_path?: string | null
+  artwork_provider?: string | null
+}>>([])
+const loadingProfileCollections = ref(false)
 const tracks = ref<TrackWithCollections[]>([])
 const totalTrackCount = ref(0)
 const currentPage = ref(0)
@@ -601,124 +675,72 @@ const loading = ref(true)
 const allSoftware = computed(() => softwareData.value || [])
 const loadingSoftware = computed(() => softwareData.value === null)
 
-// Bio section visibility state (closed by default)
-const bioSectionOpenState = ref(false)
+// Panel open state: DB defaults on first visit; localStorage persists visitor toggles
+const bioSectionOpen = ref(DEFAULT_PROFILE_PANELS.bio)
+const collectionsSectionOpen = ref(DEFAULT_PROFILE_PANELS.collections)
+const softwareSectionOpen = ref(DEFAULT_PROFILE_PANELS.software)
+const musicSectionOpen = ref(DEFAULT_PROFILE_PANELS.music)
 
-// Load bio section state from localStorage
-const loadBioSectionState = () => {
-  try {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('bioSectionOpen')
-      if (saved !== null) {
-        bioSectionOpenState.value = saved === 'true'
-      }
-    }
-  } catch (e) {
-    console.error('Error loading bio section state:', e)
-  }
+const applyPanelOpenState = (panels: ProfilePanels) => {
+  const normalized = normalizeProfilePanels(panels)
+  bioSectionOpen.value = normalized.bio
+  collectionsSectionOpen.value = normalized.collections
+  softwareSectionOpen.value = normalized.software
+  musicSectionOpen.value = normalized.music
 }
 
-// Save bio section state to localStorage
-const saveBioSectionState = () => {
-  try {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('bioSectionOpen', bioSectionOpenState.value.toString())
-    }
-  } catch (e) {
-    console.error('Error saving bio section state:', e)
-  }
+const persistPanelOpenState = () => {
+  if (!profileUserId.value) return
+  saveStoredPanelOpenState(profileUserId.value, {
+    bio: bioSectionOpen.value,
+    collections: collectionsSectionOpen.value,
+    software: softwareSectionOpen.value,
+    music: musicSectionOpen.value,
+  })
 }
 
-// Toggle bio section
+const loadPanelOpenState = () => {
+  if (!profileUserId.value) return
+  const stored = loadStoredPanelOpenState(profileUserId.value)
+  if (stored) {
+    applyPanelOpenState(stored)
+    return
+  }
+  applyPanelOpenState(profilePanels.value)
+}
+
+const syncProfilePanels = (panels: ProfilePanels) => {
+  profilePanels.value = normalizeProfilePanels(panels)
+}
+
+const handlePanelsUpdated = (panels: ProfilePanels) => {
+  syncProfilePanels(panels)
+}
+
 const toggleBioSection = () => {
-  bioSectionOpenState.value = !bioSectionOpenState.value
-  saveBioSectionState()
+  bioSectionOpen.value = !bioSectionOpen.value
+  persistPanelOpenState()
 }
 
-// Bio section visibility
-const bioSectionOpen = computed(() => bioSectionOpenState.value)
+const toggleCollectionsSection = () => {
+  collectionsSectionOpen.value = !collectionsSectionOpen.value
+  persistPanelOpenState()
+}
 
-// Software section visibility state (closed by default)
-const softwareSectionOpenState = ref(false)
+const toggleSoftwareSection = () => {
+  softwareSectionOpen.value = !softwareSectionOpen.value
+  persistPanelOpenState()
+}
+
+const toggleMusicSection = () => {
+  musicSectionOpen.value = !musicSectionOpen.value
+  persistPanelOpenState()
+}
 
 // Check if software is available
 const hasSoftware = computed(() => {
   return !loadingSoftware.value && allSoftware.value.length > 0
 })
-
-// Software section visibility - can be toggled manually, but starts closed if no software
-const softwareSectionOpen = computed(() => softwareSectionOpenState.value)
-
-// Music section visibility state (open by default)
-const musicSectionOpen = ref(true)
-
-// Members section visibility state (closed by default, only for own profile)
-const membersSectionOpen = ref(false)
-
-// Load software section state from localStorage
-const loadSoftwareSectionState = () => {
-  try {
-    const saved = localStorage.getItem('softwareSectionOpen')
-    if (saved !== null) {
-      // Only restore state if there's software available
-      // If no software, always start closed regardless of cache
-      if (hasSoftware.value) {
-        softwareSectionOpenState.value = saved === 'true'
-      } else {
-        softwareSectionOpenState.value = false
-      }
-    }
-  } catch (e) {
-    console.error('Error loading software section state:', e)
-  }
-}
-
-// Save software section state to localStorage
-const saveSoftwareSectionState = () => {
-  try {
-    localStorage.setItem('softwareSectionOpen', softwareSectionOpenState.value.toString())
-  } catch (e) {
-    console.error('Error saving software section state:', e)
-  }
-}
-
-// Toggle software section
-const toggleSoftwareSection = () => {
-  softwareSectionOpenState.value = !softwareSectionOpenState.value
-  saveSoftwareSectionState()
-}
-
-// Load music section state from localStorage
-const loadMusicSectionState = () => {
-  try {
-    const saved = localStorage.getItem('musicSectionOpen')
-    if (saved !== null) {
-      musicSectionOpen.value = saved === 'true'
-    }
-  } catch (e) {
-    console.error('Error loading music section state:', e)
-  }
-}
-
-// Save music section state to localStorage
-const saveMusicSectionState = () => {
-  try {
-    localStorage.setItem('musicSectionOpen', musicSectionOpen.value.toString())
-  } catch (e) {
-    console.error('Error saving music section state:', e)
-  }
-}
-
-// Toggle music section
-const toggleMusicSection = () => {
-  musicSectionOpen.value = !musicSectionOpen.value
-  saveMusicSectionState()
-}
-
-// Toggle members section
-const toggleMembersSection = () => {
-  membersSectionOpen.value = !membersSectionOpen.value
-}
 
 // Filter state
 const selectedTags = ref<string[]>([])
@@ -1461,7 +1483,22 @@ watch(initialData, (data) => {
   profileBio.value = data.profile.bio || ''
   profileWebsite.value = data.profile.website || ''
   profileSocialLinks.value = (data.profile.social_links as any) || {}
+  syncProfilePanels(normalizeProfilePanels(data.profile.profile_panels))
+  loadPanelOpenState()
 }, { deep: true })
+
+watch(collectionsSectionOpen, (open) => {
+  if (open) {
+    void fetchProfileCollections()
+  }
+})
+
+watch(profileUserId, (profileId, previousId) => {
+  if (profileId && profileId !== previousId) {
+    loadPanelOpenState()
+    void fetchProfileCollections()
+  }
+})
 
 // Methods - Keep fetchProfile for backwards compatibility but simplified
 const fetchProfile = async () => {
@@ -1474,6 +1511,8 @@ const fetchProfile = async () => {
       profileBio.value = initialData.value.profile.bio || ''
       profileWebsite.value = initialData.value.profile.website || ''
       profileSocialLinks.value = (initialData.value.profile.social_links as any) || {}
+      syncProfilePanels(normalizeProfilePanels(initialData.value.profile.profile_panels))
+      loadPanelOpenState()
   } else if (!profileUserId.value && supabase && user.value) {
     // If profile wasn't loaded server-side, try to fetch it client-side
     // This handles cases where the route param is a UUID
@@ -1485,13 +1524,13 @@ const fetchProfile = async () => {
       if (isUUID) {
         result = await supabase
           .from('user_profiles')
-          .select('id, username, display_name, bio, website, social_links, user_type')
+          .select('id, username, display_name, bio, website, social_links, user_type, profile_panels')
           .eq('id', usernameOrId)
           .single()
       } else {
         result = await supabase
           .from('user_profiles')
-          .select('id, username, display_name, bio, website, social_links, user_type')
+          .select('id, username, display_name, bio, website, social_links, user_type, profile_panels')
           .eq('username', usernameOrId)
           .single()
       }
@@ -1504,10 +1543,54 @@ const fetchProfile = async () => {
         profileBio.value = result.data.bio || ''
         profileWebsite.value = result.data.website || ''
         profileSocialLinks.value = (result.data.social_links as any) || {}
+        syncProfilePanels(normalizeProfilePanels(result.data.profile_panels))
+        loadPanelOpenState()
       }
     } catch (error) {
       console.error('Error fetching profile client-side:', error)
     }
+  }
+}
+
+const fetchProfileCollections = async () => {
+  if (!supabase || !profileUserId.value) {
+    profileCollections.value = []
+    return
+  }
+
+  loadingProfileCollections.value = true
+  try {
+    const { data, error } = await supabase
+      .from('collections')
+      .select('id, name, slug, artwork_path, artwork_provider, show_on_profile')
+      .eq('user_id', profileUserId.value)
+      .eq('show_on_profile', true)
+      .order('name', { ascending: true })
+
+    if (error) throw error
+
+    profileCollections.value = (data || []).map((collection: any) => ({
+      id: collection.id,
+      name: collection.name,
+      slug: collection.slug,
+      artwork_path: collection.artwork_path,
+      artwork_provider: collection.artwork_provider,
+    }))
+
+    void prefetchArtworkUrls(
+      profileCollections.value.map((collection) => ({
+        id: collection.id,
+        artwork_path: collection.artwork_path,
+        artwork_provider: collection.artwork_provider as 'supabase' | 'r2' | null | undefined,
+      })),
+      'collection',
+      supabase,
+    )
+  } catch (error) {
+    console.error('Error fetching profile collections:', error)
+    profileCollections.value = []
+  } finally {
+    loadingProfileCollections.value = false
   }
 }
 
@@ -1854,14 +1937,9 @@ onMounted(async () => {
       pageType: 'profile',
     })
   }
-  
-  // Load section states from localStorage
-  loadBioSectionState()
-  loadMusicSectionState()
-  // Load software section state after checking if software is available
-  // Use nextTick to ensure software data is loaded first
-  await nextTick()
-  loadSoftwareSectionState()
+
+  await fetchProfileCollections()
+  loadPanelOpenState()
   
   // Register initial context items
   if (registerContextItems && tracks.value.length > 0) {
