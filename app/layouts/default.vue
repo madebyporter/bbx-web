@@ -94,8 +94,13 @@
             </button>
           </div>
           <div class="flex justify-between items-center">
-            <Button type="submit">
-              {{ isForgotPassword ? 'Send Reset Link' : isSignUp ? 'Sign Up' : 'Sign In' }}
+            <Button type="submit" :disabled="isSubmitting">
+              <span v-if="isSubmitting">
+                {{ isForgotPassword ? 'Sending...' : isSignUp ? 'Signing up...' : 'Signing in...' }}
+              </span>
+              <span v-else>
+                {{ isForgotPassword ? 'Send Reset Link' : isSignUp ? 'Sign Up' : 'Sign In' }}
+              </span>
             </Button>
             <button v-if="isForgotPassword" type="button" class="text-link text-sm no-underline" @click="backToSignIn">
               Back to Sign In
@@ -170,7 +175,11 @@ import gsap from 'gsap'
 import { useAuth, isEmailNotConfirmedError } from '~/composables/useAuth'
 import { useAnalytics } from '~/composables/useAnalytics'
 import { useToast } from '~/composables/useToast'
-import { setPendingSignupEmail } from '~/utils/authStorage'
+import {
+  markSignupConfirmationSent,
+  setPendingSignupEmail,
+  shouldSkipDuplicateSignup,
+} from '~/utils/authStorage'
 import { usePlayer } from '~/composables/usePlayer'
 import {
   getDefaultFilterSortParams,
@@ -310,6 +319,7 @@ const userType = ref<'creator' | 'audio_pro'>('creator')
 const authError = ref<'unconfirmed' | null>(null)
 const authErrorMessage = ref('')
 const isResendingConfirmation = ref(false)
+const isSubmitting = ref(false)
 
 const clearAuthError = () => {
   authError.value = null
@@ -483,7 +493,9 @@ const openAuthFromQuery = () => {
 }
 
 const handleSubmit = async () => {
+  if (isSubmitting.value) return
   clearAuthError()
+  isSubmitting.value = true
   try {
     if (isForgotPassword.value) {
       await auth.resetPassword(email.value)
@@ -495,10 +507,23 @@ const handleSubmit = async () => {
     } else if (isSignUp.value) {
       const signupEmail = email.value
       const signupUserType = userType.value
+
+      // Same pending email: do not call signUp again (each call sends another confirmation).
+      if (shouldSkipDuplicateSignup(signupEmail)) {
+        setPendingSignupEmail(signupEmail)
+        showAuthModal.value = false
+        email.value = ''
+        password.value = ''
+        userType.value = 'creator'
+        await navigateTo('/auth/check-email')
+        return
+      }
+
       const result = await auth.signUp(signupEmail, password.value, signupUserType)
       capture('signup_completed', { user_type: signupUserType, method: 'email' })
       if (result.user && !result.session) {
         setPendingSignupEmail(signupEmail)
+        markSignupConfirmationSent(signupEmail)
         showAuthModal.value = false
         email.value = ''
         password.value = ''
@@ -538,6 +563,8 @@ const handleSubmit = async () => {
     }
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     showError(`Authentication failed: ${errorMessage}`)
+  } finally {
+    isSubmitting.value = false
   }
 }
 

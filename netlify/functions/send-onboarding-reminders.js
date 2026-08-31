@@ -35,7 +35,7 @@ function hoursSince(isoDate) {
   return (Date.now() - new Date(isoDate).getTime()) / HOURS_MS
 }
 
-async function sendResendEmail({ to, subject, html }) {
+async function sendResendEmail({ to, subject, html, idempotencyKey }) {
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.RESEND_FROM_EMAIL?.trim()
   if (!apiKey) {
@@ -45,12 +45,17 @@ async function sendResendEmail({ to, subject, html }) {
     throw new Error('RESEND_FROM_EMAIL is not configured')
   }
 
+  const headers = {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json'
+  }
+  if (idempotencyKey) {
+    headers['Idempotency-Key'] = idempotencyKey
+  }
+
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
+    headers,
     body: JSON.stringify({
       from: `Beatbox Studio <${from}>`,
       to: [to],
@@ -122,13 +127,33 @@ async function generateConfirmationLink(supabase, email) {
 
 async function markReminderSent(supabase, user, reminderKey) {
   const metadata = user.user_metadata || {}
-  const { error } = await supabase.auth.admin.updateUserById(user.id, {
+  const { data, error } = await supabase.auth.admin.updateUserById(user.id, {
     user_metadata: {
       ...metadata,
       [reminderKey]: new Date().toISOString()
     }
   })
   if (error) throw error
+  return data?.user || user
+}
+
+/**
+ * Re-fetch the user and claim the reminder slot before sending.
+ * Returns the fresh user if claimed, or null if another run already claimed it.
+ */
+async function claimReminderSlot(supabase, user, reminderNumber, isCatchup) {
+  const { data, error } = await supabase.auth.admin.getUserById(user.id)
+  if (error) throw error
+  const freshUser = data?.user
+  if (!freshUser) return null
+  if (!shouldSendReminder(freshUser, reminderNumber, isCatchup)) {
+    return null
+  }
+
+  const reminderKey =
+    reminderNumber === 1 ? 'onboarding_reminder_1_at' : 'onboarding_reminder_2_at'
+  await markReminderSent(supabase, freshUser, reminderKey)
+  return freshUser
 }
 
 function shouldSendReminder(user, reminderNumber, isCatchup) {
@@ -201,7 +226,19 @@ async function handlerImpl(event) {
     }
 
     try {
-      const confirmationUrl = await generateConfirmationLink(supabase, user.email)
+      // Claim before send so overlapping cron invocations cannot both deliver.
+      const claimedUser = await claimReminderSlot(
+        supabase,
+        user,
+        reminderNumber,
+        isCatchup
+      )
+      if (!claimedUser) {
+        results.skipped += 1
+        continue
+      }
+
+      const confirmationUrl = await generateConfirmationLink(supabase, claimedUser.email)
       if (!confirmationUrl) {
         throw new Error('No confirmation link returned')
       }
@@ -212,16 +249,12 @@ async function handlerImpl(event) {
           : 'Finish setting up your Beatbox account'
 
       await sendResendEmail({
-        to: user.email,
+        to: claimedUser.email,
         subject,
-        html: reminderHtml({ confirmationUrl, reminderNumber })
+        html: reminderHtml({ confirmationUrl, reminderNumber }),
+        idempotencyKey: `bbx-onboarding-${claimedUser.id}-r${reminderNumber}`
       })
 
-      await markReminderSent(
-        supabase,
-        user,
-        reminderNumber === 1 ? 'onboarding_reminder_1_at' : 'onboarding_reminder_2_at'
-      )
       results.sent += 1
     } catch (error) {
       results.errors.push({

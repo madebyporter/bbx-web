@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { useSupabase } from '~/utils/supabase'
-import { PENDING_USER_TYPE_KEY, setPendingSignupEmail } from '~/utils/authStorage'
+import { PENDING_USER_TYPE_KEY, setPendingSignupEmail, markSignupConfirmationSent, shouldSkipDuplicateSignup } from '~/utils/authStorage'
 import type { Subscription } from '@supabase/supabase-js'
 import type { AuthUser } from '~/types/auth'
 
@@ -96,6 +96,20 @@ const createAuth = () => {
 
   const signUp = async (email: string, password: string, userType: 'creator' | 'audio_pro' = 'creator') => {
     if (!supabase) throw new Error('Supabase not initialized')
+
+    // Prevent a second SMTP confirmation for the same pending / recently-sent email.
+    // Callers should route to /auth/check-email; returning a confirmation-needed shape
+    // without calling signUp keeps existing modal logic working.
+    if (shouldSkipDuplicateSignup(email)) {
+      setPendingSignupEmail(email)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(PENDING_USER_TYPE_KEY, userType)
+      }
+      return {
+        user: { id: '', email, app_metadata: {}, user_metadata: {} } as AuthUser,
+        session: null,
+      }
+    }
     
     // Store userType in localStorage temporarily for confirm.vue to access
     // This avoids passing it in metadata which might cause database trigger issues
@@ -149,6 +163,7 @@ const createAuth = () => {
       }
     } else if (data.user && !data.session) {
       // User created but needs email confirmation - profile will be created in confirm.vue
+      markSignupConfirmationSent(email)
     }
     
     return data

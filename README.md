@@ -275,6 +275,9 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.62.1
+  - Fix duplicate signup confirmation emails (submit lock + skip re-signUp for pending email)
+  - Make onboarding reminder cron claim-before-send with Resend Idempotency-Key
 - 0.62.0
   - Profile name, username, bio, website, and social links are read-only on the profile page
   - Profile editing moved into Library Settings drawer with a single Save
