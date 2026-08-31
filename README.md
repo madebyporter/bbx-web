@@ -285,3 +285,5 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 - 0.60.0
   - Reuse artwork from the latest same-name track version on upload so new versions inherit the current cover without re-uploading
   - Shared artwork files are only deleted from storage when no other track or collection still references them
+- 0.60.1
+  - Reload the player from the start when a new version of the currently playing track is uploaded or its audio file is replaced

@@ -355,7 +355,7 @@ const emit = defineEmits<{
   'load-more': []
 }>()
 
-const { currentTrack, isPlaying, loadQueue, togglePlayPause } = usePlayer()
+const { currentTrack, isPlaying, loadQueue, togglePlayPause, isLoadedAudio } = usePlayer()
 const { isStemPlayerActive, stemTracks, toggleMute, toggleSolo } = useStemPlayer()
 const { supabase } = useSupabase()
 const { user } = useAuth()
@@ -577,9 +577,9 @@ const handlePlayClick = async (track: any, index: number) => {
   // Don't allow playback if stem player is active
   if (isStemPlayerActive.value) return
   
-  // If clicking the current track (regardless of play/pause state), just toggle play/pause
-  // This ensures pausing/resuming doesn't restart the track
-  if (isCurrentTrack(track)) {
+  // Toggle only when this track's audio file is actually loaded (same id + storage path).
+  // A new version with the same id or metadata-synced id must reload from the start.
+  if (isLoadedAudio(track)) {
     await togglePlayPause()
   } else {
     // Load the queue and start playing from this track

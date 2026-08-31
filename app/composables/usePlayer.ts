@@ -43,6 +43,8 @@ const hasEverHadTrack = ref(false)
 const playerHasEntered = ref(false)
 const playerStateLoaded = ref(false)
 const audioElement = ref<HTMLAudioElement | null>(null)
+/** Cache key (`provider:storage_path`) of the audio currently loaded on the <audio> element */
+const loadedAudioCacheKey = ref<string | null>(null)
 const signedUrlCache = ref<Map<string, { url: string; expiry: number }>>(new Map())
 const preloadedUrls = ref<Set<string>>(new Set())
 const loopCheckAnimationFrame = ref<number | null>(null)
@@ -136,6 +138,71 @@ export function usePlayer() {
     }
   }
 
+  /** True when this track's audio file is what is currently loaded on the <audio> element */
+  const isLoadedAudio = (track: Pick<Track, 'id' | 'storage_path' | 'storage_provider'> | null | undefined): boolean => {
+    if (!track || !currentTrack.value) return false
+    if (String(currentTrack.value.id) !== String(track.id)) return false
+    if (!loadedAudioCacheKey.value) return false
+    return loadedAudioCacheKey.value === getAudioCacheKey(track)
+  }
+
+  const isSameSongVersion = (a: Track | null | undefined, b: Track | null | undefined): boolean => {
+    if (!a || !b) return false
+    if (String(a.id) === String(b.id)) return true
+    const groupA = a.track_group_name?.trim()
+    const groupB = b.track_group_name?.trim()
+    return !!groupA && !!groupB && groupA === groupB
+  }
+
+  const applyAudioSrc = async (
+    track: Track,
+    options: { seekToZero?: boolean } = {},
+  ): Promise<boolean> => {
+    const { seekToZero = true } = options
+    if (!audioElement.value) return false
+
+    const url = await getTrackPlaybackUrl(track)
+    if (!url) return false
+
+    audioElement.value.src = url
+    audioElement.value.loop = false
+    audioElement.value.preload = 'auto'
+    audioElement.value.load()
+    loadedAudioCacheKey.value = getAudioCacheKey(track)
+
+    if (seekToZero) {
+      currentTime.value = 0
+      audioElement.value.currentTime = 0
+    }
+
+    return true
+  }
+
+  const replaceQueueSlot = (oldTrackId: number | string | undefined, newTrack: Track) => {
+    if (oldTrackId == null) return
+
+    const queueIndex = queue.value.findIndex(t => String(t.id) === String(oldTrackId))
+    if (queueIndex !== -1) {
+      queue.value[queueIndex] = { ...queue.value[queueIndex], ...newTrack }
+      currentIndex.value = queueIndex
+    } else {
+      // Old version not in queue — place new track at current index or append
+      if (queue.value.length === 0) {
+        queue.value = [newTrack]
+        currentIndex.value = 0
+      } else {
+        queue.value[currentIndex.value] = newTrack
+      }
+    }
+
+    const originalIndex = originalQueue.value.findIndex(t => String(t.id) === String(oldTrackId))
+    if (originalIndex !== -1) {
+      originalQueue.value[originalIndex] = { ...originalQueue.value[originalIndex], ...newTrack }
+    } else if (originalQueue.value.length === 0) {
+      originalQueue.value = [newTrack]
+    }
+  }
+
   // Preload next track in queue for seamless playback
   const preloadNextTrack = async () => {
     if (queue.value.length === 0) return
@@ -181,20 +248,47 @@ export function usePlayer() {
     queueSourceId.value = sourceId
 
     // Find the current track in the new queue
-    const currentTrackId = currentTrack.value?.id
+    const current = currentTrack.value
+    const currentTrackId = current?.id
     let newIndex = 0
+    let replacementTrack: Track | null = null
     
     if (currentTrackId) {
       const foundIndex = tracks.findIndex(t => t.id === currentTrackId)
       if (foundIndex !== -1) {
         newIndex = foundIndex
       } else {
-        // Current track is no longer in the queue, reset to first track but don't play
-        currentIndex.value = 0
-        currentTrack.value = tracks[0] || null
-        queue.value = [...tracks]
-        saveState()
-        return
+        // Current id gone — prefer same track_group_name (new version), else first track
+        const groupName = current?.track_group_name?.trim()
+        const groupIndex = groupName
+          ? tracks.findIndex(t => t.track_group_name?.trim() === groupName)
+          : -1
+
+        if (groupIndex !== -1) {
+          replacementTrack = tracks[groupIndex] ?? null
+          newIndex = groupIndex
+        } else {
+          currentIndex.value = 0
+          currentTrack.value = tracks[0] || null
+          queue.value = [...tracks]
+          // Metadata changed but audio src is stale — reload if we still have a track
+          if (currentTrack.value && audioElement.value) {
+            void (async () => {
+              const wasPlaying = isPlaying.value
+              await endListenSession()
+              const loaded = await applyAudioSrc(currentTrack.value!, { seekToZero: true })
+              if (loaded && wasPlaying) {
+                await play()
+              } else if (!loaded) {
+                isPlaying.value = false
+              }
+              saveState()
+            })()
+          } else {
+            saveState()
+          }
+          return
+        }
       }
     }
 
@@ -219,6 +313,12 @@ export function usePlayer() {
     } else {
       queue.value = [...tracks]
       currentIndex.value = newIndex
+    }
+
+    // New version of the same song replaced the old id — reload audio from 0
+    if (replacementTrack) {
+      void replaceCurrentVersion(replacementTrack)
+      return
     }
 
     saveState()
@@ -269,19 +369,16 @@ export function usePlayer() {
     
     // Load the track
     if (currentTrack.value) {
-      const url = await getTrackPlaybackUrl(currentTrack.value)
-      if (url && audioElement.value) {
-        audioElement.value.src = url
-        audioElement.value.loop = false // Always false - we handle looping manually
-        audioElement.value.preload = 'auto' // Ensure audio is preloaded
-        audioElement.value.load()
+      currentTime.value = 0
+      const loaded = await applyAudioSrc(currentTrack.value, { seekToZero: true })
+      if (loaded) {
         // Wait a bit for buffering before playing for smoother loop
         if (loopOne.value) {
           await new Promise(resolve => setTimeout(resolve, 100))
         }
         await play()
       } else {
-        console.error('loadQueue: Failed - url or audioElement missing', { url: !!url, audioElement: !!audioElement.value })
+        console.error('loadQueue: Failed - url or audioElement missing', { audioElement: !!audioElement.value })
       }
     }
 
@@ -341,6 +438,45 @@ export function usePlayer() {
     }
   }
 
+  /**
+   * Swap the currently loaded song to a new version (same id or same track_group_name)
+   * and restart from the beginning.
+   */
+  const replaceCurrentVersion = async (newTrack: Track): Promise<boolean> => {
+    if (!newTrack || !currentTrack.value) return false
+    if (!isSameSongVersion(currentTrack.value, newTrack)) return false
+
+    // Same file already loaded — nothing to swap
+    if (loadedAudioCacheKey.value === getAudioCacheKey(newTrack) &&
+        String(currentTrack.value.id) === String(newTrack.id)) {
+      return true
+    }
+
+    const oldTrack = currentTrack.value
+    const oldCacheKey = getAudioCacheKey(oldTrack)
+    if (oldCacheKey) {
+      signedUrlCache.value.delete(oldCacheKey)
+    }
+
+    const wasPlaying = isPlaying.value
+    await endListenSession()
+
+    replaceQueueSlot(oldTrack.id, newTrack)
+    currentTrack.value = { ...oldTrack, ...newTrack }
+    hasEverHadTrack.value = true
+    syncPlayerChromeCookie()
+
+    const loaded = await applyAudioSrc(currentTrack.value, { seekToZero: true })
+    if (loaded && wasPlaying) {
+      await play()
+    } else if (!loaded) {
+      isPlaying.value = false
+    }
+
+    saveState()
+    return loaded
+  }
+
   // Play track at specific index
   const playTrackAtIndex = async (index: number) => {
     if (index < 0 || index >= queue.value.length) return
@@ -352,12 +488,8 @@ export function usePlayer() {
     currentTime.value = 0
 
     if (currentTrack.value) {
-      const url = await getTrackPlaybackUrl(currentTrack.value)
-      if (url && audioElement.value) {
-        audioElement.value.src = url
-        audioElement.value.loop = false // Always false - we handle looping manually
-        audioElement.value.preload = 'auto' // Ensure audio is preloaded
-        audioElement.value.load()
+      const loaded = await applyAudioSrc(currentTrack.value, { seekToZero: true })
+      if (loaded) {
         // Wait a bit for buffering before playing for smoother loop
         if (loopOne.value) {
           await new Promise(resolve => setTimeout(resolve, 100))
@@ -590,6 +722,7 @@ export function usePlayer() {
             audioElement.value.loop = false // Always false - we handle looping manually
             audioElement.value.preload = 'auto' // Ensure audio is preloaded
             audioElement.value.load()
+            loadedAudioCacheKey.value = getAudioCacheKey(currentTrack.value)
             audioElement.value.currentTime = state.currentTime || 0
             audioElement.value.volume = volume.value
             audioElement.value.muted = isMuted.value
@@ -612,6 +745,7 @@ export function usePlayer() {
     currentIndex.value = 0
     currentTime.value = 0
     duration.value = 0
+    loadedAudioCacheKey.value = null
     hasEverHadTrack.value = false
     playerHasEntered.value = false
     playerStateLoaded.value = true
@@ -720,28 +854,19 @@ export function usePlayer() {
         ...updatedTrack
       }
       
-      // If storage path changed and audio is loaded, reload with new URL
+      // If storage path changed and audio is loaded, reload with new URL from the start
       if (newPath && oldPath !== newPath && audioElement.value) {
         const wasPlaying = isPlaying.value
-        const savedTime = audioElement.value.currentTime
-        
-        // Get new signed URL
-        const url = await getTrackPlaybackUrl({
-          ...currentTrack.value,
-          ...updatedTrack,
-        })
-        if (url) {
-          audioElement.value.src = url
-          audioElement.value.load()
-          
-          // Restore playback state
-          if (wasPlaying) {
-            audioElement.value.currentTime = Math.min(savedTime, updatedTrack.duration || 0)
-            await audioElement.value.play()
-          } else {
-            audioElement.value.currentTime = Math.min(savedTime, updatedTrack.duration || 0)
-          }
-        } else {
+        await endListenSession()
+
+        const trackToLoad = currentTrack.value
+        if (!trackToLoad) return
+
+        const loaded = await applyAudioSrc(trackToLoad, { seekToZero: true })
+        if (loaded && wasPlaying) {
+          await play()
+        } else if (!loaded) {
+          isPlaying.value = false
           console.error('Player: Failed to get signed URL for updated track')
         }
       }
@@ -785,6 +910,7 @@ export function usePlayer() {
     playerHasEntered,
     shouldReservePlayerChrome,
     audioElement,
+    loadedAudioCacheKey,
     
     // Computed
     formattedCurrentTime,
@@ -813,7 +939,9 @@ export function usePlayer() {
     loadState,
     saveState,
     clearPlayer,
-    updateCurrentTrack
+    updateCurrentTrack,
+    replaceCurrentVersion,
+    isLoadedAudio,
   }
 }
 

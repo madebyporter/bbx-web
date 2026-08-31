@@ -160,7 +160,7 @@ if (process.server) {
 const route = useRoute()
 const { user } = useAuth()
 const { supabase } = useSupabase()
-const { loadQueue, currentTrack, isPlaying, togglePlayPause } = usePlayer()
+const { loadQueue, currentTrack, isPlaying, togglePlayPause, isLoadedAudio } = usePlayer()
 const { showSuccess, showError } = useToast()
 const config = useRuntimeConfig()
 const siteUrl = config.public.SITE_URL || 'https://beatbox.studio'
@@ -325,19 +325,13 @@ const fetchCollectionsAndGroup = async () => {
 const handlePlay = async () => {
   if (!track.value) return
   
-  // If this track is already playing, toggle play/pause
-  if (currentTrack.value?.id === track.value.id && isPlaying.value) {
-    togglePlayPause()
-    return
-  }
-  
-  // If this track is loaded but paused, just resume
-  if (currentTrack.value?.id === track.value.id && !isPlaying.value) {
+  // Toggle only when this track's audio file is actually loaded
+  if (isLoadedAudio(track.value)) {
     await togglePlayPause()
     return
   }
   
-  // Otherwise, load and play the track
+  // Otherwise, load and play the track (covers new versions / different files)
   setPlaybackContext({ source: 'track_page', collectionId: null })
   await loadQueue([track.value], `track-${track.value.id}`, 0)
 }

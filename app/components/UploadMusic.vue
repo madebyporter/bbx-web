@@ -440,7 +440,7 @@ const { supabase } = useSupabase()
 const { user } = useAuth()
 const { capture } = useAnalytics()
 const { validateAndProcessArtwork, uploadArtwork, deleteArtwork, resolveArtworkUrlForEntity } = useArtwork()
-const { addTrackToQueue, queueSourceId } = usePlayer()
+const { addTrackToQueue, queueSourceId, replaceCurrentVersion } = usePlayer()
 const { showError, showSuccess } = useToast()
 
 const isDragging = ref(false)
@@ -1089,22 +1089,26 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       }
     }
     
-    if (queueSourceId.value === `profile-${user.value.id}`) {
-      const newTrack = {
-        id: soundData.id,
-        user_id: user.value.id,
-        title: fileData.metadata.title || 'Untitled',
-        artist: fileData.metadata.artist || 'Unknown',
-        storage_path: filePath,
-        storage_provider: uploadResult.storage_provider,
-        artwork_path: artworkPath,
-        artwork_provider: artworkProvider,
-        duration: fileData.duration || 0,
-        version: fileData.metadata.version || 'v1.0',
-        genre: fileData.metadata.genre || null,
-        bpm: fileData.metadata.bpm,
-        collection_names: collectionNames || '-'
-      }
+    const newTrack: Track = {
+      id: Number(soundData.id),
+      user_id: user.value.id,
+      title: fileData.metadata.title || 'Untitled',
+      artist: fileData.metadata.artist || 'Unknown',
+      storage_path: filePath,
+      storage_provider: uploadResult.storage_provider,
+      artwork_path: artworkPath,
+      artwork_provider: artworkProvider,
+      duration: fileData.duration || 0,
+      version: fileData.metadata.version || 'v1.0',
+      track_group_name: trackGroupName,
+      genre: fileData.metadata.genre || null,
+      bpm: fileData.metadata.bpm,
+      collection_names: collectionNames || '-'
+    }
+
+    // If the player is on an older version of this song, swap to the new file from 0
+    const replaced = await replaceCurrentVersion(newTrack)
+    if (!replaced && queueSourceId.value === `profile-${user.value.id}`) {
       addTrackToQueue(newTrack)
     }
     
