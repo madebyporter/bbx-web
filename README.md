@@ -282,3 +282,6 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 - 0.58.0
   - Collection cover art on index and detail headers (gray placeholder or uploaded image)
   - Upload, replace, or remove collection artwork in Collection Settings drawer
+- 0.60.0
+  - Reuse artwork from the latest same-name track version on upload so new versions inherit the current cover without re-uploading
+  - Shared artwork files are only deleted from storage when no other track or collection still references them

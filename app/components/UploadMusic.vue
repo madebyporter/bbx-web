@@ -203,8 +203,14 @@
                   <p class="text-[10px] text-[#545454]">
                     JPG, PNG, WebP, GIF, MP4, MOV. Max 10MB, 1600x1600.
                   </p>
+                  <p
+                    v-if="file.inheritedArtworkPath && !file.artworkFile"
+                    class="text-[10px] text-[#545454]"
+                  >
+                    Using artwork from existing version
+                  </p>
                   <button
-                    v-if="file.artworkFile"
+                    v-if="file.artworkFile || file.inheritedArtworkPath"
                     type="button"
                     class="text-[10px] text-red-400 hover:text-red-300 text-left cursor-pointer"
                     :disabled="isUploading"
@@ -381,6 +387,8 @@ import Button from './Button.vue'
 import { generateUniqueSlug } from '~/utils/collections'
 import { findOrCreateTrackGroup } from '~/utils/trackGroups'
 import { uploadAudio } from '~/utils/trackAudioStorage'
+import { selectMostUpdatedTrack } from '~/utils/uniqueGroupShuffle'
+import type { StorageProvider, Track } from '~/types/track'
 
 interface Props {
   show: boolean
@@ -414,6 +422,8 @@ interface SelectedFile {
   artworkPreview: string | null
   artworkError: string | null
   artworkIsVideo: boolean
+  inheritedArtworkPath: string | null
+  inheritedArtworkProvider: StorageProvider | null
 }
 
 interface Collection {
@@ -429,7 +439,7 @@ const route = useRoute()
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const { capture } = useAnalytics()
-const { validateAndProcessArtwork, uploadArtwork, deleteArtwork } = useArtwork()
+const { validateAndProcessArtwork, uploadArtwork, deleteArtwork, resolveArtworkUrlForEntity } = useArtwork()
 const { addTrackToQueue, queueSourceId } = usePlayer()
 const { showError, showSuccess } = useToast()
 
@@ -489,6 +499,8 @@ const handleArtworkSelect = async (event: Event, index: number) => {
     fileData.artworkPreview = preview
     fileData.artworkError = null
     fileData.artworkIsVideo = isVideoArtwork(processedFile.name)
+    fileData.inheritedArtworkPath = null
+    fileData.inheritedArtworkProvider = null
   } catch (error: any) {
     fileData.artworkError = error.message || 'Invalid artwork file'
   }
@@ -504,6 +516,8 @@ const removeArtwork = (index: number) => {
   fileData.artworkPreview = null
   fileData.artworkError = null
   fileData.artworkIsVideo = false
+  fileData.inheritedArtworkPath = null
+  fileData.inheritedArtworkProvider = null
 }
 
 const queueCollectionCreation = (name: string, fileIndex: number) => {
@@ -638,6 +652,23 @@ const getNextVersionFromExisting = (currentVersion: string | null | undefined): 
   return 'v1.0'
 }
 
+const getArtworkFromLatestVersion = (matches: Track[]) => {
+  if (matches.length === 0) {
+    return {
+      artwork_path: null as string | null,
+      artwork_provider: null as StorageProvider | null,
+      artworkSourceId: null as number | null,
+    }
+  }
+
+  const latest = selectMostUpdatedTrack(matches)
+  return {
+    artwork_path: latest.artwork_path || null,
+    artwork_provider: (latest.artwork_provider as StorageProvider | undefined) || null,
+    artworkSourceId: latest.id,
+  }
+}
+
 const findSimilarTrackMetadata = async (title: string, duration: number | null) => {
   if (!supabase || !user.value) return null
   
@@ -652,16 +683,20 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
       .order('created_at', { ascending: false })
     
     if (!userTracks || userTracks.length === 0) return null
-    
-    const exactMatch = userTracks.find(track => 
+
+    const exactMatches = userTracks.filter((track: Track) =>
       track.title && track.title.toLowerCase() === title.toLowerCase()
-    )
+    ) as Track[]
+    
+    const exactMatch = exactMatches[0]
     
     if (exactMatch) {
       const isDurationSimilar = duration && exactMatch.duration && 
         Math.abs(duration - exactMatch.duration) < 2
       
       if (isDurationSimilar) {
+        const artwork = getArtworkFromLatestVersion(exactMatches)
+        const latestExact = selectMostUpdatedTrack(exactMatches)
         return {
           isDuplicate: true,
           duplicateTrack: exactMatch,
@@ -671,14 +706,18 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
           bpm: exactMatch.bpm || null,
           key: exactMatch.key || null,
           year: exactMatch.year || null,
-          version: getNextVersionFromExisting(exactMatch.version),
-          collectionIds: []
+          version: getNextVersionFromExisting(latestExact.version),
+          collectionIds: [],
+          artwork_path: artwork.artwork_path,
+          artwork_provider: artwork.artwork_provider,
+          artworkSourceId: artwork.artworkSourceId,
         }
       }
     }
     
     let bestMatch: any = null
     let bestRatio = 0
+    const fuzzyMatches: Track[] = []
     
     for (const track of userTracks) {
       if (!track.title) continue
@@ -686,9 +725,12 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
       const trackNormalized = normalizeTitle(track.title)
       const ratio = similarityRatio(normalized, trackNormalized)
       
-      if (ratio >= 0.85 && ratio > bestRatio) {
-        bestMatch = track
-        bestRatio = ratio
+      if (ratio >= 0.85) {
+        fuzzyMatches.push(track as Track)
+        if (ratio > bestRatio) {
+          bestMatch = track
+          bestRatio = ratio
+        }
       }
     }
     
@@ -704,6 +746,12 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
     const moodString = Array.isArray(bestMatch.mood) 
       ? bestMatch.mood.join(', ') 
       : (bestMatch.mood || '')
+
+    const matchSetForArtwork = exactMatches.length > 0 ? exactMatches : fuzzyMatches
+    const artwork = getArtworkFromLatestVersion(matchSetForArtwork)
+    const latestMatched = matchSetForArtwork.length > 0
+      ? selectMostUpdatedTrack(matchSetForArtwork)
+      : bestMatch
     
     return {
       isDuplicate: false,
@@ -713,8 +761,11 @@ const findSimilarTrackMetadata = async (title: string, duration: number | null) 
       bpm: bestMatch.bpm || null,
       key: bestMatch.key || null,
       year: bestMatch.year || null,
-      version: getNextVersionFromExisting(bestMatch.version),
-      collectionIds
+      version: getNextVersionFromExisting(latestMatched.version),
+      collectionIds,
+      artwork_path: artwork.artwork_path,
+      artwork_provider: artwork.artwork_provider,
+      artworkSourceId: artwork.artworkSourceId,
     }
   } catch (error) {
     console.error('Error finding similar track:', error)
@@ -795,6 +846,23 @@ const processFiles = async (files: File[]) => {
       user.value!.id,
       parsedData.title
     )
+
+    const inheritedArtworkPath = prefillData?.artwork_path || null
+    const inheritedArtworkProvider = (prefillData?.artwork_provider as StorageProvider | null) || null
+    let artworkPreview: string | null = null
+    let artworkIsVideo = false
+
+    if (inheritedArtworkPath && prefillData?.artworkSourceId) {
+      artworkPreview = await resolveArtworkUrlForEntity(
+        {
+          id: prefillData.artworkSourceId,
+          artwork_path: inheritedArtworkPath,
+          artwork_provider: inheritedArtworkProvider,
+        },
+        'track',
+      )
+      artworkIsVideo = isVideoArtwork(inheritedArtworkPath)
+    }
     
     selectedFiles.value.push({
       file,
@@ -822,9 +890,11 @@ const processFiles = async (files: File[]) => {
       error: warningMessage,
       uploadedSoundId: null,
       artworkFile: null,
-      artworkPreview: null,
+      artworkPreview,
       artworkError: null,
-      artworkIsVideo: false
+      artworkIsVideo,
+      inheritedArtworkPath,
+      inheritedArtworkProvider,
     })
   }
 }
@@ -933,7 +1003,8 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
   }
 
   let artworkPath: string | null = null
-  let artworkProvider: 'r2' | null = null
+  let artworkProvider: StorageProvider | null = null
+  let uploadedNewArtwork = false
   
   try {
     if (fileData.artworkFile) {
@@ -941,6 +1012,10 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       const uploadedArtwork = await uploadArtwork(fileData.artworkFile, 'track')
       artworkPath = uploadedArtwork.artwork_path
       artworkProvider = uploadedArtwork.artwork_provider
+      uploadedNewArtwork = true
+    } else if (fileData.inheritedArtworkPath) {
+      artworkPath = fileData.inheritedArtworkPath
+      artworkProvider = fileData.inheritedArtworkProvider || 'supabase'
     }
 
     fileData.progress = 10
@@ -1038,7 +1113,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
     
   } catch (error: any) {
     console.error('Upload error:', error)
-    if (artworkPath) {
+    if (uploadedNewArtwork && artworkPath) {
       await deleteArtwork(
         {
           artwork_path: artworkPath,

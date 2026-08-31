@@ -161,10 +161,39 @@ export async function deleteArtworkFromStorage(
 ): Promise<void> {
   if (!entity.artwork_path || !supabase) return
 
+  const path = entity.artwork_path
+
+  // Skip storage delete while any other row still references this path
+  // (versions can share the same artwork object).
+  let soundsQuery = supabase
+    .from('sounds')
+    .select('id', { count: 'exact', head: true })
+    .eq('artwork_path', path)
+
+  if (kind === 'track' && entity.id) {
+    soundsQuery = soundsQuery.neq('id', entity.id)
+  }
+
+  let collectionsQuery = supabase
+    .from('collections')
+    .select('id', { count: 'exact', head: true })
+    .eq('artwork_path', path)
+
+  if (kind === 'collection' && entity.id) {
+    collectionsQuery = collectionsQuery.neq('id', entity.id)
+  }
+
+  const [soundsResult, collectionsResult] = await Promise.all([soundsQuery, collectionsQuery])
+  const remainingRefs = (soundsResult.count || 0) + (collectionsResult.count || 0)
+
+  if (remainingRefs > 0) {
+    return
+  }
+
   const provider = normalizeArtworkProvider(entity.artwork_provider)
 
   if (provider === 'supabase') {
-    const { error } = await supabase.storage.from(ARTWORK_BUCKET).remove([entity.artwork_path])
+    const { error } = await supabase.storage.from(ARTWORK_BUCKET).remove([path])
     if (error) {
       console.warn('Failed to delete Supabase artwork:', error)
     }
@@ -181,7 +210,7 @@ export async function deleteArtworkFromStorage(
       method: 'POST',
       body: {
         kind,
-        path: entity.artwork_path,
+        path,
         ...(entity.id
           ? kind === 'track'
             ? { trackId: entity.id }
