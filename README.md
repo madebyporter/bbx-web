@@ -275,6 +275,10 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.62.0
+  - Profile name, username, bio, website, and social links are read-only on the profile page
+  - Profile editing moved into Library Settings drawer with a single Save
+  - Library settings gear moved to the panel pills row (pill style after Music)
 - 0.61.0
   - Profile Collections strip (like Software) with per-collection “Show on Profile”
   - Library Settings drawer: panel first-view defaults (Bio/Collections/Software/Music) stored on the profile

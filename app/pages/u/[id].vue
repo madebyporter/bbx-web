@@ -23,79 +23,9 @@
     <!-- Profile Header -->
     <div class="flex flex-col md:flex-row justify-start md:justify-between items-stretch gap-2 p-4">
       <div class="flex flex-col gap-2 overflow-auto">
-        <!-- Display Name and Username -->
         <div class="flex flex-row gap-2 items-end flex-wrap">
-          <!-- Display Name Section -->
-          <div class="flex flex-row gap-2 items-center">
-            <!-- Editing Display Name -->
-            <div v-if="editingDisplayName"
-              class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
-              <input ref="displayNameInputRef" v-model="newDisplayNameValue" type="text"
-                class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]" @keyup.enter="saveDisplayName"
-                @keyup.esc="cancelEditingDisplayName" />
-              <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Cancel" @click="cancelEditingDisplayName">
-                <Xmark class="w-[10px] h-[10px]" />
-              </Button>
-              <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Save" @click="saveDisplayName">
-                <Check class="w-[10px] h-[10px]" />
-              </Button>
-            </div>
-            <!-- Display Name (not editing) -->
-            <template v-else>
-              <div v-if="profileName" class="flex flex-row gap-1 items-center group">
-                <h1 class="text-xl lg:text-3xl font-bold truncate">{{ profileName }}</h1>
-                <Button
-                  v-if="isOwnProfile"
-                  variant="ghost"
-                  class="!p-1 rounded hover:bg-neutral-800 opacity-0 group-hover:opacity-100"
-                  title="Edit Display Name"
-                  @click="startEditingDisplayName"
-                >
-                  <EditPencil class="w-[10px] h-[10px]" />
-                </Button>
-              </div>
-              <h1 v-else-if="isOwnProfile" @click="startEditingDisplayName"
-                class="text-xl lg:text-3xl font-bold text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer truncate">
-                Add a Display Name
-              </h1>
-            </template>
-          </div>
-          <!-- Username Section -->
-          <div class="flex flex-row gap-1 items-end">
-            <!-- Editing Username -->
-            <div v-if="editingUsername"
-              class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
-              <span class="text-base lg:text-xl font-normal text-neutral-400">@</span>
-              <input ref="usernameInputRef" v-model="newUsernameValue" type="text"
-                class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[150px]" @keyup.enter="saveUsername"
-                @keyup.esc="cancelEditingUsername" />
-              <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Cancel" @click="cancelEditingUsername">
-                <Xmark class="w-[10px] h-[10px]" />
-              </Button>
-              <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Save" @click="saveUsername">
-                <Check class="w-[10px] h-[10px]" />
-              </Button>
-            </div>
-            <!-- Username (not editing) -->
-            <template v-else>
-              <div v-if="username" class="flex flex-row gap-1 items-center group">
-                <span class="text-base lg:text-xl font-normal text-neutral-400">@{{ username }}</span>
-                <Button
-                  v-if="isOwnProfile"
-                  variant="ghost"
-                  class="!p-1 rounded hover:bg-neutral-800 opacity-0 group-hover:opacity-100"
-                  title="Edit Username"
-                  @click="startEditingUsername"
-                >
-                  <EditPencil class="w-[10px] h-[10px]" />
-                </Button>
-              </div>
-              <span v-else-if="isOwnProfile" @click="startEditingUsername"
-                class="text-sm lg:text-base font-normal text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer">
-                Add @username
-              </span>
-            </template>
-          </div>
+          <h1 v-if="profileName" class="text-xl lg:text-3xl font-bold truncate">{{ profileName }}</h1>
+          <span v-if="username" class="text-base lg:text-xl font-normal text-neutral-400">@{{ username }}</span>
         </div>
       </div>
 
@@ -125,123 +55,56 @@
           :class="musicSectionOpen ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'">
           Music
         </div>
+        <div
+          v-if="isOwnProfile"
+          role="button"
+          tabindex="0"
+          aria-label="Library settings"
+          class="h-9 rounded-full px-4 py-2 w-fit flex items-center justify-center whitespace-nowrap cursor-pointer transition-colors text-xs text-neutral-400 select-none border border-neutral-800"
+          :class="showLibrarySettingsDrawer ? 'bg-neutral-800 !text-neutral-200' : 'bg-transparent hover:bg-neutral-800'"
+          @click="showLibrarySettingsDrawer = true"
+          @keyup.enter="showLibrarySettingsDrawer = true"
+        >
+          <Settings class="w-3.5 h-3.5" />
+        </div>
       </div>
     </div>
 
-    
-
     <!-- Bio Section -->
     <div v-if="bioSectionOpen" class="flex flex-col gap-0 p-4 border-t border-neutral-800">
-      <!-- Profile Info -->
       <div class="flex flex-col gap-1">
-        <!-- Bio -->
-        <div class="text-sm text-neutral-400">
-          <!-- Editing Bio -->
-          <div v-if="editingBio"
-            class="flex flex-row gap-1 items-start border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
-            <textarea ref="bioInputRef" v-model="newBioValue"
-              class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[300px] min-h-[60px] resize-y"
-              @keyup.ctrl.enter="saveBio" @keyup.esc="cancelEditingBio"></textarea>
-            <div class="flex flex-col gap-1">
-              <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Cancel" @click="cancelEditingBio">
-                <Xmark class="w-[10px] h-[10px]" />
-              </Button>
-              <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Save" @click="saveBio">
-                <Check class="w-[10px] h-[10px]" />
-              </Button>
-            </div>
-          </div>
-          <!-- Bio (not editing) -->
-          <template v-else>
-            <span v-if="profileBio">{{ profileBio }}</span>
-            <span v-else-if="isOwnProfile" @click="startEditingBio"
-              class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer italic">
-              Add a bio
-            </span>
-            <span v-else class="text-neutral-500 italic">Something's supposed to be here</span>
-          </template>
+        <div v-if="profileBio" class="text-sm text-neutral-400">
+          {{ profileBio }}
         </div>
-        <div v-if="profileWebsite || hasSocialLinks || isOwnProfile"
-          class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap items-center">
-          <!-- Editing Website -->
-          <div v-if="editingWebsite"
-            class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
-            <input ref="websiteInputRef" v-model="newWebsiteValue" type="text"
-              class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]" @keyup.enter="saveWebsite"
-              @keyup.esc="cancelEditingWebsite" />
-            <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Cancel" @click="cancelEditingWebsite">
-              <Xmark class="w-[10px] h-[10px]" />
-            </Button>
-            <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Save" @click="saveWebsite">
-              <Check class="w-[10px] h-[10px]" />
-            </Button>
-          </div>
-          <!-- Website (not editing) -->
-          <template v-else>
-            <a v-if="profileWebsite" :href="profileWebsite" target="_blank" rel="noopener noreferrer"
-              class="hover:text-neutral-300 transition-colors">Website</a>
-            <span v-else-if="isOwnProfile" @click="startEditingWebsite"
-              class="text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer">
-              Add Website
-            </span>
-          </template>
+        <p v-else-if="!isOwnProfile" class="text-sm text-neutral-500 italic">
+          Something's supposed to be here
+        </p>
 
-          <!-- Social Links -->
-          <div class="flex flex-row gap-0">
-            <template v-for="platform in socialLinkPlatforms" :key="platform">
-              <!-- Editing state -->
-              <div v-if="editingSocialLink === platform"
-                class="flex flex-row gap-1 items-center border border-neutral-800 hover:border-neutral-700 focus:border-neutral-700 rounded-md p-1">
-                <input ref="socialLinkInputRef" v-model="newSocialLinkValue" type="text"
-                  class="px-1 text-sm rounded text-neutral-200 outline-none min-w-[200px]"
-                  @keyup.enter="saveSocialLink(platform)" @keyup.esc="cancelEditingSocialLink" />
-                <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Cancel" @click="cancelEditingSocialLink">
-                  <Xmark class="w-[10px] h-[10px]" />
-                </Button>
-                <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800" title="Save" @click="saveSocialLink(platform)">
-                  <Check class="w-[10px] h-[10px]" />
-                </Button>
-              </div>
-              <!-- Existing link with edit/delete buttons -->
-              <div v-else-if="profileSocialLinks[platform]"
-                class="flex flex-row gap-0 items-center border border-transparent hover:border-neutral-800 rounded-md p-1 hover:*:opacity-100">
-                <a :href="String(profileSocialLinks[platform])" target="_blank" rel="noopener noreferrer"
-                  class="hover:text-neutral-300 transition-colors px-1">
-                  {{ getDisplayNameFromUrl(String(profileSocialLinks[platform] || ''), platform) }}
-                </a>
-                <template v-if="isOwnProfile">
-                  <Button variant="ghost" class="!p-1 rounded hover:bg-neutral-800 opacity-30" title="Edit" @click="startEditingSocialLink(platform)">
-                    <EditPencil class="w-[10px] h-[10px]" />
-                  </Button>
-                  <Button variant="ghost" class="!p-1 rounded hover:bg-red-900/20 opacity-30" title="Delete" @click="deleteSocialLink(platform)">
-                    <Trash class="w-2.5 h-2.5 max-w-2.5 max-h-2.5 text-red-500" />
-                  </Button>
-                </template>
-              </div>
-            </template>
+        <div
+          v-if="profileWebsite || profileHasSocialLinks"
+          class="flex flex-row gap-2 text-sm text-neutral-400 flex-wrap items-center"
+        >
+          <a
+            v-if="profileWebsite"
+            :href="profileWebsite"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="hover:text-neutral-300 transition-colors"
+          >
+            Website
+          </a>
 
-          </div>
-
-          <!-- Single plus button to add another social link (only show if own profile, has links, and not all platforms are filled) -->
-          <div
-            v-if="isOwnProfile && hasSocialLinks && !editingSocialLink && socialLinkPlatforms.some(p => !profileSocialLinks[p])"
-            class="flex flex-row gap-1 items-center">
-            <Button
-              variant="ghost"
-              class="!p-1 bg-neutral-800 rounded hover:bg-neutral-700"
-              title="Add Social Link"
-              @click="startAddingSocialLink(getNextAvailablePlatform())"
+          <template v-for="platform in socialLinkPlatforms" :key="platform">
+            <a
+              v-if="profileSocialLinks[platform]"
+              :href="String(profileSocialLinks[platform])"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="hover:text-neutral-300 transition-colors"
             >
-              <Plus class="w-2.5 h-2.5 max-w-2.5 max-h-2.5" />
-            </Button>
-          </div>
-
-          <!-- Show "Add Social Links" text if no links exist and is own profile -->
-          <div v-if="isOwnProfile && !hasSocialLinks && !editingSocialLink" @click="startAddingSocialLink('twitter')"
-            class="hover:text-neutral-300 transition-colors cursor-pointer">
-            Add Social Links
-          </div>
-
+              {{ getDisplayNameFromUrl(String(profileSocialLinks[platform] || ''), platform) }}
+            </a>
+          </template>
         </div>
       </div>
     </div>
@@ -379,16 +242,6 @@
           >
             <StatsReport class="w-4 h-4" />
           </Button>
-          <Button
-            v-if="isOwnProfile"
-            variant="secondary"
-            size="sm"
-            class="btn px-2.5! py-1.5! text-sm h-full max-h-10 self-stretch shrink-0"
-            title="Library settings"
-            @click="showLibrarySettingsDrawer = true"
-          >
-            <Settings class="w-4 h-4" />
-          </Button>
         </div>
       </div>
       <template v-if="analyticsMode && isOwnProfile && isAudioPro">
@@ -427,7 +280,13 @@
       :profile-id="profileUserId"
       :is-audio-pro="isAudioPro"
       :panels="profilePanels"
+      :display-name="profileName"
+      :username="username"
+      :bio="profileBio"
+      :website="profileWebsite"
+      :social-links="profileSocialLinks"
       @panels-updated="handlePanelsUpdated"
+      @profile-updated="handleProfileUpdated"
     />
   </div>
 </template>
@@ -472,9 +331,14 @@ import {
   saveStoredPanelOpenState,
   type ProfilePanels,
 } from '~/utils/profilePanels'
+import {
+  getDisplayNameFromUrl,
+  hasSocialLinks,
+  SOCIAL_PLATFORMS,
+} from '~/utils/profileFields'
 import { prefetchArtworkUrls } from '~/composables/useArtworkUrlCache'
 import gsap from 'gsap'
-import { Plus, EditPencil, Trash, Check, Xmark, StatsReport, Settings } from '@iconoir/vue'
+import { Xmark, StatsReport, Settings } from '@iconoir/vue'
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
@@ -641,8 +505,8 @@ const username = ref<string>(initialData.value?.profile?.username || '')
 const profileUserId = ref<string | null>(initialData.value?.profile?.id || null)
 const profileUserType = ref<'creator' | 'audio_pro' | null>((initialData.value?.profile?.user_type as 'creator' | 'audio_pro') || null)
 const viewerUserType = ref<'creator' | 'audio_pro' | null>(null) // Logged-in user's type
-const profileBio = ref(initialData.value?.profile?.bio || '')
-const profileWebsite = ref(initialData.value?.profile?.website || '')
+const profileBio = ref<string>((initialData.value?.profile?.bio as string) || '')
+const profileWebsite = ref<string>((initialData.value?.profile?.website as string) || '')
 const profileSocialLinks = ref<{
   twitter?: string
   instagram?: string
@@ -799,519 +663,26 @@ const isTagSelected = (tag: string) => {
   return selectedTags.value.includes(tag)
 }
 
-// Check if user has any social links
-const hasSocialLinks = computed(() => {
-  const links = profileSocialLinks.value
-  return !!(links?.twitter || links?.instagram || links?.soundcloud || links?.spotify || links?.youtube)
-})
+const socialLinkPlatforms = SOCIAL_PLATFORMS
 
-// Social links editing state
-const editingSocialLink = ref<string | null>(null)
-const newSocialLinkValue = ref('')
-const socialLinkInputRef = ref<HTMLInputElement | null>(null)
+const profileHasSocialLinks = computed(() => hasSocialLinks(profileSocialLinks.value))
 
-// Display name and username editing state
-const editingDisplayName = ref(false)
-const editingUsername = ref(false)
-const editingBio = ref(false)
-const editingWebsite = ref(false)
-const newDisplayNameValue = ref('')
-const newUsernameValue = ref('')
-const newBioValue = ref('')
-const newWebsiteValue = ref('')
-const displayNameInputRef = ref<HTMLInputElement | null>(null)
-const usernameInputRef = ref<HTMLInputElement | null>(null)
-const bioInputRef = ref<HTMLTextAreaElement | null>(null)
-const websiteInputRef = ref<HTMLInputElement | null>(null)
-
-// Available social link platforms
-const socialLinkPlatforms = ['twitter', 'instagram', 'soundcloud', 'spotify', 'youtube', 'linkedin'] as const
-type SocialLinkPlatform = typeof socialLinkPlatforms[number]
-
-// Get display name for platform
-const getPlatformDisplayName = (platform: string): string => {
-  const names: Record<string, string> = {
-    twitter: 'Twitter',
-    instagram: 'Instagram',
-    soundcloud: 'SoundCloud',
-    spotify: 'Spotify',
-    youtube: 'YouTube',
-    linkedin: 'LinkedIn'
-  }
-  return names[platform] || platform
+type ProfileUpdatedPayload = {
+  displayName: string
+  username: string
+  bio: string
+  website: string
+  socialLinks: Record<string, string>
 }
 
-// Detect platform from URL
-const detectPlatformFromUrl = (url: string): string | null => {
-  try {
-    const urlObj = new URL(url)
-    const hostname = urlObj.hostname.toLowerCase()
-    
-    // Remove www. prefix
-    const domain = hostname.replace(/^www\./, '')
-    
-    // Map domains to platform keys
-    const domainMap: Record<string, string> = {
-      'twitter.com': 'twitter',
-      'x.com': 'twitter', // Twitter is now X
-      'instagram.com': 'instagram',
-      'soundcloud.com': 'soundcloud',
-      'spotify.com': 'spotify',
-      'youtube.com': 'youtube',
-      'youtu.be': 'youtube',
-      'linkedin.com': 'linkedin'
-    }
-    
-    return domainMap[domain] || null
-  } catch (e) {
-    return null
-  }
+const handleProfileUpdated = async (payload: ProfileUpdatedPayload) => {
+  profileName.value = payload.displayName || payload.username || ''
+  username.value = payload.username || ''
+  profileBio.value = payload.bio || ''
+  profileWebsite.value = payload.website || ''
+  profileSocialLinks.value = payload.socialLinks as any
+  await refreshInitialData()
 }
-
-// Get display name for a URL (detects platform from URL)
-const getDisplayNameFromUrl = (url: string, fallbackPlatform?: string): string => {
-  const detectedPlatform = detectPlatformFromUrl(url)
-  const platform = detectedPlatform || fallbackPlatform
-  return platform ? getPlatformDisplayName(platform) : 'Link'
-}
-
-// Get the next available platform that doesn't have a link
-const getNextAvailablePlatform = (): string => {
-  return socialLinkPlatforms.find(p => !profileSocialLinks.value[p]) || socialLinkPlatforms[0]
-}
-
-// Start editing a social link
-const startEditingSocialLink = (platform: string) => {
-  editingSocialLink.value = platform
-  const currentUrl = profileSocialLinks.value[platform as SocialLinkPlatform] || ''
-  // Keep the full URL including https://
-  newSocialLinkValue.value = currentUrl || 'https://'
-}
-
-// Start adding a new social link
-const startAddingSocialLink = (platform: string) => {
-  editingSocialLink.value = platform
-  newSocialLinkValue.value = 'https://'
-}
-
-// Cancel editing
-const cancelEditingSocialLink = () => {
-  editingSocialLink.value = null
-  newSocialLinkValue.value = ''
-}
-
-// Save social link
-const saveSocialLink = async (platform: string) => {
-  if (!supabase || !profileUserId.value || !user.value) return
-  
-  let url = newSocialLinkValue.value.trim()
-  
-  // Ensure URL starts with https://
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = 'https://' + url
-  }
-  
-  // Validate URL
-  try {
-    new URL(url)
-  } catch (e) {
-    alert('Please enter a valid URL')
-    return
-  }
-  
-  try {
-    // Get current social_links
-    const currentLinks = { ...profileSocialLinks.value }
-    // Update the specific platform
-    currentLinks[platform as SocialLinkPlatform] = url
-    
-    // Update database
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ social_links: currentLinks })
-      .eq('id', profileUserId.value)
-    
-    if (error) throw error
-    
-    // Update local state
-    profileSocialLinks.value = currentLinks
-    editingSocialLink.value = null
-    newSocialLinkValue.value = ''
-    
-    // Refresh initial data
-    await refreshProfile()
-  } catch (error) {
-    console.error('Error saving social link:', error)
-    alert('Failed to save social link')
-  }
-}
-
-// Start editing display name
-const startEditingDisplayName = () => {
-  editingDisplayName.value = true
-  newDisplayNameValue.value = profileName.value || ''
-}
-
-// Cancel editing display name
-const cancelEditingDisplayName = () => {
-  editingDisplayName.value = false
-  newDisplayNameValue.value = ''
-}
-
-// Save display name
-const saveDisplayName = async () => {
-  if (!supabase || !profileUserId.value || !user.value) return
-  
-  const displayName = newDisplayNameValue.value.trim()
-  
-  if (!displayName) {
-    alert('Display name cannot be empty')
-    return
-  }
-  
-  try {
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ display_name: displayName })
-      .eq('id', profileUserId.value)
-    
-    if (error) throw error
-    
-    // Update local state
-    profileName.value = displayName
-    editingDisplayName.value = false
-    newDisplayNameValue.value = ''
-    
-    // Refresh initial data
-    await refreshProfile()
-  } catch (error) {
-    console.error('Error saving display name:', error)
-    alert('Failed to save display name')
-  }
-}
-
-// Start editing username
-const startEditingUsername = () => {
-  editingUsername.value = true
-  newUsernameValue.value = username.value || ''
-}
-
-// Cancel editing username
-const cancelEditingUsername = () => {
-  editingUsername.value = false
-  newUsernameValue.value = ''
-}
-
-// Save username
-const saveUsername = async () => {
-  if (!supabase || !profileUserId.value || !user.value) return
-  
-  let newUsername = newUsernameValue.value.trim().toLowerCase()
-  
-  // Remove @ if user included it
-  if (newUsername.startsWith('@')) {
-    newUsername = newUsername.slice(1)
-  }
-  
-  if (!newUsername) {
-    alert('Username cannot be empty')
-    return
-  }
-  
-  // Validate username format (alphanumeric, underscore, hyphen)
-  if (!/^[a-z0-9_-]+$/.test(newUsername)) {
-    alert('Username can only contain letters, numbers, underscores, and hyphens')
-    return
-  }
-  
-  try {
-    // Check if username is already taken
-    const { data: existingUser, error: checkError } = await supabase
-      .from('user_profiles')
-      .select('id')
-      .eq('username', newUsername)
-      .neq('id', profileUserId.value)
-      .single()
-    
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
-      throw checkError
-    }
-    
-    if (existingUser) {
-      alert('This username is already taken')
-      return
-    }
-    
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ username: newUsername })
-      .eq('id', profileUserId.value)
-    
-    if (error) throw error
-    
-    // Update local state
-    username.value = newUsername
-    editingUsername.value = false
-    newUsernameValue.value = ''
-    
-    // Refresh initial data
-    await refreshProfile()
-  } catch (error) {
-    console.error('Error saving username:', error)
-    alert('Failed to save username')
-  }
-}
-
-// Start editing bio
-const startEditingBio = () => {
-  editingBio.value = true
-  newBioValue.value = profileBio.value || ''
-}
-
-// Cancel editing bio
-const cancelEditingBio = () => {
-  editingBio.value = false
-  newBioValue.value = ''
-}
-
-// Save bio
-const saveBio = async () => {
-  if (!supabase || !profileUserId.value || !user.value) return
-  
-  const bio = newBioValue.value.trim()
-  
-  try {
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ bio: bio || null })
-      .eq('id', profileUserId.value)
-    
-    if (error) throw error
-    
-    // Update local state
-    profileBio.value = bio
-    editingBio.value = false
-    newBioValue.value = ''
-    
-    // Refresh initial data
-    await refreshProfile()
-  } catch (error) {
-    console.error('Error saving bio:', error)
-    alert('Failed to save bio')
-  }
-}
-
-// Start editing website
-const startEditingWebsite = () => {
-  editingWebsite.value = true
-  newWebsiteValue.value = profileWebsite.value || 'https://'
-}
-
-// Cancel editing website
-const cancelEditingWebsite = () => {
-  editingWebsite.value = false
-  newWebsiteValue.value = ''
-}
-
-// Save website
-const saveWebsite = async () => {
-  if (!supabase || !profileUserId.value || !user.value) return
-  
-  let url = newWebsiteValue.value.trim()
-  
-  // Ensure URL starts with http:// or https://
-  if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
-    url = 'https://' + url
-  }
-  
-  // Validate URL if provided
-  if (url && url !== 'https://') {
-    try {
-      new URL(url)
-    } catch (e) {
-      alert('Please enter a valid URL')
-      return
-    }
-  } else {
-    url = ''
-  }
-  
-  try {
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ website: url || null })
-      .eq('id', profileUserId.value)
-    
-    if (error) throw error
-    
-    // Update local state
-    profileWebsite.value = url
-    editingWebsite.value = false
-    newWebsiteValue.value = ''
-    
-    // Refresh initial data
-    await refreshProfile()
-  } catch (error) {
-    console.error('Error saving website:', error)
-    alert('Failed to save website')
-  }
-}
-
-// Delete social link
-const deleteSocialLink = async (platform: string) => {
-  if (!supabase || !profileUserId.value || !user.value) return
-  
-  if (!confirm(`Are you sure you want to remove your ${getPlatformDisplayName(platform)} link?`)) {
-    return
-  }
-  
-  try {
-    // Get current social_links
-    const currentLinks = { ...profileSocialLinks.value }
-    // Remove the platform
-    delete currentLinks[platform as SocialLinkPlatform]
-    
-    // Update database
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ social_links: currentLinks })
-      .eq('id', profileUserId.value)
-    
-    if (error) throw error
-    
-    // Update local state
-    profileSocialLinks.value = currentLinks
-  } catch (error) {
-    console.error('Error deleting social link:', error)
-    alert('Failed to delete social link')
-  }
-}
-
-// Refresh profile data
-const refreshProfile = async () => {
-  if (!supabase || !profileUserId.value) return
-  
-  try {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('display_name, username, bio, website, social_links, user_type')
-      .eq('id', profileUserId.value)
-      .single()
-    
-    if (error) throw error
-    
-    if (data) {
-      profileName.value = (data.display_name as string) || (data.username as string) || ''
-      username.value = (data.username as string) || ''
-      profileUserType.value = (data.user_type as 'creator' | 'audio_pro' | null) || null
-      profileBio.value = (data.bio as string) || ''
-      profileWebsite.value = (data.website as string) || ''
-      profileSocialLinks.value = (data.social_links as any) || {}
-    }
-  } catch (error) {
-    console.error('Error refreshing profile:', error)
-  }
-}
-
-// Watch for editingSocialLink changes to focus input
-watch(editingSocialLink, async (newPlatform) => {
-  if (newPlatform) {
-    await nextTick()
-    if (socialLinkInputRef.value) {
-      socialLinkInputRef.value.focus()
-      const httpsPrefix = 'https://'
-      if (newSocialLinkValue.value === httpsPrefix || !newSocialLinkValue.value.startsWith(httpsPrefix)) {
-        await nextTick()
-        if (socialLinkInputRef.value) {
-          socialLinkInputRef.value.setSelectionRange(httpsPrefix.length, httpsPrefix.length)
-        }
-      } else {
-        // If editing existing link, position cursor at end
-        await nextTick()
-        if (socialLinkInputRef.value) {
-          const len = newSocialLinkValue.value.length
-          socialLinkInputRef.value.setSelectionRange(len, len)
-        }
-      }
-    }
-  }
-})
-
-// Watch for editingDisplayName changes to focus input
-watch(editingDisplayName, async (isEditing) => {
-  if (isEditing) {
-    await nextTick()
-    if (displayNameInputRef.value) {
-      displayNameInputRef.value.focus()
-      // Select all text if editing existing name
-      if (newDisplayNameValue.value) {
-        await nextTick()
-        if (displayNameInputRef.value) {
-          displayNameInputRef.value.select()
-        }
-      }
-    }
-  }
-})
-
-// Watch for editingUsername changes to focus input
-watch(editingUsername, async (isEditing) => {
-  if (isEditing) {
-    await nextTick()
-    if (usernameInputRef.value) {
-      usernameInputRef.value.focus()
-      // Select all text if editing existing username
-      if (newUsernameValue.value) {
-        await nextTick()
-        if (usernameInputRef.value) {
-          usernameInputRef.value.select()
-        }
-      }
-    }
-  }
-})
-
-// Watch for editingBio changes to focus textarea
-watch(editingBio, async (isEditing) => {
-  if (isEditing) {
-    await nextTick()
-    if (bioInputRef.value) {
-      bioInputRef.value.focus()
-      // Position cursor at end if editing existing bio
-      if (newBioValue.value) {
-        await nextTick()
-        if (bioInputRef.value) {
-          const len = newBioValue.value.length
-          bioInputRef.value.setSelectionRange(len, len)
-        }
-      }
-    }
-  }
-})
-
-// Watch for editingWebsite changes to focus input
-watch(editingWebsite, async (isEditing) => {
-  if (isEditing) {
-    await nextTick()
-    if (websiteInputRef.value) {
-      websiteInputRef.value.focus()
-      const httpsPrefix = 'https://'
-      if (newWebsiteValue.value === httpsPrefix || !newWebsiteValue.value.startsWith(httpsPrefix)) {
-        await nextTick()
-        if (websiteInputRef.value) {
-          websiteInputRef.value.setSelectionRange(httpsPrefix.length, httpsPrefix.length)
-        }
-      } else {
-        // If editing existing website, position cursor at end
-        await nextTick()
-        if (websiteInputRef.value) {
-          const len = newWebsiteValue.value.length
-          websiteInputRef.value.setSelectionRange(len, len)
-        }
-      }
-    }
-  }
-})
 
 // GSAP animation refs
 const softwareContainer = ref<HTMLDivElement | null>(null)
