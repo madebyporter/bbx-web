@@ -97,7 +97,7 @@
     <div v-if="collectionsSectionOpen" class="flex flex-col gap-0 border-t border-neutral-800">
       <div class="flex flex-row gap-0">
         <div class="flex flex-row gap-2 w-full overflow-x-auto no-scrollbar snap-x snap-mandatory">
-          <div class="py-1 flex items-center justify-start whitespace-nowrap" v-if="loadingProfileCollections">
+          <div class="p-4 flex items-center justify-start whitespace-nowrap" v-if="loadingProfileCollections">
             Loading collections...
           </div>
           <div
