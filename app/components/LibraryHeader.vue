@@ -8,7 +8,7 @@
         :entity-id="artworkEntityId"
         kind="collection"
         :preview-url="artworkUrl"
-        size-class="size-20"
+        size-class="size-10"
         :alt="`${title} artwork`"
       />
       <div class="flex flex-col overflow-auto min-w-0">
@@ -18,7 +18,7 @@
         </p>
       </div>
     </div>
-    <div class="hidden lg:flex items-stretch gap-4">
+    <div class="flex items-stretch gap-2 lg:gap-4 shrink-0">
       <p class="text-sm text-neutral-500 hidden md:flex items-center">
         {{ count }} {{ count === 1 ? itemLabel : itemLabel + 's' }}
       </p>
@@ -26,10 +26,12 @@
         <Button
           variant="secondary"
           size="sm"
-          class="btn px-3! py-1.5! text-sm h-full max-h-10 self-stretch"
+          responsive-label
+          label="Filter & Sort"
+          class="btn h-full max-h-10 self-stretch"
           @click="emit('open-filter-sort')"
         >
-          Filter & Sort
+          <FilterList class="w-4 h-4 shrink-0" />
         </Button>
         <Button
           v-if="showClearFilters"
@@ -46,23 +48,26 @@
         v-if="showAnalyticsToggle"
         variant="secondary"
         size="sm"
+        responsive-label
+        label="Analytics"
         :class="[
-          'btn px-2.5! py-1.5! text-sm h-full max-h-10 self-stretch shrink-0',
+          'btn h-full max-h-10 self-stretch shrink-0',
           analyticsMode ? 'border! border-amber-400/60! bg-amber-400/10! text-amber-300!' : ''
         ]"
-        title="Analytics"
         @click="handleAnalyticsToggle"
       >
-        <StatsReport class="w-4 h-4" />
+        <StatsReport class="w-4 h-4 shrink-0" />
       </Button>
       <Button
         v-if="showSettingsButton"
         variant="secondary"
         size="sm"
-        class="btn px-3! py-1.5! text-sm h-full max-h-10 self-stretch"
+        responsive-label
+        label="Settings"
+        class="btn h-full max-h-10 self-stretch"
         @click="emit('open-settings')"
       >
-        Settings
+        <Settings class="w-4 h-4 shrink-0" />
       </Button>
       <div v-if="isOwnProfile && showViewModeSelector" class="relative">
         <Button
@@ -106,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { StatsReport, Xmark } from '@iconoir/vue'
+import { FilterList, Settings, StatsReport, Xmark } from '@iconoir/vue'
 import { useAnalytics } from '~/composables/useAnalytics'
 import ArtworkMedia from '~/components/ArtworkMedia.vue'
 

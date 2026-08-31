@@ -196,11 +196,13 @@
             <Button
               variant="secondary"
               size="sm"
-              class="btn px-3! py-1.5! text-sm h-full max-h-10 self-stretch group-hover/filter:bg-neutral-600"
+              responsive-label
+              label="Filter & Sort"
+              class="btn h-full max-h-10 self-stretch group-hover/filter:bg-neutral-600"
               :disabled="loading"
               @click="handleOpenFilterSort"
             >
-              Filter & Sort
+              <FilterList class="w-4 h-4 shrink-0" />
             </Button>
             <Button
               v-if="hasActiveFilterSort"
@@ -217,14 +219,15 @@
             v-if="isOwnProfile && isAudioPro"
             variant="secondary"
             size="sm"
+            responsive-label
+            label="Analytics"
             :class="[
-              'btn px-2.5! py-1.5! text-sm h-full max-h-10 self-stretch shrink-0',
+              'btn h-full max-h-10 self-stretch shrink-0',
               analyticsMode ? 'border! border-amber-400/60! bg-amber-400/10! text-amber-300!' : ''
             ]"
-            title="Analytics"
             @click="toggleAnalyticsMode"
           >
-            <StatsReport class="w-4 h-4" />
+            <StatsReport class="w-4 h-4 shrink-0" />
           </Button>
         </div>
       </div>
@@ -322,7 +325,7 @@ import {
 } from '~/utils/profileFields'
 import { prefetchArtworkUrls } from '~/composables/useArtworkUrlCache'
 import gsap from 'gsap'
-import { Xmark, StatsReport, Settings, User, Folder, AppWindow, MusicNote } from '@iconoir/vue'
+import { Xmark, StatsReport, Settings, User, Folder, AppWindow, MusicNote, FilterList } from '@iconoir/vue'
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()

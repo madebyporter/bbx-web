@@ -47,11 +47,14 @@
             <div class="flex items-center gap-1">
               <Button
                 variant="secondary"
-                class="btn !px-3 !py-1.5 text-sm"
+                size="sm"
+                responsive-label
+                label="Filter & Sort"
+                class="btn h-full max-h-10"
                 :disabled="tracksLoading"
                 @click="handleOpenFilterSort"
               >
-                Filter & Sort
+                <FilterList class="w-4 h-4 shrink-0" />
               </Button>
               <Button
                 v-if="hasActiveFilterSort"
@@ -95,7 +98,7 @@ import TracksTable from '~/components/TracksTable.vue'
 import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 import StemPlayer from '~/components/StemPlayer.vue'
 import { useFilterSortCookie, resolveStoredFilterSortParams } from '~/composables/useFilterSortPersistence'
-import { Xmark } from '@iconoir/vue'
+import { FilterList, Xmark } from '@iconoir/vue'
 import { trackPageRange } from '~/utils/trackPagination'
 import {
   applyMusicFiltersToSoundsQuery,

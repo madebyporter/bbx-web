@@ -6,7 +6,7 @@
  *
  * Usage:
  *   node --env-file=.env scripts/set-r2-cors.mjs
- *   node --env-file=.env scripts/set-r2-cors.mjs bbx-sounds,bbx-artwork-tracks
+ *   node --env-file=.env scripts/set-r2-cors.mjs <bucket-a>,<bucket-b>
  */
 import { GetBucketCorsCommand, PutBucketCorsCommand, S3Client } from '@aws-sdk/client-s3'
 

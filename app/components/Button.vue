@@ -2,10 +2,15 @@
   <button
     :type="type"
     :disabled="disabled"
+    :aria-label="responsiveLabel ? label : undefined"
     :class="classes"
     v-bind="buttonAttrs"
   >
-    <slot />
+    <span v-if="responsiveLabel" class="inline-flex items-center gap-1.5">
+      <slot />
+      <span class="hidden md:inline">{{ label }}</span>
+    </span>
+    <slot v-else />
   </button>
 </template>
 
@@ -23,6 +28,8 @@ const props = withDefaults(
     type?: ButtonType
     disabled?: boolean
     fullWidth?: boolean
+    responsiveLabel?: boolean
+    label?: string
   }>(),
   {
     variant: 'primary',
@@ -30,6 +37,8 @@ const props = withDefaults(
     type: 'button',
     disabled: false,
     fullWidth: false,
+    responsiveLabel: false,
+    label: undefined,
   }
 )
 
@@ -55,6 +64,11 @@ const sizeClasses: Record<Size, string> = {
   sm: 'px-3 py-1.5 text-sm rounded',
 }
 
+const responsiveSizeClasses: Record<Size, string> = {
+  md: 'px-2.5 md:px-4 py-2 text-base rounded',
+  sm: 'px-2.5 md:px-3 py-1.5 text-sm rounded',
+}
+
 const baseClasses =
   'inline-flex items-center justify-center font-medium transition-colors cursor-pointer disabled:cursor-not-allowed whitespace-nowrap min-h-8 min-w-8'
 
@@ -63,9 +77,15 @@ const linkBaseClasses =
 
 const classes = computed(() => {
   const isLinkVariant = props.variant === 'link'
+  const sizeClass = isLinkVariant
+    ? ''
+    : props.responsiveLabel
+      ? responsiveSizeClasses[props.size]
+      : sizeClasses[props.size]
+
   return [
     isLinkVariant ? linkBaseClasses : baseClasses,
-    isLinkVariant ? '' : sizeClasses[props.size],
+    sizeClass,
     variantClasses[props.variant],
     props.fullWidth ? 'w-full' : '',
     attrs.class,
