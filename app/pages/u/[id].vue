@@ -31,25 +31,25 @@
 
       <!-- Section Toggles -->
       <PanelNav>
-        <PanelNavItem :active="bioSectionOpen" @click="toggleBioSection">
-          Bio
+        <PanelNavItem :active="bioSectionOpen" label="Bio" @click="toggleBioSection">
+          <User class="w-3.5 h-3.5 shrink-0" />
         </PanelNavItem>
-        <PanelNavItem :active="collectionsSectionOpen" @click="toggleCollectionsSection">
-          Collections
+        <PanelNavItem :active="collectionsSectionOpen" label="Collections" @click="toggleCollectionsSection">
+          <Folder class="w-3.5 h-3.5 shrink-0" />
         </PanelNavItem>
-        <PanelNavItem :active="softwareSectionOpen" @click="toggleSoftwareSection">
-          Software
+        <PanelNavItem :active="softwareSectionOpen" label="Software" @click="toggleSoftwareSection">
+          <AppWindow class="w-3.5 h-3.5 shrink-0" />
         </PanelNavItem>
-        <PanelNavItem :active="musicSectionOpen" @click="toggleMusicSection">
-          Music
+        <PanelNavItem :active="musicSectionOpen" label="Music" @click="toggleMusicSection">
+          <MusicNote class="w-3.5 h-3.5 shrink-0" />
         </PanelNavItem>
         <PanelNavItem
           v-if="isOwnProfile"
           :active="showLibrarySettingsDrawer"
-          aria-label="Library settings"
+          label="Settings"
           @click="showLibrarySettingsDrawer = true"
         >
-          <Settings class="w-3.5 h-3.5" />
+          <Settings class="w-3.5 h-3.5 shrink-0" />
         </PanelNavItem>
       </PanelNav>
     </div>
@@ -322,7 +322,7 @@ import {
 } from '~/utils/profileFields'
 import { prefetchArtworkUrls } from '~/composables/useArtworkUrlCache'
 import gsap from 'gsap'
-import { Xmark, StatsReport, Settings } from '@iconoir/vue'
+import { Xmark, StatsReport, Settings, User, Folder, AppWindow, MusicNote } from '@iconoir/vue'
 const route = useRoute()
 const { user, isReady } = useAuth()
 const { supabase } = useSupabase()
