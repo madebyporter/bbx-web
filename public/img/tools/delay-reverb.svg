@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <rect width="400" height="400" fill="#171717"/>
+  <rect x="40" y="40" width="320" height="320" rx="24" fill="#262626" stroke="#404040" stroke-width="2"/>
+  <!-- Waveform echoes -->
+  <path d="M80 200 C110 140, 130 140, 160 200 C190 260, 210 260, 240 200 C270 140, 290 140, 320 200"
+        stroke="#f59e0b" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
+  <path d="M80 200 C110 160, 130 160, 160 200 C190 240, 210 240, 240 200 C270 160, 290 160, 320 200"
+        stroke="#fbbf24" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+  <path d="M80 200 C110 180, 130 180, 160 200 C190 220, 210 220, 240 200 C270 180, 290 180, 320 200"
+        stroke="#fcd34d" stroke-width="2" stroke-linecap="round" opacity="0.35"/>
+  <!-- BPM badge -->
+  <rect x="140" y="280" width="120" height="36" rx="8" fill="#404040"/>
+  <text x="200" y="304" text-anchor="middle" fill="#f5f5f5" font-family="system-ui,sans-serif" font-size="16" font-weight="600">BPM</text>
+</svg>

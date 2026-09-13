@@ -141,8 +141,14 @@ const isUserProfilePage = computed(() => {
 
 // Check if we should show the upload button
 // Hide it if user is a creator viewing their own profile
+const isToolsPage = computed(() => {
+  return route?.path?.startsWith('/tools') || false
+})
+
 const shouldShowUploadButton = computed(() => {
   if (!hasUser.value) return false
+  // Tools pages have no resource submit flow
+  if (isToolsPage.value) return false
   if (!isUserProfilePage.value) return true // Always show "Submit" on non-profile pages
   
   // On profile pages, check if it's the user's own profile

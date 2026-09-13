@@ -275,6 +275,11 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.63.1
+  - Fix delay/reverb calculator tables to use real HTML table columns
+- 0.63.0
+  - Tools catalog under Resources with kits-style card grid
+  - Delay & Reverb Time Calculator with BPM input and click-to-copy value cards
 - 0.62.1
   - Fix duplicate signup confirmation emails (submit lock + skip re-signUp for pending email)
   - Make onboarding reminder cron claim-before-send with Resend Idempotency-Key

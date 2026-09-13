@@ -24,6 +24,8 @@ export default defineEventHandler(async (event) => {
     '/',
     '/software',
     '/kits',
+    '/tools',
+    '/tools/delay-reverb',
   ]
 
   const resourceRoutes: Array<{ loc: string; lastmod?: string | null }> = []
