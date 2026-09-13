@@ -12,11 +12,11 @@
         <label for="tools-bpm" class="nav-header">BPM</label>
         <input
           id="tools-bpm"
-          v-model.number="bpm"
-          type="number"
-          min="1"
-          step="1"
+          v-model="bpmInput"
+          type="text"
+          autocomplete="off"
           class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400"
+          @click="onBpmInputClick"
         />
       </div>
 
@@ -157,12 +157,19 @@ import {
 } from '~/utils/delayReverbCalculator'
 import { usePageShellReady } from '~/composables/usePageShellReady'
 
-const bpm = ref(120)
+const bpmInput = ref('120')
 const pageShellReady = ref(false)
 usePageShellReady(pageShellReady)
 
+const onBpmInputClick = (event: MouseEvent) => {
+  const el = event.currentTarget
+  if (el instanceof HTMLInputElement) {
+    el.select()
+  }
+}
+
 const safeBpm = computed(() => {
-  const value = Number(bpm.value)
+  const value = Number(bpmInput.value)
   return Number.isFinite(value) && value > 0 ? value : 120
 })
 
