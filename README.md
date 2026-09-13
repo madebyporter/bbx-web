@@ -275,6 +275,8 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.63.2
+  - Generate resource slugs on create/update and backfill missing software detail URLs
 - 0.63.1
   - Fix delay/reverb calculator tables to use real HTML table columns
 - 0.63.0

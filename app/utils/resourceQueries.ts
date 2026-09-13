@@ -1,5 +1,6 @@
 import { useSupabase } from './supabase'
 import { useAuth } from '~/composables/useAuth'
+import { generateUniqueResourceSlug } from './resources'
 
 export interface ResourceType {
   id: number
@@ -293,6 +294,27 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
     
     if (!currentUser?.id) throw new Error('Must be logged in to create a resource')
 
+    if (!resource.name?.trim()) {
+      throw new Error('Resource name is required')
+    }
+
+    // Generate a unique slug so the resource gets a detail page URL
+    const { data: existingSlugRows, error: slugLookupError } = await supabase
+      .from('resources')
+      .select('slug')
+      .not('slug', 'is', null)
+
+    if (slugLookupError) {
+      console.error('Error fetching existing resource slugs:', slugLookupError)
+      throw slugLookupError
+    }
+
+    const existingSlugs = (existingSlugRows || [])
+      .map((row) => row.slug)
+      .filter((slug): slug is string => typeof slug === 'string' && slug.length > 0)
+
+    const slug = generateUniqueResourceSlug(resource.name, existingSlugs)
+
     // 1. Insert the resource
     const resourceData = {
       name: resource.name,
@@ -305,7 +327,8 @@ export const createResourceWithTags = async (resource: Partial<Resource>, tags: 
       type_id: resource.type_id,
       owner_id: currentUser.id,
       submitted_by: currentUser.id,
-      status: 'pending'
+      status: 'pending',
+      slug,
     }
 
     const { data: newResource, error: resourceError } = await supabase

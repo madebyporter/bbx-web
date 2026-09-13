@@ -311,6 +311,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { createResourceWithTags, fetchResourceTypes, type ResourceType } from '../utils/resourceQueries'
+import { generateUniqueResourceSlug } from '~/utils/resources'
 import { useAnalytics } from '~/composables/useAnalytics'
 import MasterDrawer from './MasterDrawer.vue'
 
@@ -334,6 +335,7 @@ interface Creator {
 interface ResourceToEdit {
   id: number;
   name: string;
+  slug?: string | null;
   creator: string;
   price: string;
   link: string;
@@ -847,6 +849,30 @@ const updateResource = async () => {
       throw new Error('Creator not found')
     }
 
+    // Keep / regenerate slug so detail pages stay linkable after edits
+    const nameChanged = formData.value.name.trim() !== currentResource.name
+    const needsSlug = !currentResource.slug
+    let nextSlug = currentResource.slug || null
+
+    if (nameChanged || needsSlug) {
+      const { data: existingSlugRows, error: slugLookupError } = await supabase
+        .from('resources')
+        .select('slug')
+        .not('slug', 'is', null)
+        .neq('id', currentResource.id)
+
+      if (slugLookupError) {
+        console.error('Error fetching existing resource slugs:', slugLookupError)
+        throw slugLookupError
+      }
+
+      const existingSlugs = (existingSlugRows || [])
+        .map((row: { slug: string | null }) => row.slug)
+        .filter((slug: string | null): slug is string => typeof slug === 'string' && slug.length > 0)
+
+      nextSlug = generateUniqueResourceSlug(formData.value.name, existingSlugs)
+    }
+
     // 1. Update the resource
     const { data: updatedResource, error: resourceError } = await supabase
       .from('resources')
@@ -858,7 +884,8 @@ const updateResource = async () => {
         description: formData.value.description.trim() || null,
         image_url: imageUrl,
         os: selectedOS.value,
-        type_id: formData.value.type_id
+        type_id: formData.value.type_id,
+        slug: nextSlug,
       })
       .eq('id', currentResource.id)
       .select()
