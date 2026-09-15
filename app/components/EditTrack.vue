@@ -397,6 +397,7 @@ import MasterDrawer from './MasterDrawer.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
 import { deleteAudio, downloadAudioBlob, uploadAudio } from '~/utils/trackAudioStorage'
+import { normalizeArtworkProvider } from '~/utils/artworkStorage'
 import { CircleSpark } from '@iconoir/vue'
 
 interface Props {
@@ -1219,7 +1220,7 @@ const onSubmit = async () => {
         'track',
       )
       updateData.artwork_path = null
-      updateData.artwork_provider = null
+      updateData.artwork_provider = normalizeArtworkProvider(null)
     }
     
     const { data, error: updateError } = await supabase

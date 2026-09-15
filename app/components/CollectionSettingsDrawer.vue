@@ -546,9 +546,9 @@ const handleSave = async () => {
         'collection',
       )
       updateData.artwork_path = null
-      updateData.artwork_provider = null
+      updateData.artwork_provider = normalizeArtworkProvider(null)
       nextArtworkPath = null
-      nextArtworkProvider = null
+      nextArtworkProvider = normalizeArtworkProvider(null)
     }
 
     const { error } = await supabase

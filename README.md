@@ -275,6 +275,10 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.63.4
+  - Allow localhost:3001 in R2 CORS script so local uploads work when the Nuxt port is not 3000
+- 0.63.3
+  - Fix track upload failing without cover art by writing artwork_provider as supabase instead of null
 - 0.63.2
   - Generate resource slugs on create/update and backfill missing software detail URLs
 - 0.63.1

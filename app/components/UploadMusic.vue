@@ -388,6 +388,7 @@ import { generateUniqueSlug } from '~/utils/collections'
 import { findOrCreateTrackGroup } from '~/utils/trackGroups'
 import { uploadAudio } from '~/utils/trackAudioStorage'
 import { selectMostUpdatedTrack } from '~/utils/uniqueGroupShuffle'
+import { normalizeArtworkProvider } from '~/utils/artworkStorage'
 import type { StorageProvider, Track } from '~/types/track'
 
 interface Props {
@@ -1037,6 +1038,8 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
           fileData.metadata.title || fileData.file.name
         )
     
+    const resolvedArtworkProvider = normalizeArtworkProvider(artworkProvider)
+
     const { data: soundData, error: dbError } = await supabase
       .from('sounds')
       .insert({
@@ -1044,7 +1047,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         storage_path: filePath,
         storage_provider: uploadResult.storage_provider,
         artwork_path: artworkPath,
-        artwork_provider: artworkProvider,
+        artwork_provider: resolvedArtworkProvider,
         title: fileData.metadata.title || null,
         artist: fileData.metadata.artist || null,
         version: fileData.metadata.version || 'v1.0',
@@ -1097,7 +1100,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       storage_path: filePath,
       storage_provider: uploadResult.storage_provider,
       artwork_path: artworkPath,
-      artwork_provider: artworkProvider,
+      artwork_provider: resolvedArtworkProvider,
       duration: fileData.duration || 0,
       version: fileData.metadata.version || 'v1.0',
       track_group_name: trackGroupName,
