@@ -523,7 +523,7 @@ const totalTrackCount = ref(0)
 const currentPage = ref(0)
 const loadingMore = ref(false)
 const clientTrackCache = ref<TrackWithCollections[] | null>(null)
-const lastAppliedParams = ref<{ filters: any; sort: any } | null>(null)
+const lastAppliedParams = ref<MusicFilterSortParams | null>(null)
 const loading = ref(true)
 // searchQuery removed - search is now handled by SearchModal
 const allSoftware = computed(() => softwareData.value || [])
@@ -975,7 +975,9 @@ function isShortlistMode() {
   return !!(isOwnProfile.value && viewerUserType.value === 'creator' && user.value)
 }
 
-function applySortToTracks(arr: Track[], sort: MusicFilterSortParams['sort']) {
+type SortableTrack = Track & { shortlisted_at?: string | null }
+
+function applySortToTracks(arr: SortableTrack[], sort: MusicFilterSortParams['sort']) {
   const sortBy = sort?.sortBy || 'created_at'
   const sortDirection = sort?.sortDirection || 'desc'
   if (sortBy === 'created_at') {
@@ -1003,7 +1005,7 @@ async function fetchFullTrackList(params: MusicFilterSortParams): Promise<TrackW
     const { getShortlistedTracks } = await import('~/utils/shortlist')
     const result = await getShortlistedTracks(user.value!.id)
     if (result.error) throw result.error
-    const data = [...(result.data || [])] as Track[]
+    const data = [...(result.data || [])] as SortableTrack[]
     applySortToTracks(data, sort)
     return enrichTracksWithCollections(supabase, data, { collectionOwnerId: user.value!.id })
   }
@@ -1171,7 +1173,7 @@ onActivated(() => {
   }
 })
 
-const handleEdit = (track: any) => {
+const handleEdit = (track: Track) => {
   // Emit event to parent layout to open modal in edit mode
   const event = new CustomEvent('edit-track', { 
     detail: track,
@@ -1211,7 +1213,7 @@ const handleClearFilterSort = () => {
 }
 
 // Apply filters and sort to tracks
-const updateFiltersAndSort = async (params: any) => {
+const updateFiltersAndSort = async (params: MusicFilterSortParams) => {
   await loadTracksPage({ page: 0, append: false, params })
 }
 
