@@ -255,6 +255,7 @@
         :analytics-mode="analyticsMode"
         :track-stats="trackStats"
         :analytics-loading="analyticsLoading"
+        :resolve-full-queue="resolveFullPlaybackQueue"
         @edit-track="handleEdit"
         @tracks-deleted="fetchTracks"
         @track-shortlisted="handleTrackShortlisted"
@@ -1022,6 +1023,19 @@ async function fetchFullTrackList(params: MusicFilterSortParams): Promise<TrackW
   const { data, error } = await query
   if (error) throw error
   return enrichTracksWithCollections(supabase, (data || []) as unknown as Track[])
+}
+
+/** Full filtered list for playback queue (not just the visible page) */
+async function resolveFullPlaybackQueue(): Promise<Track[]> {
+  const params = resolveFilterParams()
+  if (clientTrackCache.value) {
+    return clientTrackCache.value
+  }
+  let fullList = await fetchFullTrackList(params)
+  if (params.filters?.latestVersionOnly) {
+    fullList = applyLatestVersionOnlyFilter(fullList)
+  }
+  return fullList
 }
 
 async function fetchServerTrackPage(params: MusicFilterSortParams, page: number) {

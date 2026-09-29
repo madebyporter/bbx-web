@@ -81,6 +81,7 @@
           :has-more="hasMoreTracks"
           :loading-more="loadingMore"
           :username="username"
+          :resolve-full-queue="resolveFullPlaybackQueue"
           @edit-track="handleEdit"
           @load-more="handleLoadMore"
         />
@@ -288,6 +289,34 @@ const fetchGroupTracks = async () => {
 const handleLoadMore = () => {
   if (loadingMore.value || tracksLoading.value || !hasMoreTracks.value) return
   void loadTracksPage({ page: currentPage.value + 1, append: true })
+}
+
+/** Full group list for playback queue (same filters/sort as the table, no pagination) */
+async function resolveFullPlaybackQueue() {
+  if (!supabase || !profileUserId.value || !groupName.value) return tracks.value
+
+  const params = resolveFilterParams()
+  const sort = params.sort || { sortBy: 'version', sortDirection: 'desc' }
+
+  let query = supabase
+    .from('sounds')
+    .select(`
+      *,
+      track_statuses!status_id(id, name)
+    `)
+    .eq('user_id', profileUserId.value)
+    .eq('track_group_name', groupName.value)
+
+  query = applyMusicFiltersToSoundsQuery(query, params.filters)
+  query = query.order(sort.sortBy || 'version', { ascending: sort.sortDirection === 'asc' })
+
+  const { data, error } = await query
+  if (error) throw error
+
+  return enrichTracksWithCollections(
+    supabase,
+    (data || []) as unknown as Array<{ id: number } & Record<string, unknown>>
+  )
 }
 
 const updateFiltersAndSort = async (params: MusicFilterSortParams) => {

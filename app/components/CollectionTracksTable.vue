@@ -302,6 +302,8 @@ const props = withDefaults(
     analyticsLoading?: boolean
     hasMore?: boolean
     loadingMore?: boolean
+    /** When set, play starts from the visible page then fills the queue with the full list */
+    resolveFullQueue?: () => Promise<Track[]>
   }>(),
   {
     noFilterResults: false,
@@ -320,7 +322,7 @@ const emit = defineEmits<{
   'load-more': []
 }>()
 
-const { loadQueue, currentTrack, isPlaying, togglePlayPause, isLoadedAudio } = usePlayer()
+const { loadQueue, appendQueueTracks, setQueueExtension, currentTrack, isPlaying, togglePlayPause, isLoadedAudio } = usePlayer()
 const { user } = useAuth()
 const { supabase } = useSupabase()
 const { showProcessing, showSuccess, showError, removeToast } = useToast()
@@ -539,6 +541,19 @@ const handlePlayClick = async (track: any, index: number) => {
     collectionId: props.collectionId ?? null,
   })
   await loadQueue(visibleTracks, props.sourceId, visibleIndex >= 0 ? visibleIndex : 0)
+
+  if (props.resolveFullQueue) {
+    const sourceId = props.sourceId
+    setQueueExtension(
+      props.resolveFullQueue()
+        .then((fullTracks) => {
+          appendQueueTracks(fullTracks, sourceId)
+        })
+        .catch((err) => {
+          console.error('Failed to extend playback queue:', err)
+        })
+    )
+  }
 }
 
 // Get the track owner's username

@@ -70,6 +70,7 @@
           :analytics-loading="analyticsLoading"
           :no-filter-results="showNoFilterResults"
           :active-filter-chips="activeFiltersForDisplay"
+          :resolve-full-queue="resolveFullPlaybackQueue"
           @edit-track="handleEdit"
           @tracks-removed="fetchTracks"
           @load-more="handleLoadMore"
@@ -256,6 +257,11 @@ const handleLoadMore = () => {
   loadingMore.value = true
   visibleCount.value += TRACK_PAGE_SIZE
   loadingMore.value = false
+}
+
+/** Full filtered collection list for playback (table only shows a page) */
+async function resolveFullPlaybackQueue() {
+  return displayedTracks.value.filter((t: any) => !t.hidden)
 }
 
 const analyticsMode = ref(false)

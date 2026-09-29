@@ -118,6 +118,32 @@ export async function uploadArtworkToStorage(
     throw new Error('Not authenticated')
   }
 
+  const isLocalHost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+
+  // Localhost → same-origin API (R2 CORS only allows production + :3000 today)
+  if (isLocalHost) {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('kind', kind)
+    if (kind === 'collection' && options.collectionId) {
+      form.append('collectionId', String(options.collectionId))
+    }
+    const result = await $fetch<{
+      artwork_path: string
+      artwork_provider: 'r2'
+    }>('/api/storage/upload-artwork', {
+      method: 'POST',
+      body: form,
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    return {
+      artwork_path: result.artwork_path,
+      artwork_provider: result.artwork_provider,
+    }
+  }
+
   const presign = await $fetch<{
     key: string
     uploadUrl: string

@@ -48,6 +48,8 @@ const loadedAudioCacheKey = ref<string | null>(null)
 const signedUrlCache = ref<Map<string, { url: string; expiry: number }>>(new Map())
 const preloadedUrls = ref<Set<string>>(new Set())
 const loopCheckAnimationFrame = ref<number | null>(null)
+/** In-flight promise that fills the queue with the full list after a paginated play */
+let queueExtensionPromise: Promise<void> | null = null
 
 const STORAGE_KEY = 'player_state'
 const CHROME_COOKIE = 'bbx_player_chrome'
@@ -237,6 +239,77 @@ export function usePlayer() {
     return shuffled
   }
 
+  /**
+   * Register an in-flight fill of the queue (full filtered list after paginated play).
+   * playNext waits for this before wrapping to the start of a short queue.
+   */
+  const setQueueExtension = (promise: Promise<void> | null) => {
+    if (!promise) {
+      queueExtensionPromise = null
+      return
+    }
+    const tracked = promise.finally(() => {
+      if (queueExtensionPromise === tracked) {
+        queueExtensionPromise = null
+      }
+    })
+    queueExtensionPromise = tracked
+  }
+
+  /**
+   * Merge a fuller track list into the active queue without restarting playback.
+   * Ordered: replace queue with full list, keep currentIndex on the playing track.
+   * Shuffled: keep played + current prefix, append shuffled new tracks only.
+   */
+  const appendQueueTracks = (tracks: Track[], sourceId: string) => {
+    if (!tracks || tracks.length === 0) return
+    if (queueSourceId.value !== sourceId) return
+
+    const currentId = currentTrack.value?.id
+    const existingIds = new Set(queue.value.map(t => String(t.id)))
+    const newTracks = tracks.filter(t => !existingIds.has(String(t.id)))
+
+    // Prefer the caller's full ordered list for originalQueue when it covers what we have
+    const trackIds = new Set(tracks.map(t => String(t.id)))
+    const coversOriginal = originalQueue.value.every(t => trackIds.has(String(t.id)))
+    if (coversOriginal && tracks.length >= originalQueue.value.length) {
+      originalQueue.value = [...tracks]
+    } else if (newTracks.length > 0) {
+      originalQueue.value = [...originalQueue.value, ...newTracks]
+    }
+
+    if (newTracks.length === 0) {
+      if (!isShuffled.value && coversOriginal && tracks.length >= queue.value.length) {
+        queue.value = [...tracks]
+        if (currentId != null) {
+          const idx = queue.value.findIndex(t => String(t.id) === String(currentId))
+          if (idx !== -1) currentIndex.value = idx
+        }
+        saveState()
+      }
+      return
+    }
+
+    if (isShuffled.value) {
+      // Keep already-played + current; shuffle only new tracks onto the upcoming tail
+      const playedAndCurrent = queue.value.slice(0, currentIndex.value + 1)
+      const upcoming = queue.value.slice(currentIndex.value + 1)
+      const shuffledNew = shuffleUniqueGroups(newTracks)
+      queue.value = [...playedAndCurrent, ...upcoming, ...shuffledNew]
+    } else {
+      queue.value = [...tracks]
+      if (currentId != null) {
+        const idx = queue.value.findIndex(t => String(t.id) === String(currentId))
+        if (idx !== -1) {
+          currentIndex.value = idx
+        }
+      }
+    }
+
+    saveState()
+    void preloadNextTrack()
+  }
+
   // Update queue without playing (for silent queue updates)
   const updateQueue = (tracks: Track[], sourceId: string) => {
     if (!tracks || tracks.length === 0) {
@@ -330,6 +403,7 @@ export function usePlayer() {
       return
     }
 
+    setQueueExtension(null)
     await endListenSession()
 
     // Mark that we've had a track loaded (for UI persistence)
@@ -508,6 +582,14 @@ export function usePlayer() {
     let nextIndex = currentIndex.value + 1
     
     // Check if we've reached the end of the queue
+    if (nextIndex >= queue.value.length) {
+      // Wait for an in-flight full-list fill before wrapping to the start
+      if (queueExtensionPromise) {
+        await queueExtensionPromise
+        nextIndex = currentIndex.value + 1
+      }
+    }
+
     if (nextIndex >= queue.value.length) {
       if (isShuffled.value && originalQueue.value.length > 0) {
         
@@ -738,6 +820,7 @@ export function usePlayer() {
   const clearPlayer = () => {
     pause()
     stopLoopCheck() // Ensure loop check is stopped
+    setQueueExtension(null)
     currentTrack.value = null
     queue.value = []
     originalQueue.value = []
@@ -920,6 +1003,8 @@ export function usePlayer() {
     // Methods
     loadQueue,
     updateQueue,
+    appendQueueTracks,
+    setQueueExtension,
     play,
     pause,
     togglePlayPause,

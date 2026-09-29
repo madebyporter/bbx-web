@@ -60,6 +60,12 @@ export async function getPlaybackUrl(
   }
 }
 
+function shouldProxyR2UploadThroughApi(): boolean {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  return host === 'localhost' || host === '127.0.0.1'
+}
+
 export async function uploadAudio(
   file: File,
   supabase: SupabaseClient | null,
@@ -71,6 +77,24 @@ export async function uploadAudio(
   const accessToken = await getAccessToken(supabase)
   if (!accessToken) {
     throw new Error('Not authenticated')
+  }
+
+  // Localhost → same-origin API (R2 CORS only allows production + :3000 today)
+  if (shouldProxyR2UploadThroughApi()) {
+    const form = new FormData()
+    form.append('file', file)
+    const result = await $fetch<{
+      storage_path: string
+      storage_provider: 'r2'
+    }>('/api/storage/upload', {
+      method: 'POST',
+      body: form,
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    return {
+      storage_path: result.storage_path,
+      storage_provider: result.storage_provider,
+    }
   }
 
   const presign = await $fetch<{

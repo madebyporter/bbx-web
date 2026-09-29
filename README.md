@@ -275,6 +275,10 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.63.6
+  - Library play-through uses the full filtered track list so playback no longer stops at the last loaded page
+- 0.63.5
+  - Proxy R2 audio/artwork uploads through the Nuxt API on localhost so local uploads work without bucket CORS for :3001
 - 0.63.4
   - Allow localhost:3001 in R2 CORS script so local uploads work when the Nuxt port is not 3000
 - 0.63.3

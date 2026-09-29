@@ -339,6 +339,8 @@ interface Props {
   analyticsLoading?: boolean
   hasMore?: boolean
   loadingMore?: boolean
+  /** When set, play starts from the visible page then fills the queue with the full list */
+  resolveFullQueue?: () => Promise<Track[]>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -355,7 +357,7 @@ const emit = defineEmits<{
   'load-more': []
 }>()
 
-const { currentTrack, isPlaying, loadQueue, togglePlayPause, isLoadedAudio } = usePlayer()
+const { currentTrack, isPlaying, loadQueue, appendQueueTracks, setQueueExtension, togglePlayPause, isLoadedAudio } = usePlayer()
 const { isStemPlayerActive, stemTracks, toggleMute, toggleSolo } = useStemPlayer()
 const { supabase } = useSupabase()
 const { user } = useAuth()
@@ -585,6 +587,20 @@ const handlePlayClick = async (track: any, index: number) => {
     // Load the queue and start playing from this track
     setPlaybackContext({ source: 'library', collectionId: null })
     await loadQueue(props.tracks, props.sourceId, index)
+
+    // Fill queue with full filtered list in the background (paginated tables only pass a page)
+    if (props.resolveFullQueue) {
+      const sourceId = props.sourceId
+      setQueueExtension(
+        props.resolveFullQueue()
+          .then((fullTracks) => {
+            appendQueueTracks(fullTracks, sourceId)
+          })
+          .catch((err) => {
+            console.error('Failed to extend playback queue:', err)
+          })
+      )
+    }
   }
 }
 
