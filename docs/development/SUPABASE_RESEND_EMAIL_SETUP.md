@@ -90,9 +90,19 @@ Add to Netlify (in addition to section 4 vars):
 
 ### Sync behavior
 
-- **On email confirmation** — client calls `/api/resend/sync-contact` (fire-and-forget)
-- **On profile save** — same endpoint when display name or user type changes
+- **On email confirmation** — client calls `/api/resend/sync-contact` with `{ source: 'confirm' }` (fire-and-forget)
+- **On profile save** — same endpoint when display name or user type changes (no welcome schedule)
 - **Daily cron** — `sync-resend-contacts` at 11:00 UTC backfills and catches missed contacts
+
+### Welcome email (24h after confirm)
+
+On confirm sync only, Beatbox schedules a one-time personal welcome via Resend `scheduled_at` (+24h):
+
+- From / reply-to: `Porter <porter@beatbox.studio>`
+- Subject: `you found Beatbox`
+- Claimed once with auth `user_metadata.welcome_email_scheduled_at` + Resend idempotency key `bbx-welcome/<userId>`
+- Requires `RESEND_API_KEY` (does not use `RESEND_FROM_EMAIL` / `notifications@`)
+- Profile save and the daily contact cron do **not** schedule this email
 
 ### Manual backfill
 

@@ -1,6 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export async function syncResendContact(supabase: SupabaseClient | null): Promise<void> {
+export async function syncResendContact(
+  supabase: SupabaseClient | null,
+  options?: { source?: 'confirm' }
+): Promise<void> {
   if (!supabase) return
 
   try {
@@ -11,6 +14,7 @@ export async function syncResendContact(supabase: SupabaseClient | null): Promis
     await $fetch('/api/resend/sync-contact', {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },
+      body: options?.source ? { source: options.source } : undefined,
     })
   } catch (error) {
     console.warn('Resend contact sync failed:', error)

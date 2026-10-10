@@ -116,7 +116,7 @@ onMounted(async () => {
         setSignedInFromSession(!!data.session)
         isSuccess.value = true
         capture('email_confirmed', {})
-        await syncResendContact(supabase)
+        await syncResendContact(supabase, { source: 'confirm' })
       }
     } else {
       // Check if user is already confirmed and signed in
@@ -181,7 +181,7 @@ onMounted(async () => {
         setSignedInFromSession(true)
         isSuccess.value = true
         capture('email_confirmed', {})
-        await syncResendContact(supabase)
+        await syncResendContact(supabase, { source: 'confirm' })
       } else {
         throw new Error('No valid confirmation token found')
       }
