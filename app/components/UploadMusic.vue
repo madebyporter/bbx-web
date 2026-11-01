@@ -35,6 +35,7 @@
       v-model:show="showUpgradePrompt"
       :reason="upgradeReason"
       :entitlements="entitlements"
+      @upgraded="onUpgradeComplete"
     />
 
     <!-- Success Message -->
@@ -474,6 +475,8 @@ const { addTrackToQueue, queueSourceId, replaceCurrentVersion } = usePlayer()
 const { showError, showSuccess } = useToast()
 const showUpgradePrompt = ref(false)
 const upgradeReason = ref<PlanLimitReason | null>(null)
+const pendingUpgradeFiles = ref<File[]>([])
+const resumeUploadsAfterUpgrade = ref(false)
 
 const remainingSlots = computed(() => {
   const e = entitlements.value
@@ -486,6 +489,22 @@ const showSlotsBanner = computed(() => Boolean(entitlements.value))
 const slotsStickyRef = ref<HTMLElement | null>(null)
 const slotsStickyTop = ref(0)
 let slotsStickyObserver: ResizeObserver | null = null
+
+async function onUpgradeComplete() {
+  await refreshEntitlements(true)
+  errors.value.files = ''
+  const files = pendingUpgradeFiles.value
+  pendingUpgradeFiles.value = []
+  const shouldUpload = resumeUploadsAfterUpgrade.value
+  resumeUploadsAfterUpgrade.value = false
+
+  if (files.length) {
+    await processFiles(files)
+  }
+  if (shouldUpload && selectedFiles.value.length > 0) {
+    await onSubmit()
+  }
+}
 
 function updateSlotsStickyTop() {
   const el = slotsStickyRef.value
@@ -535,8 +554,12 @@ function bindSlotsStickyObserver() {
   })
 }
 
-function openUpgrade(reason: PlanLimitReason) {
+function openUpgrade(reason: PlanLimitReason, files?: File[], resumeUpload = false) {
   upgradeReason.value = reason
+  if (files?.length) {
+    pendingUpgradeFiles.value = files
+  }
+  resumeUploadsAfterUpgrade.value = resumeUpload
   showUpgradePrompt.value = true
 }
 
@@ -930,12 +953,12 @@ const processFiles = async (files: File[]) => {
 
   const slots = remainingSlots.value
   if (slots != null && slots <= 0) {
-    openUpgrade('tracks')
+    openUpgrade('tracks', files, true)
     errors.value.files = `You've used all tracks on ${entitlements.value?.plan_name || 'Free'}. Upgrade to add more.`
     return
   }
   if (slots != null && files.length > slots) {
-    openUpgrade('tracks')
+    openUpgrade('tracks', files, true)
     errors.value.files = `You can add ${slots} more track${slots === 1 ? '' : 's'} on your plan. Remove some files or upgrade.`
     return
   }
@@ -1258,7 +1281,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
       parsePlanLimitReason(error) ||
       parsePlanLimitReason({ message: error?.message || error?.details || '' })
     if (limitReason) {
-      openUpgrade(limitReason)
+      openUpgrade(limitReason, undefined, true)
       fileData.error = 'Plan limit reached'
       return false
     }

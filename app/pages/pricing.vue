@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-neutral-950 text-neutral-100">
+  <div class="min-h-screen bg-neutral-900 text-neutral-100">
     <div class="max-w-5xl mx-auto px-4 py-12 md:py-16">
       <div class="text-center mb-10">
         <h1 class="text-3xl md:text-4xl font-semibold tracking-tight">Pricing</h1>
@@ -167,6 +167,7 @@ async function onPlanCta(plan: PublicPlan) {
       const res = await $fetch<{ url: string }>('/api/billing/portal', {
         method: 'POST',
         headers,
+        body: { returnOrigin: window.location.origin },
       })
       window.location.href = res.url
       return
@@ -175,7 +176,11 @@ async function onPlanCta(plan: PublicPlan) {
     const res = await $fetch<{ url: string }>('/api/billing/checkout', {
       method: 'POST',
       headers,
-      body: { planSlug: plan.slug, interval: interval.value },
+      body: {
+        planSlug: plan.slug,
+        interval: interval.value,
+        returnOrigin: window.location.origin,
+      },
     })
     window.location.href = res.url
   } catch (err) {

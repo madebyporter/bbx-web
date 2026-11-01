@@ -4,7 +4,11 @@ import { getSiteUrl, getStripe } from '../../utils/stripe'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
-  const body = await readBody<{ planSlug?: string; interval?: 'month' | 'year' }>(event)
+  const body = await readBody<{
+    planSlug?: string
+    interval?: 'month' | 'year'
+    returnOrigin?: string
+  }>(event)
   const planSlug = body.planSlug?.trim()
   const interval = body.interval === 'year' ? 'year' : 'month'
 
@@ -48,7 +52,7 @@ export default defineEventHandler(async (event) => {
     .maybeSingle()
 
   const stripe = getStripe()
-  const siteUrl = getSiteUrl()
+  const siteUrl = getSiteUrl(event, body.returnOrigin)
 
   const paidActive =
     existingSub &&

@@ -1,9 +1,10 @@
-import { createError } from 'h3'
+import { createError, readBody } from 'h3'
 import { getServiceSupabase, requireAuthUser } from '../../utils/supabaseAuth'
 import { getSiteUrl, getStripe, getStripePortalConfigurationId } from '../../utils/stripe'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
+  const body = await readBody<{ returnOrigin?: string }>(event).catch(() => ({} as { returnOrigin?: string }))
   const supabase = getServiceSupabase()
   const { data: sub } = await supabase
     .from('subscriptions')
@@ -19,7 +20,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const stripe = getStripe()
-  const siteUrl = getSiteUrl()
+  const siteUrl = getSiteUrl(event, body?.returnOrigin)
   const configuration = getStripePortalConfigurationId()
 
   const session = await stripe.billingPortal.sessions.create({

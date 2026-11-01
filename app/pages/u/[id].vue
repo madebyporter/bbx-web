@@ -755,16 +755,15 @@ const isAudioPro = computed(() => {
 const pageShellReady = computed(() => isReady.value && !!profileUserId.value && !loading.value)
 usePageShellReady(pageShellReady)
 
+// Match TracksTable column visibility so skeleton columns don't mismatch the live grid
 const skeletonShowCollection = computed(
-  () =>
-    !analyticsMode.value &&
-    (isOwnProfile.value || (!isReady.value && profileUserType.value === 'audio_pro'))
+  () => !analyticsMode.value && isOwnProfile.value
 )
 const skeletonShowStatus = computed(
   () =>
     !analyticsMode.value &&
-    profileUserType.value === 'audio_pro' &&
-    (isOwnProfile.value || !isReady.value)
+    isOwnProfile.value &&
+    profileUserType.value === 'audio_pro'
 )
 const skeletonShowActions = computed(
   () =>
