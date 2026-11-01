@@ -3,7 +3,7 @@
     <div class="w-full min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar">
       <div :class="TRACK_TABLE_INNER_CLASS">
         <div
-          class="text-sm text-left text-neutral-500 border-b border-neutral-800 bg-neutral-900 *:flex *:items-center *:p-4 min-h-[65px]"
+          class="grid text-sm text-left text-neutral-500 border-b border-neutral-800 bg-neutral-900 min-h-[65px] [&>*]:flex [&>*]:items-center [&>*]:p-4 [&>*]:min-w-0 [&>*]:overflow-hidden"
           :style="tableGridStyle"
         >
           <div class="flex items-center justify-center" />
@@ -32,46 +32,46 @@
         <div
           v-for="row in rowCount"
           :key="row"
-          class="group text-sm border-b border-neutral-900 *:flex *:items-center *:p-4 items-stretch"
+          class="group grid text-sm border-b border-neutral-900 min-h-[65px] [&>*]:flex [&>*]:items-center [&>*]:flex-nowrap [&>*]:p-4 [&>*]:min-w-0 [&>*]:overflow-hidden"
           :style="tableGridStyle"
         >
           <div class="flex items-center justify-center">
             <div class="size-10 rounded-sm bg-neutral-700 shrink-0" />
           </div>
-          <div class="min-w-0">
-            <div class="h-4 w-3/4 max-w-[200px] rounded bg-neutral-800 animate-pulse" />
+          <div>
+            <div class="h-4 w-[180px] max-w-full rounded bg-neutral-800 animate-pulse shrink-0" />
           </div>
           <div>
-            <div class="h-4 w-24 rounded bg-neutral-800 animate-pulse" />
+            <div class="h-4 w-[96px] max-w-full rounded bg-neutral-800 animate-pulse shrink-0" />
           </div>
           <div>
-            <div class="h-4 w-10 rounded bg-neutral-800 animate-pulse" />
+            <div class="h-4 w-[40px] max-w-full rounded bg-neutral-800 animate-pulse shrink-0" />
           </div>
           <template v-if="analyticsMode && isOwnProfile">
-            <div><div class="h-4 w-8 rounded bg-neutral-800 animate-pulse" /></div>
-            <div><div class="h-4 w-8 rounded bg-neutral-800 animate-pulse" /></div>
-            <div><div class="h-4 w-16 rounded bg-neutral-800 animate-pulse" /></div>
-            <div><div class="h-4 w-10 rounded bg-neutral-800 animate-pulse" /></div>
+            <div><div class="h-4 w-8 max-w-full rounded bg-neutral-800 animate-pulse shrink-0" /></div>
+            <div><div class="h-4 w-8 max-w-full rounded bg-neutral-800 animate-pulse shrink-0" /></div>
+            <div><div class="h-4 w-16 max-w-full rounded bg-neutral-800 animate-pulse shrink-0" /></div>
+            <div><div class="h-4 w-10 max-w-full rounded bg-neutral-800 animate-pulse shrink-0" /></div>
           </template>
           <template v-else>
             <div v-if="showCollection">
-              <div class="h-4 w-32 max-w-full rounded bg-neutral-800 animate-pulse" />
+              <div class="h-4 w-[128px] max-w-full rounded bg-neutral-800 animate-pulse shrink-0" />
             </div>
             <div>
-              <div class="h-4 w-14 rounded bg-neutral-800 animate-pulse" />
+              <div class="h-4 w-[56px] max-w-full rounded bg-neutral-800 animate-pulse shrink-0" />
             </div>
             <div>
-              <div class="h-4 w-8 rounded bg-neutral-800 animate-pulse" />
+              <div class="h-4 w-8 max-w-full rounded bg-neutral-800 animate-pulse shrink-0" />
             </div>
             <div>
-              <div class="h-4 w-10 rounded bg-neutral-800 animate-pulse" />
+              <div class="h-4 w-10 max-w-full rounded bg-neutral-800 animate-pulse shrink-0" />
             </div>
             <div v-if="showStatus">
               <div class="h-[30px] w-full rounded bg-neutral-800 animate-pulse" />
             </div>
           </template>
           <div v-if="showActionsColumn" :class="TRACK_TABLE_STICKY_ACTIONS_CLASS">
-            <div class="size-5 rounded bg-neutral-800 animate-pulse" />
+            <div class="size-5 rounded bg-neutral-800 animate-pulse shrink-0" />
           </div>
         </div>
       </div>

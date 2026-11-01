@@ -59,12 +59,16 @@ export default defineEventHandler(async (event) => {
   const stripe = getStripe()
   let productId = plan.stripe_product_id as string | null
 
+  // SaaS software tax code — required if Stripe Managed Payments is enabled
+  const taxCode = 'txcd_10103001'
+
   if (productId) {
     await stripe.products.update(productId, {
       name: plan.name,
       description: plan.description || undefined,
       metadata: { plan_slug: plan.slug },
       active: plan.is_active,
+      tax_code: taxCode,
     })
   } else {
     const product = await stripe.products.create({
@@ -72,6 +76,7 @@ export default defineEventHandler(async (event) => {
       description: plan.description || undefined,
       metadata: { plan_slug: plan.slug },
       active: plan.is_active,
+      tax_code: taxCode,
     })
     productId = product.id
   }

@@ -1,21 +1,8 @@
 <template>
   <MasterDrawer :show="props.show" @update:show="(val) => emit('update:show', val)">
     <template #header>
-      <div class="w-full space-y-2">
-      <UsageMeter v-if="entitlements" :entitlements="entitlements" />
-      <p
-        v-if="entitlements && !entitlements.tracks_unlimited && entitlements.track_limit != null"
-        class="text-xs text-neutral-500 px-1"
-      >
-        <template v-if="remainingSlots != null && remainingSlots <= 0">
-          You've used all {{ entitlements.track_limit }} tracks on {{ entitlements.plan_name }}. Upgrade to add more.
-        </template>
-        <template v-else-if="remainingSlots != null">
-          {{ remainingSlots }} track slot{{ remainingSlots === 1 ? '' : 's' }} left on {{ entitlements.plan_name }}.
-        </template>
-      </p>
       <div
-        class="grow flex items-center justify-between h-[50px] border border-dashed rounded p-2 cursor-pointer transition-colors"
+        class="grow flex items-center justify-between h-[50px] border border-dashed rounded p-2 cursor-pointer transition-colors w-full"
         :class="isDragging ? 'border-[#e6b85b] bg-[#e6b85b]/10' : 'border-[#e6b85b]'"
         @drop.prevent="handleDrop"
         @dragover.prevent="isDragging = true"
@@ -41,7 +28,6 @@
           <span class="text-xs font-semibold text-[#999] tracking-[2.5px] leading-none">MAX</span>
           <span class="text-[5px] font-semibold text-[#999] tracking-[1.2px] leading-none">PER FILE</span>
         </div>
-      </div>
       </div>
     </template>
 
@@ -73,7 +59,27 @@
         @dragover.prevent="isDragging = true"
         @dragleave.prevent="isDragging = false"
       >
-        <div class="flex flex-col gap-2 overflow-y-auto grow pb-2">
+        <div
+          v-if="showSlotsBanner"
+          ref="slotsStickyRef"
+          class="sticky z-10 -mx-2 px-2 py-2 mb-2 bg-neutral-900 border-b border-neutral-800 shrink-0"
+          :style="{ top: `${slotsStickyTop}px` }"
+        >
+          <UsageMeter v-if="entitlements" :entitlements="entitlements" />
+            <p
+              v-if="entitlements && !entitlements.tracks_unlimited && entitlements.track_limit != null"
+              class="text-xs text-neutral-500 px-1 mt-1"
+            >
+            <template v-if="remainingSlots != null && remainingSlots <= 0">
+              You've used all {{ entitlements.track_limit }} tracks on {{ entitlements.plan_name }}. Upgrade to add more.
+            </template>
+            <template v-else-if="remainingSlots != null">
+              {{ remainingSlots }} track slot{{ remainingSlots === 1 ? '' : 's' }} left on {{ entitlements.plan_name }}.
+            </template>
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-2 overflow-y-auto grow pb-2 min-h-0">
           <span v-if="errors.files" class="text-red-500 text-xs px-2">{{ errors.files }}</span>
 
           <!-- Zero state placeholder / alternate drop zone -->
@@ -393,7 +399,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
@@ -474,6 +480,60 @@ const remainingSlots = computed(() => {
   if (!e || e.tracks_unlimited || e.track_limit == null) return null
   return Math.max(0, e.track_limit - e.track_count)
 })
+
+const showSlotsBanner = computed(() => Boolean(entitlements.value))
+
+const slotsStickyRef = ref<HTMLElement | null>(null)
+const slotsStickyTop = ref(0)
+let slotsStickyObserver: ResizeObserver | null = null
+
+function updateSlotsStickyTop() {
+  const el = slotsStickyRef.value
+  if (!el) {
+    slotsStickyTop.value = 0
+    return
+  }
+
+  const aside = el.closest('aside')
+  const headerRow = aside?.firstElementChild?.firstElementChild as HTMLElement | null
+  if (!headerRow) {
+    slotsStickyTop.value = 0
+    return
+  }
+
+  let scrollParent: HTMLElement | null = el.parentElement
+  while (scrollParent && scrollParent !== aside) {
+    const overflowY = getComputedStyle(scrollParent).overflowY
+    if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') break
+    scrollParent = scrollParent.parentElement
+  }
+
+  if (!scrollParent || scrollParent === aside) {
+    // Sticky scrollport is the drawer body below the header row
+    slotsStickyTop.value = 0
+    return
+  }
+
+  const scrollTop = scrollParent.getBoundingClientRect().top
+  const headerBottom = headerRow.getBoundingClientRect().bottom
+  const overlap = headerBottom - scrollTop
+  slotsStickyTop.value = overlap > 0 ? Math.round(overlap) : 0
+}
+
+function bindSlotsStickyObserver() {
+  slotsStickyObserver?.disconnect()
+  slotsStickyObserver = null
+  nextTick(() => {
+    updateSlotsStickyTop()
+    const aside = slotsStickyRef.value?.closest('aside')
+    const headerRow = aside?.firstElementChild?.firstElementChild as HTMLElement | null
+    if (!headerRow && !slotsStickyRef.value) return
+    slotsStickyObserver = new ResizeObserver(() => updateSlotsStickyTop())
+    if (headerRow) slotsStickyObserver.observe(headerRow)
+    if (slotsStickyRef.value) slotsStickyObserver.observe(slotsStickyRef.value)
+    window.addEventListener('resize', updateSlotsStickyTop)
+  })
+}
 
 function openUpgrade(reason: PlanLimitReason) {
   upgradeReason.value = reason
@@ -675,7 +735,21 @@ onMounted(async () => {
 watch(() => props.show, async (newVal) => {
   if (newVal) {
     await Promise.all([fetchCurrentCollection(), refreshEntitlements(true)])
+    bindSlotsStickyObserver()
+  } else {
+    slotsStickyObserver?.disconnect()
+    slotsStickyObserver = null
+    window.removeEventListener('resize', updateSlotsStickyTop)
   }
+})
+
+watch(showSlotsBanner, (visible) => {
+  if (visible && props.show) bindSlotsStickyObserver()
+})
+
+onUnmounted(() => {
+  slotsStickyObserver?.disconnect()
+  window.removeEventListener('resize', updateSlotsStickyTop)
 })
 
 const getNextVersionFromExisting = (currentVersion: string | null | undefined): string => {

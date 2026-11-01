@@ -85,28 +85,40 @@ export default defineEventHandler(async (event) => {
   const minuteKey = new Date().toISOString().slice(0, 16)
   const idempotencyKey = `checkout:${user.id}:${plan.slug}:${interval}:${minuteKey}`
 
-  const session = await stripe.checkout.sessions.create(
-    {
-      mode: 'subscription',
-      customer: customerId,
-      client_reference_id: user.id,
-      allow_promotion_codes: true,
-      line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: {
+  let session
+  try {
+    session = await stripe.checkout.sessions.create(
+      {
+        mode: 'subscription',
+        customer: customerId,
+        client_reference_id: user.id,
+        allow_promotion_codes: true,
+        line_items: [{ price: priceId, quantity: 1 }],
+        // This Stripe account has Managed Payments on by default, which requires
+        // product tax codes. Standard Checkout subscriptions do not need that.
+        managed_payments: { enabled: false },
+        subscription_data: {
+          metadata: {
+            user_id: user.id,
+            plan_slug: plan.slug,
+          },
+        },
+        success_url: `${siteUrl}/billing?status=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${siteUrl}/pricing?status=canceled`,
         metadata: {
           user_id: user.id,
           plan_slug: plan.slug,
         },
-      },
-      success_url: `${siteUrl}/billing?status=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/pricing?status=canceled`,
-      metadata: {
-        user_id: user.id,
-        plan_slug: plan.slug,
-      },
-    },
-    { idempotencyKey },
-  )
+      } as Parameters<typeof stripe.checkout.sessions.create>[0],
+      { idempotencyKey },
+    )
+  } catch (err: any) {
+    const message = err?.message || 'Stripe checkout failed'
+    throw createError({
+      statusCode: err?.statusCode || 400,
+      statusMessage: message,
+    })
+  }
 
   if (!session.url) {
     throw createError({ statusCode: 500, statusMessage: 'Checkout session missing URL' })

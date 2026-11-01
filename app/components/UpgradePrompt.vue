@@ -1,7 +1,7 @@
 <template>
   <Modal :show="show" @update:show="(v) => emit('update:show', v)">
     <template #header>
-      <h2 class="text-xl font-semibold">{{ title }}</h2>
+      <h2 class="text-xl font-semibold text-neutral-100">{{ title }}</h2>
     </template>
 
     <div class="space-y-4 text-neutral-300">
