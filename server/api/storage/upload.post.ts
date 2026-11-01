@@ -1,5 +1,6 @@
-import { createError, readMultipartFormData } from 'h3'
+import { createError, getQuery, readMultipartFormData } from 'h3'
 import { sanitizeStorageFilename } from '~/utils/sanitizeStorageFilename'
+import { assertCanUpload, DEFAULT_MAX_FILE_BYTES } from '../../utils/billing'
 import { uploadR2Object } from '../../utils/r2'
 import { requireAuthUser } from '../../utils/supabaseAuth'
 
@@ -9,8 +10,6 @@ const ALLOWED_AUDIO_TYPES = new Set([
   'audio/mp4',
   'audio/x-m4a',
 ])
-
-const MAX_AUDIO_BYTES = 50 * 1024 * 1024
 
 function normalizeAudioContentType(contentType: string, filename: string): string {
   const base = contentType.split(';')[0]?.trim().toLowerCase() || ''
@@ -27,6 +26,13 @@ function normalizeAudioContentType(contentType: string, filename: string): strin
  */
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
+  const query = getQuery(event)
+  const replacingTrackIdRaw = query.replacingTrackId
+  const replacingTrackId =
+    replacingTrackIdRaw != null && String(replacingTrackIdRaw).trim() !== ''
+      ? Number(replacingTrackIdRaw)
+      : null
+
   const parts = await readMultipartFormData(event)
 
   const filePart = parts?.find((part) => part.name === 'file' && part.filename && part.data?.length)
@@ -37,10 +43,18 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (filePart.data.length > MAX_AUDIO_BYTES) {
+  const fileSize = filePart.data.length
+  const entitlements = await assertCanUpload(user.id, fileSize, {
+    replacingTrackId:
+      replacingTrackId != null && Number.isFinite(replacingTrackId) ? replacingTrackId : null,
+  })
+
+  const maxBytes = entitlements.max_file_size_bytes || DEFAULT_MAX_FILE_BYTES
+  if (fileSize > maxBytes) {
     throw createError({
-      statusCode: 413,
-      statusMessage: 'File exceeds 50MB limit',
+      statusCode: 402,
+      statusMessage: 'plan_limit_reached',
+      data: { reason: 'file_size', entitlements },
     })
   }
 
@@ -56,5 +70,6 @@ export default defineEventHandler(async (event) => {
     contentType,
     storage_provider: 'r2' as const,
     storage_path: key,
+    size: fileSize,
   }
 })

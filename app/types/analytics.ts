@@ -55,6 +55,11 @@ export type AnalyticsEventName =
   | 'shortlist_removed'
   | 'track_comment_created'
   | 'analytics_mode_toggled'
+  | 'pricing_viewed'
+  | 'upgrade_prompt_shown'
+  | 'checkout_started'
+  | 'checkout_completed'
+  | 'portal_opened'
 
 export interface AnalyticsEventProperties {
   signup_started: { user_type: AnalyticsUserType }
@@ -128,4 +133,9 @@ export interface AnalyticsEventProperties {
     collection_id?: number | null
   }
   analytics_mode_toggled: { enabled: boolean; page: 'profile' | 'collection' }
+  pricing_viewed: Record<string, never>
+  upgrade_prompt_shown: { reason: 'tracks' | 'storage' | 'file_size' }
+  checkout_started: { plan_slug: string; interval: 'month' | 'year' }
+  checkout_completed: Record<string, never>
+  portal_opened: { source: 'pricing' | 'billing' | 'upgrade_prompt' }
 }

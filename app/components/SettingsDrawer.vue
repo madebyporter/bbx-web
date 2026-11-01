@@ -5,6 +5,14 @@
     </template>
 
     <div class="flex flex-col gap-6 grow">
+      <div v-if="entitlements" class="flex flex-col gap-3 border border-neutral-800 rounded-lg p-4">
+        <div class="flex items-center justify-between gap-3">
+          <label class="font-semibold text-neutral-200">Plan usage</label>
+          <NuxtLink to="/billing" class="text-sm text-amber-400 hover:text-amber-300">Billing</NuxtLink>
+        </div>
+        <UsageMeter :entitlements="entitlements" />
+      </div>
+
       <!-- Username Field -->
       <div class="flex flex-col gap-3">
         <label class="font-semibold text-neutral-200">Username</label>
@@ -106,6 +114,7 @@ import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import { useAnalytics } from '~/composables/useAnalytics'
+import { useEntitlements } from '~/composables/useEntitlements'
 import MasterDrawer from '~/components/MasterDrawer.vue'
 import { syncResendContact } from '~/utils/resendContactSync'
 
@@ -123,6 +132,7 @@ const { supabase } = useSupabase()
 const { user } = useAuth()
 const { showSuccess, showError } = useToast()
 const { capture, identify } = useAnalytics()
+const { entitlements, refresh: refreshEntitlements } = useEntitlements()
 
 const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
 
@@ -391,6 +401,7 @@ const handleCancel = () => {
 watch(() => props.show, (newVal) => {
   if (newVal && user.value) {
     fetchProfile()
+    refreshEntitlements(true)
     // Reset email pending state when opening drawer
     emailPendingConfirmation.value = false
   }

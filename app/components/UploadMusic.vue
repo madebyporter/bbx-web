@@ -1,6 +1,19 @@
 <template>
   <MasterDrawer :show="props.show" @update:show="(val) => emit('update:show', val)">
     <template #header>
+      <div class="w-full space-y-2">
+      <UsageMeter v-if="entitlements" :entitlements="entitlements" />
+      <p
+        v-if="entitlements && !entitlements.tracks_unlimited && entitlements.track_limit != null"
+        class="text-xs text-neutral-500 px-1"
+      >
+        <template v-if="remainingSlots != null && remainingSlots <= 0">
+          You've used all {{ entitlements.track_limit }} tracks on {{ entitlements.plan_name }}. Upgrade to add more.
+        </template>
+        <template v-else-if="remainingSlots != null">
+          {{ remainingSlots }} track slot{{ remainingSlots === 1 ? '' : 's' }} left on {{ entitlements.plan_name }}.
+        </template>
+      </p>
       <div
         class="grow flex items-center justify-between h-[50px] border border-dashed rounded p-2 cursor-pointer transition-colors"
         :class="isDragging ? 'border-[#e6b85b] bg-[#e6b85b]/10' : 'border-[#e6b85b]'"
@@ -29,7 +42,14 @@
           <span class="text-[5px] font-semibold text-[#999] tracking-[1.2px] leading-none">PER FILE</span>
         </div>
       </div>
+      </div>
     </template>
+
+    <UpgradePrompt
+      v-model:show="showUpgradePrompt"
+      :reason="upgradeReason"
+      :entitlements="entitlements"
+    />
 
     <!-- Success Message -->
     <div v-if="showSuccessMessage" class="h-full flex flex-col items-center justify-center text-center gap-4">
@@ -389,6 +409,8 @@ import { findOrCreateTrackGroup } from '~/utils/trackGroups'
 import { uploadAudio } from '~/utils/trackAudioStorage'
 import { selectMostUpdatedTrack } from '~/utils/uniqueGroupShuffle'
 import { normalizeArtworkProvider } from '~/utils/artworkStorage'
+import { parsePlanLimitReason, useEntitlements } from '~/composables/useEntitlements'
+import type { PlanLimitReason } from '~/types/billing'
 import type { StorageProvider, Track } from '~/types/track'
 
 interface Props {
@@ -440,9 +462,23 @@ const route = useRoute()
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const { capture } = useAnalytics()
+const { entitlements, refresh: refreshEntitlements } = useEntitlements()
 const { validateAndProcessArtwork, uploadArtwork, deleteArtwork, resolveArtworkUrlForEntity } = useArtwork()
 const { addTrackToQueue, queueSourceId, replaceCurrentVersion } = usePlayer()
 const { showError, showSuccess } = useToast()
+const showUpgradePrompt = ref(false)
+const upgradeReason = ref<PlanLimitReason | null>(null)
+
+const remainingSlots = computed(() => {
+  const e = entitlements.value
+  if (!e || e.tracks_unlimited || e.track_limit == null) return null
+  return Math.max(0, e.track_limit - e.track_count)
+})
+
+function openUpgrade(reason: PlanLimitReason) {
+  upgradeReason.value = reason
+  showUpgradePrompt.value = true
+}
 
 const isDragging = ref(false)
 const selectedFiles = ref<SelectedFile[]>([])
@@ -638,7 +674,7 @@ onMounted(async () => {
 
 watch(() => props.show, async (newVal) => {
   if (newVal) {
-    await fetchCurrentCollection()
+    await Promise.all([fetchCurrentCollection(), refreshEntitlements(true)])
   }
 })
 
@@ -816,12 +852,26 @@ const handleFileSelect = async (event: Event) => {
 
 const processFiles = async (files: File[]) => {
   errors.value.files = ''
+  await refreshEntitlements(true)
+
+  const slots = remainingSlots.value
+  if (slots != null && slots <= 0) {
+    openUpgrade('tracks')
+    errors.value.files = `You've used all tracks on ${entitlements.value?.plan_name || 'Free'}. Upgrade to add more.`
+    return
+  }
+  if (slots != null && files.length > slots) {
+    openUpgrade('tracks')
+    errors.value.files = `You can add ${slots} more track${slots === 1 ? '' : 's'} on your plan. Remove some files or upgrade.`
+    return
+  }
   
   for (const file of files) {
     const error = validateFile(file)
     
     if (error) {
       errors.value.files = error
+      if (error.includes('50MB')) openUpgrade('file_size')
       continue
     }
     
@@ -1023,6 +1073,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
 
     const uploadResult = await uploadAudio(fileData.file, supabase)
     const filePath = uploadResult.storage_path
+    const verifiedSize = uploadResult.size
     
     fileData.progress = 60
     
@@ -1052,7 +1103,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         artist: fileData.metadata.artist || null,
         version: fileData.metadata.version || 'v1.0',
         track_group_name: trackGroupName,
-        file_size: fileData.file.size,
+        file_size: verifiedSize,
         duration: fileData.duration,
         genre: fileData.metadata.genre || null,
         mood: moodArray,
@@ -1129,6 +1180,14 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         'track',
       )
     }
+    const limitReason =
+      parsePlanLimitReason(error) ||
+      parsePlanLimitReason({ message: error?.message || error?.details || '' })
+    if (limitReason) {
+      openUpgrade(limitReason)
+      fileData.error = 'Plan limit reached'
+      return false
+    }
     fileData.error = error.message || 'Upload failed'
     showError(`Failed to upload "${fileData.metadata.title}": ${error.message || 'Unknown error'}`)
     return false
@@ -1193,6 +1252,7 @@ const onSubmit = async () => {
       uploadedCount.value = successCount
       showSuccessMessage.value = true
       emit('music-uploaded')
+      await refreshEntitlements(true)
 
       const isBulk = successCount > 1
       for (const fileData of selectedFiles.value) {
