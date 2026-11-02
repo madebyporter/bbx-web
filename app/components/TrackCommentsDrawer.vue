@@ -9,7 +9,7 @@
       </div>
     </template>
 
-    <div class="flex flex-col gap-6 h-full">
+    <div class="flex flex-col gap-4 h-full">
       <!-- Compose -->
       <div v-if="user" class="flex flex-col gap-2 shrink-0 border-b border-neutral-800 pb-4">
         <div class="text-sm text-neutral-400">

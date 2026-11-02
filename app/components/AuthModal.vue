@@ -22,10 +22,14 @@
                 <span class="text-lg font-semibold text-white">Beatbox</span>
               </div>
               <div
+                role="button"
+                tabindex="0"
                 class="p-2 cursor-pointer"
-                :disabled="isSubmitting || checkout.redirecting.value"
+                :class="isSubmitting || checkout.redirecting.value ? 'pointer-events-none opacity-50' : ''"
                 aria-label="Close"
                 @click="close"
+                @keydown.enter.prevent="close"
+                @keydown.space.prevent="close"
               >
                 <Xmark class="size-5 text-white" />
               </div>
@@ -160,30 +164,33 @@
                       </span>
                       <span v-else>{{ submitLabel }}</span>
                     </Button>
-                    <button
+                    <Button
                       v-if="step === 'forgot'"
                       type="button"
-                      class="w-full text-link text-sm no-underline"
+                      variant="ghost"
+                      class="w-full"
                       @click="goSignIn"
                     >
                       Back to Sign In
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       v-else-if="step === 'signin'"
                       type="button"
-                      class="w-full text-link text-sm no-underline"
+                      variant="ghost"
+                      class="w-full"
                       @click="goPlanStep"
                     >
                       Don't have an account?
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       v-else
                       type="button"
-                      class="w-full text-link text-sm no-underline"
+                      variant="ghost"
+                      class="w-full"
                       @click="goSignIn"
                     >
                       Already have an account?
-                    </button>
+                    </Button>
                   </div>
                   <p v-if="step === 'signup' && isPaidIntent" class="text-xs text-neutral-500">
                     You'll create your account first, then pay securely with Stripe. If you stop at checkout, you'll still have a free account.

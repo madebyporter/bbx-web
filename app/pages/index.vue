@@ -58,7 +58,7 @@
         <div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-neutral-900 via-neutral-900/90 to-transparent" />
       </div>
 
-      <div class="relative z-10 flex flex-col gap-6 p-4 sm:p-6 lg:p-10 max-w-3xl">
+      <div class="relative z-10 flex flex-col gap-4 p-4 sm:p-6 lg:p-10 max-w-3xl">
         <div ref="heroBrand" class="flex items-center gap-3">
           <img src="~/assets/img/bbx-logo.svg" alt="" class="size-12 sm:size-14" width="56" height="56" />
           <span class="text-3xl sm:text-5xl font-bold tracking-tight text-white">Beatbox</span>
@@ -95,7 +95,7 @@
           A simple workflow for finishing and delivering music.
         </p>
       </div>
-      <ol class="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-6 max-w-5xl list-none p-0 m-0">
+      <ol class="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-4 max-w-5xl list-none p-0 m-0">
         <li
           v-for="(step, i) in howSteps"
           :key="step.title"
@@ -123,7 +123,7 @@
         <div
           v-for="cap in capabilities"
           :key="cap.key"
-          class="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start border-t border-neutral-800 pt-6"
+          class="flex flex-col sm:flex-row gap-4 sm:gap-4 items-start border-t border-neutral-800 pt-6"
         >
           <div
             class="w-full max-w-sm sm:w-[40%] h-fit shrink-0 overflow-hidden rounded-md border border-neutral-800 bg-neutral-900/90 pointer-events-none select-none"
@@ -393,7 +393,7 @@
     <!-- Final CTA -->
     <section
       ref="finalCta"
-      class="px-4 sm:px-6 lg:px-10 py-20 sm:py-24 flex flex-col gap-6 max-w-3xl"
+      class="px-4 sm:px-6 lg:px-10 py-20 sm:py-24 flex flex-col gap-4 max-w-3xl"
     >
       <div class="flex items-center gap-3">
         <img src="~/assets/img/bbx-logo.svg" alt="" class="size-10" width="40" height="40" />

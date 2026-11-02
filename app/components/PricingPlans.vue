@@ -1,5 +1,5 @@
 <template>
-  <div :class="compact ? 'space-y-4' : 'space-y-8'">
+  <div class="flex flex-col" :class="compact ? 'gap-8' : 'gap-8'">
     <div class="flex justify-center">
       <div
         role="group"
@@ -31,7 +31,7 @@
     <div
       v-if="loading"
       class="grid gap-4"
-      :class="compact ? 'grid-cols-1 sm:grid-cols-2' : 'md:grid-cols-2 gap-6'"
+      :class="compact ? 'grid-cols-1 sm:grid-cols-2' : 'md:grid-cols-2 gap-4'"
     >
       <div
         v-for="n in 2"
@@ -54,7 +54,7 @@
     <div
       v-else
       class="grid gap-4"
-      :class="compact ? 'grid-cols-1 sm:grid-cols-2' : 'md:grid-cols-2 gap-6'"
+      :class="compact ? 'grid-cols-1 sm:grid-cols-2' : 'md:grid-cols-2 gap-4'"
     >
       <div
         v-for="plan in plans"

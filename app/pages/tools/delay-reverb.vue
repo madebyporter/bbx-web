@@ -6,7 +6,7 @@
       item-label="tool"
     />
 
-    <div class="p-4 flex flex-col gap-6">
+    <div class="p-4 flex flex-col gap-4">
       <!-- BPM input -->
       <div class="flex flex-col gap-2 max-w-xs">
         <label for="tools-bpm" class="nav-header">BPM</label>

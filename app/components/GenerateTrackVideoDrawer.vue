@@ -9,7 +9,7 @@
       </div>
     </template>
 
-    <div class="flex flex-col gap-6 h-full">
+    <div class="flex flex-col gap-4 h-full">
       <!-- Cover art -->
       <section class="flex flex-col gap-3 shrink-0">
         <h3 class="text-sm font-medium text-neutral-200">Cover art</h3>
