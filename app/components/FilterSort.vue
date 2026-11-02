@@ -35,7 +35,7 @@
       </div>
 
       <!-- Filtering Section -->
-      <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-4">
         <!-- Software/Kits Filters -->
         <template v-if="context !== 'music'">
           <!-- Price Filter -->

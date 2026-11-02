@@ -8,9 +8,14 @@ export default defineEventHandler(async (event) => {
     planSlug?: string
     interval?: 'month' | 'year'
     returnOrigin?: string
+    context?: 'signup' | 'pricing' | 'upgrade'
   }>(event)
   const planSlug = body.planSlug?.trim()
   const interval = body.interval === 'year' ? 'year' : 'month'
+  const context =
+    body.context === 'signup' || body.context === 'pricing' || body.context === 'upgrade'
+      ? body.context
+      : 'pricing'
 
   if (!planSlug) {
     throw createError({ statusCode: 400, statusMessage: 'planSlug is required' })
@@ -107,11 +112,18 @@ export default defineEventHandler(async (event) => {
             plan_slug: plan.slug,
           },
         },
-        success_url: `${siteUrl}/billing?status=success&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${siteUrl}/pricing?status=canceled`,
+        success_url:
+          context === 'signup'
+            ? `${siteUrl}/billing?status=success&welcome=1&session_id={CHECKOUT_SESSION_ID}`
+            : `${siteUrl}/billing?status=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url:
+          context === 'signup'
+            ? `${siteUrl}/?upgrade=canceled&plan=${encodeURIComponent(plan.slug)}&interval=${interval}`
+            : `${siteUrl}/pricing?status=canceled`,
         metadata: {
           user_id: user.id,
           plan_slug: plan.slug,
+          checkout_context: context,
         },
       } as Parameters<typeof stripe.checkout.sessions.create>[0],
       { idempotencyKey },

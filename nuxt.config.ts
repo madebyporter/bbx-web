@@ -64,6 +64,7 @@ export default defineNuxtConfig({
       posthogKey: process.env.NUXT_PUBLIC_POSTHOG_KEY,
       posthogHost: process.env.NUXT_PUBLIC_POSTHOG_HOST,
       ga4MeasurementId: process.env.NUXT_PUBLIC_GA4_MEASUREMENT_ID || 'G-880GG6FBWS',
+      billingEnabled: process.env.NUXT_PUBLIC_BILLING_ENABLED,
     }
   },
 

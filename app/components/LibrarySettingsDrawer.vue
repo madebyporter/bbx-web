@@ -4,7 +4,7 @@
       <h2 class="text-2xl">Library Settings</h2>
     </template>
 
-    <div class="flex flex-col gap-6 grow">
+    <div class="flex flex-col gap-4 grow">
       <div class="flex flex-col gap-3">
         <label class="font-semibold text-neutral-200">Profile</label>
 

@@ -99,7 +99,18 @@ enabled = true
 # in emails.
 site_url = "https://beatbox.studio"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://beatbox.studio", "https://beatbox.studio/auth/confirm", "https://beatbox.studio/auth/reset-password"]
+# Query params on emailRedirectTo (plan/interval) must match an allowed URL.
+# Local Supabase accepts these; production Dashboard needs the same wildcards (ask before editing).
+additional_redirect_urls = [
+  "https://beatbox.studio",
+  "https://beatbox.studio/auth/confirm",
+  "https://beatbox.studio/auth/confirm**",
+  "https://beatbox.studio/auth/reset-password",
+  "http://localhost:3000/auth/confirm",
+  "http://localhost:3000/auth/confirm**",
+  "http://127.0.0.1:3000/auth/confirm",
+  "http://127.0.0.1:3000/auth/confirm**",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # If disabled, the refresh token will never expire.

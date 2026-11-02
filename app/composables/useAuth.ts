@@ -94,7 +94,12 @@ const createAuth = () => {
     return data
   }
 
-  const signUp = async (email: string, password: string, userType: 'creator' | 'audio_pro' = 'creator') => {
+  const signUp = async (
+    email: string,
+    password: string,
+    userType: 'creator' | 'audio_pro' = 'creator',
+    redirectQuery?: { plan?: string; interval?: string },
+  ) => {
     if (!supabase) throw new Error('Supabase not initialized')
 
     // Prevent a second SMTP confirmation for the same pending / recently-sent email.
@@ -112,17 +117,28 @@ const createAuth = () => {
     }
     
     // Store userType in localStorage temporarily for confirm.vue to access
-    // This avoids passing it in metadata which might cause database trigger issues
+    // This avoids passing it in metadata which might cause database trigger issues.
+    // Do not put plan in user metadata (same trigger concern).
     if (typeof window !== 'undefined') {
       localStorage.setItem(PENDING_USER_TYPE_KEY, userType)
       setPendingSignupEmail(email)
+    }
+
+    let emailRedirectTo = `${window.location.origin}/auth/confirm`
+    if (redirectQuery?.plan) {
+      const params = new URLSearchParams()
+      params.set('plan', redirectQuery.plan)
+      if (redirectQuery.interval === 'year' || redirectQuery.interval === 'month') {
+        params.set('interval', redirectQuery.interval)
+      }
+      emailRedirectTo = `${emailRedirectTo}?${params.toString()}`
     }
     
     const { data, error } = await supabase.auth.signUp({ 
       email, 
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm`
+        emailRedirectTo,
       }
     })
     if (error) throw error
@@ -178,12 +194,23 @@ const createAuth = () => {
     if (error) throw error
   }
 
-  const resendConfirmation = async (email: string) => {
+  const resendConfirmation = async (
+    email: string,
+    redirectQuery?: { plan?: string; interval?: string },
+  ) => {
     if (!supabase) throw new Error('Supabase not initialized')
-    const redirectTo =
+    let redirectTo =
       typeof window !== 'undefined'
         ? `${window.location.origin}/auth/confirm`
         : 'https://beatbox.studio/auth/confirm'
+    if (redirectQuery?.plan) {
+      const params = new URLSearchParams()
+      params.set('plan', redirectQuery.plan)
+      if (redirectQuery.interval === 'year' || redirectQuery.interval === 'month') {
+        params.set('interval', redirectQuery.interval)
+      }
+      redirectTo = `${redirectTo}?${params.toString()}`
+    }
     const { data, error } = await supabase.auth.resend({
       type: 'signup',
       email,

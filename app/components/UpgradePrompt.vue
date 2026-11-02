@@ -246,8 +246,10 @@ async function startCheckout() {
   checkoutBusy.value = true
   try {
     capture('checkout_started', {
-      plan_slug: nextPlan.value.slug,
+      plan: nextPlan.value.slug,
       interval: 'month',
+      context: 'upgrade',
+      plan_slug: nextPlan.value.slug,
     })
     const headers = await useAuthHeaders()
     const res = await $fetch<{ url: string }>('/api/billing/checkout', {
@@ -256,6 +258,7 @@ async function startCheckout() {
       body: {
         planSlug: nextPlan.value.slug,
         interval: 'month',
+        context: 'upgrade',
         returnOrigin: window.location.origin,
       },
     })

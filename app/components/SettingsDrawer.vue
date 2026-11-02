@@ -4,7 +4,7 @@
       <h2 class="text-2xl">Settings</h2>
     </template>
 
-    <div class="flex flex-col gap-6 grow">
+    <div class="flex flex-col gap-4 grow">
       <div v-if="entitlements" class="flex flex-col gap-4 border border-neutral-800 rounded-lg p-4">
         <div class="flex flex-col gap-1">
           <label class="font-semibold text-neutral-200">Plan & usage</label>

@@ -58,7 +58,7 @@
         <div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-neutral-900 via-neutral-900/90 to-transparent" />
       </div>
 
-      <div class="relative z-10 flex flex-col gap-6 p-4 sm:p-6 lg:p-10 max-w-3xl">
+      <div class="relative z-10 flex flex-col gap-4 p-4 sm:p-6 lg:p-10 max-w-3xl">
         <div ref="heroBrand" class="flex items-center gap-3">
           <img src="~/assets/img/bbx-logo.svg" alt="" class="size-12 sm:size-14" width="56" height="56" />
           <span class="text-3xl sm:text-5xl font-bold tracking-tight text-white">Beatbox</span>
@@ -95,7 +95,7 @@
           A simple workflow for finishing and delivering music.
         </p>
       </div>
-      <ol class="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-6 max-w-5xl list-none p-0 m-0">
+      <ol class="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-4 max-w-5xl list-none p-0 m-0">
         <li
           v-for="(step, i) in howSteps"
           :key="step.title"
@@ -123,7 +123,7 @@
         <div
           v-for="cap in capabilities"
           :key="cap.key"
-          class="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start border-t border-neutral-800 pt-6"
+          class="flex flex-col sm:flex-row gap-4 sm:gap-4 items-start border-t border-neutral-800 pt-6"
         >
           <div
             class="w-full max-w-sm sm:w-[40%] h-fit shrink-0 overflow-hidden rounded-md border border-neutral-800 bg-neutral-900/90 pointer-events-none select-none"
@@ -376,10 +376,24 @@
       </div>
     </section>
 
+    <!-- Pricing -->
+    <section
+      id="pricing"
+      class="border-b border-neutral-800 px-4 sm:px-6 lg:px-10 py-16 sm:py-20"
+    >
+      <div class="flex flex-col gap-4 items-center">
+        <h2 class="text-2xl sm:text-3xl font-bold text-white">Simple pricing</h2>
+        <p class="text-neutral-400">
+          Start free with five tracks. Upgrade to Pro when you need unlimited.
+        </p>
+        <PricingPlans source="landing" @select="onPricingSelect" />
+      </div>
+    </section>
+
     <!-- Final CTA -->
     <section
       ref="finalCta"
-      class="px-4 sm:px-6 lg:px-10 py-20 sm:py-24 flex flex-col gap-6 max-w-3xl"
+      class="px-4 sm:px-6 lg:px-10 py-20 sm:py-24 flex flex-col gap-4 max-w-3xl"
     >
       <div class="flex items-center gap-3">
         <img src="~/assets/img/bbx-logo.svg" alt="" class="size-10" width="40" height="40" />
@@ -412,6 +426,7 @@ import {
   type Resource,
 } from '~/utils/resourceQueries'
 import type { HomepageCtaId, HomepageCtaSection } from '~/types/analytics'
+import type { BillingInterval } from '~/composables/usePlans'
 import imgAudioProsWebp from '~/assets/img/landing/who-audio-pros.webp'
 import imgAudioProsJpg from '~/assets/img/landing/who-audio-pros.jpg'
 import imgCreatorsWebp from '~/assets/img/landing/who-creators.webp'
@@ -423,7 +438,12 @@ const { supabase } = useSupabase()
 const username = ref<string | null>(null)
 const latestSoftware = ref<Resource[]>([])
 
-const openAuthModal = inject<(mode?: 'signin' | 'signup' | 'forgot') => void>('openAuthModal', () => {})
+type OpenAuthModal = (
+  mode?: 'signin' | 'signup' | 'forgot',
+  opts?: { plan?: string; interval?: BillingInterval; source?: string },
+) => void
+
+const openAuthModal = inject<OpenAuthModal>('openAuthModal', () => {})
 
 const heroBrand = ref<HTMLElement | null>(null)
 const heroCopy = ref<HTMLElement | null>(null)
@@ -462,7 +482,8 @@ const openSignupFrom = (section: HomepageCtaSection) => {
     source_section: section,
     cta: 'create_account',
   })
-  openAuthModal('signup')
+  // No plan: opens modal at the plan step
+  openAuthModal('signup', { source: `homepage_${section}` })
 }
 
 const openSigninFrom = (section: HomepageCtaSection) => {
@@ -473,6 +494,23 @@ const openSigninFrom = (section: HomepageCtaSection) => {
 const onHeroSignup = () => openSignupFrom('hero')
 const onHeroSignin = () => openSigninFrom('hero')
 const onFinalSignup = () => openSignupFrom('final_cta')
+
+const onPricingSelect = (payload: { plan: string; interval: BillingInterval }) => {
+  const isFree = payload.plan === 'free'
+  trackHomepageCta('pricing', isFree ? 'signup_free' : 'signup_paid')
+  capture('signup_cta_clicked', {
+    source_page: '/',
+    source_section: 'pricing',
+    cta: isFree ? 'signup_free' : 'signup_paid',
+    plan: payload.plan,
+    interval: payload.interval,
+  })
+  openAuthModal('signup', {
+    plan: payload.plan,
+    interval: payload.interval,
+    source: 'landing_pricing',
+  })
+}
 
 const resourceImageUrl = (url: string) =>
   url.startsWith('http') ? url : `https://storage.googleapis.com/bbx-resources/${url}`
