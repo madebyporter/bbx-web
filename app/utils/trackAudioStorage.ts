@@ -10,6 +10,7 @@ export interface AudioStorageTrack {
 export interface AudioUploadResult {
   storage_path: string
   storage_provider: 'r2'
+  size: number
 }
 
 export function normalizeStorageProvider(provider?: string | null): StorageProvider {
@@ -69,6 +70,7 @@ function shouldProxyR2UploadThroughApi(): boolean {
 export async function uploadAudio(
   file: File,
   supabase: SupabaseClient | null,
+  options: { replacingTrackId?: number | null } = {},
 ): Promise<AudioUploadResult> {
   if (!supabase) {
     throw new Error('Storage is not available')
@@ -79,14 +81,19 @@ export async function uploadAudio(
     throw new Error('Not authenticated')
   }
 
+  const replacingTrackId = options.replacingTrackId ?? null
+
   // Localhost → same-origin API (R2 CORS only allows production + :3000 today)
   if (shouldProxyR2UploadThroughApi()) {
     const form = new FormData()
     form.append('file', file)
+    const query =
+      replacingTrackId != null ? `?replacingTrackId=${encodeURIComponent(String(replacingTrackId))}` : ''
     const result = await $fetch<{
       storage_path: string
       storage_provider: 'r2'
-    }>('/api/storage/upload', {
+      size?: number
+    }>(`/api/storage/upload${query}`, {
       method: 'POST',
       body: form,
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -94,6 +101,7 @@ export async function uploadAudio(
     return {
       storage_path: result.storage_path,
       storage_provider: result.storage_provider,
+      size: result.size ?? file.size,
     }
   }
 
@@ -107,6 +115,8 @@ export async function uploadAudio(
     body: {
       filename: file.name,
       contentType: file.type || 'audio/mpeg',
+      size: file.size,
+      replacingTrackId,
     },
     headers: { Authorization: `Bearer ${accessToken}` },
   })
@@ -116,6 +126,7 @@ export async function uploadAudio(
     body: file,
     headers: {
       'Content-Type': presign.contentType,
+      'Content-Length': String(file.size),
     },
   })
 
@@ -123,9 +134,16 @@ export async function uploadAudio(
     throw new Error(`Upload failed (${uploadResponse.status})`)
   }
 
+  const verified = await $fetch<{ key: string; size: number }>('/api/storage/verify-upload', {
+    method: 'POST',
+    body: { key: presign.key, replacingTrackId },
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+
   return {
-    storage_path: presign.key,
+    storage_path: verified.key,
     storage_provider: presign.storage_provider,
+    size: verified.size,
   }
 }
 

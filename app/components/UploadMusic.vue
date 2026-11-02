@@ -2,7 +2,7 @@
   <MasterDrawer :show="props.show" @update:show="(val) => emit('update:show', val)">
     <template #header>
       <div
-        class="grow flex items-center justify-between h-[50px] border border-dashed rounded p-2 cursor-pointer transition-colors"
+        class="grow flex items-center justify-between h-[50px] border border-dashed rounded p-2 cursor-pointer transition-colors w-full"
         :class="isDragging ? 'border-[#e6b85b] bg-[#e6b85b]/10' : 'border-[#e6b85b]'"
         @drop.prevent="handleDrop"
         @dragover.prevent="isDragging = true"
@@ -31,6 +31,13 @@
       </div>
     </template>
 
+    <UpgradePrompt
+      v-model:show="showUpgradePrompt"
+      :reason="upgradeReason"
+      :entitlements="entitlements"
+      @upgraded="onUpgradeComplete"
+    />
+
     <!-- Success Message -->
     <div v-if="showSuccessMessage" class="h-full flex flex-col items-center justify-center text-center gap-4">
       <h2 class="text-xl">Upload successful!</h2>
@@ -53,7 +60,27 @@
         @dragover.prevent="isDragging = true"
         @dragleave.prevent="isDragging = false"
       >
-        <div class="flex flex-col gap-2 overflow-y-auto grow pb-2">
+        <div
+          v-if="showSlotsBanner"
+          ref="slotsStickyRef"
+          class="sticky z-10 -mx-2 px-2 py-2 mb-2 bg-neutral-900 border-b border-neutral-800 shrink-0"
+          :style="{ top: `${slotsStickyTop}px` }"
+        >
+          <UsageMeter v-if="entitlements" :entitlements="entitlements" />
+            <p
+              v-if="entitlements && !entitlements.tracks_unlimited && entitlements.track_limit != null"
+              class="text-xs text-neutral-500 px-1 mt-1"
+            >
+            <template v-if="remainingSlots != null && remainingSlots <= 0">
+              You've used all {{ entitlements.track_limit }} tracks on {{ entitlements.plan_name }}. Upgrade to add more.
+            </template>
+            <template v-else-if="remainingSlots != null">
+              {{ remainingSlots }} track slot{{ remainingSlots === 1 ? '' : 's' }} left on {{ entitlements.plan_name }}.
+            </template>
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-2 overflow-y-auto grow pb-2 min-h-0">
           <span v-if="errors.files" class="text-red-500 text-xs px-2">{{ errors.files }}</span>
 
           <!-- Zero state placeholder / alternate drop zone -->
@@ -373,7 +400,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
@@ -389,6 +416,8 @@ import { findOrCreateTrackGroup } from '~/utils/trackGroups'
 import { uploadAudio } from '~/utils/trackAudioStorage'
 import { selectMostUpdatedTrack } from '~/utils/uniqueGroupShuffle'
 import { normalizeArtworkProvider } from '~/utils/artworkStorage'
+import { parsePlanLimitReason, useEntitlements } from '~/composables/useEntitlements'
+import type { PlanLimitReason } from '~/types/billing'
 import type { StorageProvider, Track } from '~/types/track'
 
 interface Props {
@@ -440,9 +469,99 @@ const route = useRoute()
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const { capture } = useAnalytics()
+const { entitlements, refresh: refreshEntitlements } = useEntitlements()
 const { validateAndProcessArtwork, uploadArtwork, deleteArtwork, resolveArtworkUrlForEntity } = useArtwork()
 const { addTrackToQueue, queueSourceId, replaceCurrentVersion } = usePlayer()
 const { showError, showSuccess } = useToast()
+const showUpgradePrompt = ref(false)
+const upgradeReason = ref<PlanLimitReason | null>(null)
+const pendingUpgradeFiles = ref<File[]>([])
+const resumeUploadsAfterUpgrade = ref(false)
+
+const remainingSlots = computed(() => {
+  const e = entitlements.value
+  if (!e || e.tracks_unlimited || e.track_limit == null) return null
+  return Math.max(0, e.track_limit - e.track_count)
+})
+
+const showSlotsBanner = computed(() => Boolean(entitlements.value))
+
+const slotsStickyRef = ref<HTMLElement | null>(null)
+const slotsStickyTop = ref(0)
+let slotsStickyObserver: ResizeObserver | null = null
+
+async function onUpgradeComplete() {
+  await refreshEntitlements(true)
+  errors.value.files = ''
+  const files = pendingUpgradeFiles.value
+  pendingUpgradeFiles.value = []
+  const shouldUpload = resumeUploadsAfterUpgrade.value
+  resumeUploadsAfterUpgrade.value = false
+
+  if (files.length) {
+    await processFiles(files)
+  }
+  if (shouldUpload && selectedFiles.value.length > 0) {
+    await onSubmit()
+  }
+}
+
+function updateSlotsStickyTop() {
+  const el = slotsStickyRef.value
+  if (!el) {
+    slotsStickyTop.value = 0
+    return
+  }
+
+  const aside = el.closest('aside')
+  const headerRow = aside?.firstElementChild?.firstElementChild as HTMLElement | null
+  if (!headerRow) {
+    slotsStickyTop.value = 0
+    return
+  }
+
+  let scrollParent: HTMLElement | null = el.parentElement
+  while (scrollParent && scrollParent !== aside) {
+    const overflowY = getComputedStyle(scrollParent).overflowY
+    if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') break
+    scrollParent = scrollParent.parentElement
+  }
+
+  if (!scrollParent || scrollParent === aside) {
+    // Sticky scrollport is the drawer body below the header row
+    slotsStickyTop.value = 0
+    return
+  }
+
+  const scrollTop = scrollParent.getBoundingClientRect().top
+  const headerBottom = headerRow.getBoundingClientRect().bottom
+  const overlap = headerBottom - scrollTop
+  slotsStickyTop.value = overlap > 0 ? Math.round(overlap) : 0
+}
+
+function bindSlotsStickyObserver() {
+  slotsStickyObserver?.disconnect()
+  slotsStickyObserver = null
+  nextTick(() => {
+    updateSlotsStickyTop()
+    const aside = slotsStickyRef.value?.closest('aside')
+    const headerRow = aside?.firstElementChild?.firstElementChild as HTMLElement | null
+    if (!headerRow && !slotsStickyRef.value) return
+    slotsStickyObserver = new ResizeObserver(() => updateSlotsStickyTop())
+    if (headerRow) slotsStickyObserver.observe(headerRow)
+    if (slotsStickyRef.value) slotsStickyObserver.observe(slotsStickyRef.value)
+    window.addEventListener('resize', updateSlotsStickyTop)
+  })
+}
+
+function openUpgrade(reason: PlanLimitReason, files?: File[], resumeUpload = false) {
+  upgradeReason.value = reason
+  if (files?.length) {
+    pendingUpgradeFiles.value = files
+  }
+  resumeUploadsAfterUpgrade.value = resumeUpload
+  showUpgradePrompt.value = true
+}
 
 const isDragging = ref(false)
 const selectedFiles = ref<SelectedFile[]>([])
@@ -638,8 +757,22 @@ onMounted(async () => {
 
 watch(() => props.show, async (newVal) => {
   if (newVal) {
-    await fetchCurrentCollection()
+    await Promise.all([fetchCurrentCollection(), refreshEntitlements(true)])
+    bindSlotsStickyObserver()
+  } else {
+    slotsStickyObserver?.disconnect()
+    slotsStickyObserver = null
+    window.removeEventListener('resize', updateSlotsStickyTop)
   }
+})
+
+watch(showSlotsBanner, (visible) => {
+  if (visible && props.show) bindSlotsStickyObserver()
+})
+
+onUnmounted(() => {
+  slotsStickyObserver?.disconnect()
+  window.removeEventListener('resize', updateSlotsStickyTop)
 })
 
 const getNextVersionFromExisting = (currentVersion: string | null | undefined): string => {
@@ -816,12 +949,26 @@ const handleFileSelect = async (event: Event) => {
 
 const processFiles = async (files: File[]) => {
   errors.value.files = ''
+  await refreshEntitlements(true)
+
+  const slots = remainingSlots.value
+  if (slots != null && slots <= 0) {
+    openUpgrade('tracks', files, true)
+    errors.value.files = `You've used all tracks on ${entitlements.value?.plan_name || 'Free'}. Upgrade to add more.`
+    return
+  }
+  if (slots != null && files.length > slots) {
+    openUpgrade('tracks', files, true)
+    errors.value.files = `You can add ${slots} more track${slots === 1 ? '' : 's'} on your plan. Remove some files or upgrade.`
+    return
+  }
   
   for (const file of files) {
     const error = validateFile(file)
     
     if (error) {
       errors.value.files = error
+      if (error.includes('50MB')) openUpgrade('file_size')
       continue
     }
     
@@ -1023,6 +1170,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
 
     const uploadResult = await uploadAudio(fileData.file, supabase)
     const filePath = uploadResult.storage_path
+    const verifiedSize = uploadResult.size
     
     fileData.progress = 60
     
@@ -1052,7 +1200,7 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         artist: fileData.metadata.artist || null,
         version: fileData.metadata.version || 'v1.0',
         track_group_name: trackGroupName,
-        file_size: fileData.file.size,
+        file_size: verifiedSize,
         duration: fileData.duration,
         genre: fileData.metadata.genre || null,
         mood: moodArray,
@@ -1129,6 +1277,14 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         'track',
       )
     }
+    const limitReason =
+      parsePlanLimitReason(error) ||
+      parsePlanLimitReason({ message: error?.message || error?.details || '' })
+    if (limitReason) {
+      openUpgrade(limitReason, undefined, true)
+      fileData.error = 'Plan limit reached'
+      return false
+    }
     fileData.error = error.message || 'Upload failed'
     showError(`Failed to upload "${fileData.metadata.title}": ${error.message || 'Unknown error'}`)
     return false
@@ -1193,6 +1349,7 @@ const onSubmit = async () => {
       uploadedCount.value = successCount
       showSuccessMessage.value = true
       emit('music-uploaded')
+      await refreshEntitlements(true)
 
       const isBulk = successCount > 1
       for (const fileData of selectedFiles.value) {

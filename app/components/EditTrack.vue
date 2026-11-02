@@ -1150,10 +1150,12 @@ const onSubmit = async () => {
     let newDuration: number | null = null
     
     if (newFile.value) {
-      const uploadResult = await uploadAudio(newFile.value, supabase)
+      const uploadResult = await uploadAudio(newFile.value, supabase, {
+        replacingTrackId: props.trackToEdit.id,
+      })
       newStoragePath = uploadResult.storage_path
       newStorageProvider = uploadResult.storage_provider
-      newFileSize = newFile.value.size
+      newFileSize = uploadResult.size
       newDuration = newFileDuration.value
       
       if (props.trackToEdit.storage_path) {

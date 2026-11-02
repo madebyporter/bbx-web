@@ -5,6 +5,54 @@
     </template>
 
     <div class="flex flex-col gap-6 grow">
+      <div v-if="entitlements" class="flex flex-col gap-4 border border-neutral-800 rounded-lg p-4">
+        <div class="flex flex-col gap-1">
+          <label class="font-semibold text-neutral-200">Plan & usage</label>
+          <p class="text-lg font-semibold text-neutral-100">{{ entitlements.plan_name }}</p>
+          <p v-if="subscription?.status" class="text-sm text-neutral-400 capitalize">
+            Status: {{ subscription.status.replace('_', ' ') }}
+          </p>
+          <p
+            v-if="subscription?.cancel_at_period_end && subscription.current_period_end"
+            class="text-sm text-amber-400"
+          >
+            Cancels on {{ formatBillingDate(subscription.current_period_end) }}
+          </p>
+          <p
+            v-else-if="subscription?.current_period_end && subscription.has_stripe_subscription"
+            class="text-sm text-neutral-400"
+          >
+            Renews {{ formatBillingDate(subscription.current_period_end) }}
+          </p>
+          <p
+            v-if="subscription?.comp_until && new Date(subscription.comp_until) > new Date()"
+            class="text-sm text-amber-400"
+          >
+            {{ entitlements.plan_name }} free until {{ formatBillingDate(subscription.comp_until) }}
+          </p>
+        </div>
+
+        <UsageMeter :entitlements="entitlements" />
+
+        <div class="flex flex-wrap gap-2">
+          <Button
+            v-if="subscription?.has_stripe_customer"
+            size="sm"
+            :disabled="billingBusy"
+            @click="openPortal"
+          >
+            Manage billing
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            @click="goToPricing"
+          >
+            See plans
+          </Button>
+        </div>
+      </div>
+
       <!-- Username Field -->
       <div class="flex flex-col gap-3">
         <label class="font-semibold text-neutral-200">Username</label>
@@ -106,6 +154,8 @@ import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import { useAnalytics } from '~/composables/useAnalytics'
+import { useEntitlements } from '~/composables/useEntitlements'
+import { useAuthHeaders } from '~/composables/useAuthHeaders'
 import MasterDrawer from '~/components/MasterDrawer.vue'
 import { syncResendContact } from '~/utils/resendContactSync'
 
@@ -123,8 +173,45 @@ const { supabase } = useSupabase()
 const { user } = useAuth()
 const { showSuccess, showError } = useToast()
 const { capture, identify } = useAnalytics()
+const { entitlements, subscription, refresh: refreshEntitlements } = useEntitlements()
 
 const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
+const billingBusy = ref(false)
+
+function formatBillingDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+async function openPortal() {
+  billingBusy.value = true
+  try {
+    capture('portal_opened', { source: 'settings' })
+    const headers = await useAuthHeaders()
+    const res = await $fetch<{ url: string }>('/api/billing/portal', {
+      method: 'POST',
+      headers,
+      body: { returnOrigin: window.location.origin },
+    })
+    const tab = window.open(res.url, '_blank', 'noopener,noreferrer')
+    if (!tab) {
+      window.location.href = res.url
+    }
+  } catch (err) {
+    console.error(err)
+    showError('Could not open billing portal')
+  } finally {
+    billingBusy.value = false
+  }
+}
+
+function goToPricing() {
+  emit('update:show', false)
+  void navigateTo('/pricing')
+}
 
 // Form state
 const username = ref('')
@@ -391,6 +478,7 @@ const handleCancel = () => {
 watch(() => props.show, (newVal) => {
   if (newVal && user.value) {
     fetchProfile()
+    refreshEntitlements(true)
     // Reset email pending state when opening drawer
     emailPendingConfirmation.value = false
   }

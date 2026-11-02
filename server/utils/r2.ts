@@ -1,6 +1,7 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3'
@@ -89,18 +90,43 @@ export async function presignR2Upload(
   contentType: string,
   expiresIn = 3600,
   bucket?: string,
+  options?: { contentLength?: number },
 ): Promise<string> {
   const config = requireR2Config(bucket)
   const client = getR2Client(config)
+  const contentLength = options?.contentLength
   const command = new PutObjectCommand({
     Bucket: config.bucket,
     Key: key,
     ContentType: contentType,
+    ...(contentLength != null ? { ContentLength: contentLength } : {}),
   })
+  const signableHeaders = new Set(['content-type'])
+  if (contentLength != null) {
+    signableHeaders.add('content-length')
+  }
   return getSignedUrl(client, command, {
     expiresIn,
-    signableHeaders: new Set(['content-type']),
+    signableHeaders,
   })
+}
+
+export async function headR2Object(
+  key: string,
+  bucket?: string,
+): Promise<{ contentLength: number | null; contentType: string | null }> {
+  const config = requireR2Config(bucket)
+  const client = getR2Client(config)
+  const response = await client.send(
+    new HeadObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+    }),
+  )
+  return {
+    contentLength: response.ContentLength ?? null,
+    contentType: response.ContentType ?? null,
+  }
 }
 
 export async function presignR2Download(

@@ -1,5 +1,6 @@
 import { createError, readBody } from 'h3'
 import { sanitizeStorageFilename } from '~/utils/sanitizeStorageFilename'
+import { assertCanUpload } from '../../utils/billing'
 import { presignR2Upload } from '../../utils/r2'
 import { requireAuthUser } from '../../utils/supabaseAuth'
 
@@ -21,7 +22,12 @@ function normalizeAudioContentType(contentType: string, filename: string): strin
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
-  const body = await readBody<{ filename?: string; contentType?: string }>(event)
+  const body = await readBody<{
+    filename?: string
+    contentType?: string
+    size?: number
+    replacingTrackId?: number | null
+  }>(event)
 
   const filename = body.filename?.trim()
   if (!filename) {
@@ -31,10 +37,24 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  const size = Number(body.size)
+  if (!Number.isFinite(size) || size <= 0) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'size is required',
+    })
+  }
+
+  await assertCanUpload(user.id, size, {
+    replacingTrackId: body.replacingTrackId ?? null,
+  })
+
   const contentType = normalizeAudioContentType(body.contentType || '', filename)
   const safeName = sanitizeStorageFilename(filename)
   const key = `${user.id}/${Date.now()}-${safeName}`
-  const uploadUrl = await presignR2Upload(key, contentType)
+  const uploadUrl = await presignR2Upload(key, contentType, 3600, undefined, {
+    contentLength: size,
+  })
 
   return {
     key,

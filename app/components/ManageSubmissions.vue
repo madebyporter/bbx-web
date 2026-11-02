@@ -5,6 +5,8 @@
     </template>
     
     <div class="pt-8 space-y-12">
+      <AdminPlans :active="props.show && props.canEdit" />
+
       <!-- Manage Submissions Section -->
       <div>
         <h2 class="text-xl font-semibold mb-6">Manage Submissions</h2>

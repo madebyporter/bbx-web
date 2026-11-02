@@ -184,6 +184,14 @@
     </div>
     <!-- Tracks Section -->
     <div v-if="musicSectionOpen" class="grow min-w-0 overflow-x-hidden border-t border-neutral-800">
+      <div
+        v-if="isOwnProfile && overCapBanner"
+        class="px-4 py-3 border-b border-neutral-800 bg-neutral-900/80 text-sm text-neutral-300"
+      >
+        {{ overCapBanner }}
+        <NuxtLink to="/pricing" class="text-amber-400 hover:text-amber-300 ml-1">Upgrade</NuxtLink>
+        or remove some tracks.
+      </div>
       <div class="flex flex-row justify-between items-center gap-4 p-4 border-b border-neutral-800">
         <div class="flex flex-col overflow-auto">
           <h2 class="text-lg lg:text-xl font-bold truncate">Music</h2>
@@ -257,7 +265,7 @@
         :analytics-loading="analyticsLoading"
         :resolve-full-queue="resolveFullPlaybackQueue"
         @edit-track="handleEdit"
-        @tracks-deleted="fetchTracks"
+        @tracks-deleted="() => { fetchTracks(); refreshEntitlements(true) }"
         @track-shortlisted="handleTrackShortlisted"
         @track-unshortlisted="handleTrackUnshortlisted"
         @load-more="handleLoadMore"
@@ -286,6 +294,7 @@
 import { ref, computed, onMounted, onActivated, onUnmounted, inject, watch, nextTick, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
+import { useEntitlements } from '~/composables/useEntitlements'
 import { useSupabase } from '~/utils/supabase'
 import { getTrackVisibilityCondition } from '~/utils/trackVisibility'
 import TracksTable from '~/components/TracksTable.vue'
@@ -332,6 +341,7 @@ import gsap from 'gsap'
 import { Xmark, StatsReport, Settings, User, Folder, AppWindow, MusicNote, FilterList } from '@iconoir/vue'
 const route = useRoute()
 const { user, isReady } = useAuth()
+const { entitlements, refresh: refreshEntitlements } = useEntitlements()
 const { supabase } = useSupabase()
 const { updateQueue, queueSourceId } = usePlayer()
 const config = useRuntimeConfig()
@@ -721,6 +731,22 @@ const isOwnProfile = computed(() => {
   return String(user.value.id) === String(profileUserId.value)
 })
 
+const overCapBanner = computed(() => {
+  const e = entitlements.value
+  if (!e || !e.enforcement_enabled) return ''
+  if (!e.tracks_unlimited && e.track_limit != null && e.track_count > e.track_limit) {
+    return `You have ${e.track_count} tracks and ${e.plan_name} includes ${e.track_limit}. Everything stays playable and shareable. To add more,`
+  }
+  if (!e.storage_unlimited && e.over_storage_limit) {
+    return `You're over the storage limit on ${e.plan_name}. Everything stays playable and shareable. To add more,`
+  }
+  return ''
+})
+
+watch(isOwnProfile, (own) => {
+  if (own) refreshEntitlements(true)
+}, { immediate: true })
+
 // Check if current profile is audio_pro (for showing Members feature)
 const isAudioPro = computed(() => {
   return profileUserType.value === 'audio_pro'
@@ -729,16 +755,15 @@ const isAudioPro = computed(() => {
 const pageShellReady = computed(() => isReady.value && !!profileUserId.value && !loading.value)
 usePageShellReady(pageShellReady)
 
+// Match TracksTable column visibility so skeleton columns don't mismatch the live grid
 const skeletonShowCollection = computed(
-  () =>
-    !analyticsMode.value &&
-    (isOwnProfile.value || (!isReady.value && profileUserType.value === 'audio_pro'))
+  () => !analyticsMode.value && isOwnProfile.value
 )
 const skeletonShowStatus = computed(
   () =>
     !analyticsMode.value &&
-    profileUserType.value === 'audio_pro' &&
-    (isOwnProfile.value || !isReady.value)
+    isOwnProfile.value &&
+    profileUserType.value === 'audio_pro'
 )
 const skeletonShowActions = computed(
   () =>
