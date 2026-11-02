@@ -14,21 +14,21 @@
           max-md:inset-0 max-md:fixed max-md:h-[100dvh] max-md:w-full max-md:rounded-none
           md:w-[90vw] md:h-[90vh] md:rounded-lg md:max-w-6xl"
       >
-        <Button
-          variant="ghost"
-          class="absolute top-2 right-0 z-20"
-          :disabled="isSubmitting || checkout.redirecting.value"
-          aria-label="Close"
-          @click="close"
-        >
-          <Xmark class="w-5 h-5 text-white" />
-        </Button>
-
-        <div class="grid h-full md:grid-cols-2">
+        <div class="grid h-full lg:grid-cols-2">
           <div class="flex flex-col gap-4 h-full min-h-0 overflow-y-auto p-4 sm:p-8">
-            <div class="flex items-center gap-4">
-              <img src="~/assets/img/bbx-logo.svg" alt="Beatbox" class="size-10" width="40" height="40" />
-              <span class="text-lg font-semibold text-white">Beatbox</span>
+            <div class="flex flex-row items-center justify-between gap-2">
+              <div class="flex flex-row items-center gap-2">
+                <img src="~/assets/img/bbx-logo.svg" alt="Beatbox" class="size-10" width="40" height="40" />
+                <span class="text-lg font-semibold text-white">Beatbox</span>
+              </div>
+              <div
+                class="p-2 cursor-pointer"
+                :disabled="isSubmitting || checkout.redirecting.value"
+                aria-label="Close"
+                @click="close"
+              >
+                <Xmark class="size-5 text-white" />
+              </div>
             </div>
 
             <div aria-live="polite" class="sr-only">{{ liveMessage }}</div>
@@ -55,7 +55,7 @@
               />
               <p class="text-sm text-neutral-400">
                 Already have an account?
-                <button type="button" class="text-link text-amber-400 hover:text-amber-300 no-underline ml-1" @click="goSignIn">
+                <button type="button" class="text-link no-underline ml-1" @click="goSignIn">
                   Sign in
                 </button>
               </p>
@@ -74,7 +74,7 @@
                 <span class="text-neutral-200">{{ planSummary }}</span>
                 <button
                   type="button"
-                  class="text-link text-amber-400 hover:text-amber-300 no-underline text-xs"
+                  class="text-link no-underline text-xs"
                   @click="goPlanStep"
                 >
                   Change
@@ -88,7 +88,7 @@
                 <p class="mb-2" id="auth-error-desc">{{ authErrorMessage }}</p>
                 <button
                   type="button"
-                  class="text-link text-amber-400 hover:text-amber-300 no-underline mr-3"
+                  class="text-link no-underline mr-3"
                   :disabled="isResendingConfirmation"
                   @click="handleResendFromModal"
                 >
@@ -96,7 +96,7 @@
                 </button>
                 <NuxtLink
                   to="/auth/check-email"
-                  class="text-link text-amber-400 hover:text-amber-300 no-underline"
+                  class="text-link no-underline"
                   @click="prepareCheckEmailNavigation"
                 >
                   Check email instructions
@@ -146,9 +146,9 @@
                     Forgot password?
                   </button>
                 </div>
-                <div class="flex flex-col gap-3">
-                  <div class="flex justify-between items-center gap-3">
-                    <Button type="submit" :disabled="isSubmitting">
+                <div class="flex flex-col gap-4">
+                  <div class="flex flex-col md:flex-row justify-between items-center gap-2">
+                    <Button class="w-full" type="submit" :disabled="isSubmitting">
                       <span v-if="isSubmitting">
                         {{
                           step === 'forgot'
@@ -163,7 +163,7 @@
                     <button
                       v-if="step === 'forgot'"
                       type="button"
-                      class="text-link text-sm no-underline"
+                      class="w-full text-link text-sm no-underline"
                       @click="goSignIn"
                     >
                       Back to Sign In
@@ -171,7 +171,7 @@
                     <button
                       v-else-if="step === 'signin'"
                       type="button"
-                      class="text-link text-sm no-underline"
+                      class="w-full text-link text-sm no-underline"
                       @click="goPlanStep"
                     >
                       Don't have an account?
@@ -179,7 +179,7 @@
                     <button
                       v-else
                       type="button"
-                      class="text-link text-sm no-underline"
+                      class="w-full text-link text-sm no-underline"
                       @click="goSignIn"
                     >
                       Already have an account?
@@ -195,7 +195,7 @@
 
           <div
             v-if="showImageColumn"
-            class="relative hidden md:block h-full min-h-0 bg-neutral-950"
+            class="relative hidden lg:block h-full min-h-0 bg-neutral-950"
             aria-hidden="false"
           >
             <picture class="absolute inset-0 block h-full w-full">

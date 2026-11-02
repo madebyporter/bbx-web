@@ -12,3 +12,13 @@ Use **Iconoir** (`@iconoir/vue`) for all UI icons. The app root wraps with `Icon
 - Exceptions: brand/platform marks that are not in Iconoir (for example `IconApple`, `IconWindows`), and decorative illustrations
 
 Browse icons: https://iconoir.com
+
+## Text links
+
+All interactive text links use the shared `.text-link` utility (`app/assets/css/tailwind.css`).
+
+- Default color is **amber/gold**: `text-amber-400`, hover `text-amber-300`
+- Use `class="text-link"` (add `no-underline` when the link should not be underlined)
+- Do **not** leave links on grey (`text-neutral-400` / `text-neutral-300`) while other links are gold
+- Do **not** reinvent link colors per screen; rely on `.text-link` so Sign in, Forgot password, Change, fair use, and similar actions match
+- Exceptions only when the action is destructive (`text-red-400`) or intentionally quiet secondary copy (document why inline)
