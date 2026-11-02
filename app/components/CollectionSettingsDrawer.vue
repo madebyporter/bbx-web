@@ -4,7 +4,7 @@
       <h2 class="text-2xl">Collection Settings</h2>
     </template>
 
-    <div class="flex flex-col gap-6 grow">
+    <div class="flex flex-col gap-4 grow">
       <!-- Edit Collection Name -->
       <div class="flex flex-col gap-3 border-b border-neutral-800 pb-6">
         <label class="font-semibold text-neutral-200">Collection Name</label>

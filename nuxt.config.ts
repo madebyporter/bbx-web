@@ -53,6 +53,9 @@ export default defineNuxtConfig({
     r2TrackArtworkBucket: process.env.R2_TRACK_ARTWORK_BUCKET,
     r2CollectionArtworkBucket: process.env.R2_COLLECTION_ARTWORK_BUCKET,
     r2Endpoint: process.env.R2_ENDPOINT,
+    stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+    stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+    stripePortalConfigurationId: process.env.STRIPE_PORTAL_CONFIGURATION_ID,
     // Public keys that are exposed to the client
     public: {
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
@@ -61,7 +64,15 @@ export default defineNuxtConfig({
       posthogKey: process.env.NUXT_PUBLIC_POSTHOG_KEY,
       posthogHost: process.env.NUXT_PUBLIC_POSTHOG_HOST,
       ga4MeasurementId: process.env.NUXT_PUBLIC_GA4_MEASUREMENT_ID || 'G-880GG6FBWS',
+      billingEnabled: process.env.NUXT_PUBLIC_BILLING_ENABLED,
     }
+  },
+
+  routeRules: {
+    '/api/stripe/webhook': {
+      prerender: false,
+      cache: false,
+    },
   },
   
   app: {

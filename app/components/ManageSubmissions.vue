@@ -5,6 +5,8 @@
     </template>
     
     <div class="pt-8 space-y-12">
+      <AdminPlans :active="props.show && props.canEdit" />
+
       <!-- Manage Submissions Section -->
       <div>
         <h2 class="text-xl font-semibold mb-6">Manage Submissions</h2>
@@ -29,7 +31,7 @@
             class="flex flex-col border border-neutral-800 rounded-lg p-4 overflow-hidden"
           >
             <!-- Submission Content -->
-            <div class="flex flex-col lg:flex-row gap-6 p-6">
+            <div class="flex flex-col lg:flex-row gap-4 p-6">
               <!-- Image -->
               <div class="w-[160px] h-[160px] aspect-square rounded-md overflow-hidden bg-neutral-900">
                 <img 

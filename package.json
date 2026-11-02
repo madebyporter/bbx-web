@@ -1,6 +1,6 @@
 {
   "name": "nuxt-app",
-  "version": "0.64.0",
+  "version": "0.65.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -15,6 +15,10 @@
     "backfill:track-groups": "tsx scripts/backfill-track-groups.ts",
     "backfill:resource-descriptions": "tsx scripts/backfill-resource-descriptions.ts",
     "backfill:artwork-to-r2": "tsx scripts/backfill-artwork-to-r2.ts",
+    "backfill:file-sizes": "tsx scripts/backfill-sound-file-sizes.ts",
+    "billing:grant-grace": "tsx scripts/grant-launch-grace.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "diagnose:seo": "node scripts/diagnose-seo.js",
     "publish:dns-aid": "node scripts/publish-dns-aid.mjs",
     "r2:set-cors": "node --env-file=.env scripts/set-r2-cors.mjs"
@@ -38,6 +42,7 @@
     "node-fetch": "^3.3.2",
     "nuxt": "^4.1.2",
     "posthog-js": "^1.376.0",
+    "stripe": "^23.1.0",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0",
     "web-bot-auth": "^0.1.3"
@@ -50,6 +55,7 @@
     "concurrently": "^9.1.0",
     "postcss-import": "^16.1.0",
     "postcss-nesting": "^13.0.1",
-    "tsx": "^4.19.2"
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.9"
   }
 }

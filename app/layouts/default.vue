@@ -9,7 +9,7 @@
 
     <!-- No transition-all: height changes (player slot) were animating the sidebar account block -->
     <main class="flex flex-row items-stretch gap-0 flex-1 min-h-0 overflow-hidden">
-      <Nav ref="navRef" @show-auth-modal="showAuthModal = true" @show-admin-modal="showAdminModal = true"
+      <Nav ref="navRef" @show-auth-modal="openAuthModal('signin')" @show-admin-modal="showAdminModal = true"
         @toggle-mobile-nav="handleMobileNavToggle" />
       <section id="content" class="gap-0 grow w-full min-w-0 flex flex-col overflow-x-hidden overflow-y-auto">
         <div class="col-span-full sticky top-0 z-30">
@@ -32,86 +32,8 @@
     <!-- In-layout sibling of main so nav height and player slot stay one flex column -->
     <Player />
 
-    <!-- Auth Modal -->
-    <div v-if="showAuthModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      @click.self="showAuthModal = false">
-      <div class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 p-6 rounded-lg w-96 relative">
-        <Button variant="ghost" class="absolute top-4 right-4" @click="showAuthModal = false">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6.75 17.25L12 12L17.25 17.25M17.25 6.75L12 12L6.75 6.75" stroke="currentColor" stroke-width="1.5"
-              stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </Button>
-        <h2 class="text-xl font-bold mb-4">
-          {{ isForgotPassword ? 'Reset Password' : isSignUp ? 'Sign Up' : 'Sign In' }}
-        </h2>
-        <div
-          v-if="authError === 'unconfirmed'"
-          class="mb-4 p-3 rounded bg-amber-500/10 border border-amber-500/30 text-sm text-neutral-300"
-        >
-          <p class="mb-2">{{ authErrorMessage }}</p>
-          <button
-            type="button"
-            class="text-link text-amber-400 hover:text-amber-300 no-underline mr-3"
-            :disabled="isResendingConfirmation"
-            @click="handleResendFromModal"
-          >
-            {{ isResendingConfirmation ? 'Sending...' : 'Resend confirmation email' }}
-          </button>
-          <NuxtLink
-            to="/auth/check-email"
-            class="text-link text-amber-400 hover:text-amber-300 no-underline"
-            @click="prepareCheckEmailNavigation"
-          >
-            Check email instructions
-          </NuxtLink>
-        </div>
-        <form @submit.prevent="handleSubmit" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Email</label>
-            <input v-model="email" type="email" required
-              class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500" />
-          </div>
-          <div v-if="!isForgotPassword">
-            <label class="block text-sm font-medium mb-1">Password</label>
-            <input v-model="password" type="password" required
-              class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500" />
-          </div>
-          <div v-if="isSignUp">
-            <label class="block text-sm font-medium mb-1">I am a</label>
-            <select v-model="userType" required
-              class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500">
-              <option value="creator">Creator (content creator, songwriter, music artist)</option>
-              <option value="audio_pro">Audio Pro (producer, engineer, etc.)</option>
-            </select>
-          </div>
-          <div v-if="isForgotPassword" class="text-sm text-neutral-400">
-            Enter your email address and we'll send you a link to reset your password.
-          </div>
-          <div v-if="!isForgotPassword && !isSignUp" class="flex justify-end">
-            <button type="button" class="text-link text-xs no-underline" @click="showForgotPassword">
-              Forgot password?
-            </button>
-          </div>
-          <div class="flex justify-between items-center">
-            <Button type="submit" :disabled="isSubmitting">
-              <span v-if="isSubmitting">
-                {{ isForgotPassword ? 'Sending...' : isSignUp ? 'Signing up...' : 'Signing in...' }}
-              </span>
-              <span v-else>
-                {{ isForgotPassword ? 'Send Reset Link' : isSignUp ? 'Sign Up' : 'Sign In' }}
-              </span>
-            </Button>
-            <button v-if="isForgotPassword" type="button" class="text-link text-sm no-underline" @click="backToSignIn">
-              Back to Sign In
-            </button>
-            <button v-else type="button" class="text-link text-sm no-underline" @click="toggleAuthMode">
-              {{ isSignUp ? 'Already have an account?' : "Don't have an account?" }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <AuthModal ref="authModalRef" v-model:open="showAuthModal" />
+    <FinishUpgradeBanner />
 
     <!-- Manage Submissions Drawer -->
     <ManageSubmissions v-model:show="showAdminModal" :canEdit="isAdmin" />
@@ -172,14 +94,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, provide, nextTick, watch } from 'vue'
 import gsap from 'gsap'
-import { useAuth, isEmailNotConfirmedError } from '~/composables/useAuth'
+import { useAuth } from '~/composables/useAuth'
 import { useAnalytics } from '~/composables/useAnalytics'
 import { useToast } from '~/composables/useToast'
-import {
-  markSignupConfirmationSent,
-  setPendingSignupEmail,
-  shouldSkipDuplicateSignup,
-} from '~/utils/authStorage'
+import { useSignupIntent } from '~/composables/useSignupIntent'
+import { useCheckout } from '~/composables/useCheckout'
+import { usePlans, type BillingInterval } from '~/composables/usePlans'
+import { useEntitlements } from '~/composables/useEntitlements'
+import type AuthModal from '~/components/AuthModal.vue'
 import { usePlayer } from '~/composables/usePlayer'
 import {
   getDefaultFilterSortParams,
@@ -269,7 +191,12 @@ interface Resource {
 const auth = useAuth()
 const { user, isAdmin } = auth
 const { capture } = useAnalytics()
-const { showSuccess, showError, showProcessing, showInfo } = useToast()
+const { showInfo } = useToast()
+const signupIntent = useSignupIntent()
+const { startCheckout, openPortal } = useCheckout()
+const { findPlan, ensureLoaded } = usePlans()
+const { entitlements, refresh: refreshEntitlements } = useEntitlements()
+const authModalRef = ref<InstanceType<typeof AuthModal> | null>(null)
 // Start as false on both server and client, set to true in onMounted
 // Initialize to true on both server and client to prevent hydration mismatch
 // This ensures SSR works and client hydration matches server render
@@ -311,20 +238,6 @@ const filterSortContext = computed(() => {
 // Auth state
 const showAuthModal = ref(false)
 const showAdminModal = ref(false)
-const isSignUp = ref(false)
-const isForgotPassword = ref(false)
-const email = ref('')
-const password = ref('')
-const userType = ref<'creator' | 'audio_pro'>('creator')
-const authError = ref<'unconfirmed' | null>(null)
-const authErrorMessage = ref('')
-const isResendingConfirmation = ref(false)
-const isSubmitting = ref(false)
-
-const clearAuthError = () => {
-  authError.value = null
-  authErrorMessage.value = ''
-}
 
 // Resource management state
 const showModal = ref(false)
@@ -429,142 +342,104 @@ const handleMobileNavToggle = (isOpen: boolean) => {
   isMobileNavOpen.value = isOpen
 }
 
-// Auth handlers
-const toggleAuthMode = () => {
-  isSignUp.value = !isSignUp.value
-  isForgotPassword.value = false
-  clearAuthError()
-}
+type AuthModalOpts = { plan?: string; interval?: BillingInterval; source?: string }
 
-const showForgotPassword = () => {
-  isForgotPassword.value = true
-  isSignUp.value = false
-  clearAuthError()
-}
-
-const backToSignIn = () => {
-  isForgotPassword.value = false
-  isSignUp.value = false
-  clearAuthError()
-}
-
-const prepareCheckEmailNavigation = () => {
-  const signupEmail = email.value
-  if (signupEmail) {
-    setPendingSignupEmail(signupEmail)
+const openAuthModal = (
+  mode: 'signin' | 'signup' | 'forgot' = 'signin',
+  opts?: AuthModalOpts,
+) => {
+  // Logged-in users hitting signup/pricing links skip the modal
+  if (user.value && mode === 'signup') {
+    void handleLoggedInSignupIntent(opts)
+    return
   }
-  showAuthModal.value = false
-  clearAuthError()
+
+  showAuthModal.value = true
+  void nextTick(async () => {
+    await authModalRef.value?.open(mode, opts)
+  })
 }
 
-const goToCheckEmail = async () => {
-  prepareCheckEmailNavigation()
-  await navigateTo('/auth/check-email')
-}
-
-const handleResendFromModal = async () => {
-  if (!email.value || isResendingConfirmation.value) return
-  isResendingConfirmation.value = true
-  try {
-    await auth.resendConfirmation(email.value)
-    showInfo('Confirmation email sent. Check your inbox.', 8000)
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Could not resend email'
-    showError(message)
-  } finally {
-    isResendingConfirmation.value = false
+async function handleLoggedInSignupIntent(opts?: AuthModalOpts) {
+  const planSlug = opts?.plan
+  const interval = opts?.interval || 'month'
+  if (!planSlug) {
+    showInfo("You're already signed in.")
+    return
   }
+  await refreshEntitlements(true)
+  const plan = findPlan(planSlug)
+  if (!plan) {
+    showInfo('That plan is not available.')
+    return
+  }
+  if (entitlements.value?.plan_slug === plan.slug) {
+    showInfo(`You're already on ${plan.name}.`)
+    return
+  }
+  if (plan.is_default) {
+    showInfo(`You're already on ${plan.name}.`)
+    return
+  }
+  const paying =
+    entitlements.value &&
+    entitlements.value.plan_slug !== 'free' &&
+    Boolean(entitlements.value.plan_slug)
+  if (paying) {
+    capture('portal_opened', { source: 'pricing' })
+    await openPortal()
+    return
+  }
+  capture('checkout_started', {
+    plan: plan.slug,
+    interval,
+    context: 'pricing',
+    plan_slug: plan.slug,
+  })
+  await startCheckout({ plan: plan.slug, interval, context: 'pricing' })
 }
 
 const openAuthFromQuery = () => {
-  if (!process.client || user.value) return
-  const authMode = route.query.auth
-  if (authMode === 'signup') {
-    openAuthModal('signup')
-    const nextQuery = { ...route.query }
-    delete nextQuery.auth
-    navigateTo({ path: route.path, query: nextQuery }, { replace: true })
-  } else if (authMode === 'signin') {
-    openAuthModal('signin')
-    const nextQuery = { ...route.query }
-    delete nextQuery.auth
-    navigateTo({ path: route.path, query: nextQuery }, { replace: true })
+  if (!import.meta.client) return
+
+  const planParam = typeof route.query.plan === 'string' ? route.query.plan : undefined
+  const intervalParam =
+    route.query.interval === 'year' || route.query.interval === 'month'
+      ? route.query.interval
+      : undefined
+
+  if (planParam) {
+    void signupIntent.readFromQuery(route)
   }
-}
 
-const handleSubmit = async () => {
-  if (isSubmitting.value) return
-  clearAuthError()
-  isSubmitting.value = true
-  try {
-    if (isForgotPassword.value) {
-      await auth.resetPassword(email.value)
-      showInfo('Password reset email sent! Please check your inbox and follow the link to reset your password.', 8000)
-      showAuthModal.value = false
-      email.value = ''
-      password.value = ''
-      isForgotPassword.value = false
-    } else if (isSignUp.value) {
-      const signupEmail = email.value
-      const signupUserType = userType.value
-
-      // Same pending email: do not call signUp again (each call sends another confirmation).
-      if (shouldSkipDuplicateSignup(signupEmail)) {
-        setPendingSignupEmail(signupEmail)
-        showAuthModal.value = false
-        email.value = ''
-        password.value = ''
-        userType.value = 'creator'
-        await navigateTo('/auth/check-email')
-        return
-      }
-
-      const result = await auth.signUp(signupEmail, password.value, signupUserType)
-      capture('signup_completed', { user_type: signupUserType, method: 'email' })
-      if (result.user && !result.session) {
-        setPendingSignupEmail(signupEmail)
-        markSignupConfirmationSent(signupEmail)
-        showAuthModal.value = false
-        email.value = ''
-        password.value = ''
-        userType.value = 'creator'
-        await navigateTo('/auth/check-email')
-        return
-      }
-      showSuccess('Account created successfully!')
-      showAuthModal.value = false
-      email.value = ''
-      password.value = ''
-      userType.value = 'creator'
-    } else {
-      const signInEmail = email.value
-      await auth.signIn(signInEmail, password.value)
-      capture('login_completed', {})
-      showSuccess(`Welcome back, ${signInEmail}!`)
-      showAuthModal.value = false
-      email.value = ''
-      password.value = ''
-      if (typeof window !== 'undefined') {
-        const redirect = sessionStorage.getItem('auth_redirect')
-        if (redirect) {
-          sessionStorage.removeItem('auth_redirect')
-          await navigateTo(redirect)
-          return
-        }
-      }
+  const authMode = route.query.auth
+  if (authMode === 'signup' || authMode === 'signin') {
+    if (user.value && authMode === 'signup') {
+      void handleLoggedInSignupIntent({
+        plan: planParam,
+        interval: intervalParam,
+        source: 'query',
+      })
+    } else if (!user.value) {
+      openAuthModal(authMode, {
+        plan: planParam,
+        interval: intervalParam,
+        source: 'query',
+      })
+    } else if (authMode === 'signin' && signupIntent.isPaid.value && signupIntent.intent.value) {
+      // Already signed in with paid intent: start checkout
+      const intent = signupIntent.intent.value
+      void startCheckout({
+        plan: intent.plan,
+        interval: intent.interval,
+        context: 'signup',
+      })
     }
-  } catch (error: unknown) {
-    console.error('Auth error:', error)
-    if (isEmailNotConfirmedError(error)) {
-      authError.value = 'unconfirmed'
-      authErrorMessage.value =
-        error instanceof Error ? error.message : 'Please confirm your email before signing in.'
-      return
-    }
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    showError(`Authentication failed: ${errorMessage}`)
-  } finally {
-    isSubmitting.value = false
+
+    const nextQuery = { ...route.query }
+    delete nextQuery.auth
+    // Keep plan/interval until signup is submitted (strip only auth)
+    navigateTo({ path: route.path, query: nextQuery }, { replace: true })
   }
 }
 
@@ -572,10 +447,25 @@ watch(
   () => route.query.auth,
   () => {
     openAuthFromQuery()
-  }
+  },
 )
 
-// Auth handlers moved to Nav component
+watch(
+  () => route.query.upgrade,
+  (upgrade) => {
+    if (!import.meta.client) return
+    if (upgrade === 'canceled') {
+      const plan = typeof route.query.plan === 'string' ? route.query.plan : 'pro'
+      const interval =
+        route.query.interval === 'year' || route.query.interval === 'month'
+          ? route.query.interval
+          : 'month'
+      capture('checkout_canceled', { plan, interval })
+      void signupIntent.set({ plan, interval, source: 'checkout_canceled' })
+    }
+  },
+  { immediate: true },
+)
 
 // Resource management handlers
 const openFilterModal = () => {
@@ -822,27 +712,8 @@ const handleShowSignup = () => {
   if (!user.value) {
     const sourcePage = route.path
     capture('signup_cta_clicked', { source_page: sourcePage })
-    showAuthModal.value = true
-    isSignUp.value = true
-    capture('signup_started', { user_type: userType.value })
+    openAuthModal('signup', { source: sourcePage })
   }
-}
-
-// Generic auth modal opener
-const openAuthModal = (mode: 'signin' | 'signup' | 'forgot' = 'signin') => {
-  if (mode === 'forgot') {
-    isForgotPassword.value = true
-    isSignUp.value = false
-  } else if (mode === 'signup') {
-    isSignUp.value = true
-    isForgotPassword.value = false
-    capture('signup_started', { user_type: userType.value })
-  } else {
-    // signin
-    isSignUp.value = false
-    isForgotPassword.value = false
-  }
-  showAuthModal.value = true
 }
 
 // Provide functions for child layouts

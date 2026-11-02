@@ -4,7 +4,7 @@
       <h2 class="text-2xl">Bulk Actions ({{ selectedCount }} track{{ selectedCount > 1 ? 's' : '' }})</h2>
     </template>
 
-    <div class="flex flex-col gap-6 grow">
+    <div class="flex flex-col gap-4 grow">
       <!-- Privacy Toggle -->
       <div class="flex flex-col gap-3">
         <h3 class="font-semibold text-neutral-200">Visibility</h3>
