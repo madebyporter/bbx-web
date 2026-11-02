@@ -376,6 +376,20 @@
       </div>
     </section>
 
+    <!-- Pricing -->
+    <section
+      id="pricing"
+      class="border-b border-neutral-800 px-4 sm:px-6 lg:px-10 py-16 sm:py-20"
+    >
+      <div class="flex flex-col gap-4 items-center">
+        <h2 class="text-2xl sm:text-3xl font-bold text-white">Simple pricing</h2>
+        <p class="text-neutral-400">
+          Start free with five tracks. Upgrade to Pro when you need unlimited.
+        </p>
+        <PricingPlans source="landing" @select="onPricingSelect" />
+      </div>
+    </section>
+
     <!-- Final CTA -->
     <section
       ref="finalCta"
@@ -412,6 +426,7 @@ import {
   type Resource,
 } from '~/utils/resourceQueries'
 import type { HomepageCtaId, HomepageCtaSection } from '~/types/analytics'
+import type { BillingInterval } from '~/composables/usePlans'
 import imgAudioProsWebp from '~/assets/img/landing/who-audio-pros.webp'
 import imgAudioProsJpg from '~/assets/img/landing/who-audio-pros.jpg'
 import imgCreatorsWebp from '~/assets/img/landing/who-creators.webp'
@@ -423,7 +438,12 @@ const { supabase } = useSupabase()
 const username = ref<string | null>(null)
 const latestSoftware = ref<Resource[]>([])
 
-const openAuthModal = inject<(mode?: 'signin' | 'signup' | 'forgot') => void>('openAuthModal', () => {})
+type OpenAuthModal = (
+  mode?: 'signin' | 'signup' | 'forgot',
+  opts?: { plan?: string; interval?: BillingInterval; source?: string },
+) => void
+
+const openAuthModal = inject<OpenAuthModal>('openAuthModal', () => {})
 
 const heroBrand = ref<HTMLElement | null>(null)
 const heroCopy = ref<HTMLElement | null>(null)
@@ -462,7 +482,8 @@ const openSignupFrom = (section: HomepageCtaSection) => {
     source_section: section,
     cta: 'create_account',
   })
-  openAuthModal('signup')
+  // No plan: opens modal at the plan step
+  openAuthModal('signup', { source: `homepage_${section}` })
 }
 
 const openSigninFrom = (section: HomepageCtaSection) => {
@@ -473,6 +494,23 @@ const openSigninFrom = (section: HomepageCtaSection) => {
 const onHeroSignup = () => openSignupFrom('hero')
 const onHeroSignin = () => openSigninFrom('hero')
 const onFinalSignup = () => openSignupFrom('final_cta')
+
+const onPricingSelect = (payload: { plan: string; interval: BillingInterval }) => {
+  const isFree = payload.plan === 'free'
+  trackHomepageCta('pricing', isFree ? 'signup_free' : 'signup_paid')
+  capture('signup_cta_clicked', {
+    source_page: '/',
+    source_section: 'pricing',
+    cta: isFree ? 'signup_free' : 'signup_paid',
+    plan: payload.plan,
+    interval: payload.interval,
+  })
+  openAuthModal('signup', {
+    plan: payload.plan,
+    interval: payload.interval,
+    source: 'landing_pricing',
+  })
+}
 
 const resourceImageUrl = (url: string) =>
   url.startsWith('http') ? url : `https://storage.googleapis.com/bbx-resources/${url}`

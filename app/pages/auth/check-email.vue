@@ -14,6 +14,10 @@
           Open the email and click the link to activate your account.
         </p>
 
+        <p v-if="paidPlanName" class="text-sm text-amber-400/90 mb-4">
+          After you confirm, we'll take you to checkout for {{ paidPlanName }}.
+        </p>
+
         <ul class="text-sm text-neutral-500 text-left space-y-2 mb-6 list-disc pl-5">
           <li>It may take a few minutes to arrive.</li>
           <li>Check spam, junk, or promotions if you do not see it.</li>
@@ -49,8 +53,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
+import { useSignupIntent } from '~/composables/useSignupIntent'
+import { usePlans } from '~/composables/usePlans'
 import {
   getPendingSignupEmail,
   clearPendingSignupEmail
@@ -58,6 +64,8 @@ import {
 
 const auth = useAuth()
 const route = useRoute()
+const signupIntent = useSignupIntent()
+const { findPlan, ensureLoaded } = usePlans()
 
 const displayEmail = ref('')
 const isResending = ref(false)
@@ -65,6 +73,11 @@ const resendMessage = ref('')
 const resendError = ref(false)
 const cooldownSeconds = ref(0)
 let cooldownTimer: ReturnType<typeof setInterval> | null = null
+
+const paidPlanName = computed(() => {
+  if (!signupIntent.isPaid.value || !signupIntent.intent.value) return ''
+  return findPlan(signupIntent.intent.value.plan)?.name || ''
+})
 
 const startCooldown = (seconds = 60) => {
   cooldownSeconds.value = seconds
@@ -82,7 +95,9 @@ const startCooldown = (seconds = 60) => {
   }, 1000)
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await ensureLoaded()
+  await signupIntent.readFromQuery(route)
   const fromStorage = getPendingSignupEmail()
   const fromQuery = typeof route.query.email === 'string' ? route.query.email : ''
   displayEmail.value = fromStorage || fromQuery || ''
@@ -98,7 +113,10 @@ const handleResend = async () => {
   resendMessage.value = ''
   resendError.value = false
   try {
-    await auth.resendConfirmation(displayEmail.value)
+    await auth.resendConfirmation(
+      displayEmail.value,
+      signupIntent.isPaid.value ? signupIntent.toQuery() : undefined,
+    )
     resendMessage.value = 'Confirmation email sent. Check your inbox.'
     resendError.value = false
     startCooldown(60)
@@ -122,6 +140,7 @@ const goHome = () => {
 
 const tryDifferentEmail = () => {
   clearPendingSignupEmail()
-  navigateTo('/?auth=signup')
+  const q = signupIntent.toQuery()
+  navigateTo({ path: '/', query: { auth: 'signup', ...q } })
 }
 </script>

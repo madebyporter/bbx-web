@@ -43,6 +43,15 @@
       </div>
       <div class="flex flex-col gap-4">
         <span class="nav-header">Resources</span>
+        <NuxtLink
+          v-if="isReady && !user"
+          :to="pricingHref"
+          @click="closeMobileNavOnClick"
+          class="nav-link"
+          active-class="!font-bold !text-white"
+        >
+          Pricing
+        </NuxtLink>
         <NuxtLink to="/software" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">Software</NuxtLink>
         <NuxtLink to="/kits" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">Sounds & Kits</NuxtLink>
         <NuxtLink to="/tools" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">Tools</NuxtLink>
@@ -162,6 +171,9 @@ const auth = useAuth()
 const { user, isAdmin, isReady } = auth
 const { showSuccess, showError } = useToast()
 const { supabase } = useSupabase()
+const route = useRoute()
+
+const pricingHref = computed(() => (route.path === '/' ? '/#pricing' : '/pricing'))
 
 const mobileNav = ref<HTMLElement | null>(null)
 const logoSection = ref<HTMLElement | null>(null)
