@@ -1,19 +1,15 @@
 <template>
   <div
     v-if="visible"
-    class="fixed bottom-0 inset-x-0 z-40 border-t border-neutral-800 bg-neutral-900/95 backdrop-blur px-4 py-3"
+    class="fixed bottom-4 right-4 z-40 w-64 flex flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900/95 p-4 shadow-lg backdrop-blur"
   >
-    <div class="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-3">
-      <p class="text-sm text-neutral-200">
-        You're on Free. Want to finish setting up {{ planName }}?
-      </p>
-      <div class="flex items-center gap-2">
-        <Button size="sm" :disabled="busy" @click="onFinish">
-          {{ busy ? 'Opening...' : 'Finish upgrading' }}
-        </Button>
-        <Button size="sm" variant="ghost" @click="onDismiss">Not now</Button>
-      </div>
-    </div>
+    <p class="text-sm text-neutral-200">
+      You're on Free. Want to finish setting up {{ planName }}?
+    </p>
+    <Button size="sm" class="w-full" :disabled="busy" @click="onFinish">
+      {{ busy ? 'Opening...' : 'Finish upgrading' }}
+    </Button>
+    <Button size="sm" variant="ghost" class="w-full" @click="onDismiss">Not now</Button>
   </div>
 </template>
 

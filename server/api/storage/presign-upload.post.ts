@@ -1,6 +1,6 @@
 import { createError, readBody } from 'h3'
 import { sanitizeStorageFilename } from '~/utils/sanitizeStorageFilename'
-import { assertCanUpload } from '../../utils/billing'
+import { assertCanUpload, userHasAdminRole } from '../../utils/billing'
 import { presignR2Upload } from '../../utils/r2'
 import { requireAuthUser } from '../../utils/supabaseAuth'
 
@@ -47,6 +47,7 @@ export default defineEventHandler(async (event) => {
 
   await assertCanUpload(user.id, size, {
     replacingTrackId: body.replacingTrackId ?? null,
+    isAdmin: userHasAdminRole(user),
   })
 
   const contentType = normalizeAudioContentType(body.contentType || '', filename)
