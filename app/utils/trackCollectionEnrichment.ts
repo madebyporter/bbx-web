@@ -11,7 +11,7 @@ export type TrackWithCollections = Track & {
   collections: Array<{ name: string; slug: string }>
 }
 
-type EnrichableTrack = {
+export type EnrichableTrack = {
   id: number
   track_status?: Track['track_status']
   track_statuses?: Track['track_status']
