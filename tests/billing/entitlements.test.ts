@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyAdminUnlimitedPlan,
   evaluateUploadAgainstEntitlements,
   hasEntitlementFlag,
   isUnlimited,
   resolveEffectivePlanSource,
+  type PlanEntitlementState,
 } from '../../server/utils/billingLimits'
 
 const base = {
@@ -88,6 +90,96 @@ describe('resolveEffectivePlanSource', () => {
         pastDueSince: null,
       }),
     ).toBe('default')
+  })
+
+  it('gives admins the unlimited plan when they are not paying', () => {
+    expect(
+      resolveEffectivePlanSource({
+        now,
+        pastDueGraceDays: 7,
+        compPlanId: null,
+        compUntil: null,
+        status: null,
+        planId: null,
+        pastDueSince: null,
+        isAdmin: true,
+      }),
+    ).toBe('admin')
+  })
+
+  it('keeps an active paid plan ahead of the admin grant', () => {
+    expect(
+      resolveEffectivePlanSource({
+        now,
+        pastDueGraceDays: 7,
+        compPlanId: null,
+        compUntil: null,
+        status: 'active',
+        planId: 'pro',
+        pastDueSince: null,
+        isAdmin: true,
+      }),
+    ).toBe('paid')
+  })
+})
+
+const freeEntitlements: PlanEntitlementState = {
+  plan_id: 'free-id',
+  plan_slug: 'free',
+  plan_name: 'Free',
+  track_limit: 5,
+  storage_limit_bytes: 500,
+  max_file_size_bytes: 50,
+  track_count: 157,
+  storage_bytes: 1010,
+  tracks_unlimited: false,
+  storage_unlimited: false,
+  over_track_limit: true,
+  over_storage_limit: true,
+  storage_percent: 202,
+  entitlements: { track_sync: false },
+  can_upload: false,
+  enforcement_enabled: true,
+  features: ['5 tracks'],
+  badge: null,
+}
+
+describe('applyAdminUnlimitedPlan', () => {
+  const pro = {
+    id: 'pro-id',
+    slug: 'pro',
+    name: 'Pro',
+    track_limit: null,
+    storage_limit_bytes: 100_000,
+    max_file_size_bytes: 50,
+    entitlements: { track_sync: false },
+    features: ['Unlimited tracks'],
+    badge: 'Most popular',
+  }
+
+  it('moves an admin off Free onto the unlimited-tracks plan', () => {
+    const next = applyAdminUnlimitedPlan(freeEntitlements, pro, true)
+    expect(next.plan_slug).toBe('pro')
+    expect(next.tracks_unlimited).toBe(true)
+    expect(next.over_track_limit).toBe(false)
+    expect(next.over_storage_limit).toBe(false)
+    expect(next.can_upload).toBe(true)
+    expect(next.track_count).toBe(157)
+  })
+
+  it('leaves non-admins on their current plan', () => {
+    expect(applyAdminUnlimitedPlan(freeEntitlements, pro, false)).toEqual(freeEntitlements)
+  })
+
+  it('does not replace a plan that is already unlimited', () => {
+    const studio = {
+      ...freeEntitlements,
+      plan_slug: 'studio',
+      plan_name: 'Studio',
+      tracks_unlimited: true,
+      track_limit: null,
+    }
+    expect(applyAdminUnlimitedPlan(studio, pro, true).plan_slug).toBe('studio')
   })
 })
 

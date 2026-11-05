@@ -1,6 +1,6 @@
 import { createError, getQuery, readMultipartFormData } from 'h3'
 import { sanitizeStorageFilename } from '~/utils/sanitizeStorageFilename'
-import { assertCanUpload, DEFAULT_MAX_FILE_BYTES } from '../../utils/billing'
+import { assertCanUpload, DEFAULT_MAX_FILE_BYTES, userHasAdminRole } from '../../utils/billing'
 import { uploadR2Object } from '../../utils/r2'
 import { requireAuthUser } from '../../utils/supabaseAuth'
 
@@ -47,6 +47,7 @@ export default defineEventHandler(async (event) => {
   const entitlements = await assertCanUpload(user.id, fileSize, {
     replacingTrackId:
       replacingTrackId != null && Number.isFinite(replacingTrackId) ? replacingTrackId : null,
+    isAdmin: userHasAdminRole(user),
   })
 
   const maxBytes = entitlements.max_file_size_bytes || DEFAULT_MAX_FILE_BYTES

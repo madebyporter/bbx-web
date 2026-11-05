@@ -2,9 +2,11 @@ import type { H3Event } from 'h3'
 import { createError } from 'h3'
 import type { User } from '@supabase/supabase-js'
 import {
+  applyAdminUnlimitedPlan,
   evaluateUploadAgainstEntitlements,
   hasEntitlementFlag,
   type PlanLimitReason,
+  type UnlimitedPlanSnapshot,
 } from './billingLimits'
 import { getServiceSupabase, requireAuthUser } from './supabaseAuth'
 
@@ -31,7 +33,17 @@ export interface Entitlements {
   badge: string | null
 }
 
-export async function getEntitlements(userId: string): Promise<Entitlements> {
+export function userHasAdminRole(
+  user: { app_metadata?: Record<string, unknown> | null } | null | undefined,
+): boolean {
+  const roles = user?.app_metadata?.roles
+  return Array.isArray(roles) && roles.includes('admin')
+}
+
+export async function getEntitlements(
+  userId: string,
+  options: { isAdmin?: boolean } = {},
+): Promise<Entitlements> {
   const supabase = getServiceSupabase()
   const { data, error } = await supabase.rpc('get_entitlements', {
     p_user_id: userId,
@@ -52,7 +64,29 @@ export async function getEntitlements(userId: string): Promise<Entitlements> {
     })
   }
 
-  return normalizeEntitlements(row)
+  const entitlements = normalizeEntitlements(row)
+  if (!options.isAdmin || entitlements.tracks_unlimited) return entitlements
+
+  const plan = await loadPublicUnlimitedPlan()
+  return applyAdminUnlimitedPlan(entitlements, plan, true)
+}
+
+async function loadPublicUnlimitedPlan(): Promise<UnlimitedPlanSnapshot | null> {
+  const supabase = getServiceSupabase()
+  const { data, error } = await supabase
+    .from('plans')
+    .select(
+      'id, slug, name, track_limit, storage_limit_bytes, max_file_size_bytes, entitlements, features, badge',
+    )
+    .eq('is_active', true)
+    .eq('is_public', true)
+    .is('track_limit', null)
+    .order('sort_order', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data?.id) return null
+  return data as UnlimitedPlanSnapshot
 }
 
 function normalizeEntitlements(row: Record<string, unknown>): Entitlements {
@@ -95,9 +129,9 @@ export function hasEntitlement(
 export async function assertCanUpload(
   userId: string,
   fileSizeBytes: number,
-  options: { replacingTrackId?: number | null } = {},
+  options: { replacingTrackId?: number | null; isAdmin?: boolean } = {},
 ): Promise<Entitlements> {
-  const entitlements = await getEntitlements(userId)
+  const entitlements = await getEntitlements(userId, { isAdmin: options.isAdmin })
 
   const supabase = getServiceSupabase()
   let replacingSize = 0

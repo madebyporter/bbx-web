@@ -1,5 +1,5 @@
 import { createError, readBody } from 'h3'
-import { assertCanUpload } from '../../utils/billing'
+import { assertCanUpload, userHasAdminRole } from '../../utils/billing'
 import { deleteR2Object, headR2Object } from '../../utils/r2'
 import { requireAuthUser } from '../../utils/supabaseAuth'
 
@@ -45,6 +45,7 @@ export default defineEventHandler(async (event) => {
   try {
     await assertCanUpload(user.id, size, {
       replacingTrackId: body.replacingTrackId ?? null,
+      isAdmin: userHasAdminRole(user),
     })
   } catch (err) {
     await deleteR2Object(key).catch(() => {})

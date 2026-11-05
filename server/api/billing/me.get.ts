@@ -1,9 +1,9 @@
-import { getEntitlements } from '../../utils/billing'
+import { getEntitlements, userHasAdminRole } from '../../utils/billing'
 import { getServiceSupabase, requireAuthUser } from '../../utils/supabaseAuth'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
-  const entitlements = await getEntitlements(user.id)
+  const entitlements = await getEntitlements(user.id, { isAdmin: userHasAdminRole(user) })
   const supabase = getServiceSupabase()
 
   const { data: subscription } = await supabase
