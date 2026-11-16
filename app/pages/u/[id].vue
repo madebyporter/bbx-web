@@ -226,6 +226,29 @@
               <Xmark class="w-4 h-4" />
             </Button>
           </div>
+          <div
+            v-if="isOwnProfile && isCreator"
+            class="flex items-stretch gap-px shrink-0"
+          >
+            <Button
+              variant="secondary"
+              size="sm"
+              class="btn h-full max-h-10 self-stretch"
+              :class="libraryViewMode === 'shortlist' ? 'border! border-amber-400/60! bg-amber-400/10! text-amber-300!' : ''"
+              @click="setLibraryViewMode('shortlist')"
+            >
+              Shortlist
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              class="btn h-full max-h-10 self-stretch"
+              :class="libraryViewMode === 'uploads' ? 'border! border-amber-400/60! bg-amber-400/10! text-amber-300!' : ''"
+              @click="setLibraryViewMode('uploads')"
+            >
+              Uploads
+            </Button>
+          </div>
           <Button
             v-if="isOwnProfile && isAudioPro"
             variant="secondary"
@@ -259,7 +282,8 @@
         :loading-more="loadingMore"
         :username="username"
         :viewer-user-type="viewerUserType"
-        :profile-user-type="profileUserType"
+        :profile-user-type="effectiveProfileUserType"
+        :library-view-mode="libraryViewMode"
         :analytics-mode="analyticsMode"
         :track-stats="trackStats"
         :analytics-loading="analyticsLoading"
@@ -752,6 +776,30 @@ const isAudioPro = computed(() => {
   return profileUserType.value === 'audio_pro'
 })
 
+const isCreator = computed(() => {
+  return profileUserType.value === 'creator'
+})
+
+/** Creator own library: shortlist (default) or uploads */
+const libraryViewMode = ref<'shortlist' | 'uploads'>('shortlist')
+
+function setLibraryViewMode(mode: 'shortlist' | 'uploads') {
+  if (libraryViewMode.value === mode) return
+  libraryViewMode.value = mode
+  void fetchTracks()
+}
+
+/**
+ * When a creator views their Uploads tab, treat the table like an audio_pro
+ * owner surface (status/edit) without changing their stored user_type.
+ */
+const effectiveProfileUserType = computed(() => {
+  if (isOwnProfile.value && isCreator.value && libraryViewMode.value === 'uploads') {
+    return 'audio_pro'
+  }
+  return profileUserType.value
+})
+
 const pageShellReady = computed(() => isReady.value && !!profileUserId.value && !loading.value)
 usePageShellReady(pageShellReady)
 
@@ -998,7 +1046,12 @@ function resolveFilterParams(override?: MusicFilterSortParams): MusicFilterSortP
 }
 
 function isShortlistMode() {
-  return !!(isOwnProfile.value && viewerUserType.value === 'creator' && user.value)
+  return !!(
+    isOwnProfile.value &&
+    viewerUserType.value === 'creator' &&
+    user.value &&
+    libraryViewMode.value === 'shortlist'
+  )
 }
 
 function applySortToTracks(arr: Track[], sort: MusicFilterSortParams['sort']) {

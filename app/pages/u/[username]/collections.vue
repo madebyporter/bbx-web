@@ -17,8 +17,26 @@
 
       <!-- Collections Table -->
       <div v-if="filteredCollections.length === 0 && !searchQuery" class="p-8 text-center">
-        <div class="text-neutral-500">
-          {{ isOwnProfile ? 'No collections yet. Create one when uploading or editing a track.' : 'No collections available.' }}
+        <div class="max-w-md mx-auto flex flex-col items-center gap-4">
+          <p class="text-neutral-500">
+            {{ isOwnProfile ? 'No collections yet. Create one to group tracks for review or sharing.' : 'No collections available.' }}
+          </p>
+          <div v-if="isOwnProfile" class="flex flex-col sm:flex-row gap-2 w-full max-w-sm">
+            <input
+              v-model="newCollectionName"
+              type="text"
+              placeholder="Collection name"
+              class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400"
+              :disabled="creatingCollection"
+              @keydown.enter.prevent="handleCreateCollection"
+            />
+            <Button
+              :disabled="creatingCollection || !newCollectionName.trim()"
+              @click="handleCreateCollection"
+            >
+              {{ creatingCollection ? 'Creating...' : 'Create collection' }}
+            </Button>
+          </div>
         </div>
       </div>
       
@@ -112,16 +130,20 @@ import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
+import { useToast } from '~/composables/useToast'
 import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
 import CollectionSettingsDrawer from '~/components/CollectionSettingsDrawer.vue'
 import Button from '~/components/Button.vue'
 import { Settings } from '@iconoir/vue'
 import { usePageShellReady } from '~/composables/usePageShellReady'
 import { prefetchArtworkUrls } from '~/composables/useArtworkUrlCache'
+import { generateUniqueSlug } from '~/utils/collections'
 
 const route = useRoute()
+const router = useRouter()
 const { user } = useAuth()
 const { supabase } = useSupabase()
+const { showSuccess, showError } = useToast()
 
 // Inject search handler registration functions
 const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
@@ -135,6 +157,8 @@ const username = ref('')
 const searchQuery = ref('')
 const showSettingsDrawer = ref(false)
 const selectedCollection = ref<any | null>(null)
+const newCollectionName = ref('')
+const creatingCollection = ref(false)
 
 const pageShellReady = computed(() => !loading.value)
 usePageShellReady(pageShellReady)
@@ -296,6 +320,45 @@ const handleSearch = (query: string) => {
 const openCollectionSettings = (collection: any) => {
   selectedCollection.value = collection
   showSettingsDrawer.value = true
+}
+
+const handleCreateCollection = async () => {
+  const name = newCollectionName.value.trim()
+  if (!name || !supabase || !user.value || !isOwnProfile.value) return
+
+  creatingCollection.value = true
+  try {
+    const existingSlugs = collections.value
+      .filter((c) => !c.is_shared)
+      .map((c) => c.slug)
+      .filter(Boolean)
+    const slug = generateUniqueSlug(name, existingSlugs)
+
+    const { data, error } = await supabase
+      .from('collections')
+      .insert({
+        user_id: user.value.id,
+        name,
+        description: null,
+        slug,
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    showSuccess('Collection created')
+    newCollectionName.value = ''
+    await fetchCollections()
+    if (data?.slug) {
+      await router.push(`/u/${username.value}/c/${data.slug}`)
+    }
+  } catch (err: any) {
+    console.error('Error creating collection:', err)
+    showError(err.message || 'Failed to create collection')
+  } finally {
+    creatingCollection.value = false
+  }
 }
 
 const handleCollectionUpdated = (

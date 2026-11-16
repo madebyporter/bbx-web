@@ -105,6 +105,24 @@
         </div>
       </div>
 
+      <!-- Profile discoverability (Audio Pros) -->
+      <div v-if="userType === 'audio_pro'" class="flex flex-col gap-3">
+        <label class="font-semibold text-neutral-200">Profile visibility</label>
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input
+              v-model="isPublic"
+              type="checkbox"
+              class="size-4 rounded border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-400"
+            />
+            <span class="text-sm text-neutral-200">List my profile on Producers</span>
+          </label>
+          <p class="text-xs text-neutral-500">
+            When on, your profile appears on the Producers browse page. Direct links to your library still work when off.
+          </p>
+        </div>
+      </div>
+
       <!-- Email Field -->
       <div class="flex flex-col gap-3">
         <label class="font-semibold text-neutral-200">Email</label>
@@ -217,10 +235,12 @@ function goToPricing() {
 const username = ref('')
 const displayName = ref('')
 const userType = ref<'creator' | 'audio_pro'>('creator')
+const isPublic = ref(true)
 const email = ref('')
 const originalUsername = ref('')
 const originalDisplayName = ref('')
 const originalUserType = ref<'creator' | 'audio_pro'>('creator')
+const originalIsPublic = ref(true)
 const originalEmail = ref('')
 
 // UI state
@@ -235,6 +255,7 @@ const hasChanges = computed(() => {
   return username.value !== originalUsername.value || 
          displayName.value !== originalDisplayName.value ||
          userType.value !== originalUserType.value ||
+         isPublic.value !== originalIsPublic.value ||
          email.value !== originalEmail.value
 })
 
@@ -255,7 +276,7 @@ const fetchProfile = async () => {
   try {
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('username, display_name, user_type')
+      .select('username, display_name, user_type, is_public')
       .eq('id', user.value.id)
       .maybeSingle()
     
@@ -270,20 +291,24 @@ const fetchProfile = async () => {
     
     // If profile exists, use its data; otherwise use empty strings (new user)
     if (data) {
-      username.value = data.username || ''
-      displayName.value = data.display_name || ''
+      username.value = typeof data.username === 'string' ? data.username : ''
+      displayName.value = typeof data.display_name === 'string' ? data.display_name : ''
       userType.value = (data.user_type as 'creator' | 'audio_pro') || 'creator'
-      originalUsername.value = data.username || ''
-      originalDisplayName.value = data.display_name || ''
+      isPublic.value = data.is_public !== false
+      originalUsername.value = typeof data.username === 'string' ? data.username : ''
+      originalDisplayName.value = typeof data.display_name === 'string' ? data.display_name : ''
       originalUserType.value = (data.user_type as 'creator' | 'audio_pro') || 'creator'
+      originalIsPublic.value = data.is_public !== false
     } else {
       // New user - initialize with empty values
       username.value = ''
       displayName.value = ''
       userType.value = 'creator'
+      isPublic.value = true
       originalUsername.value = ''
       originalDisplayName.value = ''
       originalUserType.value = 'creator'
+      originalIsPublic.value = true
     }
     
     // Set email from auth user
@@ -384,9 +409,11 @@ const handleSave = async () => {
       username?: string
       display_name?: string | null
       user_type: 'creator' | 'audio_pro'
+      is_public: boolean
     } = {
       id: user.value.id,
-      user_type: userType.value
+      user_type: userType.value,
+      is_public: userType.value === 'audio_pro' ? isPublic.value : true,
     }
     
     // Always set username (required for new profiles)
@@ -436,6 +463,7 @@ const handleSave = async () => {
       originalUsername.value = username.value
       originalDisplayName.value = displayName.value
       originalUserType.value = userType.value
+      originalIsPublic.value = isPublic.value
       
       // Don't close drawer immediately - let user see the confirmation message
       // They can close it manually
@@ -444,6 +472,7 @@ const handleSave = async () => {
       originalUsername.value = username.value
       originalDisplayName.value = displayName.value
       originalUserType.value = userType.value
+      originalIsPublic.value = isPublic.value
       
       showSuccess('Profile updated successfully')
       emit('profile-updated')
@@ -467,6 +496,7 @@ const handleCancel = () => {
   username.value = originalUsername.value
   displayName.value = originalDisplayName.value
   userType.value = originalUserType.value
+  isPublic.value = originalIsPublic.value
   email.value = originalEmail.value
   usernameError.value = null
   emailError.value = null

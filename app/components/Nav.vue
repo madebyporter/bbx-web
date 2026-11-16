@@ -26,7 +26,7 @@
     </div>
     <div
       ref="navItemsSection"
-      class="grow flex flex-col gap-16 p-4"
+      class="grow flex flex-col gap-8 p-4"
       :class="hasRevealedNav ? 'opacity-100' : 'opacity-0 pointer-events-none'"
     >
       <div v-if="isReady && user" class="flex flex-col gap-4">
@@ -42,11 +42,22 @@
           Collections</NuxtLink>
       </div>
       <div class="flex flex-col gap-4">
+        <span class="nav-header">People</span>
+        <NuxtLink to="/producers" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">
+          Producers</NuxtLink>
+        <!-- <NuxtLink to="#" class="nav-link-later">
+          Engineers <span class="tag">Later</span>
+        </NuxtLink>
+        <NuxtLink to="#" class="nav-link-later">
+          Musicians <span class="tag">Later</span>
+        </NuxtLink> -->
+      </div>
+      <div class="flex flex-col gap-4">
         <span class="nav-header">Resources</span>
         <NuxtLink to="/software" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">Software</NuxtLink>
         <NuxtLink to="/kits" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">Sounds & Kits</NuxtLink>
         <NuxtLink to="/tools" @click="closeMobileNavOnClick" class="nav-link" active-class="!font-bold !text-white">Tools</NuxtLink>
-        <NuxtLink to="#" class="nav-link-later">
+        <!-- <NuxtLink to="#" class="nav-link-later">
           Hardware <span class="tag">Later</span>
         </NuxtLink>
         <NuxtLink to="#" class="nav-link-later">
@@ -54,20 +65,10 @@
         </NuxtLink>
         <NuxtLink to="#" class="nav-link-later">
           Events <span class="tag">Later</span>
-        </NuxtLink>
+        </NuxtLink> -->
       </div>
-      <!-- <div class="flex flex-col gap-4">
-        <span class="nav-header">People</span>
-        <NuxtLink to="#" class="nav-link-later">
-          Producers <span class="tag">Later</span>
-        </NuxtLink>
-        <NuxtLink to="#" class="nav-link-later">
-          Engineers <span class="tag">Later</span>
-        </NuxtLink>
-        <NuxtLink to="#" class="nav-link-later">
-          Musicians <span class="tag">Later</span>
-        </NuxtLink>
-      </div>
+      
+      <!-- 
       <div class="flex flex-col gap-4">
         <span class="nav-header">Products</span>
         <NuxtLink to="#" class="nav-link-later">
@@ -79,11 +80,15 @@
       </div> -->
     </div>
 
-    <!-- Account UI -->
     <div
       ref="userNavSection"
-      class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit rounded-sm flex flex-row items-center overflow-hidden m-2 p-2"
+      class="flex flex-col shrink-0"
       :class="hasRevealedNav ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+    >
+      <OnboardingChecklist />
+    <!-- Account UI -->
+    <div
+      class="bg-neutral-900 ring-1 ring-neutral-800 text-neutral-200 h-fit rounded-sm flex flex-row items-center overflow-hidden m-2 p-2"
     >
       <div class="flex flex-row gap-0 items-center w-full">
         <template v-if="isReady && user">
@@ -136,6 +141,7 @@
         </template>
       </div>
     </div>
+    </div>
 
     <!-- Settings Drawer -->
     <SettingsDrawer 
@@ -156,6 +162,7 @@ import { useSupabase } from '~/utils/supabase'
 import { useSetNavShellReady } from '~/composables/usePageShellReady'
 import SettingsDrawer from '~/components/SettingsDrawer.vue'
 import SupportPopup from '~/components/SupportPopup.vue'
+import OnboardingChecklist from '~/components/OnboardingChecklist.vue'
 
 
 const auth = useAuth()

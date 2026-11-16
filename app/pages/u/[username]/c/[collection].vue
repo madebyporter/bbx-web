@@ -886,6 +886,11 @@ onMounted(async () => {
   tracksLoading.value = true
   await fetchCollection()
 
+  if (collection.value?.id && !isOwnProfile.value) {
+    const { markCollectionReviewed } = await import('~/composables/useOnboardingChecklist')
+    markCollectionReviewed(collection.value.id)
+  }
+
   if (profileUserId.value && collection.value && !isOwnProfile.value) {
     void recordPageView({
       profileId: profileUserId.value,

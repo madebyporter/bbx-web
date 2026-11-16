@@ -41,7 +41,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useAuth } from '~/composables/useAuth'
-import { useSupabase } from '~/utils/supabase'
 import SearchModal from '~/components/SearchModal.vue'
 import SearchFilterSkeleton from '~/components/SearchFilterSkeleton.vue'
 
@@ -80,53 +79,9 @@ const emit = defineEmits<{
 const auth = useAuth()
 const user = computed(() => auth.user.value)
 const isReady = computed(() => auth.isReady.value)
-const { supabase } = useSupabase()
 
 // Get current route (Nuxt auto-imports useRoute)
 const route = useRoute()
-
-// User type state
-const userType = ref<'creator' | 'audio_pro' | null>(null)
-
-// Fetch user type when user is available
-const fetchUserType = async () => {
-  if (!user.value || !supabase) {
-    userType.value = null
-    return
-  }
-  
-  try {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('user_type')
-      .eq('id', user.value.id)
-      .maybeSingle()
-    
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error fetching user type:', error)
-      userType.value = null
-      return
-    }
-    
-    if (data) {
-      userType.value = (data.user_type as 'creator' | 'audio_pro') || null
-    } else {
-      userType.value = null
-    }
-  } catch (error) {
-    console.error('Error fetching user type:', error)
-    userType.value = null
-  }
-}
-
-// Watch for user changes to fetch user type
-watch(() => user.value, async (newUser) => {
-  if (newUser) {
-    await fetchUserType()
-  } else {
-    userType.value = null
-  }
-}, { immediate: true })
 
 // Add a computed property for user state
 const hasUser = computed(() => {
@@ -139,27 +94,20 @@ const isUserProfilePage = computed(() => {
   return route?.path?.startsWith('/u/') || false
 })
 
-// Check if we should show the upload button
-// Hide it if user is a creator viewing their own profile
 const isToolsPage = computed(() => {
   return route?.path?.startsWith('/tools') || false
 })
 
+const isProducersPage = computed(() => {
+  return route?.path?.startsWith('/producers') || false
+})
+
 const shouldShowUploadButton = computed(() => {
   if (!hasUser.value) return false
-  // Tools pages have no resource submit flow
-  if (isToolsPage.value) return false
-  if (!isUserProfilePage.value) return true // Always show "Submit" on non-profile pages
-  
-  // On profile pages, check if it's the user's own profile
-  const profileId = route?.params?.id as string
-  const isOwnProfile = user.value && profileId === user.value.id
-  
-  // Hide upload button if creator viewing own profile
-  if (isOwnProfile && userType.value === 'creator') {
-    return false
-  }
-  
+  // Tools / producers have no resource submit flow
+  if (isToolsPage.value || isProducersPage.value) return false
+  // Profile pages: Upload for both creators and audio pros
+  // Resource pages: Submit
   return true
 })
 

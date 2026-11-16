@@ -75,6 +75,8 @@ export type AnalyticsEventName =
   | 'finish_upgrade_banner_shown'
   | 'finish_upgrade_banner_clicked'
   | 'finish_upgrade_banner_dismissed'
+  | 'onboarding_checklist_item_clicked'
+  | 'onboarding_checklist_dismissed'
 
 export interface AnalyticsEventProperties {
   signup_started: {
@@ -177,4 +179,6 @@ export interface AnalyticsEventProperties {
   finish_upgrade_banner_shown: { plan: string; interval: 'month' | 'year' }
   finish_upgrade_banner_clicked: { plan: string; interval: 'month' | 'year' }
   finish_upgrade_banner_dismissed: { plan: string; interval: 'month' | 'year' }
+  onboarding_checklist_item_clicked: { item_id: string }
+  onboarding_checklist_dismissed: Record<string, never>
 }

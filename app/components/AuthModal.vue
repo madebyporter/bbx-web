@@ -138,8 +138,9 @@
                     required
                     class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500"
                   >
-                    <option value="creator">Creator (content creator, songwriter, music artist)</option>
+
                     <option value="audio_pro">Audio Pro (producer, engineer, etc.)</option>
+                    <option value="creator">Creator (content creator, songwriter, music artist)</option>
                   </select>
                 </div>
                 <div v-if="step === 'forgot'" class="text-sm text-neutral-400">

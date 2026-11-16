@@ -529,6 +529,8 @@ const closeModal = () => {
 }
 
 const refreshDatabase = (updatedTrack?: any) => {
+  window.dispatchEvent(new CustomEvent('bbx-onboarding-refresh'))
+
   // For user profile pages, dispatch window event with updated track data
   if (isUserProfilePage.value) {
     const event = new CustomEvent('track-updated', { 

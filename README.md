@@ -275,6 +275,8 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.67.0
+  - Role-based onboarding: Producers browse page, left-rail checklist, Creator upload + Shortlist/Uploads toggle, Audio Pro create-collection empty state, profile public/private for directory listing
 - 0.66.0
   - Admin accounts get the unlimited tracks plan automatically, with no checkout
 - 0.65.0
