@@ -27,6 +27,7 @@
         :is-own-profile="isOwnProfile"
         :show-view-mode-selector="false"
         :show-settings-button="isCollectionOwner"
+        :show-share-button="isCollectionOwner"
         :show-analytics-toggle="isOwnProfile && profileUserType === 'audio_pro'"
         :analytics-mode="analyticsMode"
         analytics-page="collection"
@@ -40,6 +41,7 @@
         @open-filter-sort="handleOpenFilterSort"
         @clear-filters="handleClearFilterSort"
         @open-settings="showSettingsDrawer = true"
+        @open-share="showShareDrawer = true"
         @update:analytics-mode="analyticsMode = $event"
       />
 
@@ -91,6 +93,13 @@
       @collection-updated="handleCollectionUpdated"
       @collection-deleted="handleCollectionDeleted"
     />
+
+    <CollectionShareDrawer
+      v-if="collection"
+      v-model:show="showShareDrawer"
+      :collection-id="collection.id"
+      :collection-name="collection.name"
+    />
   </div>
 </template>
 
@@ -104,6 +113,7 @@ import { usePlayer } from '~/composables/usePlayer'
 import CollectionTracksTable from '~/components/CollectionTracksTable.vue'
 import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 import CollectionSettingsDrawer from '~/components/CollectionSettingsDrawer.vue'
+import CollectionShareDrawer from '~/components/CollectionShareDrawer.vue'
 import TrackAnalyticsDateFilter from '~/components/TrackAnalyticsDateFilter.vue'
 import TrackAnalyticsSummary from '~/components/TrackAnalyticsSummary.vue'
 import { recordPageView } from '~/composables/useTrackAnalytics'
@@ -192,6 +202,7 @@ const searchQuery = ref('')
 const viewerUserType = ref<'creator' | 'audio_pro' | null>(null)
 const profileUserType = ref<'creator' | 'audio_pro' | null>(null)
 const showSettingsDrawer = ref(false)
+const showShareDrawer = ref(false)
 
 // Computed
 const isOwnProfile = computed(() => {
@@ -201,6 +212,23 @@ const isOwnProfile = computed(() => {
 const isCollectionOwner = computed(() => {
   return !!(user.value && collection.value && user.value.id === collection.value.user_id)
 })
+
+function openShareFromQuery() {
+  if (!isCollectionOwner.value) return
+  if (String(route.query.share || '') !== '1') return
+  showShareDrawer.value = true
+  const nextQuery = { ...route.query }
+  delete nextQuery.share
+  void router.replace({ query: nextQuery })
+}
+
+watch(
+  [isCollectionOwner, () => route.query.share, () => collection.value?.id],
+  () => {
+    openShareFromQuery()
+  },
+  { immediate: true },
+)
 
 const collectionArtworkUrl = ref<string | null>(null)
 

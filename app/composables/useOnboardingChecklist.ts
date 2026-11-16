@@ -17,11 +17,12 @@ export interface ChecklistItem {
   label: string
   done: boolean
   href?: string
-  action?: 'upload' | 'create_collection' | 'invite'
+  action?: 'upload' | 'create_collection' | 'invite' | 'share'
 }
 
 const DISMISS_KEY = 'bbx_onboarding_checklist_dismissed'
 const PRODUCERS_VISITED_KEY = 'bbx_producers_visited'
+const SHARE_DONE_KEY = 'bbx_collection_share_done'
 const PENDING_REVIEW_KEY = 'bbx_pending_review_collection'
 const REVIEWED_COLLECTIONS_KEY = 'bbx_reviewed_collections'
 
@@ -32,6 +33,16 @@ function scopedKey(base: string, userId?: string | null) {
 export function markProducersVisited(userId?: string | null) {
   if (typeof window === 'undefined' || !userId) return
   localStorage.setItem(scopedKey(PRODUCERS_VISITED_KEY, userId), '1')
+}
+
+export function markCollectionShareDone(userId?: string | null) {
+  if (typeof window === 'undefined' || !userId) return
+  localStorage.setItem(scopedKey(SHARE_DONE_KEY, userId), '1')
+}
+
+function hasCollectionShareDone(userId?: string | null): boolean {
+  if (typeof window === 'undefined' || !userId) return false
+  return localStorage.getItem(scopedKey(SHARE_DONE_KEY, userId)) === '1'
 }
 
 export function setPendingReviewCollection(payload: {
@@ -109,6 +120,7 @@ export function useOnboardingChecklist() {
   const soundsCount = ref(0)
   const collectionsCount = ref(0)
   const hasInviteActivity = ref(false)
+  const firstOwnedCollectionSlug = ref<string | null>(null)
   const shortlistCount = ref(0)
   const sharedMembership = ref<{
     collectionId: number
@@ -125,6 +137,12 @@ export function useOnboardingChecklist() {
 
     if (userType.value === 'audio_pro') {
       const uname = username.value
+      const uid = user.value?.id
+      const shareHref = uname
+        ? firstOwnedCollectionSlug.value
+          ? `/u/${uname}/c/${firstOwnedCollectionSlug.value}?share=1`
+          : `/u/${uname}/collections`
+        : undefined
       return [
         {
           id: 'upload_first_track' as const,
@@ -141,10 +159,10 @@ export function useOnboardingChecklist() {
         },
         {
           id: 'invite_review' as const,
-          label: 'Invite someone to review',
-          done: hasInviteActivity.value,
-          href: uname ? `/u/${uname}/collections` : undefined,
-          action: 'invite' as const,
+          label: 'Share collection',
+          done: hasInviteActivity.value || hasCollectionShareDone(uid),
+          href: shareHref,
+          action: 'share' as const,
         },
       ]
     }
@@ -154,6 +172,7 @@ export function useOnboardingChecklist() {
     const creatorItems: ChecklistItem[] = [
       {
         id: 'browse_producers',
+        label: 'Browse producers',
         // Only count an intentional visit for this user — not other accounts on the same browser
         done: hasVisitedProducers(uid),
         href: '/producers',
@@ -234,10 +253,14 @@ export function useOnboardingChecklist() {
       if (userType.value === 'audio_pro') {
         const { data: ownedCollections } = await supabase
           .from('collections')
-          .select('id')
+          .select('id, slug')
           .eq('user_id', user.value.id)
+          .order('created_at', { ascending: true })
 
         const collectionIds = (ownedCollections || []).map((c) => c.id)
+        firstOwnedCollectionSlug.value =
+          typeof ownedCollections?.[0]?.slug === 'string' ? ownedCollections[0].slug : null
+
         let memberCount = 0
         if (collectionIds.length > 0) {
           const { count } = await supabase
@@ -254,6 +277,7 @@ export function useOnboardingChecklist() {
 
         hasInviteActivity.value = memberCount > 0 || (profileMembers || 0) > 0
       } else {
+        firstOwnedCollectionSlug.value = null
         const { count: shortCount } = await supabase
           .from('track_shortlists')
           .select('*', { count: 'exact', head: true })

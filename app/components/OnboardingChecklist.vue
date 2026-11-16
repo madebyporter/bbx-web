@@ -50,15 +50,15 @@
                 class="text-link text-xs hover:text-amber-400 no-underline"
                 @click="handleItemClick(item.id)"
               >
-                {{ item.id === 'browse_producers' || item.id === 'add_music' ? 'Browse' : 'Open' }}
+                {{ ctaLabel(item) }}
               </NuxtLink>
               <button
-                v-else-if="item.action === 'create_collection' || item.action === 'invite'"
+                v-else-if="item.action === 'create_collection' || item.action === 'invite' || item.action === 'share'"
                 type="button"
                 class="text-link text-xs hover:text-amber-400 no-underline"
                 @click="handleHrefFallback(item)"
               >
-                Open
+                {{ ctaLabel(item) }}
               </button>
             </div>
           </div>
@@ -84,6 +84,12 @@ const { capture } = useAnalytics()
 function handleDismiss() {
   capture('onboarding_checklist_dismissed', {})
   dismiss()
+}
+
+function ctaLabel(item: ChecklistItem) {
+  if (item.action === 'share' || item.id === 'invite_review') return 'Share'
+  if (item.id === 'browse_producers' || item.id === 'add_music') return 'Browse'
+  return 'Open'
 }
 
 function handleItemClick(id: ChecklistItemId) {

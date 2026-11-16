@@ -275,6 +275,10 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.68.0
+  - Collection Share drawer with invite link, Resend email, and Beatbox user invite
+  - Checklist “Share collection” CTA opens the share drawer via `?share=1`
+  - Invite/members UI moved out of Collection Settings into Share
 - 0.67.0
   - Role-based onboarding: Producers browse page, left-rail checklist, Creator upload + Shortlist/Uploads toggle, Audio Pro create-collection empty state, profile public/private for directory listing
 - 0.66.0
