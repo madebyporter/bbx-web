@@ -21,7 +21,7 @@
           <p class="text-neutral-500">
             {{ isOwnProfile ? 'No collections yet. Create one to group tracks for review or sharing.' : 'No collections available.' }}
           </p>
-          <div v-if="isOwnProfile" class="flex flex-col sm:flex-row gap-2 w-full max-w-sm">
+          <div v-if="isOwnProfile" class="flex flex-col gap-2 w-full max-w-sm">
             <input
               v-model="newCollectionName"
               type="text"
@@ -31,6 +31,7 @@
               @keydown.enter.prevent="handleCreateCollection"
             />
             <Button
+              full-width
               :disabled="creatingCollection || !newCollectionName.trim()"
               @click="handleCreateCollection"
             >

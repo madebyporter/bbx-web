@@ -60,7 +60,16 @@
         <div v-if="profileBio" class="text-sm text-neutral-400">
           {{ profileBio }}
         </div>
-        <p v-else-if="!isOwnProfile" class="text-sm text-neutral-500 italic">
+        <p v-else-if="isOwnProfile" class="text-sm text-neutral-500">
+          <button
+            type="button"
+            class="text-link text-sm hover:text-amber-400 no-underline"
+            @click="showLibrarySettingsDrawer = true"
+          >
+            Add a short bio
+          </button>
+        </p>
+        <p v-else class="text-sm text-neutral-500 italic">
           Something's supposed to be here
         </p>
 
