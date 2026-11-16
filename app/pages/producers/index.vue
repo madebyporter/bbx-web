@@ -58,6 +58,7 @@ import LibraryHeader from '~/components/LibraryHeader.vue'
 import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
 import { usePageShellReady } from '~/composables/usePageShellReady'
 import { useSupabase } from '~/utils/supabase'
+import { useAuth } from '~/composables/useAuth'
 import { markProducersVisited } from '~/composables/useOnboardingChecklist'
 
 interface ProducerRow {
@@ -69,6 +70,7 @@ interface ProducerRow {
 }
 
 const { supabase } = useSupabase()
+const { user } = useAuth()
 const producers = ref<ProducerRow[]>([])
 const loading = ref(true)
 const loadError = ref<string | null>(null)
@@ -172,7 +174,7 @@ function handleSearch(query: string) {
 }
 
 onMounted(() => {
-  markProducersVisited()
+  markProducersVisited(user.value?.id)
   if (registerSearchHandler) {
     registerSearchHandler(handleSearch)
   }
@@ -186,9 +188,9 @@ onUnmounted(() => {
 })
 
 watch(
-  () => producers.value.length,
-  () => {
-    // Keep shell ready after first load
+  () => user.value?.id,
+  (id) => {
+    if (id) markProducersVisited(id)
   },
 )
 </script>

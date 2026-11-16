@@ -961,13 +961,13 @@ const fetchProfile = async () => {
           .from('user_profiles')
           .select('id, username, display_name, bio, website, social_links, user_type, profile_panels')
           .eq('id', usernameOrId)
-          .single()
+          .maybeSingle()
       } else {
         result = await supabase
           .from('user_profiles')
           .select('id, username, display_name, bio, website, social_links, user_type, profile_panels')
           .eq('username', usernameOrId)
-          .single()
+          .maybeSingle()
       }
       
       if (result.data && !result.error) {
@@ -980,10 +980,30 @@ const fetchProfile = async () => {
         profileSocialLinks.value = (result.data.social_links as any) || {}
         syncProfilePanels(normalizeProfilePanels(result.data.profile_panels))
         loadPanelOpenState()
+      } else if (isUUID && user.value.id === usernameOrId) {
+        // Own library but profile row missing (common after confirm-without-profile). Create it.
+        const { ensureUserProfile } = await import('~/utils/ensureUserProfile')
+        const ensured = await ensureUserProfile(supabase, user.value)
+        if (ensured) {
+          profileUserId.value = ensured.id
+          profileName.value = ensured.username
+          username.value = ensured.username
+          profileUserType.value = ensured.user_type
+          syncProfilePanels(DEFAULT_PROFILE_PANELS)
+          loadPanelOpenState()
+          if (ensured.username && route.params.id !== ensured.username) {
+            await navigateTo(`/u/${ensured.username}`, { replace: true })
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching profile client-side:', error)
     }
+  }
+
+  // Never leave the shell spinning forever when profile cannot be resolved
+  if (!profileUserId.value) {
+    loading.value = false
   }
 }
 

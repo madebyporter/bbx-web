@@ -25,9 +25,13 @@ const PRODUCERS_VISITED_KEY = 'bbx_producers_visited'
 const PENDING_REVIEW_KEY = 'bbx_pending_review_collection'
 const REVIEWED_COLLECTIONS_KEY = 'bbx_reviewed_collections'
 
-export function markProducersVisited() {
-  if (typeof window === 'undefined') return
-  localStorage.setItem(PRODUCERS_VISITED_KEY, '1')
+function scopedKey(base: string, userId?: string | null) {
+  return userId ? `${base}:${userId}` : base
+}
+
+export function markProducersVisited(userId?: string | null) {
+  if (typeof window === 'undefined' || !userId) return
+  localStorage.setItem(scopedKey(PRODUCERS_VISITED_KEY, userId), '1')
 }
 
 export function setPendingReviewCollection(payload: {
@@ -83,14 +87,14 @@ function readPendingReview(): {
   }
 }
 
-function isDismissed(): boolean {
-  if (typeof window === 'undefined') return false
-  return localStorage.getItem(DISMISS_KEY) === '1'
+function isDismissed(userId?: string | null): boolean {
+  if (typeof window === 'undefined' || !userId) return false
+  return localStorage.getItem(scopedKey(DISMISS_KEY, userId)) === '1'
 }
 
-function hasVisitedProducers(): boolean {
-  if (typeof window === 'undefined') return false
-  return localStorage.getItem(PRODUCERS_VISITED_KEY) === '1'
+function hasVisitedProducers(userId?: string | null): boolean {
+  if (typeof window === 'undefined' || !userId) return false
+  return localStorage.getItem(scopedKey(PRODUCERS_VISITED_KEY, userId)) === '1'
 }
 
 export function useOnboardingChecklist() {
@@ -146,11 +150,12 @@ export function useOnboardingChecklist() {
     }
 
     const pending = sharedMembership.value
+    const uid = user.value?.id
     const creatorItems: ChecklistItem[] = [
       {
         id: 'browse_producers',
-        label: 'Browse producers',
-        done: hasVisitedProducers() || shortlistCount.value >= 1 || soundsCount.value >= 1,
+        // Only count an intentional visit for this user — not other accounts on the same browser
+        done: hasVisitedProducers(uid),
         href: '/producers',
       },
       {
@@ -186,8 +191,8 @@ export function useOnboardingChecklist() {
   })
 
   function dismiss() {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(DISMISS_KEY, '1')
+    if (typeof window !== 'undefined' && user.value?.id) {
+      localStorage.setItem(scopedKey(DISMISS_KEY, user.value.id), '1')
     }
     dismissed.value = true
   }
@@ -201,7 +206,7 @@ export function useOnboardingChecklist() {
 
     loading.value = true
     try {
-      dismissed.value = isDismissed()
+      dismissed.value = isDismissed(user.value.id)
 
       const { data: profile } = await supabase
         .from('user_profiles')
