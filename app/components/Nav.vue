@@ -196,6 +196,7 @@ const handleAuth = async () => {
       username.value = null
       usernameLoaded.value = true
       showSuccess('Logged out successfully')
+      await navigateTo('/')
     } catch (error) {
       console.error('Logout error:', error)
       showError('Failed to logout')
