@@ -275,6 +275,10 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.15
+  - Sync drawer: metadata Edit CTAs vertically centered, tertiary outlined
+- 0.70.14
+  - Sync drawer: checklist only for connected platforms; Add platform Connect is secondary
 - 0.70.13
   - Sync drawer: YouTube “Generate video” as primary sm in-row CTA (drop extra status line)
 - 0.70.12

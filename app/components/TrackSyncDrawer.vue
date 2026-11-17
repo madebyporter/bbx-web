@@ -56,7 +56,7 @@
             <li
               v-for="field in metadataFields"
               :key="field.key"
-              class="flex items-start justify-between gap-2 rounded-md border border-neutral-800 px-2.5 py-2"
+              class="flex items-center justify-between gap-2 rounded-md border border-neutral-800 px-2.5 py-2"
             >
               <div class="min-w-0">
                 <p class="text-neutral-200">
@@ -80,7 +80,7 @@
                 v-if="field.severity !== 'info' && !field.filled"
                 variant="ghost"
                 size="sm"
-                class="shrink-0"
+                class="shrink-0 border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
                 @click="openEditTrack"
               >
                 Edit
@@ -98,7 +98,15 @@
         <section class="flex flex-col gap-2">
           <h3 class="text-neutral-100 font-medium">Platforms</h3>
 
+          <p
+            v-if="!youtubeConnected && !soundcloudConnected"
+            class="text-xs text-neutral-500"
+          >
+            Connect a platform below to sync.
+          </p>
+
           <div
+            v-if="youtubeConnected"
             class="flex items-center justify-between gap-3 rounded-md border border-neutral-800 px-2.5 py-2"
           >
             <label class="flex items-center gap-2 min-w-0 cursor-pointer">
@@ -106,7 +114,7 @@
                 v-model="youtubeSelected"
                 type="checkbox"
                 class="rounded border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-500"
-                :disabled="!youtubeConnected || syncing"
+                :disabled="syncing"
               >
               <span class="text-neutral-100">YouTube</span>
             </label>
@@ -122,7 +130,7 @@
               <template v-else>
                 <span class="text-xs" :class="youtubeStatusClass">{{ youtubeStatusLabel }}</span>
                 <Button
-                  v-if="youtubeConnected && youtubeSelected && hasLocalVideo"
+                  v-if="youtubeSelected && hasLocalVideo"
                   variant="ghost"
                   size="sm"
                   @click="openGenerateVideo"
@@ -141,6 +149,7 @@
           </div>
 
           <div
+            v-if="soundcloudConnected"
             class="flex items-center justify-between gap-3 rounded-md border border-neutral-800 px-2.5 py-2"
           >
             <label class="flex items-center gap-2 min-w-0 cursor-pointer">
@@ -148,7 +157,7 @@
                 v-model="soundcloudSelected"
                 type="checkbox"
                 class="rounded border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-500"
-                :disabled="!soundcloudConnected || syncing"
+                :disabled="syncing"
               >
               <span class="text-neutral-100">SoundCloud</span>
             </label>
@@ -184,6 +193,7 @@
             </div>
             <Button
               v-if="!youtubeConnected"
+              variant="secondary"
               size="sm"
               :disabled="connectingYoutube"
               @click="connectYouTube"
@@ -215,6 +225,7 @@
             </div>
             <Button
               v-if="!soundcloudConnected"
+              variant="secondary"
               size="sm"
               :disabled="connectingSoundcloud"
               @click="connectSoundCloud"
