@@ -21,10 +21,13 @@ export function buildCoverPrompt(params: {
   direction?: string
 }): string {
   const parts = [
-    `Square album cover art for the track "${params.title}" by ${params.artist}.`,
+    `Square album cover artwork for the song "${params.title}" by ${params.artist}.`,
+    'This is commercial music packaging art only: tasteful, non-sexual, fully clothed if people appear, no nudity, no lingerie, no suggestive poses.',
   ]
   if (params.direction) {
-    parts.push(`Creative direction: ${params.direction}.`)
+    parts.push(
+      `Visual concept for the cover (interpret as SFW album art, not a photo shoot): ${params.direction}.`,
+    )
   }
   if (params.genre) parts.push(`Genre mood: ${params.genre}.`)
   if (params.mood) parts.push(`Feeling: ${params.mood}.`)
@@ -34,6 +37,19 @@ export function buildCoverPrompt(params: {
     'Avoid purple-on-white gradients and cream terracotta newspaper looks.',
   )
   return parts.join(' ')
+}
+
+/** Map OpenAI safety / API errors into short UI copy. */
+export function formatCoverGenerationError(raw: string): string {
+  const lower = raw.toLowerCase()
+  if (
+    lower.includes('safety') ||
+    lower.includes('safety_violations') ||
+    lower.includes('rejected by the safety system')
+  ) {
+    return 'Cover was blocked by OpenAI’s safety filter. Rephrase direction to clear album-art language (no body/pose focus) and try again.'
+  }
+  return raw.slice(0, 300)
 }
 
 export async function generateCoverImageBase64(params: {
@@ -86,12 +102,15 @@ export async function generateCoverImageBase64(params: {
 
   if (!response.ok) {
     const errObj = json.error as { message?: string } | string | undefined
-    const message =
+    const raw =
       (typeof errObj === 'object' && errObj?.message) ||
       (typeof errObj === 'string' && errObj) ||
-      text.slice(0, 300) ||
+      text.slice(0, 500) ||
       `OpenAI image generation failed (${response.status})`
-    throw createError({ statusCode: 502, statusMessage: message })
+    throw createError({
+      statusCode: 502,
+      statusMessage: formatCoverGenerationError(String(raw)),
+    })
   }
 
   const data = json.data as Array<{ b64_json?: string; url?: string }> | undefined

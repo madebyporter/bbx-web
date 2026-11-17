@@ -48,11 +48,13 @@
                 v-model="coverDirection"
                 rows="2"
                 maxlength="500"
-                placeholder="e.g. red moon over city skyline, silhouette figure…"
+                    placeholder="e.g. neon bounce energy, city night, bold shapes…"
                 class="w-full p-3 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[64px]"
                 :disabled="generatingCover || detectingMoods || isGenerating"
               />
-              <p class="text-xs text-neutral-500">Optional. Guides the AI cover (max 500 characters).</p>
+              <p class="text-xs text-neutral-500">
+                Optional album-art direction (max 500). Prefer scenes/mood over body or pose descriptions — OpenAI may block sexualized prompts.
+              </p>
             </div>
 
             <div class="flex flex-col gap-2">
