@@ -275,6 +275,14 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.20
+  - Sync analyze/detect buttons locked to square `size-10` (BPM, Key, Mood)
+- 0.70.19
+  - Sync mood detect uses same CircleSpark analyze button as BPM/Key; DESIGN.md locks that pattern
+- 0.70.18
+  - Sync “Detect moods” as gold link; DESIGN.md button hierarchy (primary/secondary/tertiary/link)
+- 0.70.17
+  - `.select-field` utility: padded custom chevron (native select arrows ignore padding)
 - 0.70.16
   - Sync drawer: accordion inline metadata (genre select, BPM/key edit+analyze, mood tags, generate cover)
 - 0.70.15

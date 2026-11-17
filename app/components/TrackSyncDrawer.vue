@@ -114,7 +114,7 @@
                 <template v-else-if="field.key === 'genre'">
                   <select
                     v-model="draftGenre"
-                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
+                    class="select-field w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
                     @change="persistGenre"
                   >
                     <option value="">Select genre…</option>
@@ -144,7 +144,7 @@
                       type="button"
                       variant="ghost"
                       size="sm"
-                      class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                      class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
                       :disabled="analyzingBpm || !localTrack?.storage_path"
                       title="Analyze BPM"
                       @click="analyzeBpmInline"
@@ -162,7 +162,7 @@
                   <div class="flex gap-2">
                     <select
                       v-model="draftKey"
-                      class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
+                      class="select-field w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
                       @change="persistKey"
                     >
                       <option value="">Select key…</option>
@@ -184,7 +184,7 @@
                       type="button"
                       variant="ghost"
                       size="sm"
-                      class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                      class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
                       :disabled="analyzingKey || !localTrack?.storage_path"
                       title="Analyze Key"
                       @click="analyzeKeyInline"
@@ -199,36 +199,41 @@
 
                 <!-- Mood -->
                 <template v-else-if="field.key === 'mood'">
-                  <div class="flex items-center justify-between gap-2">
-                    <p class="text-xs text-neutral-500">Toggle tags or detect from audio</p>
+                  <div class="flex gap-2 items-start">
+                    <div class="flex flex-wrap gap-2 min-w-0 grow">
+                      <label
+                        v-for="mood in BEATBOX_MOOD_TAGS"
+                        :key="mood"
+                        class="cursor-pointer"
+                      >
+                        <input
+                          v-model="draftMoods"
+                          type="checkbox"
+                          :value="mood"
+                          class="hidden"
+                          @change="persistMoods"
+                        >
+                        <span :class="draftMoods.includes(mood) ? 'tag-active' : 'tag'">
+                          {{ mood }}
+                        </span>
+                      </label>
+                    </div>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="sm"
+                      class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
                       :disabled="detectingMoods || !localTrack?.storage_path"
+                      title="Detect moods"
                       @click="detectMoodsInline"
                     >
-                      {{ detectingMoods ? 'Detecting…' : 'Detect moods' }}
+                      <CircleSpark v-if="!detectingMoods" class="w-5 h-5" stroke-width="1.5" />
+                      <span v-else class="text-xs">…</span>
                     </Button>
                   </div>
-                  <div class="flex flex-wrap gap-2">
-                    <label
-                      v-for="mood in BEATBOX_MOOD_TAGS"
-                      :key="mood"
-                      class="cursor-pointer"
-                    >
-                      <input
-                        v-model="draftMoods"
-                        type="checkbox"
-                        :value="mood"
-                        class="hidden"
-                        @change="persistMoods"
-                      >
-                      <span :class="draftMoods.includes(mood) ? 'tag-active' : 'tag'">
-                        {{ mood }}
-                      </span>
-                    </label>
-                  </div>
                   <p v-if="moodError" class="text-xs text-red-500">{{ moodError }}</p>
+                  <p v-else-if="detectingMoods" class="text-xs text-amber-400">Detecting moods…</p>
+                  <p v-else class="text-xs text-neutral-500">Toggle tags or detect from audio</p>
                 </template>
 
                 <!-- Artwork -->
