@@ -39,12 +39,23 @@
             class="hidden"
             @change="handleCoverUpload"
           />
-          <Button variant="secondary" size="sm" class="self-start" @click="coverInputRef?.click()">
-            {{ coverPreview ? 'Replace image' : 'Upload custom image' }}
-          </Button>
+          <div class="flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" @click="coverInputRef?.click()">
+              {{ coverPreview ? 'Replace image' : 'Upload custom image' }}
+            </Button>
+            <Button
+              v-if="!canUseTrackArtwork"
+              variant="secondary"
+              size="sm"
+              :disabled="generatingCover || isGenerating"
+              @click="handleGenerateCover"
+            >
+              {{ generatingCover ? 'Generating cover…' : 'Generate cover' }}
+            </Button>
+          </div>
           <p v-if="coverError" class="text-xs text-red-500">{{ coverError }}</p>
           <p class="text-xs text-neutral-500">
-            PNG, JPG, WebP, or GIF up to 1600×1600. Uses track artwork when available.
+            PNG, JPG, WebP, or GIF up to 1600×1600. Uses track artwork when available, or generate one with AI.
           </p>
         </div>
       </section>
@@ -316,6 +327,7 @@ import {
 import { useSupabase } from '~/utils/supabase'
 import { downloadAudioBlob } from '~/utils/trackAudioStorage'
 import { useToast } from '~/composables/useToast'
+import { useAuthHeaders } from '~/composables/useAuthHeaders'
 import type { Track } from '~/types/track'
 
 const props = defineProps<{
@@ -334,6 +346,7 @@ const { showError, showSuccess } = useToast()
 
 const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
 const coverInputRef = ref<HTMLInputElement | null>(null)
+const generatingCover = ref(false)
 const customBackgroundInputRef = ref<HTMLInputElement | null>(null)
 const previewVideoRef = ref<HTMLVideoElement | null>(null)
 
@@ -628,6 +641,62 @@ async function handleCoverUpload(event: Event) {
     }
   } finally {
     input.value = ''
+  }
+}
+
+async function handleGenerateCover() {
+  if (!props.track || generatingCover.value) return
+
+  const title = props.track.title?.trim()
+  const artist = props.track.artist?.trim()
+  if (!title || !artist) {
+    coverError.value = 'Title and artist are required to generate cover art'
+    return
+  }
+
+  generatingCover.value = true
+  coverError.value = null
+  try {
+    const headers = await useAuthHeaders()
+    const mood = Array.isArray(props.track.mood)
+      ? props.track.mood.join(', ')
+      : props.track.mood || undefined
+
+    const result = await $fetch<{
+      base64: string
+      mimeType: string
+      filename: string
+    }>('/api/integrations/cover/generate', {
+      method: 'POST',
+      headers,
+      body: {
+        title,
+        artist,
+        genre: props.track.genre || undefined,
+        mood: mood || undefined,
+      },
+    })
+
+    const binary = atob(result.base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    const blob = new Blob([bytes], { type: result.mimeType || 'image/png' })
+    const file = new File([blob], result.filename || 'cover-ai.png', {
+      type: result.mimeType || 'image/png',
+    })
+    const { file: processedFile, preview } = await validateAndProcessArtwork(file)
+    coverFile.value = processedFile
+    coverPreview.value = preview
+    usingTrackArtwork.value = false
+    showSuccess('Cover generated')
+  } catch (err: unknown) {
+    const message =
+      (err as any)?.data?.statusMessage ||
+      (err instanceof Error ? err.message : 'Failed to generate cover')
+    coverError.value = message
+    showError(message)
+  } finally {
+    generatingCover.value = false
   }
 }
 

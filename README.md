@@ -275,6 +275,11 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.0
+  - YouTube track sync for Pro: connect Google OAuth, upload generated track videos from Sync modal
+  - AI cover generation via OpenAI gpt-image-2.6-flare in Generate video when artwork is missing
+- 0.69.0
+  - SoundCloud track sync for Pro: connect OAuth, push audio + mapped metadata from Sync modal on track row menu
 - 0.68.0
   - Collection Share drawer with invite link, Resend email, and Beatbox user invite
   - Checklist “Share collection” CTA opens the share drawer via `?share=1`

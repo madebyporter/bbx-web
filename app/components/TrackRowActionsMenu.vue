@@ -45,6 +45,15 @@
         >
           Generate video
         </Button>
+        <Button
+          v-if="showSync"
+          variant="ghost"
+          size="sm"
+          class="!justify-start w-full text-neutral-200 hover:text-amber-300 hover:bg-neutral-700/50"
+          @click="handleSync"
+        >
+          Sync
+        </Button>
       </div>
     </Teleport>
   </div>
@@ -77,7 +86,10 @@ const isMounted = ref(false)
 const showEdit = computed(() => props.isOwnProfile && props.profileUserType === 'audio_pro')
 const showComments = computed(() => props.isLoggedIn)
 const showGenerateVideo = computed(() => props.isOwnProfile && props.profileUserType === 'audio_pro')
-const hasMenuItems = computed(() => showEdit.value || showComments.value || showGenerateVideo.value)
+const showSync = computed(() => props.isOwnProfile && props.profileUserType === 'audio_pro')
+const hasMenuItems = computed(
+  () => showEdit.value || showComments.value || showGenerateVideo.value || showSync.value,
+)
 
 const MENU_SPACE_THRESHOLD = 180
 
@@ -150,6 +162,17 @@ function handleGenerateVideo() {
     composed: true,
   })
   window.dispatchEvent(event)
+}
+
+function handleSync() {
+  closeMenu()
+  window.dispatchEvent(
+    new CustomEvent('open-track-sync', {
+      detail: { track: props.track },
+      bubbles: true,
+      composed: true,
+    }),
+  )
 }
 
 function handleClickOutside(event: Event) {

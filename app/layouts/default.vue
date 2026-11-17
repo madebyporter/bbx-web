@@ -86,6 +86,11 @@
       :track="generateVideoTrack"
     />
 
+    <TrackSyncModal
+      v-model:show="showTrackSyncModal"
+      :track="syncTrack"
+    />
+
     <!-- Toast Notifications -->
     <Toast />
   </div>
@@ -114,6 +119,7 @@ import Player from '~/components/Player.vue'
 import Toast from '~/components/Toast.vue'
 import TrackCommentsDrawer from '~/components/TrackCommentsDrawer.vue'
 import GenerateTrackVideoDrawer from '~/components/GenerateTrackVideoDrawer.vue'
+import TrackSyncModal from '~/components/TrackSyncModal.vue'
 import type { Track } from '~/types/track'
 
 // Define interfaces
@@ -191,7 +197,7 @@ interface Resource {
 const auth = useAuth()
 const { user, isAdmin } = auth
 const { capture } = useAnalytics()
-const { showInfo } = useToast()
+const { showInfo, showSuccess, showError } = useToast()
 const signupIntent = useSignupIntent()
 const { startCheckout, openPortal } = useCheckout()
 const { findPlan, ensureLoaded } = usePlans()
@@ -203,6 +209,7 @@ const authModalRef = ref<InstanceType<typeof AuthModal> | null>(null)
 // Auth initialization happens separately in onMounted without blocking layout
 const isInitialized = ref(true)
 const route = useRoute()
+const router = useRouter()
 // Re-provide module-level shell refs for layout children (app.vue already provided them)
 providePageShellReady()
 const shellContentReady = useShellContentReady()
@@ -253,6 +260,8 @@ const commentsTrack = ref<{ id: number; title?: string } | null>(null)
 const commentsCollectionId = ref<number | null>(null)
 const showGenerateTrackVideoDrawer = ref(false)
 const generateVideoTrack = ref<Track | null>(null)
+const showTrackSyncModal = ref(false)
+const syncTrack = ref<Track | null>(null)
 const modalKey = ref(0)
 const pageRef = ref<PageRef | null>(null)
 const databaseRef = ref<DatabaseRef | null>(null)
@@ -522,6 +531,15 @@ const onOpenGenerateTrackVideoEvent = (event: Event) => {
   handleOpenGenerateTrackVideo((event as CustomEvent<{ track: Track }>).detail)
 }
 
+const handleOpenTrackSync = (detail: { track: Track }) => {
+  syncTrack.value = detail.track
+  showTrackSyncModal.value = true
+}
+
+const onOpenTrackSyncEvent = (event: Event) => {
+  handleOpenTrackSync((event as CustomEvent<{ track: Track }>).detail)
+}
+
 const closeModal = () => {
   showModal.value = false
   editingResource.value = null
@@ -764,11 +782,39 @@ onMounted(async () => {
 
   window.addEventListener('open-track-comments', onOpenTrackCommentsEvent)
   window.addEventListener('open-generate-track-video', onOpenGenerateTrackVideoEvent)
+  window.addEventListener('open-track-sync', onOpenTrackSyncEvent)
   
   // Listen for upload modal open events
   window.addEventListener('open-upload-modal', (() => {
     openModal()
   }) as EventListener)
+
+  const scSync = route.query.sc_sync
+  const ytSync = route.query.yt_sync
+  if (scSync === 'connected' || scSync === 'error' || ytSync === 'connected' || ytSync === 'error') {
+    if (scSync === 'connected') showSuccess('SoundCloud connected')
+    else if (scSync === 'error') {
+      showError(
+        typeof route.query.sc_message === 'string'
+          ? route.query.sc_message
+          : 'SoundCloud connect failed',
+      )
+    }
+    if (ytSync === 'connected') showSuccess('YouTube connected')
+    else if (ytSync === 'error') {
+      showError(
+        typeof route.query.yt_message === 'string'
+          ? route.query.yt_message
+          : 'YouTube connect failed',
+      )
+    }
+    const nextQuery = { ...route.query }
+    delete nextQuery.sc_sync
+    delete nextQuery.sc_message
+    delete nextQuery.yt_sync
+    delete nextQuery.yt_message
+    router.replace({ path: route.path, query: nextQuery })
+  }
 })
 
 // Cleanup on unmount
@@ -778,6 +824,7 @@ onUnmounted(() => {
   window.removeEventListener('edit-track', handleEditTrack as EventListener)
   window.removeEventListener('open-track-comments', onOpenTrackCommentsEvent)
   window.removeEventListener('open-generate-track-video', onOpenGenerateTrackVideoEvent)
+  window.removeEventListener('open-track-sync', onOpenTrackSyncEvent)
   window.removeEventListener('open-upload-modal', openModal as EventListener)
 })
 </script>
