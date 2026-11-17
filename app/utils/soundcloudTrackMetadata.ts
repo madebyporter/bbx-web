@@ -79,6 +79,14 @@ export function buildSoundCloudDescription(
   track: Partial<Track>,
   trackUrl?: string | null,
 ): string {
+  const custom = trimOrEmpty(track.description)
+  if (custom) {
+    if (trackUrl && !custom.includes(trackUrl)) {
+      return `${custom}\n\n${trackUrl}`
+    }
+    return custom
+  }
+
   const lines: string[] = []
   const artist = trimOrEmpty(track.artist)
   const genre = trimOrEmpty(track.genre)
@@ -166,9 +174,13 @@ export function getMetadataFieldStatuses(track: Partial<Track> | null | undefine
     {
       key: 'description',
       label: 'Description',
-      severity: 'info',
-      filled: true,
-      hint: 'Will auto-generate on sync',
+      severity: 'recommended',
+      filled: Boolean(trimOrEmpty(t.description)),
+      valuePreview: trimOrEmpty(t.description)
+        ? trimOrEmpty(t.description).slice(0, 80) +
+          (trimOrEmpty(t.description).length > 80 ? '…' : '')
+        : null,
+      hint: 'Optional — auto-built from metadata on sync if empty',
     },
   ]
 }

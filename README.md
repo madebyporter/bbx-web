@@ -275,6 +275,10 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.27
+  - Fix description generate API path (`track/description/generate.post.ts`)
+- 0.70.26
+  - Sync description: edit + AI generate; prefer stored description on YouTube/SoundCloud sync
 - 0.70.25
   - Cover models: read `GROK_KEY_VISUAL` (fallback `XAI_API_KEY`) so Grok appears in select
 - 0.70.24

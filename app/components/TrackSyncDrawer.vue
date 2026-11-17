@@ -263,6 +263,41 @@
                   <p v-else class="text-xs text-neutral-500">Toggle tags or detect from audio</p>
                 </template>
 
+                <!-- Description -->
+                <template v-else-if="field.key === 'description'">
+                  <textarea
+                    v-model="draftDescription"
+                    rows="6"
+                    maxlength="2000"
+                    placeholder="Optional sync description for YouTube / SoundCloud…"
+                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[120px]"
+                    :disabled="generatingDescription"
+                    @change="persistDescription"
+                  />
+                  <div class="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                      :disabled="generatingDescription || !localTrack?.title || !localTrack?.artist"
+                      title="Generate description"
+                      @click="generateDescriptionInline"
+                    >
+                      <CircleSpark v-if="!generatingDescription" class="w-5 h-5" stroke-width="1.5" />
+                      <span v-else class="text-xs">…</span>
+                    </Button>
+                    <p class="text-xs text-neutral-500">
+                      {{
+                        generatingDescription
+                          ? 'Generating description…'
+                          : 'Edit manually or generate from title, artist, genre, BPM, key, mood'
+                      }}
+                    </p>
+                  </div>
+                  <p v-if="descriptionError" class="text-xs text-red-500">{{ descriptionError }}</p>
+                </template>
+
                 <!-- Artwork -->
                 <template v-else-if="field.key === 'artwork'">
                   <textarea
@@ -565,7 +600,10 @@ const draftGenre = ref('')
 const draftBpm = ref<number | null>(null)
 const draftKey = ref('')
 const draftMoods = ref<BeatboxMoodTag[]>([])
+const draftDescription = ref('')
 const coverDirection = ref('')
+const generatingDescription = ref(false)
+const descriptionError = ref<string | null>(null)
 
 const analyzingBpm = ref(false)
 const analyzingKey = ref(false)
@@ -741,6 +779,7 @@ function hydrateDraftsForField(key: MetadataFieldKey) {
   keyError.value = null
   moodError.value = null
   artworkError.value = null
+  descriptionError.value = null
 
   if (!track) return
 
@@ -753,6 +792,7 @@ function hydrateDraftsForField(key: MetadataFieldKey) {
   }
   if (key === 'key') draftKey.value = String(track.key || '').trim()
   if (key === 'mood') draftMoods.value = moodTagsFromTrack(track)
+  if (key === 'description') draftDescription.value = String(track.description || '').trim()
   if (key === 'artwork') coverDirection.value = ''
 }
 
@@ -881,6 +921,47 @@ async function persistMoods() {
     await patchLocalTrack({ mood: moods.length ? moods : null })
   } catch {
     /* toasted */
+  }
+}
+
+async function persistDescription() {
+  const description = draftDescription.value.trim() || null
+  try {
+    await patchLocalTrack({ description })
+  } catch {
+    /* toasted */
+  }
+}
+
+async function generateDescriptionInline() {
+  if (!localTrack.value?.title || !localTrack.value?.artist || generatingDescription.value) {
+    return
+  }
+
+  generatingDescription.value = true
+  descriptionError.value = null
+  try {
+    const headers = await useAuthHeaders()
+    const result = await $fetch<{ description: string }>('/api/integrations/track/description/generate', {
+      method: 'POST',
+      headers,
+      body: {
+        title: localTrack.value.title,
+        artist: localTrack.value.artist,
+        genre: localTrack.value.genre || undefined,
+        mood: localTrack.value.mood || undefined,
+        bpm: localTrack.value.bpm ?? undefined,
+        key: localTrack.value.key || undefined,
+      },
+    })
+    draftDescription.value = result.description
+    await patchLocalTrack({ description: result.description })
+    showSuccess('Description generated')
+  } catch (err: any) {
+    descriptionError.value =
+      err?.data?.statusMessage || err?.message || 'Failed to generate description'
+  } finally {
+    generatingDescription.value = false
   }
 }
 

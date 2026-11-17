@@ -28,6 +28,14 @@ export function buildYouTubeDescription(
   track: Partial<Track>,
   trackUrl?: string | null,
 ): string {
+  const custom = trimOrEmpty(track.description)
+  if (custom) {
+    if (trackUrl && !custom.includes(trackUrl)) {
+      return `${custom}\n\n${trackUrl}`.slice(0, 5000)
+    }
+    return custom.slice(0, 5000)
+  }
+
   const lines: string[] = []
   const artist = trimOrEmpty(track.artist)
   const genre = trimOrEmpty(track.genre)

@@ -59,7 +59,17 @@ describe('soundcloudTrackMetadata', () => {
     const genre = fields.find((f) => f.key === 'genre')
     const description = fields.find((f) => f.key === 'description')
     expect(genre?.filled).toBe(false)
-    expect(description?.severity).toBe('info')
+    expect(description?.severity).toBe('recommended')
+    expect(description?.filled).toBe(false)
     expect(buildSoundCloudDescription({ title: 'X' })).toBe('Synced from Beatbox')
+  })
+
+  it('uses custom description when set', () => {
+    const description = buildSoundCloudDescription({
+      title: 'Song',
+      artist: 'Artist',
+      description: 'Custom blurb for sync.',
+    })
+    expect(description).toBe('Custom blurb for sync.')
   })
 })

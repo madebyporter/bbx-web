@@ -14,6 +14,9 @@ export interface Track {
   genre?: string
   mood?: string
   bpm?: number | null
+  key?: string | null
+  /** Optional platform sync description; when empty, sync auto-builds from metadata. */
+  description?: string | null
   year?: number | null
   collection_names?: string
   track_group_name?: string | null
