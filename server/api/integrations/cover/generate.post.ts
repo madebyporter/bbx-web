@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
     ? directionRaw.slice(0, MAX_DIRECTION_CHARS)
     : undefined
 
-  const { base64, mimeType } = await generateCoverImageBase64({
+  const { base64, mimeType, provider } = await generateCoverImageBase64({
     title,
     artist,
     genre: genre || undefined,
@@ -42,5 +42,6 @@ export default defineEventHandler(async (event) => {
     mimeType,
     base64,
     filename: 'cover-ai.png',
+    provider,
   }
 })

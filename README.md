@@ -275,6 +275,8 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.8
+  - Cover generation falls back to Grok (grok-imagine-image-2.0) when OpenAI safety-rejects a prompt
 - 0.70.7
   - Generate video loads track artwork via same-origin download (fixes Failed to fetch / CORS on localhost)
   - Sync local video preview no longer forces square aspect (landscape shows correctly)

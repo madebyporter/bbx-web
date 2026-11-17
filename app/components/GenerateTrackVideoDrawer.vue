@@ -857,6 +857,7 @@ async function handleGenerateCover() {
       base64: string
       mimeType: string
       filename: string
+      provider?: 'openai' | 'grok'
     }>('/api/integrations/cover/generate', {
       method: 'POST',
       headers,
@@ -880,14 +881,19 @@ async function handleGenerateCover() {
     coverFile.value = processedFile
     coverPreview.value = preview
 
+    const viaGrok = result.provider === 'grok'
+    const generatedLabel = viaGrok
+      ? 'Cover generated via Grok (OpenAI safety fallback)'
+      : 'Cover generated'
+
     try {
       await persistCoverToTrack(processedFile)
       usingTrackArtwork.value = true
-      showSuccess('Cover generated and saved to track')
+      showSuccess(`${generatedLabel} and saved to track`)
     } catch (persistErr: unknown) {
       usingTrackArtwork.value = false
       console.warn('Cover generated but failed to save to track:', persistErr)
-      showSuccess('Cover generated (not saved to track yet)')
+      showSuccess(`${generatedLabel} (not saved to track yet)`)
       showError(
         persistErr instanceof Error
           ? persistErr.message
