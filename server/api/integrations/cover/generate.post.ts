@@ -1,7 +1,9 @@
 import { readBody } from 'h3'
 import {
   generateCoverImageBase64,
+  isCoverModelId,
   MAX_COVER_DIRECTION_CHARS,
+  type CoverModelId,
 } from '../../../utils/openaiCover'
 import { requireAuthUser } from '../../../utils/supabaseAuth'
 
@@ -13,6 +15,7 @@ export default defineEventHandler(async (event) => {
     genre?: string
     mood?: string
     direction?: string
+    model?: string
   }>(event)
 
   const title = String(body?.title || '').trim()
@@ -30,13 +33,17 @@ export default defineEventHandler(async (event) => {
   const direction = directionRaw
     ? directionRaw.slice(0, MAX_COVER_DIRECTION_CHARS)
     : undefined
+  const model: CoverModelId | undefined = isCoverModelId(body?.model)
+    ? body.model
+    : undefined
 
-  const { base64, mimeType, provider } = await generateCoverImageBase64({
+  const { base64, mimeType, provider, model: usedModel } = await generateCoverImageBase64({
     title,
     artist,
     genre: genre || undefined,
     mood: mood || undefined,
     direction: direction || undefined,
+    model,
   })
 
   return {
@@ -44,5 +51,6 @@ export default defineEventHandler(async (event) => {
     base64,
     filename: 'cover-ai.png',
     provider,
+    model: usedModel,
   }
 })

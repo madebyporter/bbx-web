@@ -1,10 +1,56 @@
 import { createError } from 'h3'
 
 export const OPENAI_COVER_MODEL = 'gpt-image-2.6-flare'
+/** Higher-detail OpenAI Images 2.6 variant. */
+export const OPENAI_COVER_MODEL_QUALITY = 'gpt-image-2.6-sunburst'
 /** Latest xAI image model (two micros back only when micro versions exist; this is the current GA image model). */
 export const GROK_COVER_MODEL = 'grok-imagine-image-2.0'
 
 export type CoverProvider = 'openai' | 'grok'
+
+export type CoverModelId =
+  | typeof OPENAI_COVER_MODEL
+  | typeof OPENAI_COVER_MODEL_QUALITY
+  | typeof GROK_COVER_MODEL
+
+export type CoverModelOption = {
+  id: CoverModelId
+  label: string
+  provider: CoverProvider
+  hint: string
+}
+
+/** Models offered in Sync / cover UI (latest OpenAI 2.6 + Grok Imagine 2.0). */
+export const COVER_MODEL_OPTIONS: CoverModelOption[] = [
+  {
+    id: OPENAI_COVER_MODEL,
+    label: 'GPT Image 2.6 Flare',
+    provider: 'openai',
+    hint: 'Faster OpenAI cover',
+  },
+  {
+    id: OPENAI_COVER_MODEL_QUALITY,
+    label: 'GPT Image 2.6 Sunburst',
+    provider: 'openai',
+    hint: 'Higher-detail OpenAI cover',
+  },
+  {
+    id: GROK_COVER_MODEL,
+    label: 'Grok Imagine 2.0',
+    provider: 'grok',
+    hint: 'xAI image model',
+  },
+]
+
+export function isCoverModelId(value: unknown): value is CoverModelId {
+  return COVER_MODEL_OPTIONS.some((m) => m.id === value)
+}
+
+export function listAvailableCoverModels(): CoverModelOption[] {
+  return COVER_MODEL_OPTIONS.filter((m) =>
+    m.provider === 'openai' ? hasOpenAiCoverKey() : hasGrokCoverKey(),
+  )
+}
 
 function readOpenAiKey(): string {
   // Dedicated visual key — do not fall back to OPENAI_API_KEY (used for text/TTS)
@@ -12,7 +58,8 @@ function readOpenAiKey(): string {
 }
 
 function readXaiKey(): string {
-  return process.env.XAI_API_KEY?.trim() || ''
+  // Prefer dedicated visual key (matches OPENAI_KEY_VISUAL naming); XAI_API_KEY as fallback
+  return process.env.GROK_KEY_VISUAL?.trim() || process.env.XAI_API_KEY?.trim() || ''
 }
 
 export function hasOpenAiCoverKey(): boolean {
@@ -114,7 +161,10 @@ async function parseImageResponse(
   throw new Error(`${providerLabel} did not return an image`)
 }
 
-async function generateOpenAiCover(prompt: string): Promise<{ base64: string; mimeType: string }> {
+async function generateOpenAiCover(
+  prompt: string,
+  model: CoverModelId = OPENAI_COVER_MODEL,
+): Promise<{ base64: string; mimeType: string }> {
   const apiKey = readOpenAiKey()
   if (!apiKey) {
     throw createError({
@@ -123,6 +173,9 @@ async function generateOpenAiCover(prompt: string): Promise<{ base64: string; mi
     })
   }
 
+  const openaiModel =
+    model === OPENAI_COVER_MODEL_QUALITY ? OPENAI_COVER_MODEL_QUALITY : OPENAI_COVER_MODEL
+
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: {
@@ -130,7 +183,7 @@ async function generateOpenAiCover(prompt: string): Promise<{ base64: string; mi
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: OPENAI_COVER_MODEL,
+      model: openaiModel,
       prompt,
       size: '1024x1024',
       n: 1,
@@ -146,7 +199,7 @@ async function generateGrokCover(prompt: string): Promise<{ base64: string; mime
   if (!apiKey) {
     throw createError({
       statusCode: 503,
-      statusMessage: 'XAI_API_KEY is not configured',
+      statusMessage: 'GROK_KEY_VISUAL (or XAI_API_KEY) is not configured',
     })
   }
 
@@ -175,7 +228,9 @@ export async function generateCoverImageBase64(params: {
   genre?: string
   mood?: string
   direction?: string
-}): Promise<{ base64: string; mimeType: string; provider: CoverProvider }> {
+  /** Preferred model; defaults to OpenAI Flare when available. */
+  model?: CoverModelId
+}): Promise<{ base64: string; mimeType: string; provider: CoverProvider; model: CoverModelId }> {
   const direction = params.direction
     ? params.direction.trim().slice(0, MAX_COVER_DIRECTION_CHARS)
     : undefined
@@ -188,15 +243,49 @@ export async function generateCoverImageBase64(params: {
     direction: direction || undefined,
   })
 
+  const available = listAvailableCoverModels()
+  if (!available.length) {
+    throw createError({
+      statusCode: 503,
+      statusMessage: 'No cover generation providers configured',
+    })
+  }
+
+  const requested =
+    params.model && isCoverModelId(params.model) && available.some((m) => m.id === params.model)
+      ? params.model
+      : available[0]!.id
+
+  const option = COVER_MODEL_OPTIONS.find((m) => m.id === requested)!
+
+  if (option.provider === 'grok') {
+    try {
+      const result = await generateGrokCover(prompt)
+      return { ...result, provider: 'grok', model: GROK_COVER_MODEL }
+    } catch (err: unknown) {
+      const rawMessage =
+        (err as { rawMessage?: string })?.rawMessage ||
+        (err instanceof Error ? err.message : String(err))
+      if ((err as { statusCode?: number })?.statusCode === 503) throw err
+      throw createError({
+        statusCode: 502,
+        statusMessage: formatCoverGenerationError(rawMessage),
+      })
+    }
+  }
+
   try {
-    const result = await generateOpenAiCover(prompt)
-    return { ...result, provider: 'openai' }
+    const result = await generateOpenAiCover(prompt, requested)
+    return { ...result, provider: 'openai', model: requested }
   } catch (err: unknown) {
     const rawMessage =
       (err as { rawMessage?: string })?.rawMessage ||
       (err instanceof Error ? err.message : String(err))
 
-    const canFallback = isSafetyRejection(rawMessage) && hasGrokCoverKey()
+    const canFallback =
+      isSafetyRejection(rawMessage) &&
+      hasGrokCoverKey() &&
+      available.some((m) => m.id === GROK_COVER_MODEL)
     if (!canFallback) {
       if ((err as { statusCode?: number })?.statusCode === 503) throw err
       throw createError({
@@ -207,7 +296,7 @@ export async function generateCoverImageBase64(params: {
 
     try {
       const result = await generateGrokCover(prompt)
-      return { ...result, provider: 'grok' }
+      return { ...result, provider: 'grok', model: GROK_COVER_MODEL }
     } catch (grokErr: unknown) {
       const grokRaw =
         (grokErr as { rawMessage?: string })?.rawMessage ||

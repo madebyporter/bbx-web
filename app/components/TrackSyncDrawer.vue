@@ -52,6 +52,13 @@
           <p class="text-xs text-neutral-500">
             Platforms get these fields on sync. Fill required fields before syncing.
           </p>
+          <input
+            ref="artworkFileInput"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov"
+            class="hidden"
+            @change="uploadArtworkInline"
+          >
           <ul class="flex flex-col gap-1.5">
             <li
               v-for="field in metadataFields"
@@ -73,25 +80,45 @@
                   </p>
                   <p class="text-xs mt-0.5" :class="fieldStatusClass(field)">
                     <template v-if="field.severity === 'info'">{{ field.hint }}</template>
+                    <template v-else-if="field.key === 'artwork' && artworkPreviewUrl">
+                      Cover ready
+                    </template>
                     <template v-else-if="field.filled">{{ field.valuePreview }}</template>
                     <template v-else>Empty</template>
                   </p>
                 </div>
-                <Button
-                  v-if="canExpandField(field)"
-                  variant="ghost"
-                  size="sm"
-                  class="shrink-0 border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
-                  @click="toggleExpandField(field.key)"
-                >
-                  {{
-                    expandedField === field.key
-                      ? 'Done'
-                      : field.filled
-                        ? 'Change'
-                        : 'Edit'
-                  }}
-                </Button>
+                <div class="flex items-center gap-2 shrink-0">
+                  <a
+                    v-if="field.key === 'artwork' && artworkPreviewUrl"
+                    :href="artworkPreviewUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="size-8 rounded overflow-hidden border border-neutral-700 bg-neutral-950 shrink-0"
+                    title="Open cover full size"
+                    @click.stop
+                  >
+                    <img
+                      :src="artworkPreviewUrl"
+                      alt="Track artwork"
+                      class="size-full object-cover"
+                    >
+                  </a>
+                  <Button
+                    v-if="canExpandField(field)"
+                    variant="ghost"
+                    size="sm"
+                    class="shrink-0 border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
+                    @click="toggleExpandField(field.key)"
+                  >
+                    {{
+                      expandedField === field.key
+                        ? 'Done'
+                        : field.filled
+                          ? 'Change'
+                          : 'Edit'
+                    }}
+                  </Button>
+                </div>
               </div>
 
               <div
@@ -238,32 +265,65 @@
 
                 <!-- Artwork -->
                 <template v-else-if="field.key === 'artwork'">
-                  <img
-                    v-if="artworkPreviewUrl"
-                    :src="artworkPreviewUrl"
-                    alt="Track artwork"
-                    class="w-24 h-24 rounded-md object-cover border border-neutral-800 bg-neutral-950"
-                  >
                   <textarea
                     v-model="coverDirection"
                     rows="8"
                     :maxlength="COVER_DIRECTION_MAX"
                     placeholder="Optional cover direction…"
                     class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[180px]"
-                    :disabled="generatingArtwork"
+                    :disabled="generatingArtwork || uploadingArtwork"
                   />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    class="self-start"
-                    :disabled="generatingArtwork || !canGenerateArtwork"
-                    @click="generateArtworkInline"
+                  <div
+                    v-if="generatingArtwork || uploadingArtwork"
+                    class="flex flex-col gap-1.5"
                   >
-                    {{ generatingArtwork ? 'Generating cover…' : 'Generate cover' }}
-                  </Button>
+                    <div class="w-full bg-neutral-800 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        class="bg-amber-500 h-1.5 rounded-full transition-all duration-300"
+                        :class="coverProgress > 0 && coverProgress < 100 ? '' : 'animate-pulse'"
+                        :style="{ width: `${Math.max(coverProgress, 8)}%` }"
+                      />
+                    </div>
+                    <p class="text-xs text-amber-400">
+                      {{ coverProgressLabel || (uploadingArtwork ? 'Uploading…' : 'Generating…') }}
+                    </p>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      :disabled="generatingArtwork || uploadingArtwork"
+                      @click="openArtworkFilePicker"
+                    >
+                      Upload
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      :disabled="generatingArtwork || uploadingArtwork || !canGenerateArtwork"
+                      @click="generateArtworkInline"
+                    >
+                      {{ generatingArtwork ? 'Generating…' : 'Generate cover' }}
+                    </Button>
+                    <select
+                      v-if="coverModels.length"
+                      v-model="selectedCoverModel"
+                      class="select-field p-2 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 text-sm outline-none focus:border-amber-400 cursor-pointer min-w-[11rem]"
+                      :disabled="generatingArtwork || uploadingArtwork || loadingCoverModels"
+                      :title="selectedCoverModelHint"
+                    >
+                      <option
+                        v-for="model in coverModels"
+                        :key="model.id"
+                        :value="model.id"
+                      >
+                        {{ model.label }}
+                      </option>
+                    </select>
+                  </div>
                   <p v-if="artworkError" class="text-xs text-red-500">{{ artworkError }}</p>
                   <p v-else class="text-xs text-neutral-500">
-                    Uses title, artist, genre, and mood.
+                    Upload your own or generate from title, artist, genre, and mood.
                   </p>
                 </template>
               </div>
@@ -511,11 +571,47 @@ const analyzingBpm = ref(false)
 const analyzingKey = ref(false)
 const detectingMoods = ref(false)
 const generatingArtwork = ref(false)
+const uploadingArtwork = ref(false)
+const coverProgress = ref(0)
+const coverProgressLabel = ref('')
+const artworkFileInput = ref<HTMLInputElement | null>(null)
+const coverModels = ref<Array<{ id: string; label: string; provider: string; hint: string }>>([])
+const selectedCoverModel = ref('')
+const loadingCoverModels = ref(false)
+
+const selectedCoverModelHint = computed(() => {
+  const match = coverModels.value.find((m) => m.id === selectedCoverModel.value)
+  return match?.hint || 'Cover generation model'
+})
 const bpmError = ref<string | null>(null)
 const keyError = ref<string | null>(null)
 const moodError = ref<string | null>(null)
 const artworkError = ref<string | null>(null)
 const patchingField = ref(false)
+let coverWaitTimer: ReturnType<typeof setInterval> | null = null
+
+function clearCoverWaitTimer() {
+  if (coverWaitTimer) {
+    clearInterval(coverWaitTimer)
+    coverWaitTimer = null
+  }
+}
+
+function setCoverProgress(percent: number, label: string) {
+  coverProgress.value = Math.min(100, Math.max(0, percent))
+  coverProgressLabel.value = label
+}
+
+/** While waiting on the opaque generate API, creep progress so the bar stays alive. */
+function startCoverWaitPulse(from = 12, to = 48) {
+  clearCoverWaitTimer()
+  setCoverProgress(from, 'Generating with AI…')
+  coverWaitTimer = setInterval(() => {
+    if (coverProgress.value < to) {
+      coverProgress.value = Math.min(to, coverProgress.value + 1)
+    }
+  }, 400)
+}
 
 const soundcloudConnected = ref(false)
 const soundcloudUsername = ref<string | null>(null)
@@ -660,6 +756,30 @@ function hydrateDraftsForField(key: MetadataFieldKey) {
   if (key === 'artwork') coverDirection.value = ''
 }
 
+async function loadCoverModels() {
+  if (loadingCoverModels.value) return
+  loadingCoverModels.value = true
+  try {
+    const headers = await useAuthHeaders()
+    if (!headers.Authorization) return
+    const data = await $fetch<{
+      models: Array<{ id: string; label: string; provider: string; hint: string }>
+      defaultModelId: string | null
+    }>('/api/integrations/cover/models', { headers })
+    coverModels.value = data.models || []
+    if (
+      !selectedCoverModel.value ||
+      !coverModels.value.some((m) => m.id === selectedCoverModel.value)
+    ) {
+      selectedCoverModel.value = data.defaultModelId || coverModels.value[0]?.id || ''
+    }
+  } catch (err) {
+    console.warn('Failed to load cover models:', err)
+  } finally {
+    loadingCoverModels.value = false
+  }
+}
+
 function toggleExpandField(key: MetadataFieldKey) {
   if (expandedField.value === key) {
     expandedField.value = null
@@ -667,6 +787,7 @@ function toggleExpandField(key: MetadataFieldKey) {
   }
   hydrateDraftsForField(key)
   expandedField.value = key
+  if (key === 'artwork') void loadCoverModels()
 }
 
 const canGenerateArtwork = computed(() => {
@@ -812,13 +933,82 @@ async function detectMoodsInline() {
   }
 }
 
+async function persistArtworkFile(file: File, successMessage: string) {
+  if (!localTrack.value?.id || !supabase) return
+
+  setCoverProgress(70, 'Processing image…')
+  const { file: processedFile } = await validateAndProcessArtwork(file)
+
+  setCoverProgress(82, 'Uploading to storage…')
+  const uploaded = await uploadArtwork(processedFile, 'track')
+
+  if (localTrack.value.artwork_path) {
+    try {
+      await deleteArtwork(
+        {
+          id: localTrack.value.id,
+          artwork_path: localTrack.value.artwork_path,
+          artwork_provider: localTrack.value.artwork_provider,
+        },
+        'track',
+      )
+    } catch (err) {
+      console.warn('Failed to delete previous artwork:', err)
+    }
+  }
+
+  setCoverProgress(92, 'Saving to track…')
+  await patchLocalTrack({
+    artwork_path: uploaded.artwork_path,
+    artwork_provider: uploaded.artwork_provider,
+  })
+  await refreshArtworkPreview()
+  setCoverProgress(100, 'Done')
+  showSuccess(successMessage)
+}
+
+function openArtworkFilePicker() {
+  artworkFileInput.value?.click()
+}
+
+async function uploadArtworkInline(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || uploadingArtwork.value || generatingArtwork.value || !localTrack.value?.id) {
+    input.value = ''
+    return
+  }
+
+  uploadingArtwork.value = true
+  artworkError.value = null
+  setCoverProgress(15, 'Reading file…')
+  try {
+    await persistArtworkFile(file, 'Cover uploaded')
+  } catch (err: unknown) {
+    artworkError.value = err instanceof Error ? err.message : 'Failed to upload cover'
+  } finally {
+    uploadingArtwork.value = false
+    coverProgress.value = 0
+    coverProgressLabel.value = ''
+    input.value = ''
+  }
+}
+
 async function generateArtworkInline() {
-  if (!canGenerateArtwork.value || generatingArtwork.value || !localTrack.value?.id || !supabase) {
+  if (
+    !canGenerateArtwork.value ||
+    generatingArtwork.value ||
+    uploadingArtwork.value ||
+    !localTrack.value?.id ||
+    !supabase
+  ) {
     return
   }
 
   generatingArtwork.value = true
   artworkError.value = null
+  setCoverProgress(8, 'Starting…')
+  startCoverWaitPulse(12, 48)
   try {
     const headers = await useAuthHeaders()
     const title = localTrack.value.title.trim()
@@ -838,9 +1028,12 @@ async function generateArtworkInline() {
         genre: localTrack.value.genre?.trim() || undefined,
         mood: moodStr,
         direction: coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || undefined,
+        model: selectedCoverModel.value || undefined,
       },
     })
 
+    clearCoverWaitTimer()
+    setCoverProgress(55, 'Decoding image…')
     const binary = atob(result.base64)
     const bytes = new Uint8Array(binary.length)
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
@@ -848,35 +1041,16 @@ async function generateArtworkInline() {
     const file = new File([blob], result.filename || 'cover-ai.png', {
       type: result.mimeType || 'image/png',
     })
-    const { file: processedFile } = await validateAndProcessArtwork(file)
-    const uploaded = await uploadArtwork(processedFile, 'track')
 
-    if (localTrack.value.artwork_path) {
-      try {
-        await deleteArtwork(
-          {
-            id: localTrack.value.id,
-            artwork_path: localTrack.value.artwork_path,
-            artwork_provider: localTrack.value.artwork_provider,
-          },
-          'track',
-        )
-      } catch (err) {
-        console.warn('Failed to delete previous artwork after cover generate:', err)
-      }
-    }
-
-    await patchLocalTrack({
-      artwork_path: uploaded.artwork_path,
-      artwork_provider: uploaded.artwork_provider,
-    })
-    await refreshArtworkPreview()
-    showSuccess('Cover saved')
+    await persistArtworkFile(file, 'Cover saved')
   } catch (err: any) {
     artworkError.value =
       err?.data?.statusMessage || err?.message || 'Failed to generate cover'
   } finally {
+    clearCoverWaitTimer()
     generatingArtwork.value = false
+    coverProgress.value = 0
+    coverProgressLabel.value = ''
   }
 }
 
@@ -1306,6 +1480,7 @@ if (import.meta.client) {
 }
 
 onUnmounted(() => {
+  clearCoverWaitTimer()
   if (!import.meta.client) return
   window.removeEventListener('track-updated', onTrackUpdated)
   window.removeEventListener('track-video-ready', onTrackVideoReady)

@@ -275,6 +275,14 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.25
+  - Cover models: read `GROK_KEY_VISUAL` (fallback `XAI_API_KEY`) so Grok appears in select
+- 0.70.24
+  - Sync cover model select (GPT Image 2.6 Flare/Sunburst, Grok Imagine 2.0)
+- 0.70.23
+  - Fix Sync Upload cover: file input ref was inside v-for (array, no .click)
+- 0.70.22
+  - Sync artwork: header thumb (opens full size), Upload + Generate, staged progress bar
 - 0.70.21
   - Cover direction textarea taller (min 180px); soft cap raised to 8k chars end-to-end
 - 0.70.20
