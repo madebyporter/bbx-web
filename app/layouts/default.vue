@@ -86,9 +86,10 @@
       :track="generateVideoTrack"
     />
 
-    <TrackSyncModal
-      v-model:show="showTrackSyncModal"
+    <TrackSyncDrawer
+      v-model:show="showTrackSyncDrawer"
       :track="syncTrack"
+      @generate-video="handleSyncGenerateVideo"
     />
 
     <!-- Toast Notifications -->
@@ -119,7 +120,7 @@ import Player from '~/components/Player.vue'
 import Toast from '~/components/Toast.vue'
 import TrackCommentsDrawer from '~/components/TrackCommentsDrawer.vue'
 import GenerateTrackVideoDrawer from '~/components/GenerateTrackVideoDrawer.vue'
-import TrackSyncModal from '~/components/TrackSyncModal.vue'
+import TrackSyncDrawer from '~/components/TrackSyncDrawer.vue'
 import type { Track } from '~/types/track'
 
 // Define interfaces
@@ -260,7 +261,8 @@ const commentsTrack = ref<{ id: number; title?: string } | null>(null)
 const commentsCollectionId = ref<number | null>(null)
 const showGenerateTrackVideoDrawer = ref(false)
 const generateVideoTrack = ref<Track | null>(null)
-const showTrackSyncModal = ref(false)
+const showTrackSyncDrawer = ref(false)
+const reopenSyncAfterVideo = ref(false)
 const syncTrack = ref<Track | null>(null)
 const modalKey = ref(0)
 const pageRef = ref<PageRef | null>(null)
@@ -522,22 +524,64 @@ const onOpenTrackCommentsEvent = (event: Event) => {
   handleOpenTrackComments((event as CustomEvent<OpenTrackCommentsDetail>).detail)
 }
 
-const handleOpenGenerateTrackVideo = (detail: { track: Track }) => {
+const handleOpenGenerateTrackVideo = (detail: { track: Track; returnToSync?: boolean }) => {
+  if (detail.returnToSync) {
+    reopenSyncAfterVideo.value = true
+    showTrackSyncDrawer.value = false
+  }
   generateVideoTrack.value = detail.track
   showGenerateTrackVideoDrawer.value = true
 }
 
 const onOpenGenerateTrackVideoEvent = (event: Event) => {
-  handleOpenGenerateTrackVideo((event as CustomEvent<{ track: Track }>).detail)
+  handleOpenGenerateTrackVideo((event as CustomEvent<{ track: Track; returnToSync?: boolean }>).detail)
 }
 
 const handleOpenTrackSync = (detail: { track: Track }) => {
   syncTrack.value = detail.track
-  showTrackSyncModal.value = true
+  showTrackSyncDrawer.value = true
 }
 
 const onOpenTrackSyncEvent = (event: Event) => {
   handleOpenTrackSync((event as CustomEvent<{ track: Track }>).detail)
+}
+
+const handleSyncGenerateVideo = (track: Track) => {
+  reopenSyncAfterVideo.value = true
+  showTrackSyncDrawer.value = false
+  generateVideoTrack.value = track
+  // Let sync drawer animate out before opening generate
+  nextTick(() => {
+    showGenerateTrackVideoDrawer.value = true
+  })
+}
+
+watch(showGenerateTrackVideoDrawer, (open, wasOpen) => {
+  if (open || wasOpen === undefined) return
+  if (!reopenSyncAfterVideo.value) return
+  reopenSyncAfterVideo.value = false
+  nextTick(() => {
+    showTrackSyncDrawer.value = true
+  })
+})
+
+function applyTrackPatchToDrawers(track: Track) {
+  if (!track?.id) return
+  if (syncTrack.value?.id === track.id) {
+    syncTrack.value = { ...syncTrack.value, ...track }
+  }
+  if (generateVideoTrack.value?.id === track.id) {
+    generateVideoTrack.value = { ...generateVideoTrack.value, ...track }
+  }
+}
+
+const onTrackUpdatedForDrawers = (event: Event) => {
+  const detail = (event as CustomEvent<{ track?: Track } | Track>).detail
+  const track =
+    detail && typeof detail === 'object' && 'track' in detail && detail.track
+      ? detail.track
+      : (detail as Track | undefined)
+  if (track?.id) applyTrackPatchToDrawers(track)
 }
 
 const closeModal = () => {
@@ -783,6 +827,7 @@ onMounted(async () => {
   window.addEventListener('open-track-comments', onOpenTrackCommentsEvent)
   window.addEventListener('open-generate-track-video', onOpenGenerateTrackVideoEvent)
   window.addEventListener('open-track-sync', onOpenTrackSyncEvent)
+  window.addEventListener('track-updated', onTrackUpdatedForDrawers)
   
   // Listen for upload modal open events
   window.addEventListener('open-upload-modal', (() => {
@@ -825,6 +870,7 @@ onUnmounted(() => {
   window.removeEventListener('open-track-comments', onOpenTrackCommentsEvent)
   window.removeEventListener('open-generate-track-video', onOpenGenerateTrackVideoEvent)
   window.removeEventListener('open-track-sync', onOpenTrackSyncEvent)
+  window.removeEventListener('track-updated', onTrackUpdatedForDrawers)
   window.removeEventListener('open-upload-modal', openModal as EventListener)
 })
 </script>

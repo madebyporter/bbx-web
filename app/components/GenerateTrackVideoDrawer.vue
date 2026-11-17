@@ -39,15 +39,62 @@
             class="hidden"
             @change="handleCoverUpload"
           />
+
+          <div v-if="!coverFile" class="flex flex-col gap-3">
+            <div class="flex flex-col gap-1.5">
+              <label for="cover-direction" class="text-sm font-medium text-neutral-200">Direction</label>
+              <textarea
+                id="cover-direction"
+                v-model="coverDirection"
+                rows="2"
+                maxlength="500"
+                placeholder="e.g. red moon over city skyline, silhouette figure…"
+                class="w-full p-3 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[64px]"
+                :disabled="generatingCover || detectingMoods || isGenerating"
+              />
+              <p class="text-xs text-neutral-500">Optional. Guides the AI cover (max 500 characters).</p>
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-sm font-medium text-neutral-200">Moods</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  :disabled="detectingMoods || generatingCover || isGenerating || !props.track?.storage_path"
+                  @click="handleDetectMoods"
+                >
+                  {{ detectingMoods ? 'Detecting…' : 'Detect moods' }}
+                </Button>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <label
+                  v-for="mood in BEATBOX_MOOD_TAGS"
+                  :key="mood"
+                  class="cursor-pointer"
+                >
+                  <input v-model="selectedMoods" type="checkbox" :value="mood" class="hidden" />
+                  <span :class="selectedMoods.includes(mood) ? 'tag-active' : 'tag'">
+                    {{ mood }}
+                  </span>
+                </label>
+              </div>
+              <p v-if="moodDetectError" class="text-xs text-red-500">{{ moodDetectError }}</p>
+              <p class="text-xs text-neutral-500">
+                Toggle tags or detect from the track audio. Used for cover generation.
+              </p>
+            </div>
+          </div>
+
           <div class="flex flex-wrap gap-2">
             <Button variant="secondary" size="sm" @click="coverInputRef?.click()">
               {{ coverPreview ? 'Replace image' : 'Upload custom image' }}
             </Button>
             <Button
-              v-if="!canUseTrackArtwork"
+              v-if="!coverFile"
               variant="secondary"
               size="sm"
-              :disabled="generatingCover || isGenerating"
+              :disabled="generatingCover || detectingMoods || isGenerating"
               @click="handleGenerateCover"
             >
               {{ generatingCover ? 'Generating cover…' : 'Generate cover' }}
@@ -328,6 +375,11 @@ import { useSupabase } from '~/utils/supabase'
 import { downloadAudioBlob } from '~/utils/trackAudioStorage'
 import { useToast } from '~/composables/useToast'
 import { useAuthHeaders } from '~/composables/useAuthHeaders'
+import {
+  analyzeMoodFromAudio,
+  BEATBOX_MOOD_TAGS,
+  type BeatboxMoodTag,
+} from '~/composables/useAudioAnalyzer'
 import type { Track } from '~/types/track'
 
 const props = defineProps<{
@@ -339,7 +391,14 @@ const emit = defineEmits<{
   'update:show': [value: boolean]
 }>()
 
-const { getArtworkUrl, validateAndProcessArtwork, resolveArtworkUrlForEntity } = useArtwork()
+const {
+  getArtworkUrl,
+  validateAndProcessArtwork,
+  resolveArtworkUrlForEntity,
+  downloadArtwork,
+  uploadArtwork,
+  deleteArtwork,
+} = useArtwork()
 const { generateTrackVideo, isGenerating } = useTrackVideoGenerator()
 const { supabase } = useSupabase()
 const { showError, showSuccess } = useToast()
@@ -354,6 +413,12 @@ const coverPreview = ref<string | null>(null)
 const coverFile = ref<File | null>(null)
 const coverError = ref<string | null>(null)
 const usingTrackArtwork = ref(false)
+const coverDirection = ref('')
+const selectedMoods = ref<BeatboxMoodTag[]>([])
+const detectingMoods = ref(false)
+const moodDetectError = ref<string | null>(null)
+/** Snapshot of track mood emptiness at drawer open — used for write-when-empty persist */
+const trackMoodWasEmpty = ref(true)
 
 const generationMessage = ref('')
 const generationProgress = ref(0)
@@ -383,12 +448,15 @@ const canUseTrackArtwork = computed(() => {
 })
 
 const canGenerate = computed(() => {
-  return !!(props.track?.storage_path && (coverFile.value || canUseTrackArtwork.value))
+  return !!(props.track?.storage_path && coverFile.value)
 })
 
 const coverPlaceholderText = computed(() => {
   if (props.track?.artwork_path && isVideoArtwork(props.track.artwork_path)) {
     return 'Video artwork cannot be used. Upload a still image.'
+  }
+  if (coverError.value) {
+    return 'Could not load track artwork. Upload or generate a cover.'
   }
   if (!props.track?.artwork_path) {
     return 'No artwork on this track. Upload an image to continue.'
@@ -508,6 +576,23 @@ function resetGenerationState() {
   generationError.value = null
 }
 
+function parseTrackMoods(mood: unknown): BeatboxMoodTag[] {
+  const raw: string[] = Array.isArray(mood)
+    ? mood.map((m) => String(m).trim()).filter(Boolean)
+    : typeof mood === 'string'
+      ? mood.split(',').map((m) => m.trim()).filter(Boolean)
+      : []
+  const allowed = new Set<string>(BEATBOX_MOOD_TAGS)
+  return raw.filter((m): m is BeatboxMoodTag => allowed.has(m))
+}
+
+function trackMoodIsEmpty(mood: unknown): boolean {
+  if (mood == null) return true
+  if (Array.isArray(mood)) return mood.filter(Boolean).length === 0
+  if (typeof mood === 'string') return mood.trim().length === 0
+  return true
+}
+
 function resetDrawerState() {
   abortController?.abort()
   abortController = null
@@ -516,6 +601,11 @@ function resetDrawerState() {
   coverFile.value = null
   coverError.value = null
   usingTrackArtwork.value = false
+  coverDirection.value = ''
+  selectedMoods.value = []
+  detectingMoods.value = false
+  moodDetectError.value = null
+  trackMoodWasEmpty.value = true
 
   resetGenerationState()
   encoderLoading.value = false
@@ -535,20 +625,24 @@ async function loadTrackArtwork() {
     return
   }
 
-  const url = await resolveArtworkUrlForEntity(
-    {
-      id: props.track.id,
-      artwork_path: props.track.artwork_path,
-      artwork_provider: props.track.artwork_provider,
-    },
-    'track',
-  )
-  if (!url) return
+  const entity = {
+    id: props.track.id,
+    artwork_path: props.track.artwork_path,
+    artwork_provider: props.track.artwork_provider,
+  }
 
   try {
-    const response = await fetch(url)
-    if (!response.ok) throw new Error('Failed to load track artwork')
-    const blob = await response.blob()
+    // Same-origin download avoids R2 CORS failures (e.g. http://localhost without :3000)
+    let blob = await downloadArtwork(entity, 'track')
+
+    if (!blob) {
+      const url = await resolveArtworkUrlForEntity(entity, 'track')
+      if (!url) throw new Error('Could not resolve track artwork URL')
+      const response = await fetch(url)
+      if (!response.ok) throw new Error('Failed to load track artwork')
+      blob = await response.blob()
+    }
+
     const ext = props.track.artwork_path.split('.').pop()?.toLowerCase() || 'jpg'
     const mimeType = blob.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`
     const file = new File([blob], `cover.${ext}`, { type: mimeType })
@@ -603,6 +697,8 @@ async function preloadEncoder() {
 
 async function initializeDrawer() {
   resetDrawerState()
+  trackMoodWasEmpty.value = trackMoodIsEmpty(props.track?.mood)
+  selectedMoods.value = parseTrackMoods(props.track?.mood)
   encoderReady.value = isTrackVideoEncoderLoaded()
   await Promise.all([loadTrackArtwork(), loadHistory()])
   if (!encoderReady.value) {
@@ -644,6 +740,99 @@ async function handleCoverUpload(event: Event) {
   }
 }
 
+async function handleDetectMoods() {
+  if (!props.track?.storage_path || detectingMoods.value || !supabase) return
+
+  detectingMoods.value = true
+  moodDetectError.value = null
+  try {
+    const audioData = await downloadAudioBlob(props.track, supabase)
+    const moods = await analyzeMoodFromAudio(audioData)
+    selectedMoods.value = moods
+    showSuccess(`Detected: ${moods.join(', ')}`)
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : 'Failed to detect moods from audio'
+    moodDetectError.value = message
+    showError(message)
+  } finally {
+    detectingMoods.value = false
+  }
+}
+
+function dispatchTrackUpdated(patch: Partial<Track>) {
+  if (!props.track) return
+  const updated = { ...props.track, ...patch }
+  window.dispatchEvent(
+    new CustomEvent('track-updated', {
+      detail: { track: updated },
+      bubbles: true,
+    }),
+  )
+}
+
+async function persistMoodsIfEmpty(moods: BeatboxMoodTag[]) {
+  if (!trackMoodWasEmpty.value || moods.length === 0 || !props.track?.id || !supabase) {
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('sounds')
+    .update({ mood: moods })
+    .eq('id', props.track.id)
+    .select('id, mood')
+    .maybeSingle()
+
+  if (error) {
+    console.warn('Failed to save detected moods to track:', error)
+    return
+  }
+
+  trackMoodWasEmpty.value = false
+  dispatchTrackUpdated({ mood: data?.mood ?? moods })
+}
+
+/** Upload AI/custom cover to storage and attach to the track so Sync/Edit persist it. */
+async function persistCoverToTrack(file: File) {
+  if (!props.track?.id || !supabase) return
+
+  const uploaded = await uploadArtwork(file, 'track')
+
+  if (props.track.artwork_path) {
+    try {
+      await deleteArtwork(
+        {
+          id: props.track.id,
+          artwork_path: props.track.artwork_path,
+          artwork_provider: props.track.artwork_provider,
+        },
+        'track',
+      )
+    } catch (err) {
+      console.warn('Failed to delete previous artwork after cover generate:', err)
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('sounds')
+    .update({
+      artwork_path: uploaded.artwork_path,
+      artwork_provider: uploaded.artwork_provider,
+    })
+    .eq('id', props.track.id)
+    .select('id, artwork_path, artwork_provider')
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  dispatchTrackUpdated({
+    artwork_path: data?.artwork_path ?? uploaded.artwork_path,
+    artwork_provider: data?.artwork_provider ?? uploaded.artwork_provider,
+  })
+}
+
 async function handleGenerateCover() {
   if (!props.track || generatingCover.value) return
 
@@ -658,9 +847,9 @@ async function handleGenerateCover() {
   coverError.value = null
   try {
     const headers = await useAuthHeaders()
-    const mood = Array.isArray(props.track.mood)
-      ? props.track.mood.join(', ')
-      : props.track.mood || undefined
+    const mood =
+      selectedMoods.value.length > 0 ? selectedMoods.value.join(', ') : undefined
+    const direction = coverDirection.value.trim().slice(0, 500) || undefined
 
     const result = await $fetch<{
       base64: string
@@ -674,6 +863,7 @@ async function handleGenerateCover() {
         artist,
         genre: props.track.genre || undefined,
         mood: mood || undefined,
+        direction: direction || undefined,
       },
     })
 
@@ -687,8 +877,23 @@ async function handleGenerateCover() {
     const { file: processedFile, preview } = await validateAndProcessArtwork(file)
     coverFile.value = processedFile
     coverPreview.value = preview
-    usingTrackArtwork.value = false
-    showSuccess('Cover generated')
+
+    try {
+      await persistCoverToTrack(processedFile)
+      usingTrackArtwork.value = true
+      showSuccess('Cover generated and saved to track')
+    } catch (persistErr: unknown) {
+      usingTrackArtwork.value = false
+      console.warn('Cover generated but failed to save to track:', persistErr)
+      showSuccess('Cover generated (not saved to track yet)')
+      showError(
+        persistErr instanceof Error
+          ? persistErr.message
+          : 'Cover preview ready, but saving to track failed',
+      )
+    }
+
+    await persistMoodsIfEmpty(selectedMoods.value)
   } catch (err: unknown) {
     const message =
       (err as any)?.data?.statusMessage ||
@@ -746,7 +951,27 @@ async function handleGenerate() {
 
     await saveExport(exportRecord)
     await loadHistory()
-    showSuccess('Video generated')
+
+    // Keep track artwork in sync with the cover used for the video
+    const artworkEmpty =
+      !props.track.artwork_path ||
+      (typeof props.track.artwork_path === 'string' && !props.track.artwork_path.trim())
+    if (artworkEmpty && coverFile.value) {
+      try {
+        await persistCoverToTrack(coverFile.value)
+        usingTrackArtwork.value = true
+      } catch (persistErr) {
+        console.warn('Video saved but cover was not written to track:', persistErr)
+      }
+    }
+
+    window.dispatchEvent(
+      new CustomEvent('track-video-ready', {
+        detail: { trackId: Number(props.track.id) },
+        bubbles: true,
+      }),
+    )
+    showSuccess('Video generated and saved on this device')
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === 'AbortError') return
     if (err instanceof Error && err.name === 'AbortError') return

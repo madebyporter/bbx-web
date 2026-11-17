@@ -44,6 +44,37 @@ async function getAccessToken(supabase: SupabaseClient): Promise<string | null> 
   return data.session?.access_token || null
 }
 
+/**
+ * Download artwork bytes via same-origin API (avoids R2 CORS failures on localhost).
+ */
+export async function downloadArtworkBlob(
+  entity: ArtworkEntity,
+  kind: ArtworkKind,
+  supabase: SupabaseClient | null,
+): Promise<Blob | null> {
+  if (!entity.artwork_path || !entity.id || !supabase) return null
+
+  try {
+    const accessToken = await getAccessToken(supabase)
+    if (!accessToken) return null
+
+    const query =
+      kind === 'track'
+        ? { kind, trackId: entity.id }
+        : { kind, collectionId: entity.id }
+
+    return await $fetch<Blob>('/api/storage/download-artwork', {
+      method: 'GET',
+      query,
+      headers: { Authorization: `Bearer ${accessToken}` },
+      responseType: 'blob',
+    })
+  } catch (error) {
+    console.error('Error downloading artwork via same-origin API:', error)
+    return null
+  }
+}
+
 export async function fetchArtworkUrl(
   entity: ArtworkEntity,
   kind: ArtworkKind,

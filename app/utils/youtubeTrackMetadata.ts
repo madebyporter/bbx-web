@@ -69,6 +69,6 @@ export function mapTrackToYouTubeSnippet(
     title: title.slice(0, 100),
     description: buildYouTubeDescription(track, options.trackUrl).slice(0, 5000),
     tags: Array.from(tags).slice(0, 20),
-    privacyStatus: 'unlisted',
+    privacyStatus: 'public',
   }
 }

@@ -7,6 +7,7 @@ import {
   deleteArtworkFromStorage,
   getSupabaseArtworkPublicUrl,
   normalizeArtworkProvider,
+  downloadArtworkBlob,
   uploadArtworkToStorage,
   type ArtworkEntity,
   type ArtworkKind,
@@ -233,9 +234,14 @@ export const useArtwork = () => {
     return deleteArtworkFromStorage(entity, kind, supabase)
   }
 
+  const downloadArtwork = async (entity: ArtworkEntity, kind: ArtworkKind) => {
+    return downloadArtworkBlob(entity, kind, supabase)
+  }
+
   return {
     getArtworkUrl,
     resolveArtworkUrlForEntity,
+    downloadArtwork,
     isVideoArtwork,
     validateAndProcessArtwork,
     uploadArtwork,

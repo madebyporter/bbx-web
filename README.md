@@ -275,11 +275,27 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.7
+  - Generate video loads track artwork via same-origin download (fixes Failed to fetch / CORS on localhost)
+  - Sync local video preview no longer forces square aspect (landscape shows correctly)
+- 0.70.6
+  - Edit Track Generate cover saves immediately to Cloudflare R2 + Supabase track row
+- 0.70.5
+  - Edit Track can AI-generate cover artwork with optional direction prompt
+- 0.70.4
+  - Sync drawer previews local video + artwork; recovers cover from video when artwork is empty
+- 0.70.3
+  - AI covers save to track artwork; Sync shows local video readiness across Generate ↔ Sync handoff
+- 0.70.2
+  - Cover generation direction prompt plus Detect moods from track audio (BPM/key/energy heuristics)
+  - Empty track mood is saved from cover moods after a successful generate
+- 0.70.1
+  - Sync track UI is a drawer; Generate video closes Sync, keeps selections, and reopens Sync when done
 - 0.70.0
-  - YouTube track sync for Pro: connect Google OAuth, upload generated track videos from Sync modal
+  - YouTube track sync for Pro: connect Google OAuth, upload generated track videos from Sync
   - AI cover generation via OpenAI gpt-image-2.6-flare in Generate video when artwork is missing
 - 0.69.0
-  - SoundCloud track sync for Pro: connect OAuth, push audio + mapped metadata from Sync modal on track row menu
+  - SoundCloud track sync for Pro: connect OAuth, push audio + mapped metadata from Sync on track row menu
 - 0.68.0
   - Collection Share drawer with invite link, Resend email, and Beatbox user invite
   - Checklist “Share collection” CTA opens the share drawer via `?share=1`

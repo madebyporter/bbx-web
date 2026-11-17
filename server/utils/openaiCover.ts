@@ -11,20 +11,28 @@ export function hasOpenAiCoverKey(): boolean {
   return Boolean(readOpenAiKey())
 }
 
+const MAX_DIRECTION_CHARS = 500
+
 export function buildCoverPrompt(params: {
   title: string
   artist: string
   genre?: string
   mood?: string
+  direction?: string
 }): string {
   const parts = [
     `Square album cover art for the track "${params.title}" by ${params.artist}.`,
+  ]
+  if (params.direction) {
+    parts.push(`Creative direction: ${params.direction}.`)
+  }
+  if (params.genre) parts.push(`Genre mood: ${params.genre}.`)
+  if (params.mood) parts.push(`Feeling: ${params.mood}.`)
+  parts.push(
     'Dark cinematic music cover, high contrast, atmospheric, suitable for electronic/hip-hop production.',
     'No watermarks, no logos, no cluttered typography, no UI chrome.',
     'Avoid purple-on-white gradients and cream terracotta newspaper looks.',
-  ]
-  if (params.genre) parts.push(`Genre mood: ${params.genre}.`)
-  if (params.mood) parts.push(`Feeling: ${params.mood}.`)
+  )
   return parts.join(' ')
 }
 
@@ -33,6 +41,7 @@ export async function generateCoverImageBase64(params: {
   artist: string
   genre?: string
   mood?: string
+  direction?: string
 }): Promise<{ base64: string; mimeType: string }> {
   const apiKey = readOpenAiKey()
   if (!apiKey) {
@@ -42,6 +51,10 @@ export async function generateCoverImageBase64(params: {
     })
   }
 
+  const direction = params.direction
+    ? params.direction.trim().slice(0, MAX_DIRECTION_CHARS)
+    : undefined
+
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: {
@@ -50,7 +63,13 @@ export async function generateCoverImageBase64(params: {
     },
     body: JSON.stringify({
       model: OPENAI_COVER_MODEL,
-      prompt: buildCoverPrompt(params),
+      prompt: buildCoverPrompt({
+        title: params.title,
+        artist: params.artist,
+        genre: params.genre,
+        mood: params.mood,
+        direction: direction || undefined,
+      }),
       size: '1024x1024',
       n: 1,
       output_format: 'png',

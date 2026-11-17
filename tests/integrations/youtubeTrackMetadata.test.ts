@@ -5,7 +5,7 @@ import {
 } from '../../app/utils/youtubeTrackMetadata'
 
 describe('youtubeTrackMetadata', () => {
-  it('maps title description tags and unlisted privacy', () => {
+  it('maps title description tags and public privacy', () => {
     const snippet = mapTrackToYouTubeSnippet(
       {
         title: 'Confidence',
@@ -18,7 +18,7 @@ describe('youtubeTrackMetadata', () => {
     )
 
     expect(snippet.title).toBe('Confidence')
-    expect(snippet.privacyStatus).toBe('unlisted')
+    expect(snippet.privacyStatus).toBe('public')
     expect(snippet.tags).toContain('Trap')
     expect(snippet.tags).toContain('Dark')
     expect(snippet.description).toContain('BPM: 130')

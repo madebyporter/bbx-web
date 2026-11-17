@@ -1,13 +1,15 @@
 <template>
-  <Modal
-    :show="show"
-    :title="modalTitle"
-    width="min(480px, calc(100vw - 2rem))"
-    height="min(720px, calc(100dvh - 2rem))"
-    :z-index="70"
-    @update:show="onShowUpdate"
-  >
-    <div class="flex flex-col gap-4 overflow-y-auto min-h-0 grow text-sm text-neutral-300">
+  <MasterDrawer :show="show" @update:show="onShowUpdate">
+    <template #header>
+      <div class="flex flex-col gap-0.5 min-w-0">
+        <h2 class="text-xl truncate">{{ drawerTitle }}</h2>
+        <p v-if="localTrack?.title" class="text-sm text-neutral-500 font-normal truncate">
+          Push to connected platforms
+        </p>
+      </div>
+    </template>
+
+    <div class="flex flex-col gap-4 h-full text-sm text-neutral-300">
       <template v-if="!hasTrackSync">
         <p>
           Track sync is included with Pro. Upgrade to connect YouTube or SoundCloud and push
@@ -19,6 +21,32 @@
       </template>
 
       <template v-else>
+        <section v-if="artworkPreviewUrl || localVideoUrl" class="flex flex-col gap-2">
+          <h3 class="text-neutral-100 font-medium">Media for sync</h3>
+          <div class="flex flex-wrap gap-3">
+            <div v-if="artworkPreviewUrl" class="flex flex-col gap-1.5 min-w-0">
+              <p class="text-xs text-neutral-500">Artwork</p>
+              <img
+                :src="artworkPreviewUrl"
+                alt="Track artwork"
+                class="w-28 h-28 rounded-md object-cover border border-neutral-800 bg-neutral-950"
+              >
+            </div>
+            <div v-if="localVideoUrl" class="flex flex-col gap-1.5 min-w-0 grow">
+              <p class="text-xs text-neutral-500">Local video</p>
+              <video
+                :src="localVideoUrl"
+                controls
+                playsinline
+                class="w-full max-w-sm max-h-56 rounded-md border border-neutral-800 bg-black object-contain"
+              />
+            </div>
+          </div>
+          <p v-if="recoveringArtwork" class="text-xs text-neutral-500">
+            Saving cover from video…
+          </p>
+        </section>
+
         <section class="flex flex-col gap-2">
           <h3 class="text-neutral-100 font-medium">Metadata readiness</h3>
           <p class="text-xs text-neutral-500">
@@ -93,12 +121,23 @@
               >View</a>
             </div>
           </div>
-          <div v-if="youtubeNeedsVideo" class="flex items-center justify-between gap-2 px-1">
-            <p class="text-xs text-amber-400">
-              Generate a video first (cover art can be AI-generated if missing).
+          <div
+            v-if="youtubeConnected && youtubeSelected"
+            class="flex items-center justify-between gap-2 px-1"
+          >
+            <p
+              class="text-xs"
+              :class="hasLocalVideo ? 'text-green-400' : 'text-amber-400'"
+            >
+              <template v-if="hasLocalVideo">
+                Local video ready for YouTube upload.
+              </template>
+              <template v-else>
+                Generate a video first (cover art can be AI-generated if missing).
+              </template>
             </p>
             <Button variant="ghost" size="sm" @click="openGenerateVideo">
-              Generate video
+              {{ hasLocalVideo ? 'Replace video' : 'Generate video' }}
             </Button>
           </div>
 
@@ -194,28 +233,31 @@
             </Button>
           </div>
         </section>
+
+        <div class="flex flex-row gap-3 justify-end border-t border-neutral-800 pt-4 mt-auto">
+          <Button variant="ghost" :disabled="syncing" @click="close">Cancel</Button>
+          <Button :disabled="!canSync || syncing" @click="runSync">
+            {{ syncing ? 'Syncing…' : 'Sync selected' }}
+          </Button>
+        </div>
       </template>
     </div>
-
-    <template v-if="hasTrackSync" #footer>
-      <Button variant="ghost" :disabled="syncing" @click="close">Cancel</Button>
-      <Button :disabled="!canSync || syncing" @click="runSync">
-        {{ syncing ? 'Syncing…' : 'Sync selected' }}
-      </Button>
-    </template>
-  </Modal>
+  </MasterDrawer>
 </template>
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
-import Modal from '~/components/Modal.vue'
+import MasterDrawer from '~/components/MasterDrawer.vue'
 import Button from '~/components/Button.vue'
 import { useAuthHeaders } from '~/composables/useAuthHeaders'
 import { useEntitlements } from '~/composables/useEntitlements'
 import { useToast } from '~/composables/useToast'
+import { useArtwork } from '~/composables/useArtwork'
+import { useSupabase } from '~/utils/supabase'
 import { getExportsForTrack } from '~/composables/useTrackVideoHistory'
 import { uploadTrackVideoToYouTube } from '~/composables/useYouTubeUpload'
-import { useSiteOrigin } from '~/composables/useSiteOrigin'
+import { usePublishSiteOrigin } from '~/composables/useSiteOrigin'
+import { captureVideoFrameAsFile } from '~/utils/captureVideoFrame'
 import type { Track } from '~/types/track'
 import {
   getMetadataFieldStatuses,
@@ -233,11 +275,14 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:show': [value: boolean]
   'track-refreshed': [track: Track]
+  'generate-video': [track: Track]
 }>()
 
 const { has, refresh: refreshEntitlements } = useEntitlements()
 const { showSuccess, showError } = useToast()
-const siteOrigin = useSiteOrigin()
+const publishSiteOrigin = usePublishSiteOrigin()
+const { resolveArtworkUrlForEntity, uploadArtwork } = useArtwork()
+const { supabase } = useSupabase()
 
 const localTrack = ref<Track | null>(null)
 
@@ -253,6 +298,9 @@ const youtubeSelected = ref(false)
 const youtubeStatus = ref<SyncStatus>('not_synced')
 const youtubePermalink = ref<string | null>(null)
 const hasLocalVideo = ref(false)
+const localVideoUrl = ref<string | null>(null)
+const artworkPreviewUrl = ref<string | null>(null)
+const recoveringArtwork = ref(false)
 
 const syncError = ref<string | null>(null)
 const connectingSoundcloud = ref(false)
@@ -261,8 +309,18 @@ const connectingYoutube = ref(false)
 const disconnectingYoutube = ref(false)
 const syncing = ref(false)
 
+/** Keep platform selections when temporarily handing off to Generate video */
+const preserveStateOnClose = ref(false)
+
+function revokeLocalVideoUrl() {
+  if (localVideoUrl.value) {
+    URL.revokeObjectURL(localVideoUrl.value)
+    localVideoUrl.value = null
+  }
+}
+
 const hasTrackSync = computed(() => has('track_sync'))
-const modalTitle = computed(() => {
+const drawerTitle = computed(() => {
   const title = localTrack.value?.title?.trim()
   return title ? `Sync “${title}”` : 'Sync track'
 })
@@ -341,6 +399,8 @@ function onShowUpdate(value: boolean) {
 }
 
 function close() {
+  preserveStateOnClose.value = false
+  revokeLocalVideoUrl()
   emit('update:show', false)
 }
 
@@ -356,13 +416,9 @@ function openEditTrack() {
 
 function openGenerateVideo() {
   if (!localTrack.value) return
-  window.dispatchEvent(
-    new CustomEvent('open-generate-track-video', {
-      detail: { track: localTrack.value },
-      bubbles: true,
-      composed: true,
-    }),
-  )
+  preserveStateOnClose.value = true
+  emit('generate-video', localTrack.value)
+  emit('update:show', false)
 }
 
 function mapProviderStatus(status: string | undefined): SyncStatus {
@@ -372,7 +428,25 @@ function mapProviderStatus(status: string | undefined): SyncStatus {
   return 'not_synced'
 }
 
+async function refreshArtworkPreview() {
+  artworkPreviewUrl.value = null
+  if (!localTrack.value?.artwork_path) return
+  try {
+    artworkPreviewUrl.value = await resolveArtworkUrlForEntity(
+      {
+        id: localTrack.value.id,
+        artwork_path: localTrack.value.artwork_path,
+        artwork_provider: localTrack.value.artwork_provider,
+      },
+      'track',
+    )
+  } catch {
+    artworkPreviewUrl.value = null
+  }
+}
+
 async function refreshLocalVideo() {
+  revokeLocalVideoUrl()
   if (!localTrack.value?.id || !import.meta.client) {
     hasLocalVideo.value = false
     return
@@ -380,12 +454,69 @@ async function refreshLocalVideo() {
   try {
     const exports = await getExportsForTrack(localTrack.value.id)
     hasLocalVideo.value = exports.length > 0
+    const latest = exports[0]
+    if (latest?.blob) {
+      localVideoUrl.value = URL.createObjectURL(latest.blob)
+    }
   } catch {
     hasLocalVideo.value = false
   }
 }
 
-async function loadIntegrations() {
+/** If track has a local video but no artwork, capture a frame and save it to the track. */
+async function recoverArtworkFromLocalVideo() {
+  if (
+    recoveringArtwork.value ||
+    !localTrack.value?.id ||
+    localTrack.value.artwork_path ||
+    !supabase ||
+    !import.meta.client
+  ) {
+    return
+  }
+
+  recoveringArtwork.value = true
+  try {
+    const exports = await getExportsForTrack(localTrack.value.id)
+    const latest = exports[0]
+    if (!latest?.blob) return
+
+    const frameFile = await captureVideoFrameAsFile(latest.blob)
+    const uploaded = await uploadArtwork(frameFile, 'track')
+    const { data, error } = await supabase
+      .from('sounds')
+      .update({
+        artwork_path: uploaded.artwork_path,
+        artwork_provider: uploaded.artwork_provider,
+      })
+      .eq('id', localTrack.value.id)
+      .select('id, artwork_path, artwork_provider')
+      .maybeSingle()
+
+    if (error) throw error
+
+    localTrack.value = {
+      ...localTrack.value,
+      artwork_path: data?.artwork_path ?? uploaded.artwork_path,
+      artwork_provider: data?.artwork_provider ?? uploaded.artwork_provider,
+    }
+    emit('track-refreshed', localTrack.value)
+    window.dispatchEvent(
+      new CustomEvent('track-updated', {
+        detail: { track: localTrack.value },
+        bubbles: true,
+      }),
+    )
+    await refreshArtworkPreview()
+    showSuccess('Cover saved from video')
+  } catch (err) {
+    console.warn('Could not recover artwork from local video:', err)
+  } finally {
+    recoveringArtwork.value = false
+  }
+}
+
+async function loadIntegrations(opts?: { preserveSelections?: boolean }) {
   const headers = await useAuthHeaders()
   if (!headers.Authorization) return
 
@@ -398,11 +529,15 @@ async function loadIntegrations() {
 
   soundcloudConnected.value = Boolean(data.integrations.soundcloud.connected)
   soundcloudUsername.value = data.integrations.soundcloud.username || null
-  if (soundcloudConnected.value) soundcloudSelected.value = true
+  if (soundcloudConnected.value && !opts?.preserveSelections) {
+    soundcloudSelected.value = true
+  }
 
   youtubeConnected.value = Boolean(data.integrations.youtube?.connected)
   youtubeUsername.value = data.integrations.youtube?.username || null
-  if (youtubeConnected.value) youtubeSelected.value = true
+  if (youtubeConnected.value && !opts?.preserveSelections) {
+    youtubeSelected.value = true
+  }
 }
 
 async function loadSyncStatus() {
@@ -431,11 +566,17 @@ async function loadSyncStatus() {
   syncError.value = yt?.lastError || sc?.lastError || null
 }
 
-async function refreshModalData() {
+async function refreshDrawerData(opts?: { preserveSelections?: boolean }) {
   try {
     await refreshEntitlements()
     if (!has('track_sync')) return
-    await Promise.all([loadIntegrations(), loadSyncStatus(), refreshLocalVideo()])
+    await Promise.all([
+      loadIntegrations(opts),
+      loadSyncStatus(),
+      refreshLocalVideo(),
+      refreshArtworkPreview(),
+    ])
+    await recoverArtworkFromLocalVideo()
   } catch (err: unknown) {
     const message =
       (err as any)?.data?.statusMessage ||
@@ -564,8 +705,8 @@ async function runSync() {
 
         const username = (localTrack.value as any).username as string | undefined
         const trackUrl = username
-          ? `${siteOrigin}/u/${username}/t/${localTrack.value.id}`
-          : `${siteOrigin}/u/${localTrack.value.user_id}`
+          ? `${publishSiteOrigin}/u/${username}/t/${localTrack.value.id}`
+          : `${publishSiteOrigin}/u/${localTrack.value.user_id}`
 
         const result = await uploadTrackVideoToYouTube({
           track: localTrack.value,
@@ -607,6 +748,7 @@ function applyUpdatedTrack(track: Track) {
   if (!localTrack.value || track.id !== localTrack.value.id) return
   localTrack.value = { ...localTrack.value, ...track }
   emit('track-refreshed', localTrack.value)
+  void refreshArtworkPreview()
 }
 
 function onVisibilityChange() {
@@ -615,13 +757,24 @@ function onVisibilityChange() {
   }
 }
 
+function onTrackVideoReady(event: Event) {
+  const trackId = (event as CustomEvent<{ trackId?: number }>).detail?.trackId
+  if (!localTrack.value?.id || trackId == null) return
+  if (Number(trackId) !== Number(localTrack.value.id)) return
+  void refreshLocalVideo()
+}
+
 watch(
   () => props.show,
   async (open) => {
     if (!open) return
-    localTrack.value = props.track ? { ...props.track } : null
-    syncError.value = null
-    await refreshModalData()
+    const returningFromVideo = preserveStateOnClose.value
+    preserveStateOnClose.value = false
+    if (!returningFromVideo) {
+      localTrack.value = props.track ? { ...props.track } : null
+      syncError.value = null
+    }
+    await refreshDrawerData({ preserveSelections: returningFromVideo })
   },
 )
 
@@ -648,6 +801,7 @@ watch(
     if (open) {
       window.addEventListener('track-updated', onTrackUpdated)
       document.addEventListener('visibilitychange', onVisibilityChange)
+      void refreshLocalVideo()
     } else {
       window.removeEventListener('track-updated', onTrackUpdated)
       document.removeEventListener('visibilitychange', onVisibilityChange)
@@ -655,9 +809,16 @@ watch(
   },
 )
 
+if (import.meta.client) {
+  // Keep listening while mounted so video saves during Generate handoff are not missed
+  window.addEventListener('track-video-ready', onTrackVideoReady)
+}
+
 onUnmounted(() => {
   if (!import.meta.client) return
   window.removeEventListener('track-updated', onTrackUpdated)
+  window.removeEventListener('track-video-ready', onTrackVideoReady)
   document.removeEventListener('visibilitychange', onVisibilityChange)
+  revokeLocalVideoUrl()
 })
 </script>
