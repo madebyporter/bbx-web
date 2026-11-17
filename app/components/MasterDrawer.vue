@@ -16,8 +16,16 @@
           </div>
         </div>
         <!-- Main content slot -->
-        <div class="grow flex flex-col gap-0 overflow-auto no-scrollbar p-2" @click.stop>
+        <div class="grow flex flex-col gap-0 overflow-auto no-scrollbar p-2 min-h-0" @click.stop>
           <slot></slot>
+        </div>
+        <!-- Footer CTAs — outside padded scroll content (like header) -->
+        <div
+          v-if="slots.footer"
+          class="shrink-0 p-2"
+          @click.stop
+        >
+          <slot name="footer" />
         </div>
       </div>
     </aside>
@@ -25,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, useSlots } from 'vue'
 import gsap from 'gsap'
 
 interface Props {
@@ -34,6 +42,7 @@ interface Props {
 
 const props = defineProps<Props>()
 const emit = defineEmits(['update:show', 'close'])
+const slots = useSlots()
 
 const modal = ref<HTMLElement | null>(null)
 const initialX = ref(100)

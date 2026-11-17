@@ -10,7 +10,7 @@
             v-for="(col, index) in columns"
             :key="`h-${index}`"
             class="flex items-center p-4 shrink-0"
-            :class="col.sticky ? TRACK_TABLE_STICKY_ACTIONS_CLASS : ''"
+            :class="col.sticky ? TRACK_TABLE_STICKY_ACTIONS_BASE_CLASS : ''"
             :style="{ width: col.width, minWidth: col.width }"
           >
             {{ col.label }}
@@ -21,13 +21,13 @@
         <div
           v-for="row in rowCount"
           :key="row"
-          class="group flex flex-nowrap items-stretch text-sm border-b border-neutral-900 min-h-[65px] min-w-max w-full"
+          class="flex flex-nowrap items-stretch text-sm border-b border-neutral-900 min-h-[65px] min-w-max w-full"
         >
           <div
             v-for="(col, index) in columns"
             :key="`${row}-${index}`"
             class="flex items-center p-4 shrink-0 overflow-hidden"
-            :class="col.sticky ? TRACK_TABLE_STICKY_ACTIONS_CLASS : ''"
+            :class="col.sticky ? TRACK_TABLE_STICKY_ACTIONS_BASE_CLASS : ''"
             :style="{ width: col.width, minWidth: col.width }"
           >
             <div
@@ -59,7 +59,7 @@ import { computed } from 'vue'
 import {
   TRACK_GRID_WIDTH,
   TRACK_TABLE_INNER_CLASS,
-  TRACK_TABLE_STICKY_ACTIONS_CLASS,
+  TRACK_TABLE_STICKY_ACTIONS_BASE_CLASS,
 } from '~/utils/trackTableGrid'
 import { TRACK_PAGE_SIZE } from '~/utils/trackPagination'
 

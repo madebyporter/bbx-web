@@ -234,14 +234,17 @@
           </div>
         </section>
 
-        <section class="sticky bottom-0 flex flex-row gap-2 justify-end border-t border-neutral-800 bg-neutral-900 p-2 mt-auto z-20">
-          <Button variant="ghost" :disabled="syncing" @click="close">Cancel</Button>
-          <Button :disabled="!canSync || syncing" @click="runSync">
-            {{ syncing ? 'Syncing…' : 'Sync selected' }}
-          </Button>
-        </section>
       </template>
     </div>
+
+    <template v-if="hasTrackSync" #footer>
+      <div class="flex flex-row gap-2 justify-end">
+        <Button variant="ghost" :disabled="syncing" @click="close">Cancel</Button>
+        <Button :disabled="!canSync || syncing" @click="runSync">
+          {{ syncing ? 'Syncing…' : 'Sync selected' }}
+        </Button>
+      </div>
+    </template>
   </MasterDrawer>
 </template>
 

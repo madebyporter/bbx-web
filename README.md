@@ -275,6 +275,10 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.12
+  - Tracks table skeleton: no sticky-action hover chrome on fake rows
+- 0.70.11
+  - MasterDrawer `#footer` slot outside padded content; Sync/Settings/Bulk/Library Settings CTAs use it
 - 0.70.10
   - Widen sticky track actions column so sync + menu icons fit with padding
 - 0.70.9

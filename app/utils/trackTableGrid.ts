@@ -69,5 +69,9 @@ export function buildTrackGridStyle(options: TrackGridColumnOptions) {
 export const TRACK_TABLE_INNER_CLASS = 'min-w-full w-max h-fit'
 
 /** Sticky right-frozen actions cell (same grid row as data cells). */
+export const TRACK_TABLE_STICKY_ACTIONS_BASE_CLASS =
+  'sticky right-0 z-[1] flex items-center justify-end self-stretch bg-neutral-900'
+
+/** Live rows: match row hover / playing background on the sticky cell. */
 export const TRACK_TABLE_STICKY_ACTIONS_CLASS =
-  'sticky right-0 z-[1] flex items-center justify-end self-stretch bg-neutral-900 group-hover:bg-neutral-800 group-[.is-playing]:bg-neutral-800'
+  `${TRACK_TABLE_STICKY_ACTIONS_BASE_CLASS} group-hover:bg-neutral-800 group-[.is-playing]:bg-neutral-800`
