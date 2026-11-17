@@ -1,6 +1,26 @@
 <template>
-  <div v-if="isMounted && hasMenuItems" ref="menuAnchorRef" class="relative shrink-0">
+  <div
+    v-if="isMounted && (hasMenuItems || showSyncIcon)"
+    ref="menuAnchorRef"
+    class="relative shrink-0 flex flex-row items-center gap-0.5"
+  >
+    <div
+      v-if="showSyncIcon"
+      role="button"
+      tabindex="0"
+      class="p-2 cursor-pointer rounded-md hover:bg-neutral-700/50"
+      :class="syncIconClass"
+      :title="syncIconTitle"
+      aria-label="Sync track"
+      @click.stop="handleSync"
+      @keydown.enter.prevent="handleSync"
+      @keydown.space.prevent="handleSync"
+    >
+      <RefreshCircleSolid class="w-4 h-4" />
+    </div>
+
     <Button
+      v-if="hasMenuItems"
       variant="ghost"
       size="sm"
       class="text-neutral-500 hover:text-amber-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2"
@@ -61,17 +81,24 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
-import { MoreVert } from '@iconoir/vue'
+import { MoreVert, RefreshCircleSolid } from '@iconoir/vue'
 import Button from '~/components/Button.vue'
 import type { Track } from '~/types/track'
+import type { SyncAggregate } from '~/composables/useTrackSyncAggregates'
 
-const props = defineProps<{
-  track: Track
-  isOwnProfile: boolean
-  profileUserType?: 'creator' | 'audio_pro' | null
-  isLoggedIn: boolean
-  collectionId?: number | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    track: Track
+    isOwnProfile: boolean
+    profileUserType?: 'creator' | 'audio_pro' | null
+    isLoggedIn: boolean
+    collectionId?: number | null
+    syncAggregate?: SyncAggregate
+  }>(),
+  {
+    syncAggregate: 'none',
+  },
+)
 
 const emit = defineEmits<{
   'edit-track': [track: Track]
@@ -87,9 +114,36 @@ const showEdit = computed(() => props.isOwnProfile && props.profileUserType === 
 const showComments = computed(() => props.isLoggedIn)
 const showGenerateVideo = computed(() => props.isOwnProfile && props.profileUserType === 'audio_pro')
 const showSync = computed(() => props.isOwnProfile && props.profileUserType === 'audio_pro')
+const showSyncIcon = computed(() => showSync.value)
 const hasMenuItems = computed(
   () => showEdit.value || showComments.value || showGenerateVideo.value || showSync.value,
 )
+
+const syncIconClass = computed(() => {
+  switch (props.syncAggregate) {
+    case 'all':
+      return 'text-green-400'
+    case 'some':
+      return 'text-amber-400'
+    case 'error':
+      return 'text-red-400'
+    default:
+      return 'text-neutral-700 hover:text-neutral-400'
+  }
+})
+
+const syncIconTitle = computed(() => {
+  switch (props.syncAggregate) {
+    case 'all':
+      return 'Synced to all platforms — open Sync'
+    case 'some':
+      return 'Synced to some platforms — open Sync'
+    case 'error':
+      return 'Sync errors — open Sync'
+    default:
+      return 'Sync track'
+  }
+})
 
 const MENU_SPACE_THRESHOLD = 180
 

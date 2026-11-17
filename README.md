@@ -275,6 +275,10 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.10
+  - Widen sticky track actions column so sync + menu icons fit with padding
+- 0.70.9
+  - Track row sync status icon (RefreshCircleSolid): green all / amber some / red errors / transparent none; click opens Sync
 - 0.70.8
   - Cover generation falls back to Grok (grok-imagine-image-2.0) when OpenAI safety-rejects a prompt
 - 0.70.7

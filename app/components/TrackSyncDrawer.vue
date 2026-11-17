@@ -168,7 +168,7 @@
           <p v-if="syncError" class="text-xs text-red-400">{{ syncError }}</p>
         </section>
 
-        <section class="flex flex-col gap-3 border-t border-neutral-800 pt-3">
+        <section class="flex flex-col gap-3 border-t border-neutral-800 p-2">
           <h3 class="text-neutral-100 font-medium">Add platform</h3>
 
           <div class="flex items-center justify-between gap-2">
@@ -234,12 +234,12 @@
           </div>
         </section>
 
-        <div class="flex flex-row gap-3 justify-end border-t border-neutral-800 pt-4 mt-auto">
+        <section class="sticky bottom-0 flex flex-row gap-2 justify-end border-t border-neutral-800 bg-neutral-900 p-2 mt-auto z-20">
           <Button variant="ghost" :disabled="syncing" @click="close">Cancel</Button>
           <Button :disabled="!canSync || syncing" @click="runSync">
             {{ syncing ? 'Syncing…' : 'Sync selected' }}
           </Button>
-        </div>
+        </section>
       </template>
     </div>
   </MasterDrawer>
@@ -741,6 +741,14 @@ async function runSync() {
     }
   } finally {
     syncing.value = false
+    if (localTrack.value?.id) {
+      window.dispatchEvent(
+        new CustomEvent('track-sync-updated', {
+          detail: { trackId: localTrack.value.id },
+          bubbles: true,
+        }),
+      )
+    }
   }
 }
 

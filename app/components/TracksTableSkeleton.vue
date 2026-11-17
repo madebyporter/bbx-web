@@ -145,8 +145,8 @@ const columns = computed((): SkeletonCol[] => {
   if (props.showActions) {
     cols.push({
       label: '',
-      width: TRACK_GRID_WIDTH.tiny,
-      barWidth: '20px',
+      width: TRACK_GRID_WIDTH.actions,
+      barWidth: '72px',
       kind: 'action',
       sticky: true,
     })

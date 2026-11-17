@@ -243,6 +243,7 @@
             :profile-user-type="profileUserType"
             :is-logged-in="!!user"
             :collection-id="collectionId"
+            :sync-aggregate="syncAggregates[track.id] || 'none'"
             @edit-track="$emit('edit-track', $event)"
           />
           <!-- Remove button for creators (remove from collection) -->
@@ -295,6 +296,7 @@ import { Plus } from '@iconoir/vue'
 import TrackRowActionsMenu from '~/components/TrackRowActionsMenu.vue'
 import { buildTrackGridStyle, TRACK_TABLE_INNER_CLASS, TRACK_TABLE_STICKY_ACTIONS_CLASS } from '~/utils/trackTableGrid'
 import { useInfiniteScroll } from '~/composables/useInfiniteScroll'
+import { useTrackSyncAggregates } from '~/composables/useTrackSyncAggregates'
 import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 import type { Track } from '~/types/track'
 
@@ -333,6 +335,12 @@ const props = withDefaults(
     loadingMore: false,
   }
 )
+
+const syncStatusEnabled = computed(
+  () => props.isOwnProfile && props.profileUserType === 'audio_pro',
+)
+const syncTrackIds = computed(() => props.tracks.map((t) => t.id).filter(Boolean))
+const { aggregates: syncAggregates } = useTrackSyncAggregates(syncTrackIds, syncStatusEnabled)
 
 const libraryPath = computed(() => {
   return props.username ? `/u/${props.username}` : '/'

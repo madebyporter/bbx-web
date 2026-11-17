@@ -1,5 +1,7 @@
 export const TRACK_GRID_WIDTH = {
   tiny: '70px',
+  /** Sticky actions: two icon hits (p-2 + 16px) + gap inside cell p-4 */
+  actions: '98px',
   small: '140px',
   medium: '280px',
   large: '560px',
@@ -47,7 +49,7 @@ export function buildTrackGridTemplateColumns({
   }
 
   if (showActions) {
-    cols.push(TRACK_GRID_WIDTH.tiny)
+    cols.push(TRACK_GRID_WIDTH.actions)
   }
 
   return cols.join(' ')
@@ -68,4 +70,4 @@ export const TRACK_TABLE_INNER_CLASS = 'min-w-full w-max h-fit'
 
 /** Sticky right-frozen actions cell (same grid row as data cells). */
 export const TRACK_TABLE_STICKY_ACTIONS_CLASS =
-  'sticky right-0 z-[1] flex items-center justify-end self-stretch bg-neutral-900 group-hover:bg-neutral-800 group-[.is-playing]:bg-neutral-800/70'
+  'sticky right-0 z-[1] flex items-center justify-end self-stretch bg-neutral-900 group-hover:bg-neutral-800 group-[.is-playing]:bg-neutral-800'
