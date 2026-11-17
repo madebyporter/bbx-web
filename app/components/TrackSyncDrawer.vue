@@ -56,35 +56,212 @@
             <li
               v-for="field in metadataFields"
               :key="field.key"
-              class="flex items-center justify-between gap-2 rounded-md border border-neutral-800 px-2.5 py-2"
+              class="flex flex-col gap-2 rounded-md border border-neutral-800 px-2.5 py-2"
             >
-              <div class="min-w-0">
-                <p class="text-neutral-200">
-                  {{ field.label }}
-                  <span
-                    v-if="field.severity === 'required'"
-                    class="text-[10px] uppercase tracking-wide text-neutral-500 ml-1"
-                  >required</span>
-                  <span
-                    v-else-if="field.severity === 'recommended'"
-                    class="text-[10px] uppercase tracking-wide text-neutral-500 ml-1"
-                  >recommended</span>
-                </p>
-                <p class="text-xs mt-0.5" :class="fieldStatusClass(field)">
-                  <template v-if="field.severity === 'info'">{{ field.hint }}</template>
-                  <template v-else-if="field.filled">{{ field.valuePreview }}</template>
-                  <template v-else>Empty</template>
-                </p>
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-neutral-200">
+                    {{ field.label }}
+                    <span
+                      v-if="field.severity === 'required'"
+                      class="text-[10px] uppercase tracking-wide text-neutral-500 ml-1"
+                    >required</span>
+                    <span
+                      v-else-if="field.severity === 'recommended'"
+                      class="text-[10px] uppercase tracking-wide text-neutral-500 ml-1"
+                    >recommended</span>
+                  </p>
+                  <p class="text-xs mt-0.5" :class="fieldStatusClass(field)">
+                    <template v-if="field.severity === 'info'">{{ field.hint }}</template>
+                    <template v-else-if="field.filled">{{ field.valuePreview }}</template>
+                    <template v-else>Empty</template>
+                  </p>
+                </div>
+                <Button
+                  v-if="canExpandField(field)"
+                  variant="ghost"
+                  size="sm"
+                  class="shrink-0 border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
+                  @click="toggleExpandField(field.key)"
+                >
+                  {{
+                    expandedField === field.key
+                      ? 'Done'
+                      : field.filled
+                        ? 'Change'
+                        : 'Edit'
+                  }}
+                </Button>
               </div>
-              <Button
-                v-if="field.severity !== 'info' && !field.filled"
-                variant="ghost"
-                size="sm"
-                class="shrink-0 border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
-                @click="openEditTrack"
+
+              <div
+                v-if="expandedField === field.key"
+                class="flex flex-col gap-2 border-t border-neutral-800 pt-2"
               >
-                Edit
-              </Button>
+                <!-- Title / Artist -->
+                <template v-if="field.key === 'title' || field.key === 'artist'">
+                  <input
+                    v-model="draftText"
+                    type="text"
+                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
+                    :placeholder="field.label"
+                    @change="persistTextField(field.key)"
+                    @keydown.enter.prevent="persistTextField(field.key)"
+                  >
+                </template>
+
+                <!-- Genre -->
+                <template v-else-if="field.key === 'genre'">
+                  <select
+                    v-model="draftGenre"
+                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
+                    @change="persistGenre"
+                  >
+                    <option value="">Select genre…</option>
+                    <option
+                      v-for="genre in TRACK_GENRES"
+                      :key="genre"
+                      :value="genre"
+                    >
+                      {{ genre }}
+                    </option>
+                  </select>
+                </template>
+
+                <!-- BPM -->
+                <template v-else-if="field.key === 'bpm'">
+                  <div class="flex gap-2">
+                    <input
+                      v-model.number="draftBpm"
+                      type="number"
+                      min="0"
+                      max="300"
+                      placeholder="e.g. 120"
+                      class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
+                      @change="persistBpm"
+                    >
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                      :disabled="analyzingBpm || !localTrack?.storage_path"
+                      title="Analyze BPM"
+                      @click="analyzeBpmInline"
+                    >
+                      <CircleSpark v-if="!analyzingBpm" class="w-5 h-5" stroke-width="1.5" />
+                      <span v-else class="text-xs">…</span>
+                    </Button>
+                  </div>
+                  <p v-if="bpmError" class="text-xs text-red-500">{{ bpmError }}</p>
+                  <p v-else-if="analyzingBpm" class="text-xs text-amber-400">Analyzing BPM…</p>
+                </template>
+
+                <!-- Key -->
+                <template v-else-if="field.key === 'key'">
+                  <div class="flex gap-2">
+                    <select
+                      v-model="draftKey"
+                      class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
+                      @change="persistKey"
+                    >
+                      <option value="">Select key…</option>
+                      <option
+                        v-if="draftKey && !(TRACK_KEYS as readonly string[]).includes(draftKey)"
+                        :value="draftKey"
+                      >
+                        {{ draftKey }}
+                      </option>
+                      <option
+                        v-for="keyOpt in TRACK_KEYS"
+                        :key="keyOpt"
+                        :value="keyOpt"
+                      >
+                        {{ keyOpt }}
+                      </option>
+                    </select>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                      :disabled="analyzingKey || !localTrack?.storage_path"
+                      title="Analyze Key"
+                      @click="analyzeKeyInline"
+                    >
+                      <CircleSpark v-if="!analyzingKey" class="w-5 h-5" stroke-width="1.5" />
+                      <span v-else class="text-xs">…</span>
+                    </Button>
+                  </div>
+                  <p v-if="keyError" class="text-xs text-red-500">{{ keyError }}</p>
+                  <p v-else-if="analyzingKey" class="text-xs text-amber-400">Analyzing key…</p>
+                </template>
+
+                <!-- Mood -->
+                <template v-else-if="field.key === 'mood'">
+                  <div class="flex items-center justify-between gap-2">
+                    <p class="text-xs text-neutral-500">Toggle tags or detect from audio</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      :disabled="detectingMoods || !localTrack?.storage_path"
+                      @click="detectMoodsInline"
+                    >
+                      {{ detectingMoods ? 'Detecting…' : 'Detect moods' }}
+                    </Button>
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <label
+                      v-for="mood in BEATBOX_MOOD_TAGS"
+                      :key="mood"
+                      class="cursor-pointer"
+                    >
+                      <input
+                        v-model="draftMoods"
+                        type="checkbox"
+                        :value="mood"
+                        class="hidden"
+                        @change="persistMoods"
+                      >
+                      <span :class="draftMoods.includes(mood) ? 'tag-active' : 'tag'">
+                        {{ mood }}
+                      </span>
+                    </label>
+                  </div>
+                  <p v-if="moodError" class="text-xs text-red-500">{{ moodError }}</p>
+                </template>
+
+                <!-- Artwork -->
+                <template v-else-if="field.key === 'artwork'">
+                  <img
+                    v-if="artworkPreviewUrl"
+                    :src="artworkPreviewUrl"
+                    alt="Track artwork"
+                    class="w-24 h-24 rounded-md object-cover border border-neutral-800 bg-neutral-950"
+                  >
+                  <textarea
+                    v-model="coverDirection"
+                    rows="2"
+                    maxlength="500"
+                    placeholder="Optional cover direction…"
+                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[56px]"
+                    :disabled="generatingArtwork"
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    class="self-start"
+                    :disabled="generatingArtwork || !canGenerateArtwork"
+                    @click="generateArtworkInline"
+                  >
+                    {{ generatingArtwork ? 'Generating cover…' : 'Generate cover' }}
+                  </Button>
+                  <p v-if="artworkError" class="text-xs text-red-500">{{ artworkError }}</p>
+                  <p v-else class="text-xs text-neutral-500">
+                    Uses title, artist, genre, and mood. Saves to Cloudflare R2.
+                  </p>
+                </template>
+              </div>
             </li>
           </ul>
           <p v-if="!requiredReady" class="text-xs text-red-400">
@@ -260,21 +437,32 @@
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
+import { CircleSpark } from '@iconoir/vue'
 import MasterDrawer from '~/components/MasterDrawer.vue'
 import Button from '~/components/Button.vue'
 import { useAuthHeaders } from '~/composables/useAuthHeaders'
 import { useEntitlements } from '~/composables/useEntitlements'
 import { useToast } from '~/composables/useToast'
 import { useArtwork } from '~/composables/useArtwork'
+import {
+  analyzeBPM,
+  analyzeKey,
+  analyzeMoodFromAudio,
+  BEATBOX_MOOD_TAGS,
+  type BeatboxMoodTag,
+} from '~/composables/useAudioAnalyzer'
 import { useSupabase } from '~/utils/supabase'
 import { getExportsForTrack } from '~/composables/useTrackVideoHistory'
 import { uploadTrackVideoToYouTube } from '~/composables/useYouTubeUpload'
 import { usePublishSiteOrigin } from '~/composables/useSiteOrigin'
 import { captureVideoFrameAsFile } from '~/utils/captureVideoFrame'
+import { downloadAudioBlob } from '~/utils/trackAudioStorage'
+import { TRACK_GENRES, TRACK_KEYS } from '~/utils/trackMetadataOptions'
 import type { Track } from '~/types/track'
 import {
   getMetadataFieldStatuses,
   hasRequiredMetadata,
+  type MetadataFieldKey,
   type MetadataFieldStatus,
 } from '~/utils/soundcloudTrackMetadata'
 
@@ -294,10 +482,34 @@ const emit = defineEmits<{
 const { has, refresh: refreshEntitlements } = useEntitlements()
 const { showSuccess, showError } = useToast()
 const publishSiteOrigin = usePublishSiteOrigin()
-const { resolveArtworkUrlForEntity, uploadArtwork } = useArtwork()
+const {
+  resolveArtworkUrlForEntity,
+  uploadArtwork,
+  deleteArtwork,
+  validateAndProcessArtwork,
+} = useArtwork()
 const { supabase } = useSupabase()
 
 const localTrack = ref<Track | null>(null)
+
+/** Accordion: one metadata field open at a time */
+const expandedField = ref<MetadataFieldKey | null>(null)
+const draftText = ref('')
+const draftGenre = ref('')
+const draftBpm = ref<number | null>(null)
+const draftKey = ref('')
+const draftMoods = ref<BeatboxMoodTag[]>([])
+const coverDirection = ref('')
+
+const analyzingBpm = ref(false)
+const analyzingKey = ref(false)
+const detectingMoods = ref(false)
+const generatingArtwork = ref(false)
+const bpmError = ref<string | null>(null)
+const keyError = ref<string | null>(null)
+const moodError = ref<string | null>(null)
+const artworkError = ref<string | null>(null)
+const patchingField = ref(false)
 
 const soundcloudConnected = ref(false)
 const soundcloudUsername = ref<string | null>(null)
@@ -404,24 +616,273 @@ function fieldStatusClass(field: MetadataFieldStatus): string {
   return 'text-amber-400'
 }
 
+function canExpandField(field: MetadataFieldStatus): boolean {
+  if (field.severity === 'info') return false
+  if (field.severity === 'recommended') return true
+  return !field.filled
+}
+
+function moodTagsFromTrack(track: Track | null): BeatboxMoodTag[] {
+  if (!track?.mood) return []
+  const allowed = new Set<string>(BEATBOX_MOOD_TAGS)
+  const raw = Array.isArray(track.mood)
+    ? track.mood
+    : String(track.mood)
+        .split(',')
+        .map((m) => m.trim())
+  return raw.filter((m): m is BeatboxMoodTag => allowed.has(String(m)))
+}
+
+function hydrateDraftsForField(key: MetadataFieldKey) {
+  const track = localTrack.value
+  bpmError.value = null
+  keyError.value = null
+  moodError.value = null
+  artworkError.value = null
+
+  if (!track) return
+
+  if (key === 'title') draftText.value = track.title?.trim() || ''
+  if (key === 'artist') draftText.value = track.artist?.trim() || ''
+  if (key === 'genre') draftGenre.value = track.genre?.trim() || ''
+  if (key === 'bpm') {
+    draftBpm.value =
+      track.bpm != null && Number.isFinite(Number(track.bpm)) ? Number(track.bpm) : null
+  }
+  if (key === 'key') draftKey.value = String(track.key || '').trim()
+  if (key === 'mood') draftMoods.value = moodTagsFromTrack(track)
+  if (key === 'artwork') coverDirection.value = ''
+}
+
+function toggleExpandField(key: MetadataFieldKey) {
+  if (expandedField.value === key) {
+    expandedField.value = null
+    return
+  }
+  hydrateDraftsForField(key)
+  expandedField.value = key
+}
+
+const canGenerateArtwork = computed(() => {
+  const title = localTrack.value?.title?.trim()
+  const artist = localTrack.value?.artist?.trim()
+  return Boolean(title && artist)
+})
+
+async function patchLocalTrack(partial: Record<string, unknown>) {
+  if (!localTrack.value?.id || !supabase) return null
+
+  patchingField.value = true
+  try {
+    const { data, error } = await supabase
+      .from('sounds')
+      .update(partial)
+      .eq('id', localTrack.value.id)
+      .select()
+      .maybeSingle()
+
+    if (error) throw error
+
+    localTrack.value = {
+      ...localTrack.value,
+      ...(data || partial),
+    } as Track
+
+    emit('track-refreshed', localTrack.value)
+    window.dispatchEvent(
+      new CustomEvent('track-updated', {
+        detail: { track: localTrack.value },
+        bubbles: true,
+      }),
+    )
+    return localTrack.value
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to save metadata'
+    showError(message)
+    throw err
+  } finally {
+    patchingField.value = false
+  }
+}
+
+async function persistTextField(key: 'title' | 'artist') {
+  const value = draftText.value.trim()
+  if (!value) {
+    showError(`${key === 'title' ? 'Title' : 'Artist'} is required`)
+    return
+  }
+  try {
+    await patchLocalTrack({ [key]: value })
+  } catch {
+    /* toasted */
+  }
+}
+
+async function persistGenre() {
+  const genre = draftGenre.value.trim() || null
+  try {
+    await patchLocalTrack({ genre })
+  } catch {
+    /* toasted */
+  }
+}
+
+async function persistBpm() {
+  const bpm =
+    draftBpm.value != null && Number.isFinite(Number(draftBpm.value)) && Number(draftBpm.value) > 0
+      ? Math.round(Number(draftBpm.value))
+      : null
+  try {
+    await patchLocalTrack({ bpm })
+  } catch {
+    /* toasted */
+  }
+}
+
+async function persistKey() {
+  const key = draftKey.value.trim() || null
+  try {
+    await patchLocalTrack({ key })
+  } catch {
+    /* toasted */
+  }
+}
+
+async function persistMoods() {
+  const moods = [...draftMoods.value]
+  try {
+    await patchLocalTrack({ mood: moods.length ? moods : null })
+  } catch {
+    /* toasted */
+  }
+}
+
+async function analyzeBpmInline() {
+  if (!localTrack.value?.storage_path || !supabase || analyzingBpm.value) return
+  analyzingBpm.value = true
+  bpmError.value = null
+  try {
+    const audioData = await downloadAudioBlob(localTrack.value, supabase)
+    const detected = await analyzeBPM(audioData)
+    draftBpm.value = detected
+    await patchLocalTrack({ bpm: detected })
+  } catch (err: unknown) {
+    bpmError.value = err instanceof Error ? err.message : 'Failed to analyze BPM'
+  } finally {
+    analyzingBpm.value = false
+  }
+}
+
+async function analyzeKeyInline() {
+  if (!localTrack.value?.storage_path || !supabase || analyzingKey.value) return
+  analyzingKey.value = true
+  keyError.value = null
+  try {
+    const audioData = await downloadAudioBlob(localTrack.value, supabase)
+    const detected = await analyzeKey(audioData)
+    draftKey.value = detected
+    await patchLocalTrack({ key: detected })
+  } catch (err: unknown) {
+    keyError.value = err instanceof Error ? err.message : 'Failed to analyze key'
+  } finally {
+    analyzingKey.value = false
+  }
+}
+
+async function detectMoodsInline() {
+  if (!localTrack.value?.storage_path || !supabase || detectingMoods.value) return
+  detectingMoods.value = true
+  moodError.value = null
+  try {
+    const audioData = await downloadAudioBlob(localTrack.value, supabase)
+    const moods = await analyzeMoodFromAudio(audioData)
+    draftMoods.value = moods
+    await patchLocalTrack({ mood: moods.length ? moods : null })
+    if (moods.length) showSuccess(`Detected: ${moods.join(', ')}`)
+  } catch (err: unknown) {
+    moodError.value = err instanceof Error ? err.message : 'Failed to detect moods'
+  } finally {
+    detectingMoods.value = false
+  }
+}
+
+async function generateArtworkInline() {
+  if (!canGenerateArtwork.value || generatingArtwork.value || !localTrack.value?.id || !supabase) {
+    return
+  }
+
+  generatingArtwork.value = true
+  artworkError.value = null
+  try {
+    const headers = await useAuthHeaders()
+    const title = localTrack.value.title.trim()
+    const artist = localTrack.value.artist.trim()
+    const moodStr = moodTagsFromTrack(localTrack.value).join(', ') || undefined
+
+    const result = await $fetch<{
+      base64: string
+      mimeType: string
+      filename: string
+    }>('/api/integrations/cover/generate', {
+      method: 'POST',
+      headers,
+      body: {
+        title,
+        artist,
+        genre: localTrack.value.genre?.trim() || undefined,
+        mood: moodStr,
+        direction: coverDirection.value.trim().slice(0, 500) || undefined,
+      },
+    })
+
+    const binary = atob(result.base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    const blob = new Blob([bytes], { type: result.mimeType || 'image/png' })
+    const file = new File([blob], result.filename || 'cover-ai.png', {
+      type: result.mimeType || 'image/png',
+    })
+    const { file: processedFile } = await validateAndProcessArtwork(file)
+    const uploaded = await uploadArtwork(processedFile, 'track')
+
+    if (localTrack.value.artwork_path) {
+      try {
+        await deleteArtwork(
+          {
+            id: localTrack.value.id,
+            artwork_path: localTrack.value.artwork_path,
+            artwork_provider: localTrack.value.artwork_provider,
+          },
+          'track',
+        )
+      } catch (err) {
+        console.warn('Failed to delete previous artwork after cover generate:', err)
+      }
+    }
+
+    await patchLocalTrack({
+      artwork_path: uploaded.artwork_path,
+      artwork_provider: uploaded.artwork_provider,
+    })
+    await refreshArtworkPreview()
+    showSuccess('Cover saved')
+  } catch (err: any) {
+    artworkError.value =
+      err?.data?.statusMessage || err?.message || 'Failed to generate cover'
+  } finally {
+    generatingArtwork.value = false
+  }
+}
+
 function onShowUpdate(value: boolean) {
   emit('update:show', value)
 }
 
 function close() {
   preserveStateOnClose.value = false
+  expandedField.value = null
   revokeLocalVideoUrl()
   emit('update:show', false)
-}
-
-function openEditTrack() {
-  if (!localTrack.value) return
-  window.dispatchEvent(
-    new CustomEvent('edit-track', {
-      detail: localTrack.value,
-      bubbles: true,
-    }),
-  )
 }
 
 function openGenerateVideo() {
@@ -505,15 +966,20 @@ async function recoverArtworkFromLocalVideo() {
 
     if (error) throw error
 
-    localTrack.value = {
+    const updatedTrack: Track = {
       ...localTrack.value,
-      artwork_path: data?.artwork_path ?? uploaded.artwork_path,
-      artwork_provider: data?.artwork_provider ?? uploaded.artwork_provider,
+      artwork_path:
+        (typeof data?.artwork_path === 'string' ? data.artwork_path : null) ??
+        uploaded.artwork_path,
+      artwork_provider:
+        (data?.artwork_provider as Track['artwork_provider']) ??
+        uploaded.artwork_provider,
     }
-    emit('track-refreshed', localTrack.value)
+    localTrack.value = updatedTrack
+    emit('track-refreshed', updatedTrack)
     window.dispatchEvent(
       new CustomEvent('track-updated', {
-        detail: { track: localTrack.value },
+        detail: { track: updatedTrack },
         bubbles: true,
       }),
     )
@@ -791,6 +1257,7 @@ watch(
     if (!returningFromVideo) {
       localTrack.value = props.track ? { ...props.track } : null
       syncError.value = null
+      expandedField.value = null
     }
     await refreshDrawerData({ preserveSelections: returningFromVideo })
   },
