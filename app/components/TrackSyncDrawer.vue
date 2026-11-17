@@ -9,7 +9,7 @@
       </div>
     </template>
 
-    <div class="flex flex-col gap-4 h-full text-sm text-neutral-300">
+    <div class="flex flex-col gap-4">
       <template v-if="!hasTrackSync">
         <p>
           Track sync is included with Pro. Upgrade to connect YouTube or SoundCloud and push
@@ -111,7 +111,25 @@
               <span class="text-neutral-100">YouTube</span>
             </label>
             <div class="flex items-center gap-2 shrink-0">
-              <span class="text-xs" :class="youtubeStatusClass">{{ youtubeStatusLabel }}</span>
+              <Button
+                v-if="youtubeNeedsVideo"
+                variant="primary"
+                size="sm"
+                @click="openGenerateVideo"
+              >
+                Generate video
+              </Button>
+              <template v-else>
+                <span class="text-xs" :class="youtubeStatusClass">{{ youtubeStatusLabel }}</span>
+                <Button
+                  v-if="youtubeConnected && youtubeSelected && hasLocalVideo"
+                  variant="ghost"
+                  size="sm"
+                  @click="openGenerateVideo"
+                >
+                  Replace video
+                </Button>
+              </template>
               <a
                 v-if="youtubePermalink"
                 :href="youtubePermalink"
@@ -120,25 +138,6 @@
                 class="text-link text-xs no-underline"
               >View</a>
             </div>
-          </div>
-          <div
-            v-if="youtubeConnected && youtubeSelected"
-            class="flex items-center justify-between gap-2 px-1"
-          >
-            <p
-              class="text-xs"
-              :class="hasLocalVideo ? 'text-green-400' : 'text-amber-400'"
-            >
-              <template v-if="hasLocalVideo">
-                Local video ready for YouTube upload.
-              </template>
-              <template v-else>
-                Generate a video first (cover art can be AI-generated if missing).
-              </template>
-            </p>
-            <Button variant="ghost" size="sm" @click="openGenerateVideo">
-              {{ hasLocalVideo ? 'Replace video' : 'Generate video' }}
-            </Button>
           </div>
 
           <div
@@ -382,13 +381,10 @@ const soundcloudStatusLabel = computed(() =>
   statusLabel(soundcloudStatus.value, soundcloudConnected.value),
 )
 const soundcloudStatusClass = computed(() => statusClassFor(soundcloudStatus.value))
-const youtubeStatusLabel = computed(() => {
-  if (youtubeNeedsVideo.value) return 'Needs video'
-  return statusLabel(youtubeStatus.value, youtubeConnected.value)
-})
-const youtubeStatusClass = computed(() =>
-  statusClassFor(youtubeNeedsVideo.value ? 'needs_video' : youtubeStatus.value),
+const youtubeStatusLabel = computed(() =>
+  statusLabel(youtubeStatus.value, youtubeConnected.value),
 )
+const youtubeStatusClass = computed(() => statusClassFor(youtubeStatus.value))
 
 function fieldStatusClass(field: MetadataFieldStatus): string {
   if (field.severity === 'info') return 'text-neutral-500'

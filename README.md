@@ -275,6 +275,8 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.13
+  - Sync drawer: YouTube “Generate video” as primary sm in-row CTA (drop extra status line)
 - 0.70.12
   - Tracks table skeleton: no sticky-action hover chrome on fake rows
 - 0.70.11
