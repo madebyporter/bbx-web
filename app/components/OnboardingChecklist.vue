@@ -48,7 +48,7 @@
                 v-if="item.href"
                 :to="item.href"
                 class="text-link text-xs hover:text-amber-400 no-underline"
-                @click="handleItemClick(item.id)"
+                @click="handleChecklistNav(item)"
               >
                 {{ ctaLabel(item) }}
               </NuxtLink>
@@ -92,8 +92,21 @@ function ctaLabel(item: ChecklistItem) {
   return 'Open'
 }
 
+const SHARE_OPEN_KEY = 'bbx_open_share_drawer'
+
 function handleItemClick(id: ChecklistItemId) {
   capture('onboarding_checklist_item_clicked', { item_id: id })
+}
+
+function markShareOpenPending(item: ChecklistItem) {
+  if (item.action !== 'share' && item.id !== 'invite_review') return
+  if (typeof sessionStorage === 'undefined') return
+  sessionStorage.setItem(SHARE_OPEN_KEY, '1')
+}
+
+function handleChecklistNav(item: ChecklistItem) {
+  handleItemClick(item.id)
+  markShareOpenPending(item)
 }
 
 function handleUpload() {
@@ -103,6 +116,7 @@ function handleUpload() {
 
 function handleHrefFallback(item: ChecklistItem) {
   handleItemClick(item.id)
+  markShareOpenPending(item)
   if (item.href) {
     void navigateTo(item.href)
     return

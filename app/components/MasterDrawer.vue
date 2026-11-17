@@ -39,7 +39,7 @@ const modal = ref<HTMLElement | null>(null)
 const initialX = ref(100)
 const modalOpacity = ref(0)
 
-const animateIn = () => {
+const runAnimateIn = () => {
   if (!modal.value) return
   modalOpacity.value = 1
   gsap.to(modal.value, {
@@ -49,6 +49,23 @@ const animateIn = () => {
     onComplete: () => {
       initialX.value = 0
     }
+  })
+}
+
+const animateIn = () => {
+  if (modal.value) {
+    runAnimateIn()
+    return
+  }
+  // Teleport + v-if can leave the ref empty for an extra frame
+  nextTick(() => {
+    if (modal.value) {
+      runAnimateIn()
+      return
+    }
+    requestAnimationFrame(() => {
+      runAnimateIn()
+    })
   })
 }
 

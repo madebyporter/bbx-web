@@ -41,7 +41,7 @@
         @open-filter-sort="handleOpenFilterSort"
         @clear-filters="handleClearFilterSort"
         @open-settings="showSettingsDrawer = true"
-        @open-share="showShareDrawer = true"
+        @open-share="openShareDrawer"
         @update:analytics-mode="analyticsMode = $event"
       />
 
@@ -104,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, inject, watch, type ComputedRef } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch, nextTick, type ComputedRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -213,13 +213,46 @@ const isCollectionOwner = computed(() => {
   return !!(user.value && collection.value && user.value.id === collection.value.user_id)
 })
 
-function openShareFromQuery() {
-  if (!isCollectionOwner.value) return
-  if (String(route.query.share || '') !== '1') return
+const SHARE_OPEN_KEY = 'bbx_open_share_drawer'
+
+function openShareDrawer() {
+  // Force a closed→open cycle so MasterDrawer can animate if show was already true
+  if (showShareDrawer.value) {
+    showShareDrawer.value = false
+    void nextTick(() => {
+      showShareDrawer.value = true
+    })
+    return
+  }
   showShareDrawer.value = true
-  const nextQuery = { ...route.query }
-  delete nextQuery.share
-  void router.replace({ query: nextQuery })
+}
+
+function consumePendingShareOpen(): boolean {
+  if (String(route.query.share || '') === '1') return true
+  if (typeof sessionStorage === 'undefined') return false
+  return sessionStorage.getItem(SHARE_OPEN_KEY) === '1'
+}
+
+function clearPendingShareOpen() {
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.removeItem(SHARE_OPEN_KEY)
+  }
+  if (String(route.query.share || '') === '1') {
+    const nextQuery = { ...route.query }
+    delete nextQuery.share
+    void router.replace({ path: route.path, query: nextQuery })
+  }
+}
+
+function openShareFromQuery() {
+  if (!isCollectionOwner.value || !collection.value) return
+  if (!consumePendingShareOpen()) return
+
+  clearPendingShareOpen()
+  // Wait until CollectionShareDrawer is mounted with show=false, then open
+  void nextTick(() => {
+    openShareDrawer()
+  })
 }
 
 watch(
