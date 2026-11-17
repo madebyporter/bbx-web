@@ -180,10 +180,10 @@
                   <textarea
                     id="edit-cover-direction"
                     v-model="coverDirection"
-                    rows="2"
-                    maxlength="500"
+                    rows="8"
+                    :maxlength="COVER_DIRECTION_MAX"
                     placeholder="Optional — e.g. red moon over city skyline…"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[64px]"
+                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[180px]"
                     :disabled="isUpdating || generatingArtwork"
                   />
                   <div class="flex flex-wrap items-center gap-2">
@@ -426,6 +426,7 @@ import { generateSlug, generateUniqueSlug } from '~/utils/collections'
 import { deleteAudio, downloadAudioBlob, uploadAudio } from '~/utils/trackAudioStorage'
 import { normalizeArtworkProvider } from '~/utils/artworkStorage'
 import { useAuthHeaders } from '~/composables/useAuthHeaders'
+import { COVER_DIRECTION_MAX } from '~/utils/coverDirection'
 import { CircleSpark } from '@iconoir/vue'
 
 interface Props {
@@ -762,7 +763,7 @@ const handleGenerateArtwork = async () => {
         artist,
         genre: metadata.value.genre?.trim() || undefined,
         mood: metadata.value.mood?.trim() || undefined,
-        direction: coverDirection.value.trim().slice(0, 500) || undefined,
+        direction: coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || undefined,
       },
     })
 

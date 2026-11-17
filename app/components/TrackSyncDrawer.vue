@@ -246,10 +246,10 @@
                   >
                   <textarea
                     v-model="coverDirection"
-                    rows="2"
-                    maxlength="500"
+                    rows="8"
+                    :maxlength="COVER_DIRECTION_MAX"
                     placeholder="Optional cover direction…"
-                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[56px]"
+                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[180px]"
                     :disabled="generatingArtwork"
                   />
                   <Button
@@ -263,7 +263,7 @@
                   </Button>
                   <p v-if="artworkError" class="text-xs text-red-500">{{ artworkError }}</p>
                   <p v-else class="text-xs text-neutral-500">
-                    Uses title, artist, genre, and mood. Saves to Cloudflare R2.
+                    Uses title, artist, genre, and mood.
                   </p>
                 </template>
               </div>
@@ -463,6 +463,7 @@ import { usePublishSiteOrigin } from '~/composables/useSiteOrigin'
 import { captureVideoFrameAsFile } from '~/utils/captureVideoFrame'
 import { downloadAudioBlob } from '~/utils/trackAudioStorage'
 import { TRACK_GENRES, TRACK_KEYS } from '~/utils/trackMetadataOptions'
+import { COVER_DIRECTION_MAX } from '~/utils/coverDirection'
 import type { Track } from '~/types/track'
 import {
   getMetadataFieldStatuses,
@@ -836,7 +837,7 @@ async function generateArtworkInline() {
         artist,
         genre: localTrack.value.genre?.trim() || undefined,
         mood: moodStr,
-        direction: coverDirection.value.trim().slice(0, 500) || undefined,
+        direction: coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || undefined,
       },
     })
 

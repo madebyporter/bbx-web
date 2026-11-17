@@ -46,14 +46,14 @@
               <textarea
                 id="cover-direction"
                 v-model="coverDirection"
-                rows="2"
-                maxlength="500"
-                    placeholder="e.g. neon bounce energy, city night, bold shapes…"
-                class="w-full p-3 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[64px]"
+                rows="8"
+                :maxlength="COVER_DIRECTION_MAX"
+                placeholder="e.g. neon bounce energy, city night, bold shapes…"
+                class="w-full p-3 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[180px]"
                 :disabled="generatingCover || detectingMoods || isGenerating"
               />
               <p class="text-xs text-neutral-500">
-                Optional album-art direction (max 500). Prefer scenes/mood over body or pose descriptions — OpenAI may block sexualized prompts.
+                Optional album-art direction. Prefer scenes/mood over body or pose descriptions — OpenAI may block sexualized prompts.
               </p>
             </div>
 
@@ -383,6 +383,7 @@ import {
   type BeatboxMoodTag,
 } from '~/composables/useAudioAnalyzer'
 import type { Track } from '~/types/track'
+import { COVER_DIRECTION_MAX } from '~/utils/coverDirection'
 
 const props = defineProps<{
   show: boolean
@@ -851,7 +852,7 @@ async function handleGenerateCover() {
     const headers = await useAuthHeaders()
     const mood =
       selectedMoods.value.length > 0 ? selectedMoods.value.join(', ') : undefined
-    const direction = coverDirection.value.trim().slice(0, 500) || undefined
+    const direction = coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || undefined
 
     const result = await $fetch<{
       base64: string

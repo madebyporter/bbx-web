@@ -1,8 +1,9 @@
 import { readBody } from 'h3'
-import { generateCoverImageBase64 } from '../../../utils/openaiCover'
+import {
+  generateCoverImageBase64,
+  MAX_COVER_DIRECTION_CHARS,
+} from '../../../utils/openaiCover'
 import { requireAuthUser } from '../../../utils/supabaseAuth'
-
-const MAX_DIRECTION_CHARS = 500
 
 export default defineEventHandler(async (event) => {
   await requireAuthUser(event)
@@ -27,7 +28,7 @@ export default defineEventHandler(async (event) => {
   const mood = body?.mood ? String(body.mood).trim() : undefined
   const directionRaw = body?.direction ? String(body.direction).trim() : ''
   const direction = directionRaw
-    ? directionRaw.slice(0, MAX_DIRECTION_CHARS)
+    ? directionRaw.slice(0, MAX_COVER_DIRECTION_CHARS)
     : undefined
 
   const { base64, mimeType, provider } = await generateCoverImageBase64({

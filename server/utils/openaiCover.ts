@@ -23,7 +23,8 @@ export function hasGrokCoverKey(): boolean {
   return Boolean(readXaiKey())
 }
 
-const MAX_DIRECTION_CHARS = 500
+/** Soft cap for cover direction prompts — effectively unlimited for UI; protects request size. */
+export const MAX_COVER_DIRECTION_CHARS = 8000
 
 export function buildCoverPrompt(params: {
   title: string
@@ -176,7 +177,7 @@ export async function generateCoverImageBase64(params: {
   direction?: string
 }): Promise<{ base64: string; mimeType: string; provider: CoverProvider }> {
   const direction = params.direction
-    ? params.direction.trim().slice(0, MAX_DIRECTION_CHARS)
+    ? params.direction.trim().slice(0, MAX_COVER_DIRECTION_CHARS)
     : undefined
 
   const prompt = buildCoverPrompt({
