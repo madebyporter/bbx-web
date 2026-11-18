@@ -24,8 +24,7 @@
               <img
                 :src="coverPreview"
                 alt="Cover preview"
-                class="w-full h-full"
-                :class="selectedDimension === 'square' ? 'object-contain' : 'object-cover'"
+                class="w-full h-full object-contain"
               />
             </div>
           </div>
@@ -346,9 +345,24 @@
 
     <template #footer>
       <div class="flex flex-col gap-2">
-        <Button :disabled="!canGenerate || isGenerating" @click="handleGenerate">
-          {{ isGenerating ? 'Generating...' : 'Generate video' }}
-        </Button>
+        <div class="flex flex-row gap-2 items-stretch">
+          <Button
+            class="flex-1 min-w-0"
+            :disabled="!canGenerate || isGenerating"
+            @click="handleGenerate"
+          >
+            {{ isGenerating ? 'Generating...' : 'Generate video' }}
+          </Button>
+          <Button
+            v-if="showBackToSync"
+            variant="secondary"
+            class="shrink-0"
+            :disabled="isGenerating"
+            @click="handleBackToSync"
+          >
+            Back to Sync
+          </Button>
+        </div>
         <div v-if="generationMessage && (encoderLoading || isGenerating)" class="flex flex-col gap-2">
           <p class="text-sm text-neutral-400">{{ generationMessage }}</p>
           <div
@@ -415,9 +429,12 @@ const props = withDefaults(
     track: Track | null
     /** When true (e.g. Sync → YouTube selected), default Dimensions to landscape. */
     preferLandscape?: boolean
+    /** Opened from Sync — show Back to Sync after a video exists. */
+    returnToSync?: boolean
   }>(),
   {
     preferLandscape: false,
+    returnToSync: false,
   },
 )
 
@@ -488,6 +505,12 @@ const canUseTrackArtwork = computed(() => {
 
 const canGenerate = computed(() => {
   return !!(props.track?.storage_path && coverFile.value)
+})
+
+/** From Sync + a generated video this session or in local history. */
+const showBackToSync = computed(() => {
+  if (!props.returnToSync) return false
+  return Boolean(latestResult.value) || history.value.length > 0
 })
 
 /** Paid / valid comp / admin — server re-checks on save. */
@@ -735,10 +758,72 @@ async function loadHistory() {
   historyLoading.value = true
   try {
     history.value = await getExportsForTrack(props.track.id)
+    // Local IndexedDB can be empty (quota / cleared) while cloud save still exists
+    if (history.value.length === 0) {
+      await hydrateCloudVideoIntoHistory()
+    } else if (!latestResult.value && history.value[0]?.blob) {
+      latestResult.value = {
+        blob: history.value[0].blob,
+        filename: history.value[0].filename,
+      }
+      setPreviewBlob(history.value[0].blob)
+    }
   } catch {
     showError('Failed to load video history')
   } finally {
     historyLoading.value = false
+  }
+}
+
+/** Pull cloud-saved MP4 into preview + local history when device history is empty. */
+async function hydrateCloudVideoIntoHistory() {
+  if (!props.track?.id) return
+  const path =
+    cloudVideoPath.value ||
+    (typeof props.track.video_path === 'string' ? props.track.video_path.trim() : '')
+  if (!path) return
+
+  try {
+    const headers = await useAuthHeaders()
+    if (!headers.Authorization) return
+
+    // Signed URL + browser fetch (GET CORS is * on R2). Avoids Netlify 6MB proxy limit.
+    const presign = await $fetch<{ videoUrl: string; filename: string }>(
+      '/api/storage/presign-track-video-play',
+      {
+        method: 'POST',
+        headers,
+        body: { soundId: props.track.id },
+      },
+    )
+    const response = await fetch(presign.videoUrl)
+    if (!response.ok) {
+      throw new Error(`Cloud video download failed (${response.status})`)
+    }
+    const blob = await response.blob()
+    const filename = presign.filename || 'cloud-video.mp4'
+    const exportRecord: TrackVideoExport = {
+      id: crypto.randomUUID(),
+      trackId: props.track.id,
+      trackTitle: props.track.title,
+      createdAt: new Date().toISOString(),
+      filename,
+      sizeBytes: blob.size,
+      blob,
+    }
+
+    try {
+      await saveExport(exportRecord)
+      history.value = await getExportsForTrack(props.track.id)
+    } catch (persistErr) {
+      console.warn('Could not cache cloud video in local history:', persistErr)
+      history.value = [exportRecord]
+    }
+
+    latestResult.value = { blob, filename }
+    setPreviewBlob(blob)
+  } catch (err) {
+    console.warn('Failed to hydrate cloud video into history:', err)
   }
 }
 
@@ -780,14 +865,18 @@ async function initializeDrawer() {
 
 watch(
   () => [props.show, props.track?.id] as const,
-  ([show, trackId]) => {
-    if (show && trackId) {
+  ([show, trackId], previous) => {
+    const wasShow = previous?.[0]
+    const wasTrackId = previous?.[1]
+    // Only full-reset when opening or switching tracks — not when track metadata
+    // patches (e.g. cloud save updates video_path) or the getter returns a new array.
+    if (show && trackId && (wasShow !== true || trackId !== wasTrackId)) {
       initializeDrawer()
-    } else if (!show) {
+    } else if (!show && wasShow) {
       resetDrawerState()
       encoderReady.value = isTrackVideoEncoderLoaded()
     }
-  }
+  },
 )
 
 async function handleCoverUpload(event: Event) {
@@ -1018,8 +1107,14 @@ async function handleGenerate() {
       blob: result.blob,
     }
 
-    await saveExport(exportRecord)
-    await loadHistory()
+    try {
+      await saveExport(exportRecord)
+      await loadHistory()
+    } catch (persistErr) {
+      console.warn('Video generated but local history save failed:', persistErr)
+      history.value = [exportRecord, ...history.value.filter((h) => h.id !== exportRecord.id)]
+      showError('Video is ready, but this device could not store it in History (storage full?)')
+    }
 
     // Keep track artwork in sync with the cover used for the video
     const artworkEmpty =
@@ -1122,6 +1217,31 @@ async function handleSaveCloudVideo() {
     })
 
     cloudVideoPath.value = confirmed.video_path
+    // Keep local history/preview — cloud save must not wipe IndexedDB or session preview
+    if (latestResult.value) {
+      const stillInHistory = history.value.some(
+        (item) =>
+          item.filename === latestResult.value!.filename &&
+          item.sizeBytes === latestResult.value!.blob.size,
+      )
+      if (!stillInHistory) {
+        const exportRecord: TrackVideoExport = {
+          id: crypto.randomUUID(),
+          trackId: props.track.id,
+          trackTitle: props.track.title,
+          createdAt: new Date().toISOString(),
+          filename: latestResult.value.filename,
+          sizeBytes: latestResult.value.blob.size,
+          blob: latestResult.value.blob,
+        }
+        try {
+          await saveExport(exportRecord)
+          await loadHistory()
+        } catch {
+          history.value = [exportRecord, ...history.value]
+        }
+      }
+    }
     dispatchTrackUpdated({
       video_path: confirmed.video_path,
       video_provider: confirmed.video_provider,
@@ -1154,6 +1274,12 @@ async function handleDeleteHistory(id: string) {
   } finally {
     deletingId.value = null
   }
+}
+
+function handleBackToSync() {
+  abortController?.abort()
+  abortController = null
+  emit('update:show', false)
 }
 
 function handleDrawerUpdate(value: boolean) {

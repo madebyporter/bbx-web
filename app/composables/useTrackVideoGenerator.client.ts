@@ -35,7 +35,7 @@ export const TRACK_VIDEO_DIMENSION_OPTIONS: Array<{
   {
     value: 'landscape',
     label: 'Landscape',
-    description: '1920×1080 (16:9) · YouTube, X, Reddit — cover fills frame',
+    description: '1920×1080 (16:9) · YouTube, X, Reddit — square cover, background fills sides',
   },
 ]
 
@@ -210,32 +210,18 @@ function buildVideoFilter({
   paddingPx,
   backgroundColor,
   isGif,
-  fit,
 }: {
   width: number
   height: number
   paddingPx: number
   backgroundColor: string
   isGif: boolean
-  /** contain = letterbox/pillarbox (square); cover = fill + crop (landscape/portrait for YouTube etc.) */
-  fit: 'contain' | 'cover'
 }): string {
+  // Always keep cover art aspect (square stays square). Pad with background to fill
+  // the output frame (e.g. 1920×1080 landscape for YouTube).
   const innerW = Math.max(1, width - paddingPx * 2)
   const innerH = Math.max(1, height - paddingPx * 2)
   const padColor = toFfmpegPadColor(backgroundColor)
-
-  if (fit === 'cover') {
-    // Fill the inner frame, crop overflow, then pad to full output if padding > 0
-    const scaleFilter = `scale=${innerW}:${innerH}:force_original_aspect_ratio=increase:flags=lanczos`
-    const cropFilter = `crop=${innerW}:${innerH}`
-    const padFilter = `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=${padColor}`
-    const chain =
-      paddingPx > 0
-        ? `${scaleFilter},${cropFilter},${padFilter}`
-        : `${scaleFilter},${cropFilter}`
-    return isGif ? chain : `${chain},format=yuv420p`
-  }
-
   const scaleFilter = `scale=${innerW}:${innerH}:force_original_aspect_ratio=decrease:flags=lanczos`
   const padFilter = `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=${padColor}`
   return isGif ? `${scaleFilter},${padFilter}` : `${scaleFilter},${padFilter},format=yuv420p`
@@ -263,15 +249,12 @@ function buildEncodeArgs({
   const preset = TRACK_VIDEO_QUALITY_PRESETS[quality]
   const outputSize = resolveOutputSize(dimension, quality)
   const clampedPadding = clampPaddingPx(paddingPx, outputSize)
-  // Landscape/portrait fill the frame (YouTube 16:9, Stories 9:16). Square keeps contain + pad.
-  const fit = dimension === 'square' ? 'contain' : 'cover'
   const videoFilter = buildVideoFilter({
     width: outputSize.width,
     height: outputSize.height,
     paddingPx: clampedPadding,
     backgroundColor,
     isGif,
-    fit,
   })
 
   if (isGif) {

@@ -46,9 +46,16 @@ const client = new S3Client({
   requestChecksumCalculation: 'WHEN_REQUIRED',
 })
 
-// Production + local only. Netlify deploy previews use same-origin /api/storage/upload-artwork
-// (see artworkStorage.ts) — do not rely on listing every deploy-preview-N origin here.
+// PUT: production + local only (Netlify previews proxy uploads same-origin).
+// GET/HEAD: * so signed download URLs work from deploy previews (cloud video hydrate).
 const CORSRules = [
+  {
+    AllowedOrigins: ['*'],
+    AllowedMethods: ['GET', 'HEAD'],
+    AllowedHeaders: ['*'],
+    ExposeHeaders: ['ETag', 'Content-Length', 'Content-Type'],
+    MaxAgeSeconds: 3600,
+  },
   {
     AllowedOrigins: [
       'http://localhost',
@@ -60,7 +67,7 @@ const CORSRules = [
       'https://beatbox.studio',
       'https://www.beatbox.studio',
     ],
-    AllowedMethods: ['GET', 'PUT', 'HEAD'],
+    AllowedMethods: ['PUT'],
     AllowedHeaders: ['Content-Type'],
     ExposeHeaders: ['ETag', 'Content-Length', 'Content-Type'],
     MaxAgeSeconds: 3600,

@@ -275,6 +275,16 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.41
+  - Match YouTube title AI button height to the title input
+- 0.70.40
+  - Sync YouTube title: AI SEO generate (CircleSpark) from track metadata
+- 0.70.39
+  - Keep generate-video history/preview after cloud save; hydrate from R2 when local history empty
+- 0.70.38
+  - Generate video footer: Back to Sync when opened from Sync and a video exists
+- 0.70.37
+  - Landscape/portrait video keeps square cover; background color pads the 16:9/9:16 frame
 - 0.70.36
   - Cover generate via Netlify background job + client poll (avoids 60s sync timeout)
 - 0.70.35

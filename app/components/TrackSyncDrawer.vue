@@ -446,19 +446,43 @@
               <label for="youtube-title" class="text-sm font-medium text-neutral-200">
                 YouTube title
               </label>
-              <input
-                id="youtube-title"
-                v-model="draftYoutubeTitle"
-                type="text"
-                maxlength="100"
-                class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
-                :placeholder="localTrack?.title || 'YouTube title'"
-                :disabled="syncing || patchingField"
-                @change="persistYoutubeTitle"
-                @keydown.enter.prevent="persistYoutubeTitle"
-              >
-              <p class="text-xs text-neutral-500">
-                Optional. Empty uses the Beatbox title. Max 100 characters.
+              <div class="flex gap-2 items-stretch">
+                <input
+                  id="youtube-title"
+                  v-model="draftYoutubeTitle"
+                  type="text"
+                  maxlength="100"
+                  class="w-full min-w-0 p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
+                  :placeholder="localTrack?.title || 'YouTube title'"
+                  :disabled="syncing || patchingField || generatingYoutubeTitle"
+                  @change="persistYoutubeTitle"
+                  @keydown.enter.prevent="persistYoutubeTitle"
+                >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  class="shrink-0 !p-0 aspect-square w-auto self-stretch border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                  :disabled="
+                    generatingYoutubeTitle ||
+                    syncing ||
+                    !localTrack?.title ||
+                    !localTrack?.artist
+                  "
+                  title="Generate SEO YouTube title"
+                  @click="generateYoutubeTitleInline"
+                >
+                  <CircleSpark v-if="!generatingYoutubeTitle" class="w-5 h-5" stroke-width="1.5" />
+                  <span v-else class="text-xs">…</span>
+                </Button>
+              </div>
+              <p v-if="youtubeTitleError" class="text-xs text-red-500">{{ youtubeTitleError }}</p>
+              <p v-else class="text-xs text-neutral-500">
+                {{
+                  generatingYoutubeTitle
+                    ? 'Generating SEO title…'
+                    : 'Optional. Empty uses the Beatbox title. Max 100 characters.'
+                }}
               </p>
             </div>
           </div>
@@ -640,6 +664,8 @@ const draftKey = ref('')
 const draftMoods = ref<BeatboxMoodTag[]>([])
 const draftDescription = ref('')
 const draftYoutubeTitle = ref('')
+const generatingYoutubeTitle = ref(false)
+const youtubeTitleError = ref<string | null>(null)
 const coverDirection = ref('')
 const generatingDescription = ref(false)
 const descriptionError = ref<string | null>(null)
@@ -937,6 +963,46 @@ async function persistYoutubeTitle() {
     await patchLocalTrack({ youtube_title: value || null })
   } catch {
     /* toasted */
+  }
+}
+
+async function generateYoutubeTitleInline() {
+  if (
+    !localTrack.value?.title ||
+    !localTrack.value?.artist ||
+    generatingYoutubeTitle.value
+  ) {
+    return
+  }
+
+  generatingYoutubeTitle.value = true
+  youtubeTitleError.value = null
+  try {
+    const headers = await useAuthHeaders()
+    const result = await $fetch<{ youtube_title: string }>(
+      '/api/integrations/track/youtube-title/generate',
+      {
+        method: 'POST',
+        headers,
+        body: {
+          title: localTrack.value.title,
+          artist: localTrack.value.artist,
+          genre: localTrack.value.genre || undefined,
+          mood: localTrack.value.mood || undefined,
+          bpm: localTrack.value.bpm ?? undefined,
+          key: localTrack.value.key || undefined,
+          description: localTrack.value.description || undefined,
+        },
+      },
+    )
+    draftYoutubeTitle.value = result.youtube_title
+    await patchLocalTrack({ youtube_title: result.youtube_title })
+    showSuccess('YouTube title generated')
+  } catch (err: any) {
+    youtubeTitleError.value =
+      err?.data?.statusMessage || err?.message || 'Failed to generate YouTube title'
+  } finally {
+    generatingYoutubeTitle.value = false
   }
 }
 

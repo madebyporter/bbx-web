@@ -85,6 +85,7 @@
       v-model:show="showGenerateTrackVideoDrawer"
       :track="generateVideoTrack"
       :prefer-landscape="generateVideoPreferLandscape"
+      :return-to-sync="reopenSyncAfterVideo"
     />
 
     <TrackSyncDrawer
