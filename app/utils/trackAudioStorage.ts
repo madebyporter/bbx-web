@@ -67,6 +67,16 @@ function shouldProxyR2UploadThroughApi(): boolean {
   return host === 'localhost' || host === '127.0.0.1'
 }
 
+function shouldProxyR2AudioDownloadThroughApi(): boolean {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  return (
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host.endsWith('.netlify.app')
+  )
+}
+
 export async function uploadAudio(
   file: File,
   supabase: SupabaseClient | null,
@@ -165,6 +175,21 @@ export async function downloadAudioBlob(
     if (error) throw error
     if (!data) throw new Error('Failed to download audio file')
     return data
+  }
+
+  const accessToken = await getAccessToken(supabase)
+  if (!accessToken) {
+    throw new Error('Not authenticated')
+  }
+
+  // Localhost + Netlify previews: same-origin API (bbx-sounds often lacks browser CORS)
+  if (shouldProxyR2AudioDownloadThroughApi()) {
+    return await $fetch<Blob>('/api/storage/download-audio', {
+      method: 'GET',
+      query: { trackId: track.id },
+      headers: { Authorization: `Bearer ${accessToken}` },
+      responseType: 'blob',
+    })
   }
 
   const playbackUrl = await getPlaybackUrl(track, supabase)

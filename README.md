@@ -275,6 +275,8 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.43
+  - Proxy R2 audio downloads same-origin on Netlify previews / localhost (mood/BPM/key analyze CORS)
 - 0.70.42
   - Hide SoundCloud connect/sync UI in Sync drawer until API is ready
 - 0.70.41
