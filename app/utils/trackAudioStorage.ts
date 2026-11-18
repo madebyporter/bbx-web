@@ -182,7 +182,7 @@ export async function downloadAudioBlob(
     throw new Error('Not authenticated')
   }
 
-  // Localhost + Netlify previews: same-origin API (bbx-sounds often lacks browser CORS)
+  // Localhost + Netlify previews: same-origin API (avoids R2 browser CORS)
   if (shouldProxyR2AudioDownloadThroughApi()) {
     return await $fetch<Blob>('/api/storage/download-audio', {
       method: 'GET',
