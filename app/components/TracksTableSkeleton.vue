@@ -108,7 +108,7 @@ const columns = computed((): SkeletonCol[] => {
       barWidth: '96px',
       kind: 'text',
     },
-    { label: 'Version', width: TRACK_GRID_WIDTH.tiny, barWidth: '40px', kind: 'text' },
+    { label: 'Version', width: TRACK_GRID_WIDTH.compact, barWidth: '40px', kind: 'text' },
   ]
 
   if (analytics) {
@@ -130,7 +130,7 @@ const columns = computed((): SkeletonCol[] => {
     cols.push(
       { label: 'Genre', width: TRACK_GRID_WIDTH.small, barWidth: '56px', kind: 'text' },
       { label: 'BPM', width: TRACK_GRID_WIDTH.tiny, barWidth: '32px', kind: 'text' },
-      { label: 'Duration', width: TRACK_GRID_WIDTH.tiny, barWidth: '40px', kind: 'text' },
+      { label: 'Duration', width: TRACK_GRID_WIDTH.compact, barWidth: '40px', kind: 'text' },
     )
     if (props.showStatus) {
       cols.push({

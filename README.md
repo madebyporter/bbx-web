@@ -275,6 +275,8 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.46
+  - Public/logged-out track grid: cap Title width; widen Version/Duration so last column stays on-screen
 - 0.70.45
   - YouTube sync description: Track details link uses slug track page URL (not profile UUID)
 - 0.70.44

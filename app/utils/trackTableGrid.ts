@@ -2,6 +2,8 @@ export const TRACK_GRID_WIDTH = {
   tiny: '70px',
   /** Sticky actions: two icon hits (p-2 + 16px) + gap inside cell p-4 */
   actions: '98px',
+  /** Version / Duration headers + cell padding */
+  compact: '100px',
   small: '140px',
   medium: '280px',
   large: '560px',
@@ -21,14 +23,20 @@ export function buildTrackGridTemplateColumns({
   showActions = false,
   analyticsMode = false,
 }: TrackGridColumnOptions): string {
-  const titleCol = `minmax(${TRACK_GRID_WIDTH.medium}, 1fr)`
+  // Logged-out / public grids have fewer columns — don't let Title's 1fr eat the row
+  // and shove Duration off-screen.
+  const publicCompactGrid =
+    !analyticsMode && !showActions && !showCollection && !showStatus
+  const titleCol = publicCompactGrid
+    ? `minmax(${TRACK_GRID_WIDTH.medium}, ${TRACK_GRID_WIDTH.large})`
+    : `minmax(${TRACK_GRID_WIDTH.medium}, 1fr)`
   const artistCol = analyticsMode ? TRACK_GRID_WIDTH.medium : TRACK_GRID_WIDTH.small
 
   const cols: string[] = [
     TRACK_GRID_WIDTH.tiny,
     titleCol,
     artistCol,
-    TRACK_GRID_WIDTH.tiny,
+    TRACK_GRID_WIDTH.compact,
   ]
 
   if (analyticsMode) {
@@ -42,7 +50,11 @@ export function buildTrackGridTemplateColumns({
     if (showCollection) {
       cols.push(TRACK_GRID_WIDTH.medium)
     }
-    cols.push(TRACK_GRID_WIDTH.small, TRACK_GRID_WIDTH.tiny, TRACK_GRID_WIDTH.tiny)
+    cols.push(
+      TRACK_GRID_WIDTH.small,
+      TRACK_GRID_WIDTH.tiny,
+      TRACK_GRID_WIDTH.compact,
+    )
     if (showStatus) {
       cols.push(TRACK_GRID_WIDTH.small)
     }
