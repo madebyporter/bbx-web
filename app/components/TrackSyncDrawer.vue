@@ -376,7 +376,7 @@
           <h3 class="text-neutral-100 font-medium">Platforms</h3>
 
           <p
-            v-if="!youtubeConnected && !soundcloudConnected"
+            v-if="!youtubeConnected && !(soundcloudSyncUiEnabled && soundcloudConnected)"
             class="text-xs text-neutral-500"
           >
             Connect a platform below to sync.
@@ -488,7 +488,7 @@
           </div>
 
           <div
-            v-if="soundcloudConnected"
+            v-if="soundcloudSyncUiEnabled && soundcloudConnected"
             class="flex items-center justify-between gap-3 rounded-md border border-neutral-800 px-2.5 py-2"
           >
             <label class="flex items-center gap-2 min-w-0 cursor-pointer">
@@ -550,7 +550,10 @@
             </Button>
           </div>
 
-          <div class="flex items-center justify-between gap-2">
+          <div
+            v-if="soundcloudSyncUiEnabled"
+            class="flex items-center justify-between gap-2"
+          >
             <div>
               <p class="text-neutral-200">
                 SoundCloud
@@ -559,7 +562,7 @@
                 </span>
               </p>
               <p class="text-xs text-neutral-500">
-                {{ soundcloudConnected ? 'Connected' : 'Requires SoundCloud Artist Pro app credentials' }}
+                {{ soundcloudConnected ? 'Connected' : 'Not Connected' }}
               </p>
             </div>
             <Button
@@ -630,6 +633,9 @@ import {
 } from '~/utils/soundcloudTrackMetadata'
 
 type SyncStatus = 'synced' | 'not_synced' | 'pending' | 'failed' | 'syncing' | 'needs_video'
+
+/** Hide SoundCloud connect/sync UI until the API is ready. Flip to true to restore. */
+const soundcloudSyncUiEnabled = false
 
 const props = defineProps<{
   show: boolean
@@ -1399,7 +1405,9 @@ async function loadIntegrations(opts?: { preserveSelections?: boolean }) {
 
   soundcloudConnected.value = Boolean(data.integrations.soundcloud.connected)
   soundcloudUsername.value = data.integrations.soundcloud.username || null
-  if (soundcloudConnected.value && !opts?.preserveSelections) {
+  if (!soundcloudSyncUiEnabled) {
+    soundcloudSelected.value = false
+  } else if (soundcloudConnected.value && !opts?.preserveSelections) {
     soundcloudSelected.value = true
   }
 
