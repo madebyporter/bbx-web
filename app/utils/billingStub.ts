@@ -38,7 +38,6 @@ export const STUB_BILLING_PLANS: PublicPlan[] = [
       'Unlimited tracks',
       'Everything in Free',
       'Client and project management',
-      'Track sync to SoundCloud',
       'Track sync to YouTube',
     ],
     entitlements: { track_sync: true },
