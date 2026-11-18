@@ -50,24 +50,6 @@
       </div>
     </div>
 
-    <!-- Footer Actions -->
-    <div class="flex flex-row gap-3 justify-end border-t border-neutral-800 pt-4 mt-auto">
-      <Button
-        variant="ghost"
-        class="px-4 py-2 border border-neutral-700 hover:border-neutral-600 text-neutral-300 hover:text-white bg-transparent hover:bg-transparent"
-        :disabled="isProcessing"
-        @click="handleCancel"
-      >
-        Cancel
-      </Button>
-      <Button
-        :disabled="isProcessing || !hasChanges"
-        @click="handleApplyChanges"
-      >
-        Apply Changes
-      </Button>
-    </div>
-
     <!-- Delete/Remove Confirmation Dialog -->
     <ConfirmDialog
       v-model:show="showDeleteConfirm"
@@ -80,6 +62,25 @@
       :confirm-danger="true"
       @confirm="handleDelete"
     />
+
+    <template #footer>
+      <div class="flex flex-row gap-3 justify-end">
+        <Button
+          variant="ghost"
+          class="px-4 py-2 border border-neutral-700 hover:border-neutral-600 text-neutral-300 hover:text-white bg-transparent hover:bg-transparent"
+          :disabled="isProcessing"
+          @click="handleCancel"
+        >
+          Cancel
+        </Button>
+        <Button
+          :disabled="isProcessing || !hasChanges"
+          @click="handleApplyChanges"
+        >
+          Apply Changes
+        </Button>
+      </div>
+    </template>
   </MasterDrawer>
 </template>
 

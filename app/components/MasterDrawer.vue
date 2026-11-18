@@ -4,7 +4,7 @@
       class="fixed right-2 lg:right-2 top-2 lg:top-2 bottom-2 lg:bottom-2 left-2 lg:left-auto lg:w-2/5 bg-neutral-900 ring-1 ring-neutral-800 text-neutral-400 rounded-md overflow-visible z-50"
       :style="{ transform: `translateX(${initialX}%)`, opacity: modalOpacity }">
       <div class="flex flex-col gap-0 justify-between h-full divide-y divide-neutral-800">
-        <div class="flex flex-row gap-2 justify-between items-center p-2">
+        <div class="flex flex-row gap-2 justify-between items-center p-4">
 
           <div class="grow h-[50px] flex items-center text-white font-semibold" @click.stop>
             <slot name="header"></slot>
@@ -16,8 +16,16 @@
           </div>
         </div>
         <!-- Main content slot -->
-        <div class="grow flex flex-col gap-0 overflow-auto no-scrollbar p-2" @click.stop>
+        <div class="grow flex flex-col gap-0 overflow-auto no-scrollbar p-4 min-h-0" @click.stop>
           <slot></slot>
+        </div>
+        <!-- Footer CTAs — outside padded scroll content (like header) -->
+        <div
+          v-if="slots.footer"
+          class="shrink-0 p-4"
+          @click.stop
+        >
+          <slot name="footer" />
         </div>
       </div>
     </aside>
@@ -25,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, useSlots } from 'vue'
 import gsap from 'gsap'
 
 interface Props {
@@ -34,12 +42,13 @@ interface Props {
 
 const props = defineProps<Props>()
 const emit = defineEmits(['update:show', 'close'])
+const slots = useSlots()
 
 const modal = ref<HTMLElement | null>(null)
 const initialX = ref(100)
 const modalOpacity = ref(0)
 
-const animateIn = () => {
+const runAnimateIn = () => {
   if (!modal.value) return
   modalOpacity.value = 1
   gsap.to(modal.value, {
@@ -49,6 +58,23 @@ const animateIn = () => {
     onComplete: () => {
       initialX.value = 0
     }
+  })
+}
+
+const animateIn = () => {
+  if (modal.value) {
+    runAnimateIn()
+    return
+  }
+  // Teleport + v-if can leave the ref empty for an extra frame
+  nextTick(() => {
+    if (modal.value) {
+      runAnimateIn()
+      return
+    }
+    requestAnimationFrame(() => {
+      runAnimateIn()
+    })
   })
 }
 

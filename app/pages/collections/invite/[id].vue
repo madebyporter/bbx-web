@@ -81,6 +81,7 @@ import { useSupabase } from '~/utils/supabase'
 import { useToast } from '~/composables/useToast'
 import { useAnalytics } from '~/composables/useAnalytics'
 import { acceptCollectionInvite, isCollectionMember } from '~/utils/collections'
+import { setPendingReviewCollection } from '~/composables/useOnboardingChecklist'
 
 const route = useRoute()
 const router = useRouter()
@@ -161,6 +162,14 @@ const handleAccept = async () => {
   try {
     await acceptCollectionInvite(collectionId, user.value.id)
     capture('collection_invite_accepted', { collection_id: collectionId })
+    if (collection.value?.slug) {
+      setPendingReviewCollection({
+        collectionId,
+        slug: collection.value.slug,
+        ownerUsername: collectionOwnerUsername.value || collection.value.user_id,
+        name: collection.value.name,
+      })
+    }
     isSuccess.value = true
     isAlreadyMember.value = true
     showSuccess('Successfully joined the collection!')

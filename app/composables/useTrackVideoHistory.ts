@@ -53,19 +53,41 @@ function withStore<T>(
   )
 }
 
-export async function getExportsForTrack(trackId: number): Promise<TrackVideoExport[]> {
+function normalizeTrackId(trackId: number | string): number {
+  const id = Number(trackId)
+  if (!Number.isFinite(id)) {
+    throw new Error(`Invalid trackId for video export: ${trackId}`)
+  }
+  return id
+}
+
+export async function getExportsForTrack(trackId: number | string): Promise<TrackVideoExport[]> {
   if (!import.meta.client) return []
 
-  const exports = await withStore('readonly', (store) => store.index('trackId').getAll(trackId))
-  return exports.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  const id = normalizeTrackId(trackId)
+  // IndexedDB key equality is strict — also merge any string-keyed legacy rows
+  const byNumber = await withStore('readonly', (store) => store.index('trackId').getAll(id))
+  const byString = await withStore('readonly', (store) =>
+    store.index('trackId').getAll(String(id)),
+  )
+  const merged = new Map<string, TrackVideoExport>()
+  for (const item of [...byNumber, ...byString]) {
+    merged.set(item.id, { ...item, trackId: id })
+  }
+  return [...merged.values()].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   )
 }
 
 export async function saveExport(record: TrackVideoExport): Promise<void> {
   if (!import.meta.client) return
 
-  const existing = await getExportsForTrack(record.trackId)
+  const normalized: TrackVideoExport = {
+    ...record,
+    trackId: normalizeTrackId(record.trackId),
+  }
+
+  const existing = await getExportsForTrack(normalized.trackId)
   const sortedOldestFirst = [...existing].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   )
@@ -76,7 +98,7 @@ export async function saveExport(record: TrackVideoExport): Promise<void> {
     await Promise.all(toDelete.map((item) => deleteExport(item.id)))
   }
 
-  await withStore('readwrite', (store) => store.put(record))
+  await withStore('readwrite', (store) => store.put(normalized))
 }
 
 export async function deleteExport(id: string): Promise<void> {

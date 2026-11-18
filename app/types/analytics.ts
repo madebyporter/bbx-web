@@ -58,6 +58,7 @@ export type AnalyticsEventName =
   | 'collection_invite_sent'
   | 'collection_invite_accepted'
   | 'collection_invite_link_copied'
+  | 'collection_share_email_sent'
   | 'profile_member_invited'
   | 'shortlist_added'
   | 'shortlist_removed'
@@ -75,6 +76,8 @@ export type AnalyticsEventName =
   | 'finish_upgrade_banner_shown'
   | 'finish_upgrade_banner_clicked'
   | 'finish_upgrade_banner_dismissed'
+  | 'onboarding_checklist_item_clicked'
+  | 'onboarding_checklist_dismissed'
 
 export interface AnalyticsEventProperties {
   signup_started: {
@@ -150,6 +153,10 @@ export interface AnalyticsEventProperties {
   }
   collection_invite_accepted: { collection_id: number }
   collection_invite_link_copied: { collection_id: number }
+  collection_share_email_sent: {
+    collection_id: number
+    recipient_count: number
+  }
   profile_member_invited: { profile_id: string }
   shortlist_added: { track_id: number; audio_pro_id: string }
   shortlist_removed: { track_id: number }
@@ -177,4 +184,6 @@ export interface AnalyticsEventProperties {
   finish_upgrade_banner_shown: { plan: string; interval: 'month' | 'year' }
   finish_upgrade_banner_clicked: { plan: string; interval: 'month' | 'year' }
   finish_upgrade_banner_dismissed: { plan: string; interval: 'month' | 'year' }
+  onboarding_checklist_item_clicked: { item_id: string }
+  onboarding_checklist_dismissed: Record<string, never>
 }

@@ -67,6 +67,33 @@ function shouldProxyR2UploadThroughApi(): boolean {
   return host === 'localhost' || host === '127.0.0.1'
 }
 
+/** Localhost only — Netlify functions 502 on full MP3 proxy (body size / timeout). */
+function shouldProxyR2AudioDownloadThroughApi(): boolean {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  return host === 'localhost' || host === '127.0.0.1'
+}
+
+function audioDownloadErrorMessage(err: unknown): string {
+  const statusMessage =
+    err && typeof err === 'object' && 'data' in err
+      ? String((err as { data?: { statusMessage?: string } }).data?.statusMessage || '')
+      : ''
+  const message = err instanceof Error ? err.message : statusMessage || String(err || '')
+  const lower = `${message} ${statusMessage}`.toLowerCase()
+  if (
+    lower.includes('failed to fetch') ||
+    lower.includes('cors') ||
+    lower.includes('access-control-allow-origin')
+  ) {
+    return 'Could not download audio (R2 CORS). Add GET/HEAD AllowedOrigins * on the sounds bucket.'
+  }
+  if (lower.includes('413') || lower.includes('too large')) {
+    return 'Track is too large to proxy through the API. Use direct R2 download (bucket CORS GET *).'
+  }
+  return statusMessage || message || 'Failed to download audio file'
+}
+
 export async function uploadAudio(
   file: File,
   supabase: SupabaseClient | null,
@@ -167,17 +194,41 @@ export async function downloadAudioBlob(
     return data
   }
 
-  const playbackUrl = await getPlaybackUrl(track, supabase)
-  if (!playbackUrl) {
-    throw new Error('Failed to get download URL')
+  const accessToken = await getAccessToken(supabase)
+  if (!accessToken) {
+    throw new Error('Not authenticated')
   }
 
-  const response = await fetch(playbackUrl)
-  if (!response.ok) {
-    throw new Error(`Failed to download audio file (${response.status})`)
+  // Localhost: same-origin API (avoids R2 browser CORS on odd ports)
+  if (shouldProxyR2AudioDownloadThroughApi()) {
+    try {
+      return await $fetch<Blob>('/api/storage/download-audio', {
+        method: 'GET',
+        query: { trackId: track.id },
+        headers: { Authorization: `Bearer ${accessToken}` },
+        responseType: 'blob',
+      })
+    } catch (err) {
+      // Fall through to signed URL if proxy rejects (e.g. file too large)
+      console.warn('Same-origin audio download failed, trying signed URL:', err)
+    }
   }
 
-  return response.blob()
+  try {
+    const playbackUrl = await getPlaybackUrl(track, supabase)
+    if (!playbackUrl) {
+      throw new Error('Failed to get download URL')
+    }
+
+    const response = await fetch(playbackUrl)
+    if (!response.ok) {
+      throw new Error(`Failed to download audio file (${response.status})`)
+    }
+
+    return response.blob()
+  } catch (err) {
+    throw new Error(audioDownloadErrorMessage(err))
+  }
 }
 
 export async function deleteAudio(

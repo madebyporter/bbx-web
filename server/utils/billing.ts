@@ -5,12 +5,15 @@ import {
   applyAdminUnlimitedPlan,
   evaluateUploadAgainstEntitlements,
   hasEntitlementFlag,
+  resolveEffectivePlanSource,
   type PlanLimitReason,
   type UnlimitedPlanSnapshot,
 } from './billingLimits'
 import { getServiceSupabase, requireAuthUser } from './supabaseAuth'
 
 export const DEFAULT_MAX_FILE_BYTES = 50 * 1024 * 1024
+/** Cloud track videos exceed audio max_file_size; hard cap for paid saves. */
+export const TRACK_VIDEO_MAX_BYTES = 512 * 1024 * 1024
 
 export interface Entitlements {
   plan_id: string
@@ -176,6 +179,77 @@ function throwPlanLimit(reason: PlanLimitReason, entitlements: Entitlements): ne
     statusMessage: 'plan_limit_reached',
     data: { reason, entitlements },
   })
+}
+
+/**
+ * Cloud track video save: paid (active/trialing/past_due grace), valid comp, or admin.
+ * Free/default plans get 403 paid_required.
+ */
+export async function assertCanSaveTrackVideo(user: User): Promise<Entitlements> {
+  const isAdmin = userHasAdminRole(user)
+  const supabase = getServiceSupabase()
+
+  const [{ data: subscription }, { data: settings }] = await Promise.all([
+    supabase
+      .from('subscriptions')
+      .select('plan_id, status, comp_plan_id, comp_until, past_due_since')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    supabase.from('billing_settings').select('past_due_grace_days').eq('id', 1).maybeSingle(),
+  ])
+
+  const source = resolveEffectivePlanSource({
+    now: new Date(),
+    pastDueGraceDays: Number(settings?.past_due_grace_days ?? 7),
+    compPlanId: subscription?.comp_plan_id ?? null,
+    compUntil: subscription?.comp_until ?? null,
+    status: subscription?.status ?? null,
+    planId: subscription?.plan_id ?? null,
+    pastDueSince: subscription?.past_due_since ?? null,
+    isAdmin,
+  })
+
+  if (source === 'default') {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'paid_required',
+      data: { code: 'paid_required' },
+    })
+  }
+
+  return getEntitlements(user.id, { isAdmin })
+}
+
+/** Storage headroom + 512MB hard cap for cloud track videos (not audio max_file_size). */
+export function assertTrackVideoSizeAllowed(
+  entitlements: Entitlements,
+  fileSizeBytes: number,
+): void {
+  if (!Number.isFinite(fileSizeBytes) || fileSizeBytes <= 0) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'size is required',
+    })
+  }
+
+  if (fileSizeBytes > TRACK_VIDEO_MAX_BYTES) {
+    throw createError({
+      statusCode: 413,
+      statusMessage: 'Video exceeds the 512MB cloud save limit',
+      data: { reason: 'file_size', maxBytes: TRACK_VIDEO_MAX_BYTES },
+    })
+  }
+
+  if (
+    entitlements.enforcement_enabled &&
+    !entitlements.storage_unlimited &&
+    entitlements.storage_limit_bytes != null
+  ) {
+    const next = entitlements.storage_bytes + fileSizeBytes
+    if (next > entitlements.storage_limit_bytes) {
+      throwPlanLimit('storage', entitlements)
+    }
+  }
 }
 
 export async function requireAdminUser(event: H3Event): Promise<User> {

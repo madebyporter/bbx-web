@@ -69,6 +69,17 @@
       >
         <Settings class="w-4 h-4 shrink-0" />
       </Button>
+      <Button
+        v-if="showShareButton"
+        variant="secondary"
+        size="sm"
+        responsive-label
+        label="Share"
+        class="btn h-full max-h-10 self-stretch"
+        @click="emit('open-share')"
+      >
+        <ShareIos class="w-4 h-4 shrink-0" />
+      </Button>
       <div v-if="isOwnProfile && showViewModeSelector" class="relative">
         <Button
           variant="ghost"
@@ -111,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { FilterList, Settings, StatsReport, Xmark } from '@iconoir/vue'
+import { FilterList, Settings, ShareIos, StatsReport, Xmark } from '@iconoir/vue'
 import { useAnalytics } from '~/composables/useAnalytics'
 import ArtworkMedia from '~/components/ArtworkMedia.vue'
 
@@ -126,6 +137,7 @@ const props = withDefaults(defineProps<{
   showViewModeSelector?: boolean
   filterContext?: 'software' | 'kits' | 'music' | null
   showSettingsButton?: boolean
+  showShareButton?: boolean
   showAnalyticsToggle?: boolean
   analyticsMode?: boolean
   analyticsPage?: 'profile' | 'collection'
@@ -140,6 +152,7 @@ const props = withDefaults(defineProps<{
   showViewModeSelector: true,
   filterContext: null,
   showSettingsButton: false,
+  showShareButton: false,
   showAnalyticsToggle: false,
   analyticsMode: false,
   analyticsPage: 'profile',
@@ -160,6 +173,7 @@ const emit = defineEmits<{
   'open-filter-sort': []
   'clear-filters': []
   'open-settings': []
+  'open-share': []
 }>()
 
 const handleViewModeChange = (mode: 'final' | 'all') => {

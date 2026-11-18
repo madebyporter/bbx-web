@@ -46,17 +46,28 @@ const client = new S3Client({
   requestChecksumCalculation: 'WHEN_REQUIRED',
 })
 
+// PUT: production + local only (Netlify previews proxy uploads same-origin).
+// GET/HEAD: * so signed download URLs work from deploy previews (cloud video hydrate).
 const CORSRules = [
   {
+    AllowedOrigins: ['*'],
+    AllowedMethods: ['GET', 'HEAD'],
+    AllowedHeaders: ['*'],
+    ExposeHeaders: ['ETag', 'Content-Length', 'Content-Type'],
+    MaxAgeSeconds: 3600,
+  },
+  {
     AllowedOrigins: [
+      'http://localhost',
       'http://localhost:3000',
       'http://localhost:3001',
+      'http://127.0.0.1',
       'http://127.0.0.1:3000',
       'http://127.0.0.1:3001',
       'https://beatbox.studio',
       'https://www.beatbox.studio',
     ],
-    AllowedMethods: ['GET', 'PUT', 'HEAD'],
+    AllowedMethods: ['PUT'],
     AllowedHeaders: ['Content-Type'],
     ExposeHeaders: ['ETag', 'Content-Length', 'Content-Type'],
     MaxAgeSeconds: 3600,

@@ -21,7 +21,11 @@
             :style="previewBackgroundStyle"
           >
             <div class="w-full h-full flex items-center justify-center" :style="previewCoverWrapperStyle">
-              <img :src="coverPreview" alt="Cover preview" class="w-full h-full object-contain" />
+              <img
+                :src="coverPreview"
+                alt="Cover preview"
+                class="w-full h-full object-contain"
+              />
             </div>
           </div>
           <div
@@ -39,12 +43,72 @@
             class="hidden"
             @change="handleCoverUpload"
           />
-          <Button variant="secondary" size="sm" class="self-start" @click="coverInputRef?.click()">
-            {{ coverPreview ? 'Replace image' : 'Upload custom image' }}
-          </Button>
+
+          <div v-if="!coverFile" class="flex flex-col gap-3">
+            <div class="flex flex-col gap-1.5">
+              <label for="cover-direction" class="text-sm font-medium text-neutral-200">Direction</label>
+              <textarea
+                id="cover-direction"
+                v-model="coverDirection"
+                rows="8"
+                :maxlength="COVER_DIRECTION_MAX"
+                placeholder="e.g. neon bounce energy, city night, bold shapes…"
+                class="w-full p-3 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[180px]"
+                :disabled="generatingCover || detectingMoods || isGenerating"
+              />
+              <p class="text-xs text-neutral-500">
+                Optional album-art direction. Prefer scenes/mood over body or pose descriptions — OpenAI may block sexualized prompts.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-sm font-medium text-neutral-200">Moods</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  :disabled="detectingMoods || generatingCover || isGenerating || !props.track?.storage_path"
+                  @click="handleDetectMoods"
+                >
+                  {{ detectingMoods ? 'Detecting…' : 'Detect moods' }}
+                </Button>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <label
+                  v-for="mood in BEATBOX_MOOD_TAGS"
+                  :key="mood"
+                  class="cursor-pointer"
+                >
+                  <input v-model="selectedMoods" type="checkbox" :value="mood" class="hidden" />
+                  <span :class="selectedMoods.includes(mood) ? 'tag-active' : 'tag'">
+                    {{ mood }}
+                  </span>
+                </label>
+              </div>
+              <p v-if="moodDetectError" class="text-xs text-red-500">{{ moodDetectError }}</p>
+              <p class="text-xs text-neutral-500">
+                Toggle tags or detect from the track audio. Used for cover generation.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" @click="coverInputRef?.click()">
+              {{ coverPreview ? 'Replace image' : 'Upload custom image' }}
+            </Button>
+            <Button
+              v-if="!coverFile"
+              variant="secondary"
+              size="sm"
+              :disabled="generatingCover || detectingMoods || isGenerating"
+              @click="handleGenerateCover"
+            >
+              {{ generatingCover ? 'Generating cover…' : 'Generate cover' }}
+            </Button>
+          </div>
           <p v-if="coverError" class="text-xs text-red-500">{{ coverError }}</p>
           <p class="text-xs text-neutral-500">
-            PNG, JPG, WebP, or GIF up to 1600×1600. Uses track artwork when available.
+            PNG, JPG, WebP, or GIF up to 1600×1600. Uses track artwork when available, or generate one with AI.
           </p>
         </div>
       </section>
@@ -191,30 +255,12 @@
           <p class="text-xs text-neutral-500">{{ selectedQualityDescription }}</p>
         </div>
 
-        <Button :disabled="!canGenerate || isGenerating" @click="handleGenerate">
-          {{ isGenerating ? 'Generating...' : 'Generate video' }}
-        </Button>
-
         <p v-if="encoderLoading && !isGenerating && !generationMessage" class="text-xs text-neutral-500">
           Preparing encoder in the background (one-time download, ~31MB)...
         </p>
         <p v-else-if="encoderReady && !isGenerating && !generationMessage" class="text-xs text-neutral-500">
           Encoder ready. Browser encoding is slower than desktop apps — a 2–3 min track usually takes 1–3 min.
         </p>
-
-        <div v-if="generationMessage && (encoderLoading || isGenerating)" class="flex flex-col gap-2">
-          <p class="text-sm text-neutral-400">{{ generationMessage }}</p>
-          <div
-            v-if="isGenerating || encoderLoading"
-            class="w-full h-2 bg-neutral-800 rounded-full overflow-hidden"
-          >
-            <div
-              class="h-full bg-amber-500 transition-all duration-300"
-              :class="generationProgress > 0 ? '' : 'w-[8%] animate-pulse'"
-              :style="generationProgress > 0 ? { width: `${generationProgress}%` } : undefined"
-            />
-          </div>
-        </div>
 
         <p v-if="generationError" class="text-sm text-red-500">{{ generationError }}</p>
       </section>
@@ -231,9 +277,23 @@
           controls
           class="w-full max-w-full rounded-md border border-neutral-800 bg-black"
         />
-        <Button variant="secondary" size="sm" class="self-start" @click="downloadBlob(latestResult.blob, latestResult.filename)">
-          Download MP4
-        </Button>
+        <div class="flex flex-row flex-wrap gap-2 items-center">
+          <Button
+            variant="secondary"
+            size="sm"
+            @click="downloadBlob(latestResult.blob, latestResult.filename)"
+          >
+            Download MP4
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            :disabled="savingCloudVideo"
+            @click="handleSaveCloudVideo"
+          >
+            {{ saveCloudVideoLabel }}
+          </Button>
+        </div>
       </section>
 
       <!-- History -->
@@ -282,6 +342,42 @@
         </div>
       </section>
     </div>
+
+    <template #footer>
+      <div class="flex flex-col gap-2">
+        <div class="flex flex-row gap-2 items-stretch">
+          <Button
+            class="flex-1 min-w-0"
+            :disabled="!canGenerate || isGenerating"
+            @click="handleGenerate"
+          >
+            {{ isGenerating ? 'Generating...' : 'Generate video' }}
+          </Button>
+          <Button
+            v-if="showBackToSync"
+            variant="secondary"
+            class="shrink-0"
+            :disabled="isGenerating"
+            @click="handleBackToSync"
+          >
+            Back to Sync
+          </Button>
+        </div>
+        <div v-if="generationMessage && (encoderLoading || isGenerating)" class="flex flex-col gap-2">
+          <p class="text-sm text-neutral-400">{{ generationMessage }}</p>
+          <div
+            v-if="isGenerating || encoderLoading"
+            class="w-full h-2 bg-neutral-800 rounded-full overflow-hidden"
+          >
+            <div
+              class="h-full bg-amber-500 transition-all duration-300"
+              :class="generationProgress > 0 ? '' : 'w-[8%] animate-pulse'"
+              :style="generationProgress > 0 ? { width: `${generationProgress}%` } : undefined"
+            />
+          </div>
+        </div>
+      </div>
+    </template>
   </MasterDrawer>
 </template>
 
@@ -316,24 +412,53 @@ import {
 import { useSupabase } from '~/utils/supabase'
 import { downloadAudioBlob } from '~/utils/trackAudioStorage'
 import { useToast } from '~/composables/useToast'
+import { useAuthHeaders } from '~/composables/useAuthHeaders'
+import { useAuth } from '~/composables/useAuth'
+import { useEntitlements } from '~/composables/useEntitlements'
+import {
+  analyzeMoodFromAudio,
+  BEATBOX_MOOD_TAGS,
+  type BeatboxMoodTag,
+} from '~/composables/useAudioAnalyzer'
 import type { Track } from '~/types/track'
+import { COVER_DIRECTION_MAX } from '~/utils/coverDirection'
 
-const props = defineProps<{
-  show: boolean
-  track: Track | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    show: boolean
+    track: Track | null
+    /** When true (e.g. Sync → YouTube selected), default Dimensions to landscape. */
+    preferLandscape?: boolean
+    /** Opened from Sync — show Back to Sync after a video exists. */
+    returnToSync?: boolean
+  }>(),
+  {
+    preferLandscape: false,
+    returnToSync: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:show': [value: boolean]
 }>()
 
-const { getArtworkUrl, validateAndProcessArtwork, resolveArtworkUrlForEntity } = useArtwork()
+const {
+  getArtworkUrl,
+  validateAndProcessArtwork,
+  resolveArtworkUrlForEntity,
+  downloadArtwork,
+  uploadArtwork,
+  deleteArtwork,
+} = useArtwork()
 const { generateTrackVideo, isGenerating } = useTrackVideoGenerator()
 const { supabase } = useSupabase()
 const { showError, showSuccess } = useToast()
+const { isAdmin } = useAuth()
+const { subscription, refresh: refreshEntitlements } = useEntitlements()
 
 const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
 const coverInputRef = ref<HTMLInputElement | null>(null)
+const generatingCover = ref(false)
 const customBackgroundInputRef = ref<HTMLInputElement | null>(null)
 const previewVideoRef = ref<HTMLVideoElement | null>(null)
 
@@ -341,6 +466,12 @@ const coverPreview = ref<string | null>(null)
 const coverFile = ref<File | null>(null)
 const coverError = ref<string | null>(null)
 const usingTrackArtwork = ref(false)
+const coverDirection = ref('')
+const selectedMoods = ref<BeatboxMoodTag[]>([])
+const detectingMoods = ref(false)
+const moodDetectError = ref<string | null>(null)
+/** Snapshot of track mood emptiness at drawer open — used for write-when-empty persist */
+const trackMoodWasEmpty = ref(true)
 
 const generationMessage = ref('')
 const generationProgress = ref(0)
@@ -351,6 +482,9 @@ const latestPreviewUrl = ref<string | null>(null)
 const history = ref<TrackVideoExport[]>([])
 const historyLoading = ref(false)
 const deletingId = ref<string | null>(null)
+const savingCloudVideo = ref(false)
+/** Local mirror after a successful cloud save in this session. */
+const cloudVideoPath = ref<string | null>(null)
 const encoderReady = ref(false)
 const encoderLoading = ref(false)
 const selectedDimension = ref<TrackVideoDimension>('square')
@@ -370,12 +504,47 @@ const canUseTrackArtwork = computed(() => {
 })
 
 const canGenerate = computed(() => {
-  return !!(props.track?.storage_path && (coverFile.value || canUseTrackArtwork.value))
+  return !!(props.track?.storage_path && coverFile.value)
+})
+
+/** From Sync + a generated video this session or in local history. */
+const showBackToSync = computed(() => {
+  if (!props.returnToSync) return false
+  return Boolean(latestResult.value) || history.value.length > 0
+})
+
+/** Paid / valid comp / admin — server re-checks on save. */
+const canSaveCloudVideo = computed(() => {
+  if (isAdmin.value) return true
+  const sub = subscription.value
+  if (!sub) return false
+  if (sub.comp_plan_id && sub.comp_until && new Date(sub.comp_until) > new Date()) {
+    return true
+  }
+  return (
+    sub.status === 'active' ||
+    sub.status === 'trialing' ||
+    sub.status === 'past_due'
+  )
+})
+
+const hasCloudVideo = computed(() => {
+  const path = cloudVideoPath.value ?? props.track?.video_path
+  return typeof path === 'string' && path.trim().length > 0
+})
+
+const saveCloudVideoLabel = computed(() => {
+  if (savingCloudVideo.value) return 'Saving…'
+  if (hasCloudVideo.value) return 'Replace cloud video'
+  return 'Save video'
 })
 
 const coverPlaceholderText = computed(() => {
   if (props.track?.artwork_path && isVideoArtwork(props.track.artwork_path)) {
     return 'Video artwork cannot be used. Upload a still image.'
+  }
+  if (coverError.value) {
+    return 'Could not load track artwork. Upload or generate a cover.'
   }
   if (!props.track?.artwork_path) {
     return 'No artwork on this track. Upload an image to continue.'
@@ -495,6 +664,23 @@ function resetGenerationState() {
   generationError.value = null
 }
 
+function parseTrackMoods(mood: unknown): BeatboxMoodTag[] {
+  const raw: string[] = Array.isArray(mood)
+    ? mood.map((m) => String(m).trim()).filter(Boolean)
+    : typeof mood === 'string'
+      ? mood.split(',').map((m) => m.trim()).filter(Boolean)
+      : []
+  const allowed = new Set<string>(BEATBOX_MOOD_TAGS)
+  return raw.filter((m): m is BeatboxMoodTag => allowed.has(m))
+}
+
+function trackMoodIsEmpty(mood: unknown): boolean {
+  if (mood == null) return true
+  if (Array.isArray(mood)) return mood.filter(Boolean).length === 0
+  if (typeof mood === 'string') return mood.trim().length === 0
+  return true
+}
+
 function resetDrawerState() {
   abortController?.abort()
   abortController = null
@@ -503,10 +689,17 @@ function resetDrawerState() {
   coverFile.value = null
   coverError.value = null
   usingTrackArtwork.value = false
+  coverDirection.value = ''
+  selectedMoods.value = []
+  detectingMoods.value = false
+  moodDetectError.value = null
+  trackMoodWasEmpty.value = true
 
   resetGenerationState()
   encoderLoading.value = false
   latestResult.value = null
+  savingCloudVideo.value = false
+  cloudVideoPath.value = null
   revokePreviewUrl()
 
   if (coverInputRef.value) {
@@ -522,20 +715,24 @@ async function loadTrackArtwork() {
     return
   }
 
-  const url = await resolveArtworkUrlForEntity(
-    {
-      id: props.track.id,
-      artwork_path: props.track.artwork_path,
-      artwork_provider: props.track.artwork_provider,
-    },
-    'track',
-  )
-  if (!url) return
+  const entity = {
+    id: props.track.id,
+    artwork_path: props.track.artwork_path,
+    artwork_provider: props.track.artwork_provider,
+  }
 
   try {
-    const response = await fetch(url)
-    if (!response.ok) throw new Error('Failed to load track artwork')
-    const blob = await response.blob()
+    // Same-origin download avoids R2 CORS failures (e.g. http://localhost without :3000)
+    let blob = await downloadArtwork(entity, 'track')
+
+    if (!blob) {
+      const url = await resolveArtworkUrlForEntity(entity, 'track')
+      if (!url) throw new Error('Could not resolve track artwork URL')
+      const response = await fetch(url)
+      if (!response.ok) throw new Error('Failed to load track artwork')
+      blob = await response.blob()
+    }
+
     const ext = props.track.artwork_path.split('.').pop()?.toLowerCase() || 'jpg'
     const mimeType = blob.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`
     const file = new File([blob], `cover.${ext}`, { type: mimeType })
@@ -561,10 +758,72 @@ async function loadHistory() {
   historyLoading.value = true
   try {
     history.value = await getExportsForTrack(props.track.id)
+    // Local IndexedDB can be empty (quota / cleared) while cloud save still exists
+    if (history.value.length === 0) {
+      await hydrateCloudVideoIntoHistory()
+    } else if (!latestResult.value && history.value[0]?.blob) {
+      latestResult.value = {
+        blob: history.value[0].blob,
+        filename: history.value[0].filename,
+      }
+      setPreviewBlob(history.value[0].blob)
+    }
   } catch {
     showError('Failed to load video history')
   } finally {
     historyLoading.value = false
+  }
+}
+
+/** Pull cloud-saved MP4 into preview + local history when device history is empty. */
+async function hydrateCloudVideoIntoHistory() {
+  if (!props.track?.id) return
+  const path =
+    cloudVideoPath.value ||
+    (typeof props.track.video_path === 'string' ? props.track.video_path.trim() : '')
+  if (!path) return
+
+  try {
+    const headers = await useAuthHeaders()
+    if (!headers.Authorization) return
+
+    // Signed URL + browser fetch (GET CORS is * on R2). Avoids Netlify 6MB proxy limit.
+    const presign = await $fetch<{ videoUrl: string; filename: string }>(
+      '/api/storage/presign-track-video-play',
+      {
+        method: 'POST',
+        headers,
+        body: { soundId: props.track.id },
+      },
+    )
+    const response = await fetch(presign.videoUrl)
+    if (!response.ok) {
+      throw new Error(`Cloud video download failed (${response.status})`)
+    }
+    const blob = await response.blob()
+    const filename = presign.filename || 'cloud-video.mp4'
+    const exportRecord: TrackVideoExport = {
+      id: crypto.randomUUID(),
+      trackId: props.track.id,
+      trackTitle: props.track.title,
+      createdAt: new Date().toISOString(),
+      filename,
+      sizeBytes: blob.size,
+      blob,
+    }
+
+    try {
+      await saveExport(exportRecord)
+      history.value = await getExportsForTrack(props.track.id)
+    } catch (persistErr) {
+      console.warn('Could not cache cloud video in local history:', persistErr)
+      history.value = [exportRecord]
+    }
+
+    latestResult.value = { blob, filename }
+    setPreviewBlob(blob)
+  } catch (err) {
+    console.warn('Failed to hydrate cloud video into history:', err)
   }
 }
 
@@ -590,8 +849,15 @@ async function preloadEncoder() {
 
 async function initializeDrawer() {
   resetDrawerState()
+  selectedDimension.value = props.preferLandscape ? 'landscape' : 'square'
+  trackMoodWasEmpty.value = trackMoodIsEmpty(props.track?.mood)
+  selectedMoods.value = parseTrackMoods(props.track?.mood)
+  cloudVideoPath.value =
+    typeof props.track?.video_path === 'string' && props.track.video_path.trim()
+      ? props.track.video_path
+      : null
   encoderReady.value = isTrackVideoEncoderLoaded()
-  await Promise.all([loadTrackArtwork(), loadHistory()])
+  await Promise.all([loadTrackArtwork(), loadHistory(), refreshEntitlements()])
   if (!encoderReady.value) {
     void preloadEncoder()
   }
@@ -599,14 +865,18 @@ async function initializeDrawer() {
 
 watch(
   () => [props.show, props.track?.id] as const,
-  ([show, trackId]) => {
-    if (show && trackId) {
+  ([show, trackId], previous) => {
+    const wasShow = previous?.[0]
+    const wasTrackId = previous?.[1]
+    // Only full-reset when opening or switching tracks — not when track metadata
+    // patches (e.g. cloud save updates video_path) or the getter returns a new array.
+    if (show && trackId && (wasShow !== true || trackId !== wasTrackId)) {
       initializeDrawer()
-    } else if (!show) {
+    } else if (!show && wasShow) {
       resetDrawerState()
       encoderReady.value = isTrackVideoEncoderLoaded()
     }
-  }
+  },
 )
 
 async function handleCoverUpload(event: Event) {
@@ -628,6 +898,168 @@ async function handleCoverUpload(event: Event) {
     }
   } finally {
     input.value = ''
+  }
+}
+
+async function handleDetectMoods() {
+  if (!props.track?.storage_path || detectingMoods.value || !supabase) return
+
+  detectingMoods.value = true
+  moodDetectError.value = null
+  try {
+    const audioData = await downloadAudioBlob(props.track, supabase)
+    const moods = await analyzeMoodFromAudio(audioData)
+    selectedMoods.value = moods
+    showSuccess(`Detected: ${moods.join(', ')}`)
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : 'Failed to detect moods from audio'
+    moodDetectError.value = message
+    showError(message)
+  } finally {
+    detectingMoods.value = false
+  }
+}
+
+function dispatchTrackUpdated(patch: Partial<Track>) {
+  if (!props.track) return
+  const updated = { ...props.track, ...patch }
+  window.dispatchEvent(
+    new CustomEvent('track-updated', {
+      detail: { track: updated },
+      bubbles: true,
+    }),
+  )
+}
+
+async function persistMoodsIfEmpty(moods: BeatboxMoodTag[]) {
+  if (!trackMoodWasEmpty.value || moods.length === 0 || !props.track?.id || !supabase) {
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('sounds')
+    .update({ mood: moods })
+    .eq('id', props.track.id)
+    .select('id, mood')
+    .maybeSingle()
+
+  if (error) {
+    console.warn('Failed to save detected moods to track:', error)
+    return
+  }
+
+  trackMoodWasEmpty.value = false
+  dispatchTrackUpdated({ mood: data?.mood ?? moods })
+}
+
+/** Upload AI/custom cover to storage and attach to the track so Sync/Edit persist it. */
+async function persistCoverToTrack(file: File) {
+  if (!props.track?.id || !supabase) return
+
+  const uploaded = await uploadArtwork(file, 'track')
+
+  if (props.track.artwork_path) {
+    try {
+      await deleteArtwork(
+        {
+          id: props.track.id,
+          artwork_path: props.track.artwork_path,
+          artwork_provider: props.track.artwork_provider,
+        },
+        'track',
+      )
+    } catch (err) {
+      console.warn('Failed to delete previous artwork after cover generate:', err)
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('sounds')
+    .update({
+      artwork_path: uploaded.artwork_path,
+      artwork_provider: uploaded.artwork_provider,
+    })
+    .eq('id', props.track.id)
+    .select('id, artwork_path, artwork_provider')
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  dispatchTrackUpdated({
+    artwork_path: data?.artwork_path ?? uploaded.artwork_path,
+    artwork_provider: data?.artwork_provider ?? uploaded.artwork_provider,
+  })
+}
+
+async function handleGenerateCover() {
+  if (!props.track || generatingCover.value) return
+
+  const title = props.track.title?.trim()
+  const artist = props.track.artist?.trim()
+  if (!title || !artist) {
+    coverError.value = 'Title and artist are required to generate cover art'
+    return
+  }
+
+  generatingCover.value = true
+  coverError.value = null
+  try {
+    const mood =
+      selectedMoods.value.length > 0 ? selectedMoods.value.join(', ') : undefined
+    const direction = coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || undefined
+
+    const { generateCoverViaJob } = await import('~/utils/coverGenerateClient')
+    const result = await generateCoverViaJob({
+      title,
+      artist,
+      genre: props.track.genre || undefined,
+      mood: mood || undefined,
+      direction: direction || undefined,
+    })
+
+    const binary = atob(result.base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    const blob = new Blob([bytes], { type: result.mimeType || 'image/png' })
+    const file = new File([blob], result.filename || 'cover-ai.png', {
+      type: result.mimeType || 'image/png',
+    })
+    const { file: processedFile, preview } = await validateAndProcessArtwork(file)
+    coverFile.value = processedFile
+    coverPreview.value = preview
+
+    const viaGrok = result.provider === 'grok'
+    const generatedLabel = viaGrok
+      ? 'Cover generated via Grok (OpenAI safety fallback)'
+      : 'Cover generated'
+
+    try {
+      await persistCoverToTrack(processedFile)
+      usingTrackArtwork.value = true
+      showSuccess(`${generatedLabel} and saved to track`)
+    } catch (persistErr: unknown) {
+      usingTrackArtwork.value = false
+      console.warn('Cover generated but failed to save to track:', persistErr)
+      showSuccess(`${generatedLabel} (not saved to track yet)`)
+      showError(
+        persistErr instanceof Error
+          ? persistErr.message
+          : 'Cover preview ready, but saving to track failed',
+      )
+    }
+
+    await persistMoodsIfEmpty(selectedMoods.value)
+  } catch (err: unknown) {
+    const message =
+      (err as any)?.data?.statusMessage ||
+      (err instanceof Error ? err.message : 'Failed to generate cover')
+    coverError.value = message
+    showError(message)
+  } finally {
+    generatingCover.value = false
   }
 }
 
@@ -675,9 +1107,35 @@ async function handleGenerate() {
       blob: result.blob,
     }
 
-    await saveExport(exportRecord)
-    await loadHistory()
-    showSuccess('Video generated')
+    try {
+      await saveExport(exportRecord)
+      await loadHistory()
+    } catch (persistErr) {
+      console.warn('Video generated but local history save failed:', persistErr)
+      history.value = [exportRecord, ...history.value.filter((h) => h.id !== exportRecord.id)]
+      showError('Video is ready, but this device could not store it in History (storage full?)')
+    }
+
+    // Keep track artwork in sync with the cover used for the video
+    const artworkEmpty =
+      !props.track.artwork_path ||
+      (typeof props.track.artwork_path === 'string' && !props.track.artwork_path.trim())
+    if (artworkEmpty && coverFile.value) {
+      try {
+        await persistCoverToTrack(coverFile.value)
+        usingTrackArtwork.value = true
+      } catch (persistErr) {
+        console.warn('Video saved but cover was not written to track:', persistErr)
+      }
+    }
+
+    window.dispatchEvent(
+      new CustomEvent('track-video-ready', {
+        detail: { trackId: Number(props.track.id) },
+        bubbles: true,
+      }),
+    )
+    showSuccess('Video generated and saved on this device')
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === 'AbortError') return
     if (err instanceof Error && err.name === 'AbortError') return
@@ -698,6 +1156,113 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
+async function handleSaveCloudVideo() {
+  if (!latestResult.value || !props.track?.id || savingCloudVideo.value) return
+
+  if (!canSaveCloudVideo.value) {
+    showError('Cloud video save is included with paid plans')
+    await navigateTo('/pricing')
+    return
+  }
+
+  savingCloudVideo.value = true
+  try {
+    const headers = await useAuthHeaders()
+    if (!headers.Authorization) {
+      throw new Error('Sign in to save video to the cloud')
+    }
+
+    const { blob, filename } = latestResult.value
+    const contentType = blob.type || 'video/mp4'
+
+    const presign = await $fetch<{
+      key: string
+      uploadUrl: string
+      contentType: string
+      video_provider: 'r2'
+    }>('/api/storage/presign-track-video-upload', {
+      method: 'POST',
+      headers,
+      body: {
+        soundId: props.track.id,
+        filename,
+        contentType,
+        size: blob.size,
+      },
+    })
+
+    const uploadResponse = await fetch(presign.uploadUrl, {
+      method: 'PUT',
+      body: blob,
+      headers: {
+        'Content-Type': presign.contentType,
+      },
+    })
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Cloud upload failed (${uploadResponse.status})`)
+    }
+
+    const confirmed = await $fetch<{
+      video_path: string
+      video_provider: 'r2'
+      size: number
+    }>('/api/storage/confirm-track-video', {
+      method: 'POST',
+      headers,
+      body: {
+        soundId: props.track.id,
+        key: presign.key,
+      },
+    })
+
+    cloudVideoPath.value = confirmed.video_path
+    // Keep local history/preview — cloud save must not wipe IndexedDB or session preview
+    if (latestResult.value) {
+      const stillInHistory = history.value.some(
+        (item) =>
+          item.filename === latestResult.value!.filename &&
+          item.sizeBytes === latestResult.value!.blob.size,
+      )
+      if (!stillInHistory) {
+        const exportRecord: TrackVideoExport = {
+          id: crypto.randomUUID(),
+          trackId: props.track.id,
+          trackTitle: props.track.title,
+          createdAt: new Date().toISOString(),
+          filename: latestResult.value.filename,
+          sizeBytes: latestResult.value.blob.size,
+          blob: latestResult.value.blob,
+        }
+        try {
+          await saveExport(exportRecord)
+          await loadHistory()
+        } catch {
+          history.value = [exportRecord, ...history.value]
+        }
+      }
+    }
+    dispatchTrackUpdated({
+      video_path: confirmed.video_path,
+      video_provider: confirmed.video_provider,
+    })
+    showSuccess('Video saved to cloud')
+  } catch (err: unknown) {
+    const code = (err as any)?.data?.data?.code || (err as any)?.data?.code
+    const statusMessage =
+      (err as any)?.data?.statusMessage ||
+      (err instanceof Error ? err.message : 'Failed to save video')
+    if (code === 'paid_required' || statusMessage === 'paid_required') {
+      showError('Cloud video save is included with paid plans')
+      await navigateTo('/pricing')
+    } else {
+      showError(statusMessage)
+    }
+  } finally {
+    savingCloudVideo.value = false
+  }
+}
+
 async function handleDeleteHistory(id: string) {
   deletingId.value = id
   try {
@@ -709,6 +1274,12 @@ async function handleDeleteHistory(id: string) {
   } finally {
     deletingId.value = null
   }
+}
+
+function handleBackToSync() {
+  abortController?.abort()
+  abortController = null
+  emit('update:show', false)
 }
 
 function handleDrawerUpdate(value: boolean) {

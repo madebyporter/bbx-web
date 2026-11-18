@@ -9,11 +9,19 @@ export interface Track {
   storage_provider?: StorageProvider
   artwork_path?: string | null
   artwork_provider?: StorageProvider
+  /** R2 key for the latest paid cloud-saved generated video. */
+  video_path?: string | null
+  video_provider?: StorageProvider
   duration: number
   version?: string
   genre?: string
   mood?: string
   bpm?: number | null
+  key?: string | null
+  /** Optional platform sync description; when empty, sync auto-builds from metadata. */
+  description?: string | null
+  /** Optional YouTube upload title (SEO); falls back to title when empty. */
+  youtube_title?: string | null
   year?: number | null
   collection_names?: string
   track_group_name?: string | null

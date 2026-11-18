@@ -87,6 +87,11 @@
 #   # Exclude static assets - they should be served directly
 #   # Netlify will serve files before applying redirects, but we set force=false to be safe
 
+# Nitro SSR / API routes (Nuxt) — keep max sync window for other long calls.
+# Cover generate uses netlify/functions/cover-generate-background.js (≤15 min) + job poll.
+[functions."server"]
+  timeout = 60
+
 # Function configuration for download-sample
 [functions."download-sample"]
   timeout = 60  # 60 seconds for audio processing

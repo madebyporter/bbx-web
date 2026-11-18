@@ -891,6 +891,188 @@ function detectKeyWithEssentia(audioData: Float32Array, sampleRate: number): str
   }
 }
 
+/** Beatbox mood vocabulary (matches FilterSort) */
+export const BEATBOX_MOOD_TAGS = [
+  'Dark',
+  'Happy',
+  'Energetic',
+  'Chill',
+  'Aggressive',
+  'Melancholic',
+  'Uplifting',
+  'Mysterious',
+] as const
+
+export type BeatboxMoodTag = (typeof BEATBOX_MOOD_TAGS)[number]
+
+/**
+ * Decode audio once and return mono PCM limited to the first 60s.
+ */
+async function decodeAudioForAnalysis(
+  audioFile: File | Blob,
+): Promise<{ samples: Float32Array; sampleRate: number }> {
+  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+  try {
+    const arrayBuffer = await audioFile.arrayBuffer()
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+    let audioData: Float32Array
+    if (audioBuffer.numberOfChannels === 1) {
+      audioData = audioBuffer.getChannelData(0)
+    } else {
+      const left = audioBuffer.getChannelData(0)
+      const right = audioBuffer.getChannelData(1)
+      audioData = new Float32Array(left.length)
+      for (let i = 0; i < left.length; i++) {
+        const l = left[i] ?? 0
+        const r = right[i] ?? 0
+        audioData[i] = (l + r) / 2
+      }
+    }
+    const maxSamples = audioBuffer.sampleRate * 60
+    const samples =
+      audioData.length > maxSamples ? audioData.slice(0, maxSamples) : audioData
+    return { samples, sampleRate: audioBuffer.sampleRate }
+  } finally {
+    void audioContext.close()
+  }
+}
+
+function computeEnergyAndBrightness(samples: Float32Array): {
+  rms: number
+  brightness: number
+} {
+  if (!samples.length) return { rms: 0, brightness: 0.5 }
+
+  let sumSq = 0
+  let zeroCrossings = 0
+  for (let i = 0; i < samples.length; i++) {
+    const v = samples[i] ?? 0
+    sumSq += v * v
+    const prev = i > 0 ? (samples[i - 1] ?? 0) : 0
+    if (i > 0 && ((prev >= 0 && v < 0) || (prev < 0 && v >= 0))) {
+      zeroCrossings++
+    }
+  }
+  const rms = Math.sqrt(sumSq / samples.length)
+  // Zero-crossing rate as a cheap brightness proxy (0–1-ish)
+  const brightness = Math.min(1, zeroCrossings / Math.max(1, samples.length) * 20)
+  return { rms, brightness }
+}
+
+/**
+ * Map BPM, key mode, energy, and brightness to Beatbox mood tags (1–3).
+ */
+function mapFeaturesToMoods(params: {
+  bpm: number
+  keyLabel: string | null
+  rms: number
+  brightness: number
+}): BeatboxMoodTag[] {
+  const scores: Record<BeatboxMoodTag, number> = {
+    Dark: 0,
+    Happy: 0,
+    Energetic: 0,
+    Chill: 0,
+    Aggressive: 0,
+    Melancholic: 0,
+    Uplifting: 0,
+    Mysterious: 0,
+  }
+
+  const bpm = params.bpm
+  const isMinor = /minor/i.test(params.keyLabel || '')
+  const isMajor = /major/i.test(params.keyLabel || '')
+  const highEnergy = params.rms >= 0.12
+  const lowEnergy = params.rms < 0.06
+  const bright = params.brightness >= 0.45
+  const darkTone = params.brightness < 0.3
+
+  if (bpm >= 130) {
+    scores.Energetic += 3
+    scores.Aggressive += highEnergy ? 2 : 1
+  } else if (bpm >= 110) {
+    scores.Energetic += 2
+    scores.Uplifting += isMajor ? 1 : 0
+  } else if (bpm <= 85) {
+    scores.Chill += 3
+    scores.Melancholic += 2
+  } else if (bpm <= 100) {
+    scores.Chill += 2
+    scores.Mysterious += 1
+  }
+
+  if (highEnergy) {
+    scores.Energetic += 2
+    scores.Aggressive += 1
+  }
+  if (lowEnergy) {
+    scores.Chill += 2
+    scores.Melancholic += 1
+    scores.Mysterious += 1
+  }
+
+  if (isMinor) {
+    scores.Dark += 3
+    scores.Melancholic += 2
+    scores.Mysterious += 2
+    scores.Happy -= 2
+    scores.Uplifting -= 1
+  }
+  if (isMajor) {
+    scores.Happy += 3
+    scores.Uplifting += 2
+    scores.Dark -= 1
+    scores.Melancholic -= 1
+  }
+
+  if (darkTone) {
+    scores.Dark += 2
+    scores.Mysterious += 1
+  }
+  if (bright) {
+    scores.Happy += 1
+    scores.Uplifting += 1
+    scores.Aggressive += highEnergy ? 1 : 0
+  }
+
+  const ranked = (Object.entries(scores) as [BeatboxMoodTag, number][])
+    .filter(([, score]) => score > 0)
+    .sort((a, b) => b[1] - a[1])
+
+  const selected = ranked.slice(0, 3).map(([tag]) => tag)
+  if (selected.length === 0) {
+    return isMinor ? ['Dark', 'Mysterious'] : ['Chill', 'Uplifting']
+  }
+  return selected
+}
+
+/**
+ * Analyze mood tags from an audio file using BPM, key, energy, and brightness heuristics.
+ * @returns 1–3 Beatbox mood tags
+ */
+export async function analyzeMoodFromAudio(audioFile: File | Blob): Promise<BeatboxMoodTag[]> {
+  try {
+    const { samples, sampleRate } = await decodeAudioForAnalysis(audioFile)
+    const { rms, brightness } = computeEnergyAndBrightness(samples)
+
+    const bpmResults = detectBPMMultipleMethods(samples, sampleRate)
+    const bpm = chooseMostReliableBPM(bpmResults) || 100
+
+    let keyLabel: string | null = null
+    try {
+      await loadEssentia()
+      keyLabel = detectKeyWithEssentia(samples, sampleRate)
+    } catch (err) {
+      console.warn('Mood analysis: key detection skipped', err)
+    }
+
+    return mapFeaturesToMoods({ bpm, keyLabel, rms, brightness })
+  } catch (error: any) {
+    console.error('Mood analysis failed:', error)
+    throw new Error(`Failed to analyze mood: ${error.message || 'Unknown error'}`)
+  }
+}
+
 /**
  * Composable for BPM analysis with reactive state
  */

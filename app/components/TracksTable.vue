@@ -14,20 +14,26 @@
       <div v-else-if="tracks.length === 0" class="py-16 w-full text-center">
       <div class="max-w-md mx-auto">
         <h3 class="text-lg font-medium mb-2 text-neutral-300">
-          {{ isOwnProfile && profileUserType === 'audio_pro' ? 'No tracks uploaded yet' : isOwnProfile &&
-          profileUserType === 'creator' ? 'No tracks in shortlist' : 'No tracks available' }}
+          {{ zeroStateTitle }}
         </h3>
         <p class="text-neutral-500 text-sm mb-6">
-          {{ isOwnProfile && profileUserType === 'audio_pro'
-          ? 'Start building your music library by uploading your first track.'
-          : isOwnProfile && profileUserType === 'creator'
-          ? 'Start building your shortlist by adding tracks from audio pro accounts.'
-          : 'This user hasn\'t uploaded any tracks yet.'
-          }}
+          {{ zeroStateBody }}
         </p>
-        <Button v-if="isOwnProfile && profileUserType === 'audio_pro'" @click="handleUploadClick">
-          Upload Music
-        </Button>
+        <div
+          v-if="isOwnProfile && (profileUserType === 'audio_pro' || profileUserType === 'creator')"
+          class="flex flex-col sm:flex-row gap-2 justify-center items-center"
+        >
+          <NuxtLink
+            v-if="profileUserType === 'creator'"
+            to="/producers"
+            class="inline-flex items-center justify-center font-medium transition-colors bg-neutral-800 text-neutral-200 hover:bg-neutral-700 px-4 py-2 text-base rounded min-h-8"
+          >
+            Browse producers
+          </NuxtLink>
+          <Button @click="handleUploadClick">
+            Upload Music
+          </Button>
+        </div>
       </div>
       </div>
 
@@ -244,6 +250,7 @@
             :is-own-profile="isOwnProfile"
             :profile-user-type="profileUserType"
             :is-logged-in="!!user"
+            :sync-aggregate="syncAggregates[track.id] || 'none'"
             @edit-track="$emit('edit-track', $event)"
           />
           <!-- Add button for creators viewing audio_pro profiles -->
@@ -271,7 +278,7 @@
           </Button>
           <!-- Remove button for creators viewing their own shortlist -->
           <Button
-            v-else-if="isOwnProfile && viewerUserType === 'creator'"
+            v-else-if="isOwnProfile && viewerUserType === 'creator' && libraryViewMode === 'shortlist'"
             variant="ghost"
             size="sm"
             class="text-neutral-500 hover:text-red-300 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-md !p-2 !py-0.5"
@@ -323,6 +330,7 @@ import { Plus } from '@iconoir/vue'
 import TrackRowActionsMenu from '~/components/TrackRowActionsMenu.vue'
 import { buildTrackGridStyle, TRACK_TABLE_INNER_CLASS, TRACK_TABLE_STICKY_ACTIONS_CLASS } from '~/utils/trackTableGrid'
 import { useInfiniteScroll } from '~/composables/useInfiniteScroll'
+import { useTrackSyncAggregates } from '~/composables/useTrackSyncAggregates'
 import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 import type { Track } from '~/types/track'
 
@@ -334,6 +342,8 @@ interface Props {
   username: string
   viewerUserType?: 'creator' | 'audio_pro' | null
   profileUserType?: 'creator' | 'audio_pro' | null
+  /** Creator own-library view: shortlist vs uploads */
+  libraryViewMode?: 'shortlist' | 'uploads'
   analyticsMode?: boolean
   trackStats?: Map<number, TrackAnalyticsRow>
   analyticsLoading?: boolean
@@ -344,10 +354,41 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  libraryViewMode: 'shortlist',
   analyticsMode: false,
   analyticsLoading: false,
   hasMore: false,
   loadingMore: false,
+})
+
+const syncStatusEnabled = computed(
+  () => props.isOwnProfile && props.profileUserType === 'audio_pro',
+)
+const syncTrackIds = computed(() => props.tracks.map((t) => t.id).filter(Boolean))
+const { aggregates: syncAggregates } = useTrackSyncAggregates(syncTrackIds, syncStatusEnabled)
+
+const zeroStateTitle = computed(() => {
+  if (props.isOwnProfile && props.profileUserType === 'audio_pro') {
+    return 'No tracks uploaded yet'
+  }
+  if (props.isOwnProfile && props.profileUserType === 'creator') {
+    return props.libraryViewMode === 'uploads'
+      ? 'No tracks uploaded yet'
+      : 'No tracks in shortlist'
+  }
+  return 'No tracks available'
+})
+
+const zeroStateBody = computed(() => {
+  if (props.isOwnProfile && props.profileUserType === 'audio_pro') {
+    return 'Start building your music library by uploading your first track.'
+  }
+  if (props.isOwnProfile && props.profileUserType === 'creator') {
+    return props.libraryViewMode === 'uploads'
+      ? 'Upload your own beats and songs to manage them here.'
+      : 'Browse producers to shortlist tracks, or upload your own music.'
+  }
+  return "This user hasn't uploaded any tracks yet."
 })
 const emit = defineEmits<{
   'edit-track': [track: Track]

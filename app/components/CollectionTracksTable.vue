@@ -10,26 +10,45 @@
         :show-status="showStatusColumn"
       />
 
-      <div v-else-if="tracks.length === 0" class="text-neutral-500 p-4 flex flex-col gap-2">
-      <template v-if="noFilterResults && activeFilterChips.length > 0">
-        <p>Your filters match no results.</p>
-        <p class="flex flex-wrap items-center gap-x-1 gap-y-1">
-          <span>Remove:</span>
-          <template v-for="(chip, index) in activeFilterChips" :key="chip.id">
-            <button
-              type="button"
-              class="text-link text-amber-400 hover:text-amber-300 no-underline"
-              @click="chip.remove()"
+      <div v-else-if="tracks.length === 0" class="py-16 w-full text-center">
+      <div class="max-w-md mx-auto flex flex-col items-center gap-4">
+        <template v-if="noFilterResults && activeFilterChips.length > 0">
+          <p class="text-neutral-500">Your filters match no results.</p>
+          <p class="text-neutral-500 flex flex-wrap items-center justify-center gap-x-1 gap-y-1">
+            <span>Remove:</span>
+            <template v-for="(chip, index) in activeFilterChips" :key="chip.id">
+              <button
+                type="button"
+                class="text-link text-amber-400 hover:text-amber-300 no-underline"
+                @click="chip.remove()"
+              >
+                {{ chip.label }}
+              </button>
+              <span v-if="index < activeFilterChips.length - 1">, </span>
+            </template>
+          </p>
+        </template>
+        <template v-else-if="isOwnProfile">
+          <h3 class="text-lg font-medium text-neutral-300">No tracks in this collection yet</h3>
+          <p class="text-neutral-500 text-sm">
+            Upload a new track into this collection, or add one from your library.
+          </p>
+          <div class="flex flex-col sm:flex-row gap-2 sm:gap-6 items-center justify-center">
+            <Button @click="handleUploadToCollection">
+              Upload track
+            </Button>
+            <NuxtLink
+              :to="libraryPath"
+              class="text-link text-sm hover:text-amber-400 no-underline"
             >
-              {{ chip.label }}
-            </button>
-            <span v-if="index < activeFilterChips.length - 1">, </span>
-          </template>
-        </p>
-      </template>
-      <template v-else>
-        {{ isOwnProfile ? 'No tracks in this collection yet.' : 'No tracks available.' }}
-      </template>
+              Add from library
+            </NuxtLink>
+          </div>
+        </template>
+        <template v-else>
+          <p class="text-neutral-500">No tracks available.</p>
+        </template>
+      </div>
     </div>
 
     <div v-else class="w-full min-w-0">
@@ -224,6 +243,7 @@
             :profile-user-type="profileUserType"
             :is-logged-in="!!user"
             :collection-id="collectionId"
+            :sync-aggregate="syncAggregates[track.id] || 'none'"
             @edit-track="$emit('edit-track', $event)"
           />
           <!-- Remove button for creators (remove from collection) -->
@@ -276,6 +296,7 @@ import { Plus } from '@iconoir/vue'
 import TrackRowActionsMenu from '~/components/TrackRowActionsMenu.vue'
 import { buildTrackGridStyle, TRACK_TABLE_INNER_CLASS, TRACK_TABLE_STICKY_ACTIONS_CLASS } from '~/utils/trackTableGrid'
 import { useInfiniteScroll } from '~/composables/useInfiniteScroll'
+import { useTrackSyncAggregates } from '~/composables/useTrackSyncAggregates'
 import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 import type { Track } from '~/types/track'
 
@@ -314,6 +335,20 @@ const props = withDefaults(
     loadingMore: false,
   }
 )
+
+const syncStatusEnabled = computed(
+  () => props.isOwnProfile && props.profileUserType === 'audio_pro',
+)
+const syncTrackIds = computed(() => props.tracks.map((t) => t.id).filter(Boolean))
+const { aggregates: syncAggregates } = useTrackSyncAggregates(syncTrackIds, syncStatusEnabled)
+
+const libraryPath = computed(() => {
+  return props.username ? `/u/${props.username}` : '/'
+})
+
+function handleUploadToCollection() {
+  window.dispatchEvent(new CustomEvent('open-upload-modal'))
+}
 
 const emit = defineEmits<{
   'edit-track': [track: Track]

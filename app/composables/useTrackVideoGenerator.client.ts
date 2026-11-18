@@ -35,7 +35,7 @@ export const TRACK_VIDEO_DIMENSION_OPTIONS: Array<{
   {
     value: 'landscape',
     label: 'Landscape',
-    description: '1920×1080 · YouTube, X, Reddit',
+    description: '1920×1080 (16:9) · YouTube, X, Reddit — square cover, background fills sides',
   },
 ]
 
@@ -217,10 +217,12 @@ function buildVideoFilter({
   backgroundColor: string
   isGif: boolean
 }): string {
+  // Always keep cover art aspect (square stays square). Pad with background to fill
+  // the output frame (e.g. 1920×1080 landscape for YouTube).
   const innerW = Math.max(1, width - paddingPx * 2)
   const innerH = Math.max(1, height - paddingPx * 2)
-  const scaleFilter = `scale=${innerW}:${innerH}:force_original_aspect_ratio=decrease:flags=lanczos`
   const padColor = toFfmpegPadColor(backgroundColor)
+  const scaleFilter = `scale=${innerW}:${innerH}:force_original_aspect_ratio=decrease:flags=lanczos`
   const padFilter = `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=${padColor}`
   return isGif ? `${scaleFilter},${padFilter}` : `${scaleFilter},${padFilter},format=yuv420p`
 }

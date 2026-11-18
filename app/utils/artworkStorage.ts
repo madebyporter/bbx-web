@@ -44,6 +44,37 @@ async function getAccessToken(supabase: SupabaseClient): Promise<string | null> 
   return data.session?.access_token || null
 }
 
+/**
+ * Download artwork bytes via same-origin API (avoids R2 CORS failures on localhost).
+ */
+export async function downloadArtworkBlob(
+  entity: ArtworkEntity,
+  kind: ArtworkKind,
+  supabase: SupabaseClient | null,
+): Promise<Blob | null> {
+  if (!entity.artwork_path || !entity.id || !supabase) return null
+
+  try {
+    const accessToken = await getAccessToken(supabase)
+    if (!accessToken) return null
+
+    const query =
+      kind === 'track'
+        ? { kind, trackId: entity.id }
+        : { kind, collectionId: entity.id }
+
+    return await $fetch<Blob>('/api/storage/download-artwork', {
+      method: 'GET',
+      query,
+      headers: { Authorization: `Bearer ${accessToken}` },
+      responseType: 'blob',
+    })
+  } catch (error) {
+    console.error('Error downloading artwork via same-origin API:', error)
+    return null
+  }
+}
+
 export async function fetchArtworkUrl(
   entity: ArtworkEntity,
   kind: ArtworkKind,
@@ -118,12 +149,13 @@ export async function uploadArtworkToStorage(
     throw new Error('Not authenticated')
   }
 
-  const isLocalHost =
-    typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1'
+  // Deploy previews / branch deploys aren't on the R2 CORS allowlist (production only)
+  const isNetlifyPreview = hostname.endsWith('.netlify.app')
 
-  // Localhost → same-origin API (R2 CORS only allows production + :3000 today)
-  if (isLocalHost) {
+  // Localhost + Netlify previews → same-origin API (avoids R2 browser CORS)
+  if (isLocalHost || isNetlifyPreview) {
     const form = new FormData()
     form.append('file', file)
     form.append('kind', kind)

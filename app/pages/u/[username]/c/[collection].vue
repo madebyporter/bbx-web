@@ -27,6 +27,7 @@
         :is-own-profile="isOwnProfile"
         :show-view-mode-selector="false"
         :show-settings-button="isCollectionOwner"
+        :show-share-button="isCollectionOwner"
         :show-analytics-toggle="isOwnProfile && profileUserType === 'audio_pro'"
         :analytics-mode="analyticsMode"
         analytics-page="collection"
@@ -40,6 +41,7 @@
         @open-filter-sort="handleOpenFilterSort"
         @clear-filters="handleClearFilterSort"
         @open-settings="showSettingsDrawer = true"
+        @open-share="openShareDrawer"
         @update:analytics-mode="analyticsMode = $event"
       />
 
@@ -91,11 +93,18 @@
       @collection-updated="handleCollectionUpdated"
       @collection-deleted="handleCollectionDeleted"
     />
+
+    <CollectionShareDrawer
+      v-if="collection"
+      v-model:show="showShareDrawer"
+      :collection-id="collection.id"
+      :collection-name="collection.name"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, inject, watch, type ComputedRef } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch, nextTick, type ComputedRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
@@ -104,6 +113,7 @@ import { usePlayer } from '~/composables/usePlayer'
 import CollectionTracksTable from '~/components/CollectionTracksTable.vue'
 import TracksTableSkeleton from '~/components/TracksTableSkeleton.vue'
 import CollectionSettingsDrawer from '~/components/CollectionSettingsDrawer.vue'
+import CollectionShareDrawer from '~/components/CollectionShareDrawer.vue'
 import TrackAnalyticsDateFilter from '~/components/TrackAnalyticsDateFilter.vue'
 import TrackAnalyticsSummary from '~/components/TrackAnalyticsSummary.vue'
 import { recordPageView } from '~/composables/useTrackAnalytics'
@@ -192,6 +202,7 @@ const searchQuery = ref('')
 const viewerUserType = ref<'creator' | 'audio_pro' | null>(null)
 const profileUserType = ref<'creator' | 'audio_pro' | null>(null)
 const showSettingsDrawer = ref(false)
+const showShareDrawer = ref(false)
 
 // Computed
 const isOwnProfile = computed(() => {
@@ -201,6 +212,56 @@ const isOwnProfile = computed(() => {
 const isCollectionOwner = computed(() => {
   return !!(user.value && collection.value && user.value.id === collection.value.user_id)
 })
+
+const SHARE_OPEN_KEY = 'bbx_open_share_drawer'
+
+function openShareDrawer() {
+  // Force a closed→open cycle so MasterDrawer can animate if show was already true
+  if (showShareDrawer.value) {
+    showShareDrawer.value = false
+    void nextTick(() => {
+      showShareDrawer.value = true
+    })
+    return
+  }
+  showShareDrawer.value = true
+}
+
+function consumePendingShareOpen(): boolean {
+  if (String(route.query.share || '') === '1') return true
+  if (typeof sessionStorage === 'undefined') return false
+  return sessionStorage.getItem(SHARE_OPEN_KEY) === '1'
+}
+
+function clearPendingShareOpen() {
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.removeItem(SHARE_OPEN_KEY)
+  }
+  if (String(route.query.share || '') === '1') {
+    const nextQuery = { ...route.query }
+    delete nextQuery.share
+    void router.replace({ path: route.path, query: nextQuery })
+  }
+}
+
+function openShareFromQuery() {
+  if (!isCollectionOwner.value || !collection.value) return
+  if (!consumePendingShareOpen()) return
+
+  clearPendingShareOpen()
+  // Wait until CollectionShareDrawer is mounted with show=false, then open
+  void nextTick(() => {
+    openShareDrawer()
+  })
+}
+
+watch(
+  [isCollectionOwner, () => route.query.share, () => collection.value?.id],
+  () => {
+    openShareFromQuery()
+  },
+  { immediate: true },
+)
 
 const collectionArtworkUrl = ref<string | null>(null)
 
@@ -885,6 +946,11 @@ const handleCollectionDeleted = () => {
 onMounted(async () => {
   tracksLoading.value = true
   await fetchCollection()
+
+  if (collection.value?.id && !isOwnProfile.value) {
+    const { markCollectionReviewed } = await import('~/composables/useOnboardingChecklist')
+    markCollectionReviewed(collection.value.id)
+  }
 
   if (profileUserId.value && collection.value && !isOwnProfile.value) {
     void recordPageView({

@@ -131,7 +131,7 @@
                     </div>
                     <div class="flex flex-col gap-1 min-w-0">
                       <span class="text-sm text-neutral-300">
-                        {{ newArtworkFile ? 'New artwork:' : 'Current artwork' }}
+                        {{ newArtworkFile ? (generatedArtworkPending ? 'Generated artwork:' : 'New artwork:') : 'Current artwork' }}
                       </span>
                       <span v-if="newArtworkFile" class="text-xs text-amber-400 truncate">{{ newArtworkFile.name }}</span>
                     </div>
@@ -142,7 +142,7 @@
                       variant="ghost"
                       size="sm"
                       class="border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
-                      :disabled="isUpdating"
+                      :disabled="isUpdating || generatingArtwork"
                       @click="artworkInput?.click()"
                     >
                       Choose New File
@@ -168,11 +168,38 @@
                     variant="ghost"
                     size="sm"
                     class="border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
-                    :disabled="isUpdating"
+                    :disabled="isUpdating || generatingArtwork"
                     @click="artworkInput?.click()"
                   >
                     Choose File
                   </Button>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                  <label for="edit-cover-direction" class="text-sm text-neutral-400">Cover direction</label>
+                  <textarea
+                    id="edit-cover-direction"
+                    v-model="coverDirection"
+                    rows="8"
+                    :maxlength="COVER_DIRECTION_MAX"
+                    placeholder="Optional — e.g. red moon over city skyline…"
+                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[180px]"
+                    :disabled="isUpdating || generatingArtwork"
+                  />
+                  <div class="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      :disabled="isUpdating || generatingArtwork || !canGenerateArtwork"
+                      @click="handleGenerateArtwork"
+                    >
+                      {{ generatingArtwork ? 'Generating cover…' : 'Generate cover' }}
+                    </Button>
+                    <p class="text-xs text-neutral-500">
+                      Uses title, artist, genre, and mood. Saves to Cloudflare R2 + your track.
+                    </p>
+                  </div>
                 </div>
 
                 <p v-if="artworkError" class="text-xs text-red-500">{{ artworkError }}</p>
@@ -398,6 +425,8 @@ import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
 import { deleteAudio, downloadAudioBlob, uploadAudio } from '~/utils/trackAudioStorage'
 import { normalizeArtworkProvider } from '~/utils/artworkStorage'
+import { useAuthHeaders } from '~/composables/useAuthHeaders'
+import { COVER_DIRECTION_MAX } from '~/utils/coverDirection'
 import { CircleSpark } from '@iconoir/vue'
 
 interface Props {
@@ -485,6 +514,13 @@ const artworkInput = ref<HTMLInputElement | null>(null)
 const artworkPreview = ref<string | null>(null)
 const artworkError = ref<string | null>(null)
 const removeArtworkFlag = ref(false)
+const coverDirection = ref('')
+const generatingArtwork = ref(false)
+const generatedArtworkPending = ref(false)
+
+const canGenerateArtwork = computed(() => {
+  return Boolean(metadata.value.title?.trim() && metadata.value.artist?.trim())
+})
 
 const currentArtworkUrl = ref<string | null>(null)
 
@@ -692,19 +728,112 @@ const handleArtworkSelect = async (event: Event) => {
     artworkPreview.value = preview
     artworkError.value = null
     removeArtworkFlag.value = false
+    generatedArtworkPending.value = false
   } catch (err: any) {
     artworkError.value = err.message || 'Invalid artwork file'
     newArtworkFile.value = null
     artworkPreview.value = null
+    generatedArtworkPending.value = false
   }
 
   if (target) target.value = ''
+}
+
+const handleGenerateArtwork = async () => {
+  if (!canGenerateArtwork.value || generatingArtwork.value || !props.trackToEdit?.id || !supabase) {
+    return
+  }
+
+  const title = metadata.value.title.trim()
+  const artist = metadata.value.artist.trim()
+  generatingArtwork.value = true
+  artworkError.value = null
+
+  try {
+    const { generateCoverViaJob } = await import('~/utils/coverGenerateClient')
+    const result = await generateCoverViaJob({
+      title,
+      artist,
+      genre: metadata.value.genre?.trim() || undefined,
+      mood: metadata.value.mood?.trim() || undefined,
+      direction: coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || undefined,
+    })
+
+    const binary = atob(result.base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    const blob = new Blob([bytes], { type: result.mimeType || 'image/png' })
+    const file = new File([blob], result.filename || 'cover-ai.png', {
+      type: result.mimeType || 'image/png',
+    })
+    const { file: processedFile, preview } = await validateAndProcessArtwork(file)
+
+    // Persist immediately: R2 object + sounds.artwork_* in Supabase
+    const uploaded = await uploadArtwork(processedFile, 'track')
+    if (props.trackToEdit.artwork_path) {
+      try {
+        await deleteArtwork(
+          {
+            id: props.trackToEdit.id,
+            artwork_path: props.trackToEdit.artwork_path,
+            artwork_provider: props.trackToEdit.artwork_provider,
+          },
+          'track',
+        )
+      } catch (err) {
+        console.warn('Failed to delete previous artwork after cover generate:', err)
+      }
+    }
+
+    const { data, error: updateError } = await supabase
+      .from('sounds')
+      .update({
+        artwork_path: uploaded.artwork_path,
+        artwork_provider: uploaded.artwork_provider,
+      })
+      .eq('id', props.trackToEdit.id)
+      .select()
+      .maybeSingle()
+
+    if (updateError) throw updateError
+
+    const updatedTrack = data
+      ? { ...props.trackToEdit, ...data }
+      : {
+          ...props.trackToEdit,
+          artwork_path: uploaded.artwork_path,
+          artwork_provider: uploaded.artwork_provider,
+        }
+
+    // Already saved — don't stage as pending Update Track upload
+    newArtworkFile.value = null
+    artworkPreview.value = preview
+    removeArtworkFlag.value = false
+    generatedArtworkPending.value = false
+    props.trackToEdit.artwork_path = updatedTrack.artwork_path
+    props.trackToEdit.artwork_provider = updatedTrack.artwork_provider
+    await loadCurrentArtworkUrl()
+    emit('track-updated', updatedTrack)
+    window.dispatchEvent(
+      new CustomEvent('track-updated', {
+        detail: { track: updatedTrack },
+        bubbles: true,
+      }),
+    )
+  } catch (err: any) {
+    artworkError.value =
+      err?.data?.statusMessage || err?.message || 'Failed to generate cover'
+    generatedArtworkPending.value = false
+  } finally {
+    generatingArtwork.value = false
+  }
 }
 
 const removeArtworkSelection = () => {
   newArtworkFile.value = null
   artworkPreview.value = null
   artworkError.value = null
+  generatedArtworkPending.value = false
   removeArtworkFlag.value = true
   if (artworkInput.value) {
     artworkInput.value.value = ''
@@ -851,6 +980,9 @@ watch(() => props.trackToEdit, async (newTrack) => {
   artworkPreview.value = null
   artworkError.value = null
   removeArtworkFlag.value = false
+  coverDirection.value = ''
+  generatedArtworkPending.value = false
+  generatingArtwork.value = false
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -1271,6 +1403,8 @@ const onSubmit = async () => {
     artworkPreview.value = null
     artworkError.value = null
     removeArtworkFlag.value = false
+    generatedArtworkPending.value = false
+    coverDirection.value = ''
     if (fileInput.value) {
       fileInput.value.value = ''
     }

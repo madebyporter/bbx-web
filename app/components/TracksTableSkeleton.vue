@@ -10,7 +10,7 @@
             v-for="(col, index) in columns"
             :key="`h-${index}`"
             class="flex items-center p-4 shrink-0"
-            :class="col.sticky ? TRACK_TABLE_STICKY_ACTIONS_CLASS : ''"
+            :class="col.sticky ? TRACK_TABLE_STICKY_ACTIONS_BASE_CLASS : ''"
             :style="{ width: col.width, minWidth: col.width }"
           >
             {{ col.label }}
@@ -21,13 +21,13 @@
         <div
           v-for="row in rowCount"
           :key="row"
-          class="group flex flex-nowrap items-stretch text-sm border-b border-neutral-900 min-h-[65px] min-w-max w-full"
+          class="flex flex-nowrap items-stretch text-sm border-b border-neutral-900 min-h-[65px] min-w-max w-full"
         >
           <div
             v-for="(col, index) in columns"
             :key="`${row}-${index}`"
             class="flex items-center p-4 shrink-0 overflow-hidden"
-            :class="col.sticky ? TRACK_TABLE_STICKY_ACTIONS_CLASS : ''"
+            :class="col.sticky ? TRACK_TABLE_STICKY_ACTIONS_BASE_CLASS : ''"
             :style="{ width: col.width, minWidth: col.width }"
           >
             <div
@@ -59,7 +59,7 @@ import { computed } from 'vue'
 import {
   TRACK_GRID_WIDTH,
   TRACK_TABLE_INNER_CLASS,
-  TRACK_TABLE_STICKY_ACTIONS_CLASS,
+  TRACK_TABLE_STICKY_ACTIONS_BASE_CLASS,
 } from '~/utils/trackTableGrid'
 import { TRACK_PAGE_SIZE } from '~/utils/trackPagination'
 
@@ -108,7 +108,7 @@ const columns = computed((): SkeletonCol[] => {
       barWidth: '96px',
       kind: 'text',
     },
-    { label: 'Version', width: TRACK_GRID_WIDTH.tiny, barWidth: '40px', kind: 'text' },
+    { label: 'Version', width: TRACK_GRID_WIDTH.compact, barWidth: '40px', kind: 'text' },
   ]
 
   if (analytics) {
@@ -130,7 +130,7 @@ const columns = computed((): SkeletonCol[] => {
     cols.push(
       { label: 'Genre', width: TRACK_GRID_WIDTH.small, barWidth: '56px', kind: 'text' },
       { label: 'BPM', width: TRACK_GRID_WIDTH.tiny, barWidth: '32px', kind: 'text' },
-      { label: 'Duration', width: TRACK_GRID_WIDTH.tiny, barWidth: '40px', kind: 'text' },
+      { label: 'Duration', width: TRACK_GRID_WIDTH.compact, barWidth: '40px', kind: 'text' },
     )
     if (props.showStatus) {
       cols.push({
@@ -145,8 +145,8 @@ const columns = computed((): SkeletonCol[] => {
   if (props.showActions) {
     cols.push({
       label: '',
-      width: TRACK_GRID_WIDTH.tiny,
-      barWidth: '20px',
+      width: TRACK_GRID_WIDTH.actions,
+      barWidth: '72px',
       kind: 'action',
       sticky: true,
     })

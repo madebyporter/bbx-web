@@ -275,6 +275,113 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.70.47
+  - Mood/BPM/key analyze: stop proxying full audio via Netlify (502); signed R2 GET on previews + clearer CORS errors
+- 0.70.46
+  - Public/logged-out track grid: cap Title width; widen Version/Duration so last column stays on-screen
+- 0.70.45
+  - YouTube sync description: Track details link uses slug track page URL (not profile UUID)
+- 0.70.44
+  - Remove R2 bucket name from client comment (Netlify secrets scan)
+- 0.70.43
+  - Proxy R2 audio downloads same-origin on Netlify previews / localhost (mood/BPM/key analyze CORS)
+- 0.70.42
+  - Hide SoundCloud connect/sync UI in Sync drawer until API is ready
+- 0.70.41
+  - Match YouTube title AI button height to the title input
+- 0.70.40
+  - Sync YouTube title: AI SEO generate (CircleSpark) from track metadata
+- 0.70.39
+  - Keep generate-video history/preview after cloud save; hydrate from R2 when local history empty
+- 0.70.38
+  - Generate video footer: Back to Sync when opened from Sync and a video exists
+- 0.70.37
+  - Landscape/portrait video keeps square cover; background color pads the 16:9/9:16 frame
+- 0.70.36
+  - Cover generate via Netlify background job + client poll (avoids 60s sync timeout)
+- 0.70.35
+  - Proxy artwork uploads on Netlify deploy previews (fixes R2 CORS Failed to fetch)
+- 0.70.34
+  - Raise Netlify `server` function timeout to 60s; clearer Sync cover 504 timeout message
+- 0.70.33
+  - YouTube Sync updates existing video metadata in place (same video id); force-ssl OAuth scope
+- 0.70.32
+  - Optional YouTube title in Sync accordion; synced status as CheckCircle; Replace/View text-sm
+- 0.70.31
+  - Landscape/portrait video encode uses cover-fill (YouTube 1920×1080) instead of pillarbox
+- 0.70.30
+  - Save video to Cloudflare R2 (paid/comp/admin); one `video_path` per track
+- 0.70.29
+  - Generate video CTA + progress in MasterDrawer `#footer`
+- 0.70.28
+  - Generate video defaults to landscape when opened from Sync with YouTube selected
+- 0.70.27
+  - Fix description generate API path (`track/description/generate.post.ts`)
+- 0.70.26
+  - Sync description: edit + AI generate; prefer stored description on YouTube/SoundCloud sync
+- 0.70.25
+  - Cover models: read `GROK_KEY_VISUAL` (fallback `XAI_API_KEY`) so Grok appears in select
+- 0.70.24
+  - Sync cover model select (GPT Image 2.6 Flare/Sunburst, Grok Imagine 2.0)
+- 0.70.23
+  - Fix Sync Upload cover: file input ref was inside v-for (array, no .click)
+- 0.70.22
+  - Sync artwork: header thumb (opens full size), Upload + Generate, staged progress bar
+- 0.70.21
+  - Cover direction textarea taller (min 180px); soft cap raised to 8k chars end-to-end
+- 0.70.20
+  - Sync analyze/detect buttons locked to square `size-10` (BPM, Key, Mood)
+- 0.70.19
+  - Sync mood detect uses same CircleSpark analyze button as BPM/Key; DESIGN.md locks that pattern
+- 0.70.18
+  - Sync “Detect moods” as gold link; DESIGN.md button hierarchy (primary/secondary/tertiary/link)
+- 0.70.17
+  - `.select-field` utility: padded custom chevron (native select arrows ignore padding)
+- 0.70.16
+  - Sync drawer: accordion inline metadata (genre select, BPM/key edit+analyze, mood tags, generate cover)
+- 0.70.15
+  - Sync drawer: metadata Edit CTAs vertically centered, tertiary outlined
+- 0.70.14
+  - Sync drawer: checklist only for connected platforms; Add platform Connect is secondary
+- 0.70.13
+  - Sync drawer: YouTube “Generate video” as primary sm in-row CTA (drop extra status line)
+- 0.70.12
+  - Tracks table skeleton: no sticky-action hover chrome on fake rows
+- 0.70.11
+  - MasterDrawer `#footer` slot outside padded content; Sync/Settings/Bulk/Library Settings CTAs use it
+- 0.70.10
+  - Widen sticky track actions column so sync + menu icons fit with padding
+- 0.70.9
+  - Track row sync status icon (RefreshCircleSolid): green all / amber some / red errors / transparent none; click opens Sync
+- 0.70.8
+  - Cover generation falls back to Grok (grok-imagine-image-2.0) when OpenAI safety-rejects a prompt
+- 0.70.7
+  - Generate video loads track artwork via same-origin download (fixes Failed to fetch / CORS on localhost)
+  - Sync local video preview no longer forces square aspect (landscape shows correctly)
+- 0.70.6
+  - Edit Track Generate cover saves immediately to Cloudflare R2 + Supabase track row
+- 0.70.5
+  - Edit Track can AI-generate cover artwork with optional direction prompt
+- 0.70.4
+  - Sync drawer previews local video + artwork; recovers cover from video when artwork is empty
+- 0.70.3
+  - AI covers save to track artwork; Sync shows local video readiness across Generate ↔ Sync handoff
+- 0.70.2
+  - Cover generation direction prompt plus Detect moods from track audio (BPM/key/energy heuristics)
+  - Empty track mood is saved from cover moods after a successful generate
+- 0.70.1
+  - Sync track UI is a drawer; Generate video closes Sync, keeps selections, and reopens Sync when done
+- 0.70.0
+  - YouTube track sync for Pro: connect Google OAuth, upload generated track videos from Sync
+  - AI cover generation via OpenAI gpt-image-2.6-flare in Generate video when artwork is missing
+- 0.69.0
+  - SoundCloud track sync for Pro: connect OAuth, push audio + mapped metadata from Sync on track row menu
+- 0.68.0
+  - Collection Share drawer with invite link, Resend email, and Beatbox user invite
+  - Checklist “Share collection” CTA opens the share drawer via `?share=1`
+  - Invite/members UI moved out of Collection Settings into Share
+- 0.67.0
+  - Role-based onboarding: Producers browse page, left-rail checklist, Creator upload + Shortlist/Uploads toggle, Audio Pro create-collection empty state, profile public/private for directory listing
 - 0.66.0
   - Admin accounts get the unlimited tracks plan automatically, with no checkout
 - 0.65.0
