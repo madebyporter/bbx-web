@@ -918,26 +918,17 @@ async function handleGenerateCover() {
   generatingCover.value = true
   coverError.value = null
   try {
-    const headers = await useAuthHeaders()
     const mood =
       selectedMoods.value.length > 0 ? selectedMoods.value.join(', ') : undefined
     const direction = coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || undefined
 
-    const result = await $fetch<{
-      base64: string
-      mimeType: string
-      filename: string
-      provider?: 'openai' | 'grok'
-    }>('/api/integrations/cover/generate', {
-      method: 'POST',
-      headers,
-      body: {
-        title,
-        artist,
-        genre: props.track.genre || undefined,
-        mood: mood || undefined,
-        direction: direction || undefined,
-      },
+    const { generateCoverViaJob } = await import('~/utils/coverGenerateClient')
+    const result = await generateCoverViaJob({
+      title,
+      artist,
+      genre: props.track.genre || undefined,
+      mood: mood || undefined,
+      direction: direction || undefined,
     })
 
     const binary = atob(result.base64)

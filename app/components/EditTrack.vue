@@ -750,21 +750,13 @@ const handleGenerateArtwork = async () => {
   artworkError.value = null
 
   try {
-    const headers = await useAuthHeaders()
-    const result = await $fetch<{
-      base64: string
-      mimeType: string
-      filename: string
-    }>('/api/integrations/cover/generate', {
-      method: 'POST',
-      headers,
-      body: {
-        title,
-        artist,
-        genre: metadata.value.genre?.trim() || undefined,
-        mood: metadata.value.mood?.trim() || undefined,
-        direction: coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || undefined,
-      },
+    const { generateCoverViaJob } = await import('~/utils/coverGenerateClient')
+    const result = await generateCoverViaJob({
+      title,
+      artist,
+      genre: metadata.value.genre?.trim() || undefined,
+      mood: metadata.value.mood?.trim() || undefined,
+      direction: coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || undefined,
     })
 
     const binary = atob(result.base64)

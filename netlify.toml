@@ -87,8 +87,8 @@
 #   # Exclude static assets - they should be served directly
 #   # Netlify will serve files before applying redirects, but we set force=false to be safe
 
-# Nitro SSR / API routes (Nuxt) — cover generate + similar AI calls need the full sync window.
-# Netlify hard-caps synchronous functions at 60s; GPT Image Sunburst can still exceed that.
+# Nitro SSR / API routes (Nuxt) — keep max sync window for other long calls.
+# Cover generate uses netlify/functions/cover-generate-background.js (≤15 min) + job poll.
 [functions."server"]
   timeout = 60
 

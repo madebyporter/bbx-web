@@ -46,6 +46,8 @@ const client = new S3Client({
   requestChecksumCalculation: 'WHEN_REQUIRED',
 })
 
+// Production + local only. Netlify deploy previews use same-origin /api/storage/upload-artwork
+// (see artworkStorage.ts) — do not rely on listing every deploy-preview-N origin here.
 const CORSRules = [
   {
     AllowedOrigins: [

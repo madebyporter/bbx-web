@@ -149,12 +149,13 @@ export async function uploadArtworkToStorage(
     throw new Error('Not authenticated')
   }
 
-  const isLocalHost =
-    typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1'
+  // Deploy previews / branch deploys aren't on the R2 CORS allowlist (production only)
+  const isNetlifyPreview = hostname.endsWith('.netlify.app')
 
-  // Localhost → same-origin API (R2 CORS only allows production + :3000 today)
-  if (isLocalHost) {
+  // Localhost + Netlify previews → same-origin API (avoids R2 browser CORS)
+  if (isLocalHost || isNetlifyPreview) {
     const form = new FormData()
     form.append('file', file)
     form.append('kind', kind)

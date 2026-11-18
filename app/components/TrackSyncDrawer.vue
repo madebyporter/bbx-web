@@ -1151,26 +1151,19 @@ async function generateArtworkInline() {
   setCoverProgress(8, 'Starting…')
   startCoverWaitPulse(12, 48)
   try {
-    const headers = await useAuthHeaders()
     const title = localTrack.value.title.trim()
     const artist = localTrack.value.artist.trim()
     const moodStr = moodTagsFromTrack(localTrack.value).join(', ') || undefined
 
-    const result = await $fetch<{
-      base64: string
-      mimeType: string
-      filename: string
-    }>('/api/integrations/cover/generate', {
-      method: 'POST',
-      headers,
-      body: {
-        title,
-        artist,
-        genre: localTrack.value.genre?.trim() || undefined,
-        mood: moodStr,
-        direction: coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || undefined,
-        model: selectedCoverModel.value || undefined,
-      },
+    setCoverProgress(18, 'Generating with AI…')
+    const { generateCoverViaJob } = await import('~/utils/coverGenerateClient')
+    const result = await generateCoverViaJob({
+      title,
+      artist,
+      genre: localTrack.value.genre?.trim() || undefined,
+      mood: moodStr,
+      direction: coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || undefined,
+      model: selectedCoverModel.value || undefined,
     })
 
     clearCoverWaitTimer()
@@ -1188,14 +1181,13 @@ async function generateArtworkInline() {
     const statusCode = Number(err?.statusCode || err?.status || err?.response?.status || 0)
     const raw =
       err?.data?.statusMessage || err?.message || 'Failed to generate cover'
-    // Netlify sync functions hard-cap at ~60s; Sunburst often times out as 504
     if (
       statusCode === 504 ||
       statusCode === 408 ||
       /504|gateway timeout|timed?\s*out/i.test(String(raw))
     ) {
       artworkError.value =
-        'Cover generation timed out on the server (Netlify ~60s limit). Try Flare (faster) or generate again.'
+        'Cover generation timed out. Wait for the background job or try Flare (faster).'
     } else {
       artworkError.value = raw
     }

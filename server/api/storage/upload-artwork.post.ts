@@ -7,8 +7,8 @@ import { getServiceSupabase, requireAuthUser } from '../../utils/supabaseAuth'
 const MAX_ARTWORK_BYTES = 10 * 1024 * 1024
 
 /**
- * Same-origin artwork upload (used on localhost to bypass R2 browser CORS).
- * Production keeps using presigned PUT directly to R2.
+ * Same-origin artwork upload (localhost + Netlify deploy previews) to bypass R2 browser CORS.
+ * Production (beatbox.studio) keeps using presigned PUT directly to R2.
  */
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
