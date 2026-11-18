@@ -21,7 +21,12 @@
             :style="previewBackgroundStyle"
           >
             <div class="w-full h-full flex items-center justify-center" :style="previewCoverWrapperStyle">
-              <img :src="coverPreview" alt="Cover preview" class="w-full h-full object-contain" />
+              <img
+                :src="coverPreview"
+                alt="Cover preview"
+                class="w-full h-full"
+                :class="selectedDimension === 'square' ? 'object-contain' : 'object-cover'"
+              />
             </div>
           </div>
           <div
