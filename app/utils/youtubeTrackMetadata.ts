@@ -24,16 +24,54 @@ export interface YouTubeUploadSnippet {
   privacyStatus: 'unlisted' | 'private' | 'public'
 }
 
+/** Public track page slug: `title-slug-{id}` (matches `/u/:username/t/:track`). */
+export function generateTrackPageSlug(track: {
+  title?: string | null
+  id: number | string
+}): string {
+  const id = Number(track.id)
+  const title = trimOrEmpty(track.title)
+  if (title && Number.isFinite(id) && id > 0) {
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+    if (slug) return `${slug}-${id}`
+  }
+  if (Number.isFinite(id) && id > 0) return `track-${id}`
+  return 'track'
+}
+
+/** Absolute Beatbox track detail URL, or null when username is missing. */
+export function buildBeatboxTrackDetailUrl(
+  origin: string,
+  username: string | null | undefined,
+  track: { title?: string | null; id: number | string },
+): string | null {
+  const user = trimOrEmpty(username)
+  if (!user) return null
+  const base = trimOrEmpty(origin).replace(/\/$/, '')
+  if (!base) return null
+  return `${base}/u/${user}/t/${generateTrackPageSlug(track)}`
+}
+
+function appendTrackDetailsSection(body: string, trackUrl?: string | null): string {
+  const url = trimOrEmpty(trackUrl)
+  if (!url) return body.slice(0, 5000)
+  if (body.includes(url) || body.includes('/t/')) {
+    return body.slice(0, 5000)
+  }
+  const block = body ? `${body}\n\nTrack details:\n${url}` : `Track details:\n${url}`
+  return block.slice(0, 5000)
+}
+
 export function buildYouTubeDescription(
   track: Partial<Track>,
   trackUrl?: string | null,
 ): string {
   const custom = trimOrEmpty(track.description)
   if (custom) {
-    if (trackUrl && !custom.includes(trackUrl)) {
-      return `${custom}\n\n${trackUrl}`.slice(0, 5000)
-    }
-    return custom.slice(0, 5000)
+    return appendTrackDetailsSection(custom, trackUrl)
   }
 
   const lines: string[] = []
@@ -51,12 +89,11 @@ export function buildYouTubeDescription(
   if (bpm != null) lines.push(`BPM: ${bpm}`)
   if (key) lines.push(`Key: ${key}`)
   if (moods.length) lines.push(`Mood: ${moods.join(', ')}`)
-  if (trackUrl) {
-    if (lines.length) lines.push('')
-    lines.push(trackUrl)
-  }
-  if (!lines.length) return 'Synced from Beatbox'
-  return lines.join('\n')
+
+  const body = lines.join('\n')
+  const withDetails = appendTrackDetailsSection(body, trackUrl)
+  if (!trimOrEmpty(withDetails)) return 'Synced from Beatbox'
+  return withDetails
 }
 
 export function mapTrackToYouTubeSnippet(

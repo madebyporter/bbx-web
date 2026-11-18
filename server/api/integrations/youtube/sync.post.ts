@@ -1,5 +1,8 @@
 import { readBody } from 'h3'
-import { mapTrackToYouTubeSnippet } from '~/utils/youtubeTrackMetadata'
+import {
+  buildBeatboxTrackDetailUrl,
+  mapTrackToYouTubeSnippet,
+} from '~/utils/youtubeTrackMetadata'
 import { requireTrackSyncUser } from '../../../utils/integrationAuth'
 import {
   getValidYouTubeAccessToken,
@@ -61,9 +64,10 @@ export default defineEventHandler(async (event) => {
     .eq('id', user.id)
     .maybeSingle()
 
-  const trackUrl = profile?.username
-    ? `${siteUrl}/u/${profile.username}/t/${soundId}`
-    : `${siteUrl}/u/${user.id}`
+  const trackUrl = buildBeatboxTrackDetailUrl(siteUrl, profile?.username, {
+    id: soundId,
+    title: track.title,
+  })
 
   let snippet
   try {

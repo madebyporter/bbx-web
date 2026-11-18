@@ -631,6 +631,7 @@ import {
   type MetadataFieldKey,
   type MetadataFieldStatus,
 } from '~/utils/soundcloudTrackMetadata'
+import { buildBeatboxTrackDetailUrl } from '~/utils/youtubeTrackMetadata'
 
 type SyncStatus = 'synced' | 'not_synced' | 'pending' | 'failed' | 'syncing' | 'needs_video'
 
@@ -1608,10 +1609,28 @@ async function runSync() {
           const latest = exports[0]
           if (!latest?.blob) throw new Error('No video export found')
 
-          const username = (localTrack.value as any).username as string | undefined
-          const trackUrl = username
-            ? `${publishSiteOrigin}/u/${username}/t/${localTrack.value.id}`
-            : `${publishSiteOrigin}/u/${localTrack.value.user_id}`
+          let beatboxUsername: string | null =
+            typeof (localTrack.value as { username?: string }).username === 'string'
+              ? (localTrack.value as { username?: string }).username || null
+              : null
+          if (!beatboxUsername && supabase) {
+            const { data: auth } = await supabase.auth.getUser()
+            const uid = auth.user?.id
+            if (uid) {
+              const { data: profile } = await supabase
+                .from('user_profiles')
+                .select('username')
+                .eq('id', uid)
+                .maybeSingle()
+              beatboxUsername =
+                typeof profile?.username === 'string' ? profile.username : null
+            }
+          }
+          const trackUrl = buildBeatboxTrackDetailUrl(
+            publishSiteOrigin,
+            beatboxUsername,
+            localTrack.value,
+          )
 
           const result = await uploadTrackVideoToYouTube({
             track: localTrack.value,
