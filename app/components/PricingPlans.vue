@@ -183,7 +183,12 @@ const savingsLabel = computed(() => {
 
 function featuresWithoutTrack(plan: PublicPlan): string[] {
   const trackLabel = trackLimitLabel(plan).toLowerCase()
-  return (plan.features || []).filter((f) => f.toLowerCase() !== trackLabel)
+  return (plan.features || []).filter((f) => {
+    const lower = f.toLowerCase()
+    // Hide until SoundCloud sync API is ready (same as Sync drawer flag).
+    if (lower.includes('soundcloud')) return false
+    return lower !== trackLabel
+  })
 }
 
 function isCurrent(plan: PublicPlan) {
