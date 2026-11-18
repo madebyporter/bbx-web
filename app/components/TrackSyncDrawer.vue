@@ -1185,8 +1185,20 @@ async function generateArtworkInline() {
 
     await persistArtworkFile(file, 'Cover saved')
   } catch (err: any) {
-    artworkError.value =
+    const statusCode = Number(err?.statusCode || err?.status || err?.response?.status || 0)
+    const raw =
       err?.data?.statusMessage || err?.message || 'Failed to generate cover'
+    // Netlify sync functions hard-cap at ~60s; Sunburst often times out as 504
+    if (
+      statusCode === 504 ||
+      statusCode === 408 ||
+      /504|gateway timeout|timed?\s*out/i.test(String(raw))
+    ) {
+      artworkError.value =
+        'Cover generation timed out on the server (Netlify ~60s limit). Try Flare (faster) or generate again.'
+    } else {
+      artworkError.value = raw
+    }
   } finally {
     clearCoverWaitTimer()
     generatingArtwork.value = false
