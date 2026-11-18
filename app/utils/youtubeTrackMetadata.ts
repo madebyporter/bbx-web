@@ -63,7 +63,7 @@ export function mapTrackToYouTubeSnippet(
   track: Partial<Track>,
   options: { trackUrl?: string | null } = {},
 ): YouTubeUploadSnippet {
-  const title = trimOrEmpty(track.title)
+  const title = trimOrEmpty(track.youtube_title) || trimOrEmpty(track.title)
   if (!title) throw new Error('Title is required to sync to YouTube')
 
   const tags = new Set<string>()

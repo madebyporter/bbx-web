@@ -384,44 +384,82 @@
 
           <div
             v-if="youtubeConnected"
-            class="flex items-center justify-between gap-3 rounded-md border border-neutral-800 px-2.5 py-2"
+            class="flex flex-col rounded-md border border-neutral-800"
           >
-            <label class="flex items-center gap-2 min-w-0 cursor-pointer">
-              <input
-                v-model="youtubeSelected"
-                type="checkbox"
-                class="rounded border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-500"
-                :disabled="syncing"
-              >
-              <span class="text-neutral-100">YouTube</span>
-            </label>
-            <div class="flex items-center gap-2 shrink-0">
-              <Button
-                v-if="youtubeNeedsVideo"
-                variant="primary"
-                size="sm"
-                @click="openGenerateVideo"
-              >
-                Generate video
-              </Button>
-              <template v-else>
-                <span class="text-xs" :class="youtubeStatusClass">{{ youtubeStatusLabel }}</span>
+            <div class="flex items-center justify-between gap-3 px-2.5 py-2">
+              <label class="flex items-center gap-2 min-w-0 cursor-pointer">
+                <input
+                  v-model="youtubeSelected"
+                  type="checkbox"
+                  class="rounded border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-500"
+                  :disabled="syncing"
+                >
+                <span class="text-neutral-100">YouTube</span>
+              </label>
+              <div class="flex items-center gap-2 shrink-0">
                 <Button
-                  v-if="youtubeSelected && hasLocalVideo"
-                  variant="ghost"
+                  v-if="youtubeNeedsVideo"
+                  variant="primary"
                   size="sm"
                   @click="openGenerateVideo"
                 >
-                  Replace video
+                  Generate video
                 </Button>
-              </template>
-              <a
-                v-if="youtubePermalink"
-                :href="youtubePermalink"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-link text-xs no-underline"
-              >View</a>
+                <template v-else>
+                  <span
+                    v-if="youtubeStatus === 'synced'"
+                    class="inline-flex shrink-0"
+                    title="Synced"
+                    aria-label="Synced"
+                    role="img"
+                  >
+                    <CheckCircle class="size-4 text-green-400" stroke-width="1.5" />
+                  </span>
+                  <span
+                    v-else
+                    class="text-sm"
+                    :class="youtubeStatusClass"
+                  >{{ youtubeStatusLabel }}</span>
+                  <Button
+                    v-if="youtubeSelected && hasLocalVideo"
+                    variant="ghost"
+                    size="sm"
+                    @click="openGenerateVideo"
+                  >
+                    Replace video
+                  </Button>
+                </template>
+                <a
+                  v-if="youtubePermalink"
+                  :href="youtubePermalink"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-link text-sm no-underline"
+                >View</a>
+              </div>
+            </div>
+
+            <div
+              v-if="youtubeSelected"
+              class="flex flex-col gap-2 border-t border-neutral-800 px-2.5 py-2"
+            >
+              <label for="youtube-title" class="text-sm font-medium text-neutral-200">
+                YouTube title
+              </label>
+              <input
+                id="youtube-title"
+                v-model="draftYoutubeTitle"
+                type="text"
+                maxlength="100"
+                class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
+                :placeholder="localTrack?.title || 'YouTube title'"
+                :disabled="syncing || patchingField"
+                @change="persistYoutubeTitle"
+                @keydown.enter.prevent="persistYoutubeTitle"
+              >
+              <p class="text-xs text-neutral-500">
+                Optional. Empty uses the Beatbox title. Max 100 characters.
+              </p>
             </div>
           </div>
 
@@ -537,7 +575,7 @@
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { CircleSpark } from '@iconoir/vue'
+import { CheckCircle, CircleSpark } from '@iconoir/vue'
 import MasterDrawer from '~/components/MasterDrawer.vue'
 import Button from '~/components/Button.vue'
 import { useAuthHeaders } from '~/composables/useAuthHeaders'
@@ -601,6 +639,7 @@ const draftBpm = ref<number | null>(null)
 const draftKey = ref('')
 const draftMoods = ref<BeatboxMoodTag[]>([])
 const draftDescription = ref('')
+const draftYoutubeTitle = ref('')
 const coverDirection = ref('')
 const generatingDescription = ref(false)
 const descriptionError = ref<string | null>(null)
@@ -662,6 +701,7 @@ const youtubeUsername = ref<string | null>(null)
 const youtubeSelected = ref(false)
 const youtubeStatus = ref<SyncStatus>('not_synced')
 const youtubePermalink = ref<string | null>(null)
+const youtubeExternalId = ref<string | null>(null)
 const hasLocalVideo = ref(false)
 const localVideoUrl = ref<string | null>(null)
 const artworkPreviewUrl = ref<string | null>(null)
@@ -697,7 +737,11 @@ const hasRecommendedGaps = computed(() =>
 )
 
 const youtubeNeedsVideo = computed(
-  () => youtubeConnected.value && youtubeSelected.value && !hasLocalVideo.value,
+  () =>
+    youtubeConnected.value &&
+    youtubeSelected.value &&
+    !youtubeExternalId.value &&
+    !hasLocalVideo.value,
 )
 
 const canSync = computed(() => {
@@ -705,7 +749,8 @@ const canSync = computed(() => {
   const wantSc = soundcloudConnected.value && soundcloudSelected.value
   const wantYt = youtubeConnected.value && youtubeSelected.value
   if (!wantSc && !wantYt) return false
-  if (wantYt && !hasLocalVideo.value) return false
+  // First YouTube upload needs a local MP4; metadata update reuses existing video id
+  if (wantYt && !youtubeExternalId.value && !hasLocalVideo.value) return false
   return true
 })
 
@@ -883,6 +928,21 @@ async function persistTextField(key: 'title' | 'artist') {
   } catch {
     /* toasted */
   }
+}
+
+async function persistYoutubeTitle() {
+  const value = draftYoutubeTitle.value.trim()
+  draftYoutubeTitle.value = value
+  try {
+    await patchLocalTrack({ youtube_title: value || null })
+  } catch {
+    /* toasted */
+  }
+}
+
+function hydrateYoutubeTitleDraft(track: Track | null) {
+  draftYoutubeTitle.value =
+    typeof track?.youtube_title === 'string' ? track.youtube_title : ''
 }
 
 async function persistGenre() {
@@ -1288,7 +1348,12 @@ async function loadSyncStatus() {
   const data = await $fetch<{
     providers: Record<
       string,
-      { status: string; permalink: string | null; lastError: string | null }
+      {
+        status: string
+        externalId?: string | null
+        permalink: string | null
+        lastError: string | null
+      }
     >
   }>('/api/integrations/sync-status', {
     headers,
@@ -1302,6 +1367,8 @@ async function loadSyncStatus() {
   const yt = data.providers.youtube
   youtubeStatus.value = mapProviderStatus(yt?.status)
   youtubePermalink.value = yt?.permalink || null
+  youtubeExternalId.value =
+    typeof yt?.externalId === 'string' && yt.externalId.trim() ? yt.externalId.trim() : null
 
   syncError.value = yt?.lastError || sc?.lastError || null
 }
@@ -1390,6 +1457,9 @@ async function disconnectYouTube() {
     youtubeConnected.value = false
     youtubeUsername.value = null
     youtubeSelected.value = false
+    youtubeExternalId.value = null
+    youtubePermalink.value = null
+    youtubeStatus.value = 'not_synced'
     showSuccess('YouTube disconnected')
   } catch (err: unknown) {
     showError(
@@ -1435,27 +1505,46 @@ async function runSync() {
     if (youtubeSelected.value && youtubeConnected.value) {
       youtubeStatus.value = 'syncing'
       try {
-        await refreshLocalVideo()
-        if (!hasLocalVideo.value) {
-          throw new Error('Generate a video for this track first')
+        const headers = await useAuthHeaders()
+
+        if (youtubeExternalId.value) {
+          const result = await $fetch<{
+            permalink?: string | null
+            videoId?: string
+            updated?: boolean
+          }>('/api/integrations/youtube/sync', {
+            method: 'POST',
+            headers,
+            body: { sound_id: localTrack.value.id },
+          })
+          youtubeStatus.value = 'synced'
+          youtubePermalink.value = result.permalink || youtubePermalink.value
+          if (result.videoId) youtubeExternalId.value = result.videoId
+          showSuccess('Updated YouTube listing')
+        } else {
+          await refreshLocalVideo()
+          if (!hasLocalVideo.value) {
+            throw new Error('Generate a video for this track first')
+          }
+          const exports = await getExportsForTrack(localTrack.value.id)
+          const latest = exports[0]
+          if (!latest?.blob) throw new Error('No video export found')
+
+          const username = (localTrack.value as any).username as string | undefined
+          const trackUrl = username
+            ? `${publishSiteOrigin}/u/${username}/t/${localTrack.value.id}`
+            : `${publishSiteOrigin}/u/${localTrack.value.user_id}`
+
+          const result = await uploadTrackVideoToYouTube({
+            track: localTrack.value,
+            videoBlob: latest.blob,
+            trackUrl,
+          })
+          youtubeStatus.value = 'synced'
+          youtubePermalink.value = result.permalink
+          youtubeExternalId.value = result.videoId
+          showSuccess('Synced to YouTube')
         }
-        const exports = await getExportsForTrack(localTrack.value.id)
-        const latest = exports[0]
-        if (!latest?.blob) throw new Error('No video export found')
-
-        const username = (localTrack.value as any).username as string | undefined
-        const trackUrl = username
-          ? `${publishSiteOrigin}/u/${username}/t/${localTrack.value.id}`
-          : `${publishSiteOrigin}/u/${localTrack.value.user_id}`
-
-        const result = await uploadTrackVideoToYouTube({
-          track: localTrack.value,
-          videoBlob: latest.blob,
-          trackUrl,
-        })
-        youtubeStatus.value = 'synced'
-        youtubePermalink.value = result.permalink
-        showSuccess('Synced to YouTube')
       } catch (err: unknown) {
         youtubeStatus.value = 'failed'
         const message =
@@ -1495,6 +1584,9 @@ async function runSync() {
 function applyUpdatedTrack(track: Track) {
   if (!localTrack.value || track.id !== localTrack.value.id) return
   localTrack.value = { ...localTrack.value, ...track }
+  if (Object.prototype.hasOwnProperty.call(track, 'youtube_title')) {
+    hydrateYoutubeTitleDraft(localTrack.value)
+  }
   emit('track-refreshed', localTrack.value)
   void refreshArtworkPreview()
 }
@@ -1520,6 +1612,7 @@ watch(
     preserveStateOnClose.value = false
     if (!returningFromVideo) {
       localTrack.value = props.track ? { ...props.track } : null
+      hydrateYoutubeTitleDraft(localTrack.value)
       syncError.value = null
       expandedField.value = null
     }
@@ -1530,7 +1623,10 @@ watch(
 watch(
   () => props.track,
   (track) => {
-    if (props.show && track) localTrack.value = { ...track }
+    if (props.show && track) {
+      localTrack.value = { ...track }
+      hydrateYoutubeTitleDraft(localTrack.value)
+    }
   },
 )
 

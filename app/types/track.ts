@@ -20,6 +20,8 @@ export interface Track {
   key?: string | null
   /** Optional platform sync description; when empty, sync auto-builds from metadata. */
   description?: string | null
+  /** Optional YouTube upload title (SEO); falls back to title when empty. */
+  youtube_title?: string | null
   year?: number | null
   collection_names?: string
   track_group_name?: string | null

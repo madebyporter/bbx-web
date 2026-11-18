@@ -6,11 +6,14 @@ export const YOUTUBE_PROVIDER = 'youtube' as const
 /** upload alone cannot call channels.list — readonly is required for Connect profile lookup */
 export const YOUTUBE_UPLOAD_SCOPE = 'https://www.googleapis.com/auth/youtube.upload'
 export const YOUTUBE_READONLY_SCOPE = 'https://www.googleapis.com/auth/youtube.readonly'
-export const YOUTUBE_OAUTH_SCOPES = `${YOUTUBE_UPLOAD_SCOPE} ${YOUTUBE_READONLY_SCOPE}`
+/** Required for videos.update (in-place title/description/tags); upload scope alone is not enough */
+export const YOUTUBE_FORCE_SSL_SCOPE = 'https://www.googleapis.com/auth/youtube.force-ssl'
+export const YOUTUBE_OAUTH_SCOPES = `${YOUTUBE_UPLOAD_SCOPE} ${YOUTUBE_READONLY_SCOPE} ${YOUTUBE_FORCE_SSL_SCOPE}`
 
 const AUTH_BASE = 'https://accounts.google.com/o/oauth2/v2/auth'
 const TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const CHANNELS_URL = 'https://www.googleapis.com/youtube/v3/channels'
+const VIDEOS_URL = 'https://www.googleapis.com/youtube/v3/videos'
 
 export interface GoogleOAuthConfig {
   clientId: string
@@ -296,4 +299,108 @@ export async function getValidYouTubeAccessToken(userId: string): Promise<string
   })
 
   return refreshed.accessToken
+}
+
+export interface YouTubeSnippetUpdate {
+  title: string
+  description: string
+  tags: string[]
+}
+
+/**
+ * Update an existing YouTube video's snippet in place (same video id).
+ * Fetches current snippet first so categoryId is preserved (required by videos.update).
+ */
+export async function updateYouTubeVideoSnippet(params: {
+  accessToken: string
+  videoId: string
+  snippet: YouTubeSnippetUpdate
+}): Promise<{ videoId: string }> {
+  const videoId = params.videoId.trim()
+  if (!videoId) {
+    throw createError({ statusCode: 400, statusMessage: 'videoId is required' })
+  }
+
+  const getUrl = new URL(VIDEOS_URL)
+  getUrl.searchParams.set('part', 'snippet')
+  getUrl.searchParams.set('id', videoId)
+
+  const getRes = await fetch(getUrl.toString(), {
+    headers: { Authorization: `Bearer ${params.accessToken}` },
+  })
+  const getText = await getRes.text()
+  let getJson: {
+    items?: Array<{
+      id?: string
+      snippet?: {
+        categoryId?: string
+        title?: string
+        description?: string
+        tags?: string[]
+        [key: string]: unknown
+      }
+    }>
+    error?: { message?: string }
+  } = {}
+  try {
+    getJson = getText ? (JSON.parse(getText) as typeof getJson) : {}
+  } catch {
+    getJson = {}
+  }
+
+  if (!getRes.ok) {
+    throw createError({
+      statusCode: getRes.status === 401 || getRes.status === 403 ? getRes.status : 502,
+      statusMessage:
+        getJson.error?.message ||
+        getText.slice(0, 300) ||
+        `Failed to load YouTube video (${getRes.status})`,
+    })
+  }
+
+  const existing = getJson.items?.[0]
+  const categoryId = existing?.snippet?.categoryId
+  if (!existing?.id || !categoryId) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: 'YouTube video not found or missing categoryId',
+    })
+  }
+
+  const putRes = await fetch(`${VIDEOS_URL}?part=snippet`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${params.accessToken}`,
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: JSON.stringify({
+      id: videoId,
+      snippet: {
+        title: params.snippet.title,
+        description: params.snippet.description,
+        tags: params.snippet.tags,
+        categoryId,
+      },
+    }),
+  })
+
+  const putText = await putRes.text()
+  let putJson: { id?: string; error?: { message?: string } } = {}
+  try {
+    putJson = putText ? (JSON.parse(putText) as typeof putJson) : {}
+  } catch {
+    putJson = {}
+  }
+
+  if (!putRes.ok) {
+    throw createError({
+      statusCode: putRes.status === 401 || putRes.status === 403 ? putRes.status : 502,
+      statusMessage:
+        putJson.error?.message ||
+        putText.slice(0, 300) ||
+        `Failed to update YouTube video (${putRes.status})`,
+    })
+  }
+
+  return { videoId: String(putJson.id || videoId) }
 }
