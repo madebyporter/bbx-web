@@ -9,6 +9,9 @@ export interface Track {
   storage_provider?: StorageProvider
   artwork_path?: string | null
   artwork_provider?: StorageProvider
+  /** R2 key for the latest paid cloud-saved generated video. */
+  video_path?: string | null
+  video_provider?: StorageProvider
   duration: number
   version?: string
   genre?: string

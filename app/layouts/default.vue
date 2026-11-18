@@ -84,6 +84,7 @@
     <GenerateTrackVideoDrawer
       v-model:show="showGenerateTrackVideoDrawer"
       :track="generateVideoTrack"
+      :prefer-landscape="generateVideoPreferLandscape"
     />
 
     <TrackSyncDrawer
@@ -524,17 +525,26 @@ const onOpenTrackCommentsEvent = (event: Event) => {
   handleOpenTrackComments((event as CustomEvent<OpenTrackCommentsDetail>).detail)
 }
 
-const handleOpenGenerateTrackVideo = (detail: { track: Track; returnToSync?: boolean }) => {
+const generateVideoPreferLandscape = ref(false)
+
+const handleOpenGenerateTrackVideo = (detail: {
+  track: Track
+  returnToSync?: boolean
+  preferLandscape?: boolean
+}) => {
   if (detail.returnToSync) {
     reopenSyncAfterVideo.value = true
     showTrackSyncDrawer.value = false
   }
+  generateVideoPreferLandscape.value = Boolean(detail.preferLandscape)
   generateVideoTrack.value = detail.track
   showGenerateTrackVideoDrawer.value = true
 }
 
 const onOpenGenerateTrackVideoEvent = (event: Event) => {
-  handleOpenGenerateTrackVideo((event as CustomEvent<{ track: Track; returnToSync?: boolean }>).detail)
+  handleOpenGenerateTrackVideo(
+    (event as CustomEvent<{ track: Track; returnToSync?: boolean; preferLandscape?: boolean }>).detail,
+  )
 }
 
 const handleOpenTrackSync = (detail: { track: Track }) => {
@@ -546,9 +556,12 @@ const onOpenTrackSyncEvent = (event: Event) => {
   handleOpenTrackSync((event as CustomEvent<{ track: Track }>).detail)
 }
 
-const handleSyncGenerateVideo = (track: Track) => {
+const handleSyncGenerateVideo = (payload: { track: Track; preferLandscape?: boolean } | Track) => {
+  const track = 'track' in payload ? payload.track : payload
+  const preferLandscape = 'track' in payload ? Boolean(payload.preferLandscape) : false
   reopenSyncAfterVideo.value = true
   showTrackSyncDrawer.value = false
+  generateVideoPreferLandscape.value = preferLandscape
   generateVideoTrack.value = track
   // Let sync drawer animate out before opening generate
   nextTick(() => {

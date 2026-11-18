@@ -251,30 +251,12 @@
           <p class="text-xs text-neutral-500">{{ selectedQualityDescription }}</p>
         </div>
 
-        <Button :disabled="!canGenerate || isGenerating" @click="handleGenerate">
-          {{ isGenerating ? 'Generating...' : 'Generate video' }}
-        </Button>
-
         <p v-if="encoderLoading && !isGenerating && !generationMessage" class="text-xs text-neutral-500">
           Preparing encoder in the background (one-time download, ~31MB)...
         </p>
         <p v-else-if="encoderReady && !isGenerating && !generationMessage" class="text-xs text-neutral-500">
           Encoder ready. Browser encoding is slower than desktop apps — a 2–3 min track usually takes 1–3 min.
         </p>
-
-        <div v-if="generationMessage && (encoderLoading || isGenerating)" class="flex flex-col gap-2">
-          <p class="text-sm text-neutral-400">{{ generationMessage }}</p>
-          <div
-            v-if="isGenerating || encoderLoading"
-            class="w-full h-2 bg-neutral-800 rounded-full overflow-hidden"
-          >
-            <div
-              class="h-full bg-amber-500 transition-all duration-300"
-              :class="generationProgress > 0 ? '' : 'w-[8%] animate-pulse'"
-              :style="generationProgress > 0 ? { width: `${generationProgress}%` } : undefined"
-            />
-          </div>
-        </div>
 
         <p v-if="generationError" class="text-sm text-red-500">{{ generationError }}</p>
       </section>
@@ -291,9 +273,23 @@
           controls
           class="w-full max-w-full rounded-md border border-neutral-800 bg-black"
         />
-        <Button variant="secondary" size="sm" class="self-start" @click="downloadBlob(latestResult.blob, latestResult.filename)">
-          Download MP4
-        </Button>
+        <div class="flex flex-row flex-wrap gap-2 items-center">
+          <Button
+            variant="secondary"
+            size="sm"
+            @click="downloadBlob(latestResult.blob, latestResult.filename)"
+          >
+            Download MP4
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            :disabled="savingCloudVideo"
+            @click="handleSaveCloudVideo"
+          >
+            {{ saveCloudVideoLabel }}
+          </Button>
+        </div>
       </section>
 
       <!-- History -->
@@ -342,6 +338,27 @@
         </div>
       </section>
     </div>
+
+    <template #footer>
+      <div class="flex flex-col gap-2">
+        <Button :disabled="!canGenerate || isGenerating" @click="handleGenerate">
+          {{ isGenerating ? 'Generating...' : 'Generate video' }}
+        </Button>
+        <div v-if="generationMessage && (encoderLoading || isGenerating)" class="flex flex-col gap-2">
+          <p class="text-sm text-neutral-400">{{ generationMessage }}</p>
+          <div
+            v-if="isGenerating || encoderLoading"
+            class="w-full h-2 bg-neutral-800 rounded-full overflow-hidden"
+          >
+            <div
+              class="h-full bg-amber-500 transition-all duration-300"
+              :class="generationProgress > 0 ? '' : 'w-[8%] animate-pulse'"
+              :style="generationProgress > 0 ? { width: `${generationProgress}%` } : undefined"
+            />
+          </div>
+        </div>
+      </div>
+    </template>
   </MasterDrawer>
 </template>
 
@@ -377,6 +394,8 @@ import { useSupabase } from '~/utils/supabase'
 import { downloadAudioBlob } from '~/utils/trackAudioStorage'
 import { useToast } from '~/composables/useToast'
 import { useAuthHeaders } from '~/composables/useAuthHeaders'
+import { useAuth } from '~/composables/useAuth'
+import { useEntitlements } from '~/composables/useEntitlements'
 import {
   analyzeMoodFromAudio,
   BEATBOX_MOOD_TAGS,
@@ -385,10 +404,17 @@ import {
 import type { Track } from '~/types/track'
 import { COVER_DIRECTION_MAX } from '~/utils/coverDirection'
 
-const props = defineProps<{
-  show: boolean
-  track: Track | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    show: boolean
+    track: Track | null
+    /** When true (e.g. Sync → YouTube selected), default Dimensions to landscape. */
+    preferLandscape?: boolean
+  }>(),
+  {
+    preferLandscape: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:show': [value: boolean]
@@ -405,6 +431,8 @@ const {
 const { generateTrackVideo, isGenerating } = useTrackVideoGenerator()
 const { supabase } = useSupabase()
 const { showError, showSuccess } = useToast()
+const { isAdmin } = useAuth()
+const { subscription, refresh: refreshEntitlements } = useEntitlements()
 
 const drawerRef = ref<InstanceType<typeof MasterDrawer> | null>(null)
 const coverInputRef = ref<HTMLInputElement | null>(null)
@@ -432,6 +460,9 @@ const latestPreviewUrl = ref<string | null>(null)
 const history = ref<TrackVideoExport[]>([])
 const historyLoading = ref(false)
 const deletingId = ref<string | null>(null)
+const savingCloudVideo = ref(false)
+/** Local mirror after a successful cloud save in this session. */
+const cloudVideoPath = ref<string | null>(null)
 const encoderReady = ref(false)
 const encoderLoading = ref(false)
 const selectedDimension = ref<TrackVideoDimension>('square')
@@ -452,6 +483,32 @@ const canUseTrackArtwork = computed(() => {
 
 const canGenerate = computed(() => {
   return !!(props.track?.storage_path && coverFile.value)
+})
+
+/** Paid / valid comp / admin — server re-checks on save. */
+const canSaveCloudVideo = computed(() => {
+  if (isAdmin.value) return true
+  const sub = subscription.value
+  if (!sub) return false
+  if (sub.comp_plan_id && sub.comp_until && new Date(sub.comp_until) > new Date()) {
+    return true
+  }
+  return (
+    sub.status === 'active' ||
+    sub.status === 'trialing' ||
+    sub.status === 'past_due'
+  )
+})
+
+const hasCloudVideo = computed(() => {
+  const path = cloudVideoPath.value ?? props.track?.video_path
+  return typeof path === 'string' && path.trim().length > 0
+})
+
+const saveCloudVideoLabel = computed(() => {
+  if (savingCloudVideo.value) return 'Saving…'
+  if (hasCloudVideo.value) return 'Replace cloud video'
+  return 'Save video'
 })
 
 const coverPlaceholderText = computed(() => {
@@ -613,6 +670,8 @@ function resetDrawerState() {
   resetGenerationState()
   encoderLoading.value = false
   latestResult.value = null
+  savingCloudVideo.value = false
+  cloudVideoPath.value = null
   revokePreviewUrl()
 
   if (coverInputRef.value) {
@@ -700,10 +759,15 @@ async function preloadEncoder() {
 
 async function initializeDrawer() {
   resetDrawerState()
+  selectedDimension.value = props.preferLandscape ? 'landscape' : 'square'
   trackMoodWasEmpty.value = trackMoodIsEmpty(props.track?.mood)
   selectedMoods.value = parseTrackMoods(props.track?.mood)
+  cloudVideoPath.value =
+    typeof props.track?.video_path === 'string' && props.track.video_path.trim()
+      ? props.track.video_path
+      : null
   encoderReady.value = isTrackVideoEncoderLoaded()
-  await Promise.all([loadTrackArtwork(), loadHistory()])
+  await Promise.all([loadTrackArtwork(), loadHistory(), refreshEntitlements()])
   if (!encoderReady.value) {
     void preloadEncoder()
   }
@@ -999,6 +1063,88 @@ function downloadBlob(blob: Blob, filename: string) {
   anchor.download = filename
   anchor.click()
   URL.revokeObjectURL(url)
+}
+
+async function handleSaveCloudVideo() {
+  if (!latestResult.value || !props.track?.id || savingCloudVideo.value) return
+
+  if (!canSaveCloudVideo.value) {
+    showError('Cloud video save is included with paid plans')
+    await navigateTo('/pricing')
+    return
+  }
+
+  savingCloudVideo.value = true
+  try {
+    const headers = await useAuthHeaders()
+    if (!headers.Authorization) {
+      throw new Error('Sign in to save video to the cloud')
+    }
+
+    const { blob, filename } = latestResult.value
+    const contentType = blob.type || 'video/mp4'
+
+    const presign = await $fetch<{
+      key: string
+      uploadUrl: string
+      contentType: string
+      video_provider: 'r2'
+    }>('/api/storage/presign-track-video-upload', {
+      method: 'POST',
+      headers,
+      body: {
+        soundId: props.track.id,
+        filename,
+        contentType,
+        size: blob.size,
+      },
+    })
+
+    const uploadResponse = await fetch(presign.uploadUrl, {
+      method: 'PUT',
+      body: blob,
+      headers: {
+        'Content-Type': presign.contentType,
+      },
+    })
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Cloud upload failed (${uploadResponse.status})`)
+    }
+
+    const confirmed = await $fetch<{
+      video_path: string
+      video_provider: 'r2'
+      size: number
+    }>('/api/storage/confirm-track-video', {
+      method: 'POST',
+      headers,
+      body: {
+        soundId: props.track.id,
+        key: presign.key,
+      },
+    })
+
+    cloudVideoPath.value = confirmed.video_path
+    dispatchTrackUpdated({
+      video_path: confirmed.video_path,
+      video_provider: confirmed.video_provider,
+    })
+    showSuccess('Video saved to cloud')
+  } catch (err: unknown) {
+    const code = (err as any)?.data?.data?.code || (err as any)?.data?.code
+    const statusMessage =
+      (err as any)?.data?.statusMessage ||
+      (err instanceof Error ? err.message : 'Failed to save video')
+    if (code === 'paid_required' || statusMessage === 'paid_required') {
+      showError('Cloud video save is included with paid plans')
+      await navigateTo('/pricing')
+    } else {
+      showError(statusMessage)
+    }
+  } finally {
+    savingCloudVideo.value = false
+  }
 }
 
 async function handleDeleteHistory(id: string) {

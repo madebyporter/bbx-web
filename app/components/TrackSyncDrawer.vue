@@ -577,7 +577,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:show': [value: boolean]
   'track-refreshed': [track: Track]
-  'generate-video': [track: Track]
+  'generate-video': [payload: { track: Track; preferLandscape?: boolean }]
 }>()
 
 const { has, refresh: refreshEntitlements } = useEntitlements()
@@ -1149,7 +1149,10 @@ function close() {
 function openGenerateVideo() {
   if (!localTrack.value) return
   preserveStateOnClose.value = true
-  emit('generate-video', localTrack.value)
+  emit('generate-video', {
+    track: localTrack.value,
+    preferLandscape: youtubeConnected.value && youtubeSelected.value,
+  })
   emit('update:show', false)
 }
 
