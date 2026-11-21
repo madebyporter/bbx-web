@@ -275,6 +275,17 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.72.4
+  - Fix collection settings save leaving the collection page stuck on skeleton
+- 0.72.3
+  - ArtworkPicker current thumbnail opens full size in a new tab
+- 0.72.2
+  - Persist AI cover direction per track/collection; Generate chips (No logos, No people, No text, …)
+- 0.72.1
+  - Artwork Browse is a single horizontal scroll row; drawer CTAs moved into MasterDrawer footer
+- 0.72.0
+  - Shared ArtworkPicker with Browse / Generate / Upload tabs for collection and track artwork
+  - Wire ArtworkPicker into Collection Settings, New Collection, Edit Track, Track Sync, and Upload Track
 - 0.71.1
   - Style Add collection as a small secondary button with Plus icon (matches Analytics)
 - 0.71.0

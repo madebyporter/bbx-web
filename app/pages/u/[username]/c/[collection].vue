@@ -90,6 +90,7 @@
       :collection-artwork-path="collection.artwork_path"
       :collection-artwork-provider="collection.artwork_provider"
       :collection-show-on-profile="!!collection.show_on_profile"
+      :collection-cover-direction="collection.cover_direction"
       @collection-updated="handleCollectionUpdated"
       @collection-deleted="handleCollectionDeleted"
     />
@@ -917,21 +918,25 @@ const handleCollectionUpdated = async (
   artworkPath: string | null = null,
   artworkProvider: string | null = null,
   showOnProfile = false,
+  coverDirection: string | null = null,
 ) => {
-  if (collection.value) {
-    collection.value.name = newName
-    collection.value.slug = newSlug
-    collection.value.artwork_path = artworkPath
-    collection.value.artwork_provider = artworkProvider
-    collection.value.show_on_profile = showOnProfile
-    
-    // Update URL if slug changed
-    if (newSlug !== route.params.collection) {
-      await router.replace(`/u/${route.params.username}/c/${newSlug}`)
-    }
-    
-    // Refetch collection to ensure we have latest data
-    await fetchCollection()
+  if (!collection.value) return
+
+  // Patch in place — do not call fetchCollection() here. That path uses
+  // fetchTracks({ finalizeLoading: false }) and leaves tracksLoading stuck true,
+  // which keeps pageShellReady false (full-page skeleton) until refresh.
+  collection.value = {
+    ...collection.value,
+    name: newName,
+    slug: newSlug,
+    artwork_path: artworkPath,
+    artwork_provider: artworkProvider,
+    show_on_profile: showOnProfile,
+    cover_direction: coverDirection,
+  }
+
+  if (newSlug !== route.params.collection) {
+    await router.replace(`/u/${route.params.username}/c/${newSlug}`)
   }
 }
 

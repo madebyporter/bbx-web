@@ -122,6 +122,7 @@
       :collection-artwork-path="selectedCollection.artwork_path"
       :collection-artwork-provider="selectedCollection.artwork_provider"
       :collection-show-on-profile="!!selectedCollection.show_on_profile"
+      :collection-cover-direction="selectedCollection.cover_direction"
       @collection-updated="handleCollectionUpdated"
       @collection-deleted="handleCollectionDeleted"
     />
@@ -342,6 +343,7 @@ const handleCollectionUpdated = (
   artworkPath: string | null = null,
   artworkProvider: string | null = null,
   showOnProfile = false,
+  coverDirection: string | null = null,
 ) => {
   if (!selectedCollection.value) return
 
@@ -356,6 +358,7 @@ const handleCollectionUpdated = (
       artwork_path: artworkPath,
       artwork_provider: artworkProvider,
       show_on_profile: showOnProfile,
+      cover_direction: coverDirection,
     }
   }
 
@@ -366,6 +369,7 @@ const handleCollectionUpdated = (
     artwork_path: artworkPath,
     artwork_provider: artworkProvider,
     show_on_profile: showOnProfile,
+    cover_direction: coverDirection,
   }
 }
 

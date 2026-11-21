@@ -27,27 +27,6 @@
         </div>
       </div>
 
-      <!-- Delete/Remove Action -->
-      <div class="flex flex-col gap-3 border-t border-neutral-800 pt-6">
-        <h3 class="font-semibold text-red-400">Danger Zone</h3>
-        <div class="flex flex-col gap-2">
-          <p class="text-sm text-neutral-400">
-            <span v-if="isCollectionContext">
-              Remove {{ selectedCount }} track{{ selectedCount > 1 ? 's' : '' }} from this collection.
-            </span>
-            <span v-else>
-              Permanently delete {{ selectedCount }} track{{ selectedCount > 1 ? 's' : '' }} from your library. This action cannot be undone.
-            </span>
-          </p>
-          <Button
-            variant="danger"
-            :disabled="isProcessing"
-            @click="showDeleteConfirm = true"
-          >
-            {{ isCollectionContext ? 'Remove from Collection' : 'Delete Tracks' }}
-          </Button>
-        </div>
-      </div>
     </div>
 
     <!-- Delete/Remove Confirmation Dialog -->
@@ -72,6 +51,13 @@
           @click="handleCancel"
         >
           Cancel
+        </Button>
+        <Button
+          variant="danger"
+          :disabled="isProcessing"
+          @click="showDeleteConfirm = true"
+        >
+          {{ isCollectionContext ? 'Remove from Collection' : 'Delete Tracks' }}
         </Button>
         <Button
           :disabled="isProcessing || !hasChanges"
