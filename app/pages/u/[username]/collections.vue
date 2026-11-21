@@ -1,5 +1,5 @@
 <template>
-  <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
+  <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col text-neutral-300">
     <PageContentSkeleton v-if="!pageShellReady" />
     
     <div v-else-if="!profileUserId" class="text-neutral-500 p-4">
@@ -8,9 +8,9 @@
 
     <template v-else>
       <!-- Header -->
-      <div class="p-4 flex flex-row items-start justify-between gap-4">
-        <div class="min-w-0">
-          <h1 class="text-3xl font-bold mb-2">Collections</h1>
+      <div class="p-4 flex flex-row items-center justify-between gap-4 border-b border-neutral-800">
+        <div class="flex flex-col gap-1">
+          <h1 class="text-3xl font-bold">Collections</h1>
           <p class="text-neutral-400">
             {{ filteredCollections.length }} {{ filteredCollections.length === 1 ? 'collection' : 'collections' }}
           </p>
