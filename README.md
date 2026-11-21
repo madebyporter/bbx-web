@@ -275,6 +275,12 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.71.1
+  - Style Add collection as a small secondary button with Plus icon (matches Analytics)
+- 0.71.0
+  - Add collection button on Collections page opens a New collection drawer
+- 0.70.49
+  - Flush typed “new collection” draft on modal Save so tracks can be created and linked without pressing Enter
 - 0.70.48
   - Hide “Track sync to SoundCloud” on pricing until SoundCloud sync is ready
 - 0.70.47

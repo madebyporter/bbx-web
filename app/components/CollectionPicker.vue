@@ -115,4 +115,13 @@ function confirmNew() {
   newName.value = ''
   showNewInput.value = false
 }
+
+/** Commit an in-progress draft so parent Save can create+link without requiring Enter. */
+function commitPendingNew() {
+  if (showNewInput.value && newName.value.trim()) {
+    confirmNew()
+  }
+}
+
+defineExpose({ commitPendingNew })
 </script>

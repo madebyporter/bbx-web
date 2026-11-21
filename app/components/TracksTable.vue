@@ -51,6 +51,7 @@
       >
         <CollectionPicker
           v-if="showCollectionModal"
+          ref="collectionPickerRef"
           v-model="selectedCollectionIds"
           :collections="userCollections"
           :disabled="collectionSaving"
@@ -425,6 +426,7 @@ const selectedCollectionIds = ref<number[]>([])
 const pendingCollections = ref<Array<{ tempId: number; name: string }>>([])
 const userCollections = ref<Array<{ id: number; name: string; slug: string }>>([])
 const collectionSaving = ref(false)
+const collectionPickerRef = ref<{ commitPendingNew?: () => void } | null>(null)
 
 const collectionModalTitle = computed(() => {
   const title = collectionModalTrack.value?.title?.trim()
@@ -1023,6 +1025,8 @@ const syncTrackCollections = async (trackId: number, trackGroupName?: string) =>
 
 const saveCollections = async () => {
   if (!supabase || !user.value || !collectionModalTrack.value || collectionSaving.value) return
+
+  collectionPickerRef.value?.commitPendingNew?.()
 
   collectionSaving.value = true
   const toastId = showProcessing('Saving collections...')
