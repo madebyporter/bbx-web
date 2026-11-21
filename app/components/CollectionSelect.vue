@@ -3,14 +3,21 @@
     <!-- Input with tags -->
     <div 
       :class="[
-        'input-wrapper border rounded cursor-text transition-colors flex flex-wrap gap-0 items-center border-neutral-700 hover:border-neutral-600',
+        'input-wrapper border rounded cursor-text transition-colors flex flex-wrap gap-0 items-center border-neutral-700 hover:border-neutral-600 bg-neutral-900',
+        size === 'md' ? 'min-h-12' : 'min-h-9',
         isOpen ? 'border-neutral-600' : '',
         disabled ? 'opacity-50 cursor-not-allowed' : ''
       ]"
       @click="!disabled && openDropdown()"
     >
       <!-- Selected tags -->
-      <div v-if="selectedCollections.length > 0" class="flex flex-row flex-wrap w-fit gap-1 p-2">
+      <div
+        v-if="selectedCollections.length > 0"
+        :class="[
+          'flex flex-row flex-wrap w-fit gap-1',
+          size === 'md' ? 'p-2 pl-3' : 'p-2',
+        ]"
+      >
         <div 
           v-for="collection in selectedCollections" 
           :key="collection.id"
@@ -30,8 +37,8 @@
         v-model="searchQuery"
         :placeholder="selectedCollections.length > 0 ? 'Add more collections...' : 'Search or add collections...'"
         :class="[
-          'bg-transparent border-none outline-none text-neutral-200 placeholder-neutral-500 p-2 w-full',
-          size === 'sm' ? 'text-xs' : 'text-sm'
+          'bg-transparent border-none outline-none text-neutral-200 placeholder-neutral-500 w-full',
+          size === 'sm' ? 'text-xs p-2' : 'text-sm p-3',
         ]"
         :disabled="disabled"
         @focus="openDropdown()"

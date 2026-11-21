@@ -27,7 +27,7 @@
 
     <!-- Edit Form -->
     <template v-else>
-      <div class="flex flex-col gap-4 justify-between grow h-full">
+      <div class="flex flex-col gap-4 justify-between grow">
         <!-- Track Metadata -->
         <div class="grow h-fit">
           <div class="flex flex-col gap-4">
@@ -251,31 +251,65 @@
                 <input v-model.number="metadata.year" type="number"
                   class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
               </div>
-              <div>
+              <div class="col-span-2">
                 <label class="text-sm text-neutral-400">Mood</label>
-                <input v-model="metadata.mood" type="text" placeholder="e.g. Dark, Happy"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                <div class="flex gap-2">
+                  <input
+                    v-model="metadata.mood"
+                    type="text"
+                    placeholder="e.g. Dark, Happy"
+                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                    :disabled="isAnalyzingMood"
+                    title="Detect moods"
+                    @click="analyzeMoodForTrack"
+                  >
+                    <CircleSpark v-if="!isAnalyzingMood" width="20" height="20" stroke-width="1.5" />
+                    <svg v-else class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </Button>
+                </div>
+                <p v-if="moodAnalysisError" class="text-xs text-red-500 mt-1">{{ moodAnalysisError }}</p>
+                <p v-else-if="isAnalyzingMood" class="text-xs text-amber-400 mt-1">Detecting moods…</p>
               </div>
 
-              <!-- Copy Metadata Button -->
-              <div v-if="metadata.track_group_name" class="col-span-2 border-t border-neutral-800 pt-4">
+              <!-- Copy Metadata + Delete -->
+              <div class="col-span-2 border-t border-neutral-800 pt-4 flex flex-col gap-3">
+                <template v-if="metadata.track_group_name">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    full-width
+                    class="p-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                    :disabled="isCopyingMetadata"
+                    @click="copyMetadataFromGroup"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    {{ isCopyingMetadata ? 'Copying...' : 'Copy Metadata from Group Versions' }}
+                  </Button>
+                  <p class="text-xs text-neutral-500">
+                    {{ copyMetadataMessage || 'Auto-fills empty fields from the most complete version in this group' }}
+                  </p>
+                </template>
                 <Button
                   type="button"
-                  variant="ghost"
-                  full-width
-                  class="p-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
-                  :disabled="isCopyingMetadata"
-                  @click="copyMetadataFromGroup"
+                  variant="link"
+                  class="self-start text-sm text-red-400 hover:text-red-300 no-underline"
+                  :disabled="isUpdating"
+                  @click="handleDelete"
                 >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  {{ isCopyingMetadata ? 'Copying...' : 'Copy Metadata from Group Versions' }}
+                  Delete track
                 </Button>
-                <p class="text-xs text-neutral-500 mt-2">
-                  {{ copyMetadataMessage || 'Auto-fills empty fields from the most complete version in this group' }}
-                </p>
               </div>
             </div>
 
@@ -292,14 +326,6 @@
     <template v-if="!showSuccessMessage" #footer>
       <div class="flex flex-row gap-3 justify-end">
         <Button
-          type="button"
-          variant="danger"
-          :disabled="isUpdating"
-          @click="handleDelete"
-        >
-          Delete Track
-        </Button>
-        <Button
           :disabled="isUpdating"
           @click="onSubmit"
         >
@@ -314,7 +340,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
-import { analyzeBPM, analyzeKey } from '~/composables/useAudioAnalyzer'
+import { analyzeBPM, analyzeKey, analyzeMoodFromAudio } from '~/composables/useAudioAnalyzer'
 import { useArtwork } from '~/composables/useArtwork'
 import MasterDrawer from './MasterDrawer.vue'
 import ArtworkPicker from './ArtworkPicker.vue'
@@ -375,6 +401,8 @@ const isAnalyzingBpm = ref(false)
 const bpmAnalysisError = ref<string | null>(null)
 const isAnalyzingKey = ref(false)
 const keyAnalysisError = ref<string | null>(null)
+const isAnalyzingMood = ref(false)
+const moodAnalysisError = ref<string | null>(null)
 
 const metadata = ref<TrackMetadata>({
   title: '',
@@ -789,6 +817,28 @@ const analyzeKeyForTrack = async () => {
     setTimeout(() => { keyAnalysisError.value = null }, 5000)
   } finally {
     isAnalyzingKey.value = false
+  }
+}
+
+const analyzeMoodForTrack = async () => {
+  if (!supabase || !props.trackToEdit || !props.trackToEdit.storage_path) {
+    moodAnalysisError.value = 'Cannot analyze: track data unavailable'
+    return
+  }
+
+  isAnalyzingMood.value = true
+  moodAnalysisError.value = null
+
+  try {
+    const audioData = await downloadAudioBlob(props.trackToEdit, supabase)
+    const moods = await analyzeMoodFromAudio(audioData)
+    metadata.value.mood = moods.length ? moods.join(', ') : ''
+  } catch (err: any) {
+    console.error('Mood analysis failed:', err)
+    moodAnalysisError.value = err.message || 'Failed to detect moods'
+    setTimeout(() => { moodAnalysisError.value = null }, 5000)
+  } finally {
+    isAnalyzingMood.value = false
   }
 }
 
