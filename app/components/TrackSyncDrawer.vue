@@ -162,9 +162,8 @@
                     >
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                      variant="outlined"
+                      square
                       :disabled="analyzingBpm || !localTrack?.storage_path"
                       title="Analyze BPM"
                       @click="analyzeBpmInline"
@@ -202,9 +201,8 @@
                     </select>
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                      variant="outlined"
+                      square
                       :disabled="analyzingKey || !localTrack?.storage_path"
                       title="Analyze Key"
                       @click="analyzeKeyInline"
@@ -240,9 +238,8 @@
                     </div>
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                      variant="outlined"
+                      square
                       :disabled="detectingMoods || !localTrack?.storage_path"
                       title="Detect moods"
                       @click="detectMoodsInline"
@@ -270,9 +267,8 @@
                   <div class="flex flex-wrap items-center gap-2">
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                      variant="outlined"
+                      square
                       :disabled="generatingDescription || !localTrack?.title || !localTrack?.artist"
                       title="Generate description"
                       @click="generateDescriptionInline"
@@ -405,9 +401,8 @@
                 >
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  class="shrink-0 !p-0 aspect-square w-auto self-stretch border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                  variant="outlined"
+                  square
                   :disabled="
                     generatingYoutubeTitle ||
                     syncing ||

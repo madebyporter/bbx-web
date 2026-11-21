@@ -205,9 +205,8 @@
                     class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                    variant="outlined"
+                    square
                     :disabled="isAnalyzingBpm"
                     title="Analyze BPM"
                     @click="analyzeBPMForTrack"
@@ -229,9 +228,8 @@
                     class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                    variant="outlined"
+                    square
                     :disabled="isAnalyzingKey"
                     title="Analyze Key"
                     @click="analyzeKeyForTrack"
@@ -262,9 +260,8 @@
                   />
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                    variant="outlined"
+                    square
                     :disabled="isAnalyzingMood"
                     title="Detect moods"
                     @click="analyzeMoodForTrack"
@@ -285,9 +282,9 @@
                 <template v-if="metadata.track_group_name">
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outlined"
                     full-width
-                    class="p-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                    class="!p-2"
                     :disabled="isCopyingMetadata"
                     @click="copyMetadataFromGroup"
                   >

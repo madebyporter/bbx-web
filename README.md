@@ -275,6 +275,10 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.72.7
+  - Button `outlined` variant for bordered generate/analyze controls (replaces ghost + border classes)
+- 0.72.6
+  - Button `square` prop for generate/analyze controls (aspect-square, matches input height)
 - 0.72.5
   - Edit Track: mood detect (full width), Delete as text link under copy metadata, Collections input height match
 - 0.72.4

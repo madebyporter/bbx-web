@@ -19,19 +19,22 @@ Pick the lightest chrome that still makes the job obvious. Don’t stack several
 |-------|---------|-------------|----------|
 | **Primary** | `primary` (amber fill) | The one thing that needs to be done **now** on this surface | Sync selected, Save Changes, Generate video (when blocking sync) |
 | **Secondary** | `secondary` (neutral fill) | What comes **after** the primary, or a solid alternate path that still needs button chrome | Connect platform, Generate cover, Cancel with filled weight |
-| **Tertiary** | `ghost` (+ optional outline border) | **AI / delegated** helpers, quiet chrome, or low-priority actions beside a primary | Analyze / Detect (CircleSpark), Done / Change / Edit outlined, Disconnect |
+| **Tertiary** | `outlined` | Bordered quiet chrome — **AI / delegated** helpers beside inputs | Analyze / Detect (CircleSpark), generate description / title |
+| **Quiet** | `ghost` | No border; low-priority or mode-switch chrome | Cancel, Disconnect, auth mode switch |
 | **Link** | `link` or `.text-link` | Paragraph / inline actions, or when you **don’t** want another button in a crowded group | View on YouTube, View plans, Settings / Support in nav |
 
 Rules of thumb:
 
 - One primary per drawer/footer/section whenever possible.
 - Prefer **link** over another ghost/secondary button when the action sits next to existing button chrome and is not an analyze/detect action.
-- **AI analyze / detect is always the same tertiary control:** outlined `ghost` + Iconoir `CircleSpark`, fixed **square** hit target (`size-10 !p-0`) for BPM, Key, Mood, and any future audio analyze. Do not use a gold text link for analyze/detect.
+- **AI analyze / detect is always the same tertiary control:** `variant="outlined"` + Iconoir `CircleSpark` + `square` prop on `Button` (aspect-square, stretches to match adjacent input height) for BPM, Key, Mood, and any future audio analyze. Do not use a gold text link for analyze/detect.
 - Destructive confirms stay `danger` (not in the hierarchy table above).
 
 ### Button
 
-- Always use `Button` for labeled actions. Variants: `primary`, `secondary`, `ghost`, `danger`, `link`.
+- Always use `Button` for labeled actions. Variants: `primary`, `secondary`, `ghost`, `outlined`, `danger`, `link`.
+- **Outlined:** bordered tertiary (`border-neutral-700`, hover fill). Use for generate/analyze beside fields — do not hand-roll the same border classes on `ghost`.
+- **Square / generate:** `square` prop — icon-only, `aspect-square`, height matches the sibling input in a flex row (`self-stretch`). Pair with `variant="outlined"`. Example: `<Button variant="outlined" square>`.
 - Do **not** use raw `<button class="text-link …">` for full-width or chrome actions. Prefer `variant="ghost"` for quiet chrome, or `variant="link"` when it must look like a gold text link but remains an action.
 - Example: “Don’t have an account?” / “Already have an account?” / “Back to Sign In” → `<Button variant="ghost" class="w-full">` (auth mode switch) or `variant="link"` when gold link styling is intended.
 
