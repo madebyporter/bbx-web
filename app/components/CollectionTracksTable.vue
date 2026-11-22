@@ -153,35 +153,51 @@
             isCurrentlyPlaying(track) ? 'is-playing bg-neutral-800/70 lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800'
           ]" :style="tableGridStyle">
         <div class="flex items-center justify-center">
-          <!-- Bulk Selection Mode: Show Checkbox -->
-          <template v-if="bulkSelectionMode">
-            <Button variant="ghost" class="!p-0 text-neutral-400 hover:text-neutral-200" @click="toggleTrackSelection(track.id)">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <rect v-if="!selectedTrackIds.has(track.id)" x="4" y="4" width="16" height="16" rx="2" stroke-width="2" />
-                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </Button>
-          </template>
-          
-          <!-- Normal Mode: Show Play Button -->
           <PlayerButton
-            v-else
             variant="art"
             :artwork-path="track.artwork_path"
             :artwork-provider="track.artwork_provider"
             :artwork-entity-id="track.id"
             artwork-kind="track"
             :artwork-is-video="isVideoArtwork(track.artwork_path)"
-            :class="isCurrentlyPlaying(track) ? 'text-orange-400' : ''"
-            :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'"
-            @click="handlePlayClick(track, index)"
+            :class="[
+              'justify-center items-center',
+              !bulkSelectionMode && isCurrentlyPlaying(track) ? 'text-orange-400' : '',
+              bulkSelectionMode ? 'text-white' : '',
+            ]"
+            :title="bulkSelectionMode
+              ? (selectedTrackIds.has(track.id) ? 'Deselect' : 'Select')
+              : (isCurrentlyPlaying(track) ? 'Pause' : 'Play')"
+            @click="bulkSelectionMode ? toggleTrackSelection(track.id) : handlePlayClick(track, index)"
           >
-            <svg v-if="isCurrentlyPlaying(track)" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-            </svg>
-            <svg v-else class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+            <template v-if="bulkSelectionMode">
+              <svg class="w-5 h-5 drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect
+                  v-if="!selectedTrackIds.has(track.id)"
+                  x="4"
+                  y="4"
+                  width="16"
+                  height="16"
+                  rx="2"
+                  stroke-width="2"
+                />
+                <path
+                  v-else
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </template>
+            <template v-else>
+              <svg v-if="isCurrentlyPlaying(track)" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+              </svg>
+              <svg v-else class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </template>
           </PlayerButton>
         </div>
         <div class="overflow-hidden min-w-0">
@@ -368,8 +384,10 @@ const statuses = ref<Array<{ id: number; name: string }>>([])
 // Bulk selection state
 const bulkSelectionMode = ref(false)
 const selectedTrackIds = ref(new Set<number>())
+const selectedTracksCache = ref(new Map<number, Track>())
 const clickCount = ref(0)
 const showBulkActionsDrawer = ref(false)
+const selectingAll = ref(false)
 
 // Collection modal state
 const showCollectionModal = ref(false)
@@ -447,9 +465,15 @@ function formatTrackStat(trackId: number, field: 'plays' | 'listeners' | 'avgLis
   return `${stat.completionRate}%`
 }
 
-// Get selected tracks as array
+// Get selected tracks as array (includes off-screen rows from select-all)
 const selectedTracksArray = computed(() => {
-  return props.tracks.filter(track => selectedTrackIds.value.has(track.id))
+  const byId = new Map(selectedTracksCache.value)
+  for (const track of props.tracks) {
+    byId.set(track.id, track)
+  }
+  return [...selectedTrackIds.value]
+    .map((id) => byId.get(id))
+    .filter((track): track is Track => !!track)
 })
 
 // Handle scroll-to-track event
@@ -623,34 +647,70 @@ function formatDuration(seconds: number | null | undefined): string {
   return `${minutes}:${secs.toString().padStart(2, '0')}`
 }
 
+const applyTrackSelection = (tracks: Track[]) => {
+  const nextIds = new Set<number>()
+  const nextCache = new Map<number, Track>()
+  for (const track of tracks) {
+    if (track?.id == null) continue
+    nextIds.add(track.id)
+    nextCache.set(track.id, track)
+  }
+  selectedTrackIds.value = nextIds
+  selectedTracksCache.value = nextCache
+}
+
+const selectAllTracks = async () => {
+  const pool =
+    props.resolveFullQueue != null
+      ? await props.resolveFullQueue()
+      : props.tracks
+  applyTrackSelection(pool?.length ? pool : props.tracks)
+}
+
 // Bulk selection handlers
-const handleHeaderCheckboxClick = () => {
+const handleHeaderCheckboxClick = async () => {
+  if (selectingAll.value) return
   clickCount.value++
-  
+
   if (clickCount.value === 1) {
     // Activate bulk mode
     bulkSelectionMode.value = true
     selectedTrackIds.value.clear()
+    selectedTracksCache.value.clear()
   } else if (clickCount.value === 2) {
-    // Select all
-    props.tracks.forEach(track => selectedTrackIds.value.add(track.id))
+    // Select all matching tracks (not just the currently loaded page)
+    selectingAll.value = true
+    try {
+      await selectAllTracks()
+    } finally {
+      selectingAll.value = false
+    }
   } else if (clickCount.value === 3) {
     // Deselect all
     selectedTrackIds.value.clear()
+    selectedTracksCache.value.clear()
   } else {
     // Deactivate bulk mode
     bulkSelectionMode.value = false
     selectedTrackIds.value.clear()
+    selectedTracksCache.value.clear()
     clickCount.value = 0
   }
 }
 
 const toggleTrackSelection = (trackId: number) => {
-  if (selectedTrackIds.value.has(trackId)) {
-    selectedTrackIds.value.delete(trackId)
+  const nextIds = new Set(selectedTrackIds.value)
+  const nextCache = new Map(selectedTracksCache.value)
+  if (nextIds.has(trackId)) {
+    nextIds.delete(trackId)
+    nextCache.delete(trackId)
   } else {
-    selectedTrackIds.value.add(trackId)
+    nextIds.add(trackId)
+    const track = props.tracks.find((t) => t.id === trackId)
+    if (track) nextCache.set(trackId, track)
   }
+  selectedTrackIds.value = nextIds
+  selectedTracksCache.value = nextCache
 }
 
 // Handle tracks removed from bulk actions drawer
@@ -658,6 +718,7 @@ const handleTracksRemoved = () => {
   // Clear selection and exit bulk mode
   bulkSelectionMode.value = false
   selectedTrackIds.value.clear()
+  selectedTracksCache.value.clear()
   clickCount.value = 0
   showBulkActionsDrawer.value = false
   
