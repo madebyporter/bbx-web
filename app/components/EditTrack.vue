@@ -3,6 +3,30 @@
     <template #header>
       <h2 class="text-2xl">Edit Track</h2>
     </template>
+    <template v-if="canNavigateTracks" #header-actions>
+      <Button
+        type="button"
+        variant="outlined"
+        square
+        title="Previous track"
+        aria-label="Previous track"
+        :disabled="!hasPrevTrack"
+        @click="goToPrevTrack"
+      >
+        <NavArrowUp class="size-5" stroke-width="1.5" />
+      </Button>
+      <Button
+        type="button"
+        variant="outlined"
+        square
+        title="Next track"
+        aria-label="Next track"
+        :disabled="!hasNextTrack"
+        @click="goToNextTrack"
+      >
+        <NavArrowDown class="size-5" stroke-width="1.5" />
+      </Button>
+    </template>
 
     <!-- Success Message -->
     <div v-if="showSuccessMessage" class="h-full flex flex-col items-center justify-center text-center gap-4">
@@ -355,15 +379,19 @@ import { normalizeArtworkProvider } from '~/utils/artworkStorage'
 import { useAuthHeaders } from '~/composables/useAuthHeaders'
 import type { ArtworkSelection } from '~/types/artworkSelection'
 import { COVER_DIRECTION_MAX } from '~/utils/coverDirection'
-import { CircleSpark } from '@iconoir/vue'
+import { CircleSpark, NavArrowDown, NavArrowUp } from '@iconoir/vue'
 
 interface Props {
   show: boolean
   trackToEdit: any | null
+  /** Visible library/collection list for prev/next navigation. */
+  trackList?: any[]
 }
 
-const props = defineProps<Props>()
-const emit = defineEmits(['update:show', 'track-updated'])
+const props = withDefaults(defineProps<Props>(), {
+  trackList: () => [],
+})
+const emit = defineEmits(['update:show', 'track-updated', 'navigate-track'])
 
 interface TrackMetadata {
   title: string
@@ -443,6 +471,44 @@ const artworkGenerateContext = computed(() => ({
   genre: metadata.value.genre?.trim() || undefined,
   mood: metadata.value.mood?.trim() || undefined,
 }))
+
+const navigateTrackList = computed(() =>
+  (props.trackList || []).filter((t) => t && t.id != null),
+)
+
+const currentTrackIndex = computed(() => {
+  const id = props.trackToEdit?.id
+  if (id == null) return -1
+  return navigateTrackList.value.findIndex((t) => Number(t.id) === Number(id))
+})
+
+const canNavigateTracks = computed(
+  () => navigateTrackList.value.length > 1 && currentTrackIndex.value >= 0,
+)
+
+const hasPrevTrack = computed(() => currentTrackIndex.value > 0)
+
+const hasNextTrack = computed(
+  () =>
+    currentTrackIndex.value >= 0 &&
+    currentTrackIndex.value < navigateTrackList.value.length - 1,
+)
+
+const goToPrevTrack = () => {
+  if (!hasPrevTrack.value) return
+  const track = navigateTrackList.value[currentTrackIndex.value - 1]
+  if (!track) return
+  showSuccessMessage.value = false
+  emit('navigate-track', track)
+}
+
+const goToNextTrack = () => {
+  if (!hasNextTrack.value) return
+  const track = navigateTrackList.value[currentTrackIndex.value + 1]
+  if (!track) return
+  showSuccessMessage.value = false
+  emit('navigate-track', track)
+}
 
 // Define functions before watch to avoid hoisting issues
 const loadTrackCollections = async (trackId: number) => {

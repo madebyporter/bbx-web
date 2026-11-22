@@ -6,13 +6,22 @@
       <div class="flex flex-col gap-0 justify-between h-full divide-y divide-neutral-800">
         <div class="flex flex-row gap-2 justify-between items-center p-4">
 
-          <div class="grow h-[50px] flex items-center text-white font-semibold" @click.stop>
+          <div class="grow h-[50px] flex items-center text-white font-semibold min-w-0" @click.stop>
             <slot name="header"></slot>
           </div>
 
-          <div @click="handleClose"
-            class="flex justify-center items-center border border-neutral-800 hover:border-neutral-700 p-4 w-fit rounded-md cursor-pointer">
-            <img src="/img/db/icon-close.svg" alt="Close" class="size-4 fill-neutral-700" />
+          <div class="flex items-center gap-2 shrink-0" @click.stop>
+            <slot name="header-actions" />
+            <Button
+              type="button"
+              variant="outlined"
+              square
+              title="Close"
+              aria-label="Close"
+              @click="handleClose"
+            >
+              <Xmark class="size-5" stroke-width="1.5" />
+            </Button>
           </div>
         </div>
         <!-- Main content slot -->
@@ -34,7 +43,9 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, useSlots } from 'vue'
+import { Xmark } from '@iconoir/vue'
 import gsap from 'gsap'
+import Button from '~/components/Button.vue'
 
 interface Props {
   show: boolean

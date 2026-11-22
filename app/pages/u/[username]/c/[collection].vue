@@ -669,10 +669,13 @@ const fetchTracks = async (options: { finalizeLoading?: boolean } = {}) => {
 
 const handleEdit = (track: any) => {
   // Emit event to parent layout to open modal in edit mode
-  const event = new CustomEvent('edit-track', { 
-    detail: track,
+  const event = new CustomEvent('edit-track', {
+    detail: {
+      track,
+      trackList: displayedTracks.value,
+    },
     bubbles: true,
-    composed: true
+    composed: true,
   })
   window.dispatchEvent(event)
 }

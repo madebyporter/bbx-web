@@ -275,6 +275,8 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.72.11
+  - Edit Track: prev/next chevrons in drawer header; MasterDrawer close uses square Button
 - 0.72.10
   - Add FormInputText; migrate drawer/tool text and number fields to shared field chrome
 - 0.72.9

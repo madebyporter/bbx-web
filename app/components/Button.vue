@@ -83,8 +83,8 @@ const linkBaseClasses =
 // Fixed box — flex stretch + aspect-ratio is unreliable (w-auto ignores ratio; w-0 collapses).
 // size-12 matches p-3 inputs; size-10 matches denser p-2.5 rows when size="sm".
 const squareSizeClasses: Record<Size, string> = {
-  md: 'aspect-square size-12 min-w-12',
-  sm: 'aspect-square size-8 min-w-8',
+  md: 'aspect-square !p-0 size-12 min-w-12',
+  sm: 'aspect-square !p-0 size-8 min-w-8',
 }
 
 const classes = computed(() => {

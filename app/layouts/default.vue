@@ -54,7 +54,9 @@
       :key="`edit-track-${modalKey}`"
       v-model:show="showModal"
       :track-to-edit="editingTrack"
+      :track-list="editingTrackList"
       @track-updated="(updatedTrack) => refreshDatabase(updatedTrack)"
+      @navigate-track="handleNavigateEditTrack"
     />
     <UploadMusic 
       v-else
@@ -258,6 +260,7 @@ const searchContextItems = ref<any[]>([])
 const searchContextFields = ref<string[]>([])
 const editingResource = ref<Resource | null>(null)
 const editingTrack = ref<any | null>(null)
+const editingTrackList = ref<any[]>([])
 const showTrackCommentsDrawer = ref(false)
 const commentsTrack = ref<{ id: number; title?: string } | null>(null)
 const commentsCollectionId = ref<number | null>(null)
@@ -493,6 +496,7 @@ const openModal = () => {
   // Clear any editing states when opening modal for new submission/upload
   editingResource.value = null
   editingTrack.value = null
+  editingTrackList.value = []
   showModal.value = true
   modalKey.value++
 }
@@ -500,15 +504,33 @@ const openModal = () => {
 const handleEdit = (resource: Resource) => {
   editingResource.value = resource
   editingTrack.value = null
+  editingTrackList.value = []
   showModal.value = true
   modalKey.value++
 }
 
-const handleEditTrack = (track: any) => {
+const normalizeEditTrackDetail = (detail: any) => {
+  if (detail && typeof detail === 'object' && detail.track != null) {
+    return {
+      track: detail.track,
+      trackList: Array.isArray(detail.trackList) ? detail.trackList : [],
+    }
+  }
+  return { track: detail, trackList: [] as any[] }
+}
+
+const handleEditTrack = (detail: any) => {
+  const { track, trackList } = normalizeEditTrackDetail(detail)
   editingTrack.value = track
+  editingTrackList.value = trackList
   editingResource.value = null
   showModal.value = true
   modalKey.value++
+}
+
+const handleNavigateEditTrack = (track: any) => {
+  if (!track) return
+  editingTrack.value = track
 }
 
 interface OpenTrackCommentsDetail {
@@ -602,6 +624,7 @@ const closeModal = () => {
   showModal.value = false
   editingResource.value = null
   editingTrack.value = null
+  editingTrackList.value = []
 }
 
 const refreshDatabase = (updatedTrack?: any) => {

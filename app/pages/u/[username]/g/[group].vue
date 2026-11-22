@@ -347,7 +347,10 @@ const saveGroupName = async () => {
 
 const handleEdit = (track: any) => {
   window.dispatchEvent(new CustomEvent('edit-track', {
-    detail: track,
+    detail: {
+      track,
+      trackList: tracks.value,
+    },
     bubbles: true,
     composed: true,
   }))
