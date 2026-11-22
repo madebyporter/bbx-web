@@ -142,18 +142,13 @@
             <label class="block nav-header mb-2">Genre</label>
             <select v-model="filters.genre" multiple
               class="w-full p-2 border border-neutral-800 rounded-md min-h-[100px] outline-none">
-              <option value="Electronic">Electronic</option>
-              <option value="Hip-Hop">Hip-Hop</option>
-              <option value="Trap">Trap</option>
-              <option value="Ambient">Ambient</option>
-              <option value="House">House</option>
-              <option value="Techno">Techno</option>
-              <option value="Drum & Bass">Drum & Bass</option>
-              <option value="Dubstep">Dubstep</option>
-              <option value="Pop">Pop</option>
-              <option value="Rock">Rock</option>
-              <option value="Jazz">Jazz</option>
-              <option value="Classical">Classical</option>
+              <option
+                v-for="genre in genres"
+                :key="genre.id"
+                :value="genre.name"
+              >
+                {{ genre.name }}
+              </option>
             </select>
             <p class="text-xs text-neutral-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
           </div>
@@ -301,6 +296,7 @@ import IconLinux from './IconLinux.vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { useAnalytics } from '~/composables/useAnalytics'
+import { useGenres } from '~/composables/useGenres'
 import {
   getDefaultFilterSortParams,
   useFilterSortCookie,
@@ -358,6 +354,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:show', 'apply-filters'])
+const { genres, ensureLoaded: ensureGenresLoaded } = useGenres()
 
 // Filter and sort state
 const sortBy = ref(props.initialSort.sortBy)
@@ -571,13 +568,13 @@ watch(() => props.context, (newContext, oldContext) => {
 
 // Initialize component
 onMounted(async () => {
-  await fetchTags()
-  await fetchStatuses()
+  await Promise.all([fetchTags(), fetchStatuses(), ensureGenresLoaded()])
   loadSavedFilters()
 })
 
-watch(() => props.show, (isOpen) => {
+watch(() => props.show, async (isOpen) => {
   if (isOpen) {
+    await ensureGenresLoaded()
     loadSavedFilters()
   }
 })

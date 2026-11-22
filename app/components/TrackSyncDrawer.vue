@@ -139,11 +139,17 @@
                   >
                     <option value="">Select genre…</option>
                     <option
-                      v-for="genre in TRACK_GENRES"
-                      :key="genre"
-                      :value="genre"
+                      v-if="syncGenreOrphan"
+                      :value="syncGenreOrphan"
                     >
-                      {{ genre }}
+                      {{ syncGenreOrphan }} (current)
+                    </option>
+                    <option
+                      v-for="genre in genres"
+                      :key="genre.id"
+                      :value="genre.name"
+                    >
+                      {{ genre.name }}
                     </option>
                   </select>
                 </template>
@@ -563,7 +569,8 @@ import { uploadTrackVideoToYouTube } from '~/composables/useYouTubeUpload'
 import { usePublishSiteOrigin } from '~/composables/useSiteOrigin'
 import { captureVideoFrameAsFile } from '~/utils/captureVideoFrame'
 import { downloadAudioBlob } from '~/utils/trackAudioStorage'
-import { TRACK_GENRES, TRACK_KEYS } from '~/utils/trackMetadataOptions'
+import { TRACK_KEYS } from '~/utils/trackMetadataOptions'
+import { useGenres } from '~/composables/useGenres'
 import type { Track } from '~/types/track'
 import type { ArtworkSelection } from '~/types/artworkSelection'
 import { normalizeArtworkProvider } from '~/utils/artworkStorage'
@@ -602,6 +609,7 @@ const {
   validateAndProcessArtwork,
 } = useArtwork()
 const { supabase } = useSupabase()
+const { genres, ensureLoaded: ensureGenresLoaded, orphanGenreOption } = useGenres()
 
 const localTrack = ref<Track | null>(null)
 
@@ -609,6 +617,7 @@ const localTrack = ref<Track | null>(null)
 const expandedField = ref<MetadataFieldKey | null>(null)
 const draftText = ref('')
 const draftGenre = ref('')
+const syncGenreOrphan = computed(() => orphanGenreOption(draftGenre.value))
 const draftBpm = ref<number | null>(null)
 const draftKey = ref('')
 const draftMoods = ref<BeatboxMoodTag[]>([])
@@ -1586,7 +1595,10 @@ watch(
       syncError.value = null
       expandedField.value = null
     }
-    await refreshDrawerData({ preserveSelections: returningFromVideo })
+    await Promise.all([
+      ensureGenresLoaded(),
+      refreshDrawerData({ preserveSelections: returningFromVideo }),
+    ])
   },
 )
 

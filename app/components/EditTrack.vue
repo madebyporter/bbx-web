@@ -226,7 +226,25 @@
               </div>
               <div>
                 <label class="text-sm text-neutral-400">Genre</label>
-                <FormInputText v-model="metadata.genre" type="text" />
+                <select
+                  v-model="metadata.genre"
+                  class="select-field w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 outline-none cursor-pointer"
+                >
+                  <option value="">Select genre…</option>
+                  <option
+                    v-if="editGenreOrphan"
+                    :value="editGenreOrphan"
+                  >
+                    {{ editGenreOrphan }} (current)
+                  </option>
+                  <option
+                    v-for="genre in genres"
+                    :key="genre.id"
+                    :value="genre.name"
+                  >
+                    {{ genre.name }}
+                  </option>
+                </select>
               </div>
               <div>
                 <label class="text-sm text-neutral-400">BPM</label>
@@ -369,6 +387,7 @@ import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { analyzeBPM, analyzeKey, analyzeMoodFromAudio } from '~/composables/useAudioAnalyzer'
 import { useArtwork } from '~/composables/useArtwork'
+import { useGenres } from '~/composables/useGenres'
 import MasterDrawer from './MasterDrawer.vue'
 import ArtworkPicker from './ArtworkPicker.vue'
 import FormInputText from './FormInputText.vue'
@@ -422,6 +441,7 @@ interface Collection {
 const { supabase } = useSupabase()
 const { user } = useAuth()
 const { uploadArtwork, deleteArtwork } = useArtwork()
+const { genres, ensureLoaded: ensureGenresLoaded, orphanGenreOption } = useGenres()
 
 const drawerRef = ref<any>(null)
 const isUpdating = ref(false)
@@ -440,6 +460,7 @@ const metadata = ref<TrackMetadata>({
   title: '',
   artist: '',
   version: 'v1.0',
+  track_group_name: '',
   collection_name: '',
   genre: '',
   mood: '',
@@ -449,6 +470,8 @@ const metadata = ref<TrackMetadata>({
   status_id: null,
   is_public: true
 })
+
+const editGenreOrphan = computed(() => orphanGenreOption(metadata.value.genre))
 
 const collections = ref<Collection[]>([])
 const selectedCollectionIds = ref<number[]>([])
@@ -791,8 +814,7 @@ const syncCollections = async (trackId: number) => {
 
 // Fetch collections and statuses on mount
 onMounted(async () => {
-  await fetchCollections()
-  await fetchStatuses()
+  await Promise.all([fetchCollections(), fetchStatuses(), ensureGenresLoaded()])
 })
 
 // Watch for trackToEdit changes to populate form and load collections

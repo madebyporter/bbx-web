@@ -280,12 +280,26 @@
             <div class="flex gap-1">
               <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
                 <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Genre</label>
-                <input
+                <select
                   v-model="file.metadata.genre"
-                  type="text"
-                  :class="inputClass"
+                  :class="['select-field', inputClass, 'cursor-pointer']"
                   :disabled="isUploading"
-                />
+                >
+                  <option value="">Select genre…</option>
+                  <option
+                    v-if="orphanGenreOption(file.metadata.genre)"
+                    :value="orphanGenreOption(file.metadata.genre)!"
+                  >
+                    {{ orphanGenreOption(file.metadata.genre) }} (current)
+                  </option>
+                  <option
+                    v-for="genre in genres"
+                    :key="genre.id"
+                    :value="genre.name"
+                  >
+                    {{ genre.name }}
+                  </option>
+                </select>
               </div>
               <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
                 <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Mood</label>
@@ -373,6 +387,7 @@ import { usePlayer } from '~/composables/usePlayer'
 import { useToast } from '~/composables/useToast'
 import { useAnalytics } from '~/composables/useAnalytics'
 import { useArtwork } from '~/composables/useArtwork'
+import { useGenres } from '~/composables/useGenres'
 import MasterDrawer from './MasterDrawer.vue'
 import ArtworkPicker from './ArtworkPicker.vue'
 import CollectionSelect from './CollectionSelect.vue'
@@ -438,6 +453,7 @@ const { user } = useAuth()
 const { capture } = useAnalytics()
 const { entitlements, refresh: refreshEntitlements } = useEntitlements()
 const { uploadArtwork, deleteArtwork } = useArtwork()
+const { genres, ensureLoaded: ensureGenresLoaded, orphanGenreOption } = useGenres()
 const { addTrackToQueue, queueSourceId, replaceCurrentVersion } = usePlayer()
 const { showError, showSuccess } = useToast()
 const showUpgradePrompt = ref(false)
@@ -670,6 +686,7 @@ const fetchCurrentCollection = async () => {
 }
 
 onMounted(async () => {
+  await ensureGenresLoaded()
   if (!supabase || !user.value) return
   
   try {
