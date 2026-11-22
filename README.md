@@ -275,6 +275,12 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.72.10
+  - Add FormInputText; migrate drawer/tool text and number fields to shared field chrome
+- 0.72.9
+  - Button `square` uses fixed size-12/size-10 (flex stretch + aspect-ratio is unreliable)
+- 0.72.8
+  - Fix Button `square`: flex `w-auto` ignored aspect-ratio; use `w-0` + stretch so width follows height
 - 0.72.7
   - Button `outlined` variant for bordered generate/analyze controls (replaces ghost + border classes)
 - 0.72.6

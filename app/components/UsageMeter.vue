@@ -11,7 +11,7 @@
           {{ entitlements.track_count }} of {{ entitlements.track_limit }} tracks
         </span>
       </div>
-      <div class="h-2 rounded bg-neutral-800 overflow-hidden">
+      <div class="h-2 rounded-sm bg-neutral-800 overflow-hidden">
         <div
           class="h-full bg-amber-500 transition-all"
           :style="{ width: `${trackPercent}%` }"
@@ -21,7 +21,7 @@
 
     <div
       v-if="showStorageWarning"
-      class="text-sm rounded border border-neutral-800 bg-neutral-900/60 p-3 text-neutral-300"
+      class="text-sm rounded-sm border border-neutral-800 bg-neutral-900/60 p-3 text-neutral-300"
     >
       <p v-if="entitlements.tracks_unlimited">
         You're close to the fair use limit. We'll reach out before anything changes.

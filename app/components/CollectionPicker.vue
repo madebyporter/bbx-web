@@ -4,14 +4,14 @@
       <label
         v-for="collection in sortedCollections"
         :key="collection.id"
-        class="flex items-center gap-2.5 px-2 py-2 rounded hover:bg-neutral-800 cursor-pointer"
+        class="flex items-center gap-2.5 px-2 py-2 rounded-sm hover:bg-neutral-800 cursor-pointer"
         :class="disabled ? 'opacity-50 pointer-events-none' : ''"
       >
         <input
           type="checkbox"
           :checked="isSelected(collection.id)"
           :disabled="disabled"
-          class="w-4 h-4 shrink-0 text-amber-600 bg-neutral-700 border-neutral-600 rounded focus:ring-amber-500 cursor-pointer"
+          class="w-4 h-4 shrink-0 text-amber-600 bg-neutral-700 border-neutral-600 rounded-sm focus:ring-amber-500 cursor-pointer"
           @change="toggleCollection(collection.id)"
         />
         <span class="text-sm text-neutral-200 truncate">{{ collection.name }}</span>
@@ -37,7 +37,7 @@
           v-model="newName"
           type="text"
           placeholder="Collection name"
-          class="flex-1 min-w-0 p-2 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 text-sm placeholder-neutral-500 outline-none focus:border-amber-400"
+          class="flex-1 min-w-0 p-2 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 text-sm placeholder-neutral-500 outline-none focus:border-amber-400"
           :disabled="disabled"
           @keydown.enter.prevent="confirmNew"
           @keydown.escape.prevent="cancelNew"

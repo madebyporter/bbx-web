@@ -29,10 +29,10 @@
               <div class="flex flex-wrap items-center gap-2">
                 <h3 class="text-lg font-semibold">{{ plan.name }}</h3>
                 <span class="text-neutral-500 text-sm">{{ plan.slug }}</span>
-                <span v-if="plan.is_default" class="text-xs px-2 py-0.5 rounded bg-neutral-800">Default</span>
-                <span v-if="!plan.is_public" class="text-xs px-2 py-0.5 rounded bg-neutral-800">Hidden</span>
-                <span v-if="!plan.is_active" class="text-xs px-2 py-0.5 rounded bg-neutral-800">Inactive</span>
-                <span v-if="plan.badge" class="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">{{ plan.badge }}</span>
+                <span v-if="plan.is_default" class="text-xs px-2 py-0.5 rounded-sm bg-neutral-800">Default</span>
+                <span v-if="!plan.is_public" class="text-xs px-2 py-0.5 rounded-sm bg-neutral-800">Hidden</span>
+                <span v-if="!plan.is_active" class="text-xs px-2 py-0.5 rounded-sm bg-neutral-800">Inactive</span>
+                <span v-if="plan.badge" class="text-xs px-2 py-0.5 rounded-sm bg-amber-500/20 text-amber-400">{{ plan.badge }}</span>
               </div>
               <p class="text-sm text-neutral-400 mt-1">
                 {{ formatMoney(plan.price_monthly_cents) }}/mo
@@ -78,27 +78,27 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label class="block text-sm">
           <span class="text-neutral-400">Slug</span>
-          <input v-model="editing.slug" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <input v-model="editing.slug" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
         </label>
         <label class="block text-sm">
           <span class="text-neutral-400">Name</span>
-          <input v-model="editing.name" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <input v-model="editing.name" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
         </label>
         <label class="block text-sm md:col-span-2">
           <span class="text-neutral-400">Description</span>
-          <input v-model="editing.description" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <input v-model="editing.description" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
         </label>
         <label class="block text-sm">
           <span class="text-neutral-400">Monthly price (cents)</span>
-          <input v-model.number="editing.price_monthly_cents" type="number" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <input v-model.number="editing.price_monthly_cents" type="number" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
         </label>
         <label class="block text-sm">
           <span class="text-neutral-400">Annual price (cents, blank = none)</span>
-          <input v-model="annualCentsInput" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <input v-model="annualCentsInput" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
         </label>
         <label class="block text-sm">
           <span class="text-neutral-400">Track limit</span>
-          <input v-model.number="trackLimitInput" type="number" :disabled="tracksUnlimited" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <input v-model.number="trackLimitInput" type="number" :disabled="tracksUnlimited" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
           <label class="mt-1 flex items-center gap-2 text-neutral-400">
             <input v-model="tracksUnlimited" type="checkbox" /> Unlimited
           </label>
@@ -106,8 +106,8 @@
         <label class="block text-sm">
           <span class="text-neutral-400">Storage limit</span>
           <div class="mt-1 flex gap-2">
-            <input v-model.number="storageAmount" type="number" :disabled="storageUnlimited" class="w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
-            <select v-model="storageUnit" :disabled="storageUnlimited" class="bg-neutral-900 border border-neutral-700 rounded px-2">
+            <input v-model.number="storageAmount" type="number" :disabled="storageUnlimited" class="w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
+            <select v-model="storageUnit" :disabled="storageUnlimited" class="bg-neutral-900 border border-neutral-700 rounded-sm px-2">
               <option value="MB">MB</option>
               <option value="GB">GB</option>
             </select>
@@ -118,19 +118,19 @@
         </label>
         <label class="block text-sm">
           <span class="text-neutral-400">Max file size (MB, blank = 50)</span>
-          <input v-model.number="maxFileMb" type="number" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <input v-model.number="maxFileMb" type="number" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
         </label>
         <label class="block text-sm">
           <span class="text-neutral-400">Sort order</span>
-          <input v-model.number="editing.sort_order" type="number" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <input v-model.number="editing.sort_order" type="number" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
         </label>
         <label class="block text-sm">
           <span class="text-neutral-400">Badge</span>
-          <input v-model="editing.badge" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <input v-model="editing.badge" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
         </label>
         <label class="block text-sm md:col-span-2">
           <span class="text-neutral-400">Features (one per line)</span>
-          <textarea v-model="featuresText" rows="3" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <textarea v-model="featuresText" rows="3" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
         </label>
       </div>
 
@@ -145,7 +145,7 @@
           {{ key }}
         </label>
         <div class="flex gap-2">
-          <input v-model="newEntitlementKey" placeholder="add key" class="bg-neutral-900 border border-neutral-700 rounded px-3 py-2 text-sm" />
+          <input v-model="newEntitlementKey" placeholder="add key" class="bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2 text-sm" />
           <Button variant="secondary" size="sm" @click="addEntitlementKey">Add key</Button>
         </div>
       </div>
@@ -172,19 +172,19 @@
       <div v-if="settings" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label class="block text-sm">
           <span class="text-neutral-400">Grace plan slug</span>
-          <input v-model="settings.grace_plan_slug" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <input v-model="settings.grace_plan_slug" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
         </label>
         <label class="block text-sm">
           <span class="text-neutral-400">Grace days</span>
-          <input v-model.number="settings.grace_days" type="number" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <input v-model.number="settings.grace_days" type="number" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
         </label>
         <label class="block text-sm">
           <span class="text-neutral-400">Grace applies to users created before</span>
-          <input v-model="graceCutoffLocal" type="datetime-local" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <input v-model="graceCutoffLocal" type="datetime-local" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
         </label>
         <label class="block text-sm">
           <span class="text-neutral-400">Past due grace days</span>
-          <input v-model.number="settings.past_due_grace_days" type="number" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+          <input v-model.number="settings.past_due_grace_days" type="number" class="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2" />
         </label>
         <label class="flex items-center gap-2 text-sm">
           <input v-model="settings.grace_enabled" type="checkbox" /> Grace enabled
@@ -201,21 +201,21 @@
     <div class="border border-neutral-800 rounded-lg p-4 space-y-4">
       <h3 class="text-lg font-semibold">Comp a user</h3>
       <div class="flex flex-wrap gap-2">
-        <input v-model="lookupQuery" placeholder="email or username" class="bg-neutral-900 border border-neutral-700 rounded px-3 py-2 text-sm flex-1 min-w-[200px]" />
+        <input v-model="lookupQuery" placeholder="email or username" class="bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2 text-sm flex-1 min-w-[200px]" />
         <Button variant="secondary" size="sm" @click="lookupUser">Lookup</Button>
       </div>
       <ul v-if="lookupResults.length" class="space-y-2 text-sm">
-        <li v-for="row in lookupResults" :key="row.id" class="flex flex-wrap items-center justify-between gap-2 border border-neutral-800 rounded p-2">
+        <li v-for="row in lookupResults" :key="row.id" class="flex flex-wrap items-center justify-between gap-2 border border-neutral-800 rounded-sm p-2">
           <span>{{ row.label }}</span>
           <Button variant="ghost" size="sm" @click="selectedUserId = row.id">Select</Button>
         </li>
       </ul>
       <div v-if="selectedUserId" class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <select v-model="compPlanSlug" class="bg-neutral-900 border border-neutral-700 rounded px-3 py-2 text-sm">
+        <select v-model="compPlanSlug" class="bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2 text-sm">
           <option v-for="p in plans" :key="p.id" :value="p.slug">{{ p.name }}</option>
         </select>
-        <input v-model="compUntilLocal" type="datetime-local" class="bg-neutral-900 border border-neutral-700 rounded px-3 py-2 text-sm" />
-        <input v-model="compReason" placeholder="reason" class="bg-neutral-900 border border-neutral-700 rounded px-3 py-2 text-sm" />
+        <input v-model="compUntilLocal" type="datetime-local" class="bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2 text-sm" />
+        <input v-model="compReason" placeholder="reason" class="bg-neutral-900 border border-neutral-700 rounded-sm px-3 py-2 text-sm" />
       </div>
       <div v-if="selectedUserId" class="flex gap-2">
         <Button variant="primary" size="sm" :disabled="busy" @click="applyComp">Apply comp</Button>

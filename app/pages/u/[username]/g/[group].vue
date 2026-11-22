@@ -2,8 +2,8 @@
   <div class="flex flex-col gap-0 text-neutral-300 grow">
     <template v-if="!pageShellReady">
       <div class="p-4 border-b border-neutral-800">
-        <div class="h-8 lg:h-10 w-48 max-w-full rounded bg-neutral-800 animate-pulse mb-2" />
-        <div class="h-4 w-64 max-w-full rounded bg-neutral-800 animate-pulse" />
+        <div class="h-8 lg:h-10 w-48 max-w-full rounded-sm bg-neutral-800 animate-pulse mb-2" />
+        <div class="h-4 w-64 max-w-full rounded-sm bg-neutral-800 animate-pulse" />
       </div>
       <TracksTableSkeleton :is-own-profile="isOwnProfile" :show-actions="!!(user || isOwnProfile)" />
     </template>
@@ -39,7 +39,7 @@
           </p>
           <div class="flex items-center gap-4">
             <p v-if="tracksLoading" class="text-sm text-neutral-500">
-              <span class="h-4 w-16 rounded bg-neutral-800 animate-pulse inline-block" />
+              <span class="h-4 w-16 rounded-sm bg-neutral-800 animate-pulse inline-block" />
             </p>
             <p v-else class="text-sm text-neutral-500">
               {{ totalTrackCount }} {{ totalTrackCount === 1 ? 'track' : 'tracks' }}

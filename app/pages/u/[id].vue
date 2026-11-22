@@ -4,9 +4,9 @@
       <ProfileHeaderSkeleton />
       <div class="grow min-w-0 overflow-x-hidden border-t border-neutral-800">
         <div class="flex flex-row justify-between items-center gap-4 p-4 border-b border-neutral-800">
-          <div class="h-6 w-16 rounded bg-neutral-800 animate-pulse" />
+          <div class="h-6 w-16 rounded-sm bg-neutral-800 animate-pulse" />
           <div class="flex items-stretch gap-2">
-            <div class="h-9 w-24 rounded bg-neutral-800 animate-pulse" />
+            <div class="h-9 w-24 rounded-sm bg-neutral-800 animate-pulse" />
           </div>
         </div>
         <TracksTableSkeleton
@@ -207,7 +207,7 @@
         </div>
         <div class="flex items-stretch gap-2">
           <p v-if="loading" class="text-sm text-neutral-500 flex items-center">
-            <span class="h-4 w-16 rounded bg-neutral-800 animate-pulse inline-block" />
+            <span class="h-4 w-16 rounded-sm bg-neutral-800 animate-pulse inline-block" />
           </p>
           <p v-else class="text-sm text-neutral-500 flex items-center">
             {{ totalTrackCount }} {{ totalTrackCount === 1 ? 'track' : 'tracks' }}

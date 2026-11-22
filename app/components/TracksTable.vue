@@ -26,7 +26,7 @@
           <NuxtLink
             v-if="profileUserType === 'creator'"
             to="/producers"
-            class="inline-flex items-center justify-center font-medium transition-colors bg-neutral-800 text-neutral-200 hover:bg-neutral-700 px-4 py-2 text-base rounded min-h-8"
+            class="inline-flex items-center justify-center font-medium transition-colors bg-neutral-800 text-neutral-200 hover:bg-neutral-700 px-4 py-2 text-base rounded-sm min-h-8"
           >
             Browse producers
           </NuxtLink>
@@ -150,7 +150,7 @@
               variant="ghost"
               size="sm"
               :class="[
-                '!px-2 !py-1 text-xs rounded transition-colors',
+                '!px-2 !py-1 text-xs rounded-sm transition-colors',
                 getStemTrack(track.id)?.isMuted
                   ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
                   : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
@@ -164,7 +164,7 @@
               variant="ghost"
               size="sm"
               :class="[
-                '!px-2 !py-1 text-xs rounded transition-colors',
+                '!px-2 !py-1 text-xs rounded-sm transition-colors',
                 getStemTrack(track.id)?.isSolo
                   ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
                   : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
@@ -222,7 +222,7 @@
             :owner-username="getTrackOwnerUsername(track)"
           />
           <div
-            class="cursor-pointer p-1 bg-transparent rounded hover:bg-neutral-700 border border-neutral-700"
+            class="cursor-pointer p-1 bg-transparent rounded-sm hover:bg-neutral-700 border border-neutral-700"
             title="Manage collections"
             @click="openCollectionModal(track, $event)"
           >
@@ -235,7 +235,7 @@
         <div v-if="showStatusColumn" class="text-neutral-400 overflow-hidden">
           <select v-if="statuses.length > 0" :value="track.status_id || ''"
             @change="handleStatusChange(track.id, $event)"
-            class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-xs text-neutral-200 cursor-pointer outline-none">
+            class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded-sm text-xs text-neutral-200 cursor-pointer outline-none">
             <option value="">No Status</option>
             <option v-for="status in statuses" :key="status.id" :value="status.id">
               {{ status.name }}

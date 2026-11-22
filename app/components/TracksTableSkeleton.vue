@@ -36,15 +36,15 @@
             />
             <div
               v-else-if="col.kind === 'action'"
-              class="size-5 rounded bg-neutral-800 animate-pulse shrink-0"
+              class="size-5 rounded-sm bg-neutral-800 animate-pulse shrink-0"
             />
             <div
               v-else-if="col.kind === 'status'"
-              class="h-[30px] w-full rounded bg-neutral-800 animate-pulse"
+              class="h-[30px] w-full rounded-sm bg-neutral-800 animate-pulse"
             />
             <div
               v-else
-              class="h-4 rounded bg-neutral-800 animate-pulse shrink-0"
+              class="h-4 rounded-sm bg-neutral-800 animate-pulse shrink-0"
               :style="{ width: col.barWidth, maxWidth: '100%' }"
             />
           </div>

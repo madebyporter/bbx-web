@@ -24,7 +24,7 @@
       <template v-else>
         <p>{{ body }}</p>
 
-        <div v-if="nextPlan && showUpgradeButton" class="rounded border border-neutral-800 p-4">
+        <div v-if="nextPlan && showUpgradeButton" class="rounded-sm border border-neutral-800 p-4">
           <p class="font-medium text-white">{{ nextPlan.name }}</p>
           <p class="text-sm text-neutral-400 mt-1">
             {{ formatMoney(nextPlan.price_monthly_cents) }}/month

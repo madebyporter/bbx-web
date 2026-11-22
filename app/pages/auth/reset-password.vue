@@ -35,7 +35,7 @@
               type="password" 
               required
               minlength="6"
-              class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500 text-neutral-200" 
+              class="w-full p-2 rounded-sm bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500 text-neutral-200" 
               placeholder="Enter new password"
             />
           </div>
@@ -46,7 +46,7 @@
               type="password" 
               required
               minlength="6"
-              class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500 text-neutral-200" 
+              class="w-full p-2 rounded-sm bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500 text-neutral-200" 
               placeholder="Confirm new password"
             />
           </div>

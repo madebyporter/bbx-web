@@ -17,7 +17,7 @@
                 :value="inviteLink"
                 type="text"
                 readonly
-                class="flex-1 p-3 border border-neutral-700 rounded bg-neutral-900 text-neutral-200 text-sm"
+                class="flex-1 p-3 border border-neutral-700 rounded-sm bg-neutral-900 text-neutral-200 text-sm"
               />
               <Button variant="secondary" @click="copyLink">
                 {{ linkCopied ? 'Copied!' : 'Copy' }}
@@ -36,7 +36,7 @@
               v-model="emailInput"
               type="text"
               placeholder="email@example.com, another@example.com"
-              class="flex-1 p-2 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200"
+              class="flex-1 p-2 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200"
               :disabled="isSendingEmail"
               @keydown.enter.prevent="handleSendEmail"
             />
@@ -68,7 +68,7 @@
                 v-model="searchQuery"
                 type="text"
                 placeholder="Search by username or name..."
-                class="w-full p-2 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200"
+                class="w-full p-2 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200"
                 :class="{ 'border-neutral-600': isDropdownOpen }"
                 @focus="openDropdown()"
                 @keydown.escape="closeDropdown()"
@@ -133,7 +133,7 @@
             <div
               v-for="member in members"
               :key="member.id"
-              class="flex items-center justify-between p-3 border border-neutral-800 rounded bg-neutral-900/50"
+              class="flex items-center justify-between p-3 border border-neutral-800 rounded-sm bg-neutral-900/50"
             >
               <div class="flex flex-col gap-1">
                 <div class="text-sm text-neutral-200">{{ member.display_name || member.username || 'Unknown User' }}</div>

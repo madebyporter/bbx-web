@@ -3,7 +3,7 @@
     <!-- Input with tags -->
     <div 
       :class="[
-        'input-wrapper border rounded cursor-text transition-colors flex flex-wrap gap-0 items-center border-neutral-700 hover:border-neutral-600 bg-neutral-900',
+        'input-wrapper border rounded-sm cursor-text transition-colors flex flex-wrap gap-0 items-center border-neutral-700 hover:border-neutral-600 bg-neutral-900',
         size === 'md' ? 'min-h-12' : 'min-h-9',
         isOpen ? 'border-neutral-600' : '',
         disabled ? 'opacity-50 cursor-not-allowed' : ''
@@ -21,7 +21,7 @@
         <div 
           v-for="collection in selectedCollections" 
           :key="collection.id"
-          class="inline-flex items-center gap-1 p-1 m-0 bg-neutral-700 rounded text-xs text-neutral-200 whitespace-nowrap"
+          class="inline-flex items-center gap-1 p-1 m-0 bg-neutral-700 rounded-sm text-xs text-neutral-200 whitespace-nowrap"
         >
           <span class="px-1">{{ collection.name }}</span>
           <button type="button"
@@ -62,7 +62,7 @@
         <input 
           type="checkbox" 
           :checked="isSelected(collection.id)"
-          class="w-4 h-4 text-amber-600 bg-neutral-700 border-neutral-600 rounded focus:ring-amber-500"
+          class="w-4 h-4 text-amber-600 bg-neutral-700 border-neutral-600 rounded-sm focus:ring-amber-500"
           @click.stop="toggleCollection(collection.id)"
         />
         <label class="flex-1 cursor-pointer text-neutral-200 text-xs">{{ collection.name }}</label>

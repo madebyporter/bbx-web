@@ -86,7 +86,7 @@
                     :href="artworkPreviewUrl"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="size-8 rounded overflow-hidden border border-neutral-700 bg-neutral-950 shrink-0"
+                    class="size-8 rounded-sm overflow-hidden border border-neutral-700 bg-neutral-950 shrink-0"
                     title="Open cover full size"
                     @click.stop
                   >
@@ -123,7 +123,7 @@
                   <input
                     v-model="draftText"
                     type="text"
-                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
+                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
                     :placeholder="field.label"
                     @change="persistTextField(field.key)"
                     @keydown.enter.prevent="persistTextField(field.key)"
@@ -134,7 +134,7 @@
                 <template v-else-if="field.key === 'genre'">
                   <select
                     v-model="draftGenre"
-                    class="select-field w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
+                    class="select-field w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
                     @change="persistGenre"
                   >
                     <option value="">Select genre…</option>
@@ -157,7 +157,7 @@
                       min="0"
                       max="300"
                       placeholder="e.g. 120"
-                      class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
+                      class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
                       @change="persistBpm"
                     >
                     <Button
@@ -181,7 +181,7 @@
                   <div class="flex gap-2">
                     <select
                       v-model="draftKey"
-                      class="select-field w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
+                      class="select-field w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
                       @change="persistKey"
                     >
                       <option value="">Select key…</option>
@@ -260,7 +260,7 @@
                     rows="6"
                     maxlength="2000"
                     placeholder="Optional sync description for YouTube / SoundCloud…"
-                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[120px]"
+                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[120px]"
                     :disabled="generatingDescription"
                     @change="persistDescription"
                   />
@@ -332,7 +332,7 @@
                 <input
                   v-model="youtubeSelected"
                   type="checkbox"
-                  class="rounded border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-500"
+                  class="rounded-sm border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-500"
                   :disabled="syncing"
                 >
                 <span class="text-neutral-100">YouTube</span>
@@ -393,7 +393,7 @@
                   v-model="draftYoutubeTitle"
                   type="text"
                   maxlength="100"
-                  class="w-full min-w-0 p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
+                  class="w-full min-w-0 p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
                   :placeholder="localTrack?.title || 'YouTube title'"
                   :disabled="syncing || patchingField || generatingYoutubeTitle"
                   @change="persistYoutubeTitle"
@@ -435,7 +435,7 @@
               <input
                 v-model="soundcloudSelected"
                 type="checkbox"
-                class="rounded border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-500"
+                class="rounded-sm border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-500"
                 :disabled="syncing"
               >
               <span class="text-neutral-100">SoundCloud</span>

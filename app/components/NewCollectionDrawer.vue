@@ -7,13 +7,12 @@
     <div class="flex flex-col gap-4 grow">
       <div class="flex flex-col gap-3">
         <label class="font-semibold text-neutral-200" for="new-collection-name">Collection name</label>
-        <input
+        <FormInputText
           id="new-collection-name"
           ref="nameInputRef"
           v-model="collectionName"
           type="text"
           placeholder="Collection name"
-          class="p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400"
           :disabled="isCreating"
           @keydown.enter.prevent="handleCreate"
         />
@@ -58,6 +57,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import MasterDrawer from '~/components/MasterDrawer.vue'
 import ArtworkPicker from '~/components/ArtworkPicker.vue'
 import Button from '~/components/Button.vue'
+import FormInputText from '~/components/FormInputText.vue'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import { useArtwork } from '~/composables/useArtwork'
@@ -88,7 +88,7 @@ const { uploadArtwork } = useArtwork()
 const collectionName = ref('')
 const nameError = ref('')
 const isCreating = ref(false)
-const nameInputRef = ref<HTMLInputElement | null>(null)
+const nameInputRef = ref<InstanceType<typeof FormInputText> | null>(null)
 const artworkSelection = ref<ArtworkSelection>({ kind: 'unchanged' })
 const coverDirection = ref('')
 const artistLabel = ref('Artist')

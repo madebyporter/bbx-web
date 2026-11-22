@@ -76,7 +76,7 @@
                     >
                       {{ collection.name }}
                     </NuxtLink>
-                    <span v-if="collection.is_shared" class="text-xs px-2 py-0.5 bg-neutral-700 text-neutral-300 rounded shrink-0">
+                    <span v-if="collection.is_shared" class="text-xs px-2 py-0.5 bg-neutral-700 text-neutral-300 rounded-sm shrink-0">
                       Shared with me
                     </span>
                   </div>

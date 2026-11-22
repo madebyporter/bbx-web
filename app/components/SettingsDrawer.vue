@@ -57,13 +57,12 @@
       <div class="flex flex-col gap-3">
         <label class="font-semibold text-neutral-200">Username</label>
         <div class="flex flex-col gap-2">
-          <input
+          <FormInputText
             v-model="username"
             type="text"
             placeholder="Enter username"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400"
             :class="{ 'border-red-500': usernameError }"
-            @input="clearUsernameError"
+            @update:model-value="clearUsernameError"
           />
           <p v-if="usernameError" class="text-xs text-red-500">{{ usernameError }}</p>
           <p v-else class="text-xs text-neutral-500">
@@ -76,11 +75,10 @@
       <div class="flex flex-col gap-3">
         <label class="font-semibold text-neutral-200">Display Name</label>
         <div class="flex flex-col gap-2">
-          <input
+          <FormInputText
             v-model="displayName"
             type="text"
             placeholder="Enter display name"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400"
           />
           <p class="text-xs text-neutral-500">
             Your display name is shown on your profile and in search results.
@@ -94,7 +92,7 @@
         <div class="flex flex-col gap-2">
           <select
             v-model="userType"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
+            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
           >
             <option value="creator">Creator (content creator, songwriter, music artist)</option>
             <option value="audio_pro">Audio Pro (producer, engineer, etc.)</option>
@@ -113,7 +111,7 @@
             <input
               v-model="isPublic"
               type="checkbox"
-              class="size-4 rounded border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-400"
+              class="size-4 rounded-sm border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-400"
             />
             <span class="text-sm text-neutral-200">List my profile on Producers</span>
           </label>
@@ -127,13 +125,12 @@
       <div class="flex flex-col gap-3">
         <label class="font-semibold text-neutral-200">Email</label>
         <div class="flex flex-col gap-2">
-          <input
+          <FormInputText
             v-model="email"
             type="email"
             placeholder="Enter email address"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400"
             :class="{ 'border-red-500': emailError }"
-            @input="clearEmailError"
+            @update:model-value="clearEmailError"
           />
           <p v-if="emailError" class="text-xs text-red-500">{{ emailError }}</p>
           <p v-else-if="emailPendingConfirmation" class="text-xs text-amber-400">
@@ -176,6 +173,7 @@ import { useAnalytics } from '~/composables/useAnalytics'
 import { useEntitlements } from '~/composables/useEntitlements'
 import { useAuthHeaders } from '~/composables/useAuthHeaders'
 import MasterDrawer from '~/components/MasterDrawer.vue'
+import FormInputText from '~/components/FormInputText.vue'
 import { syncResendContact } from '~/utils/resendContactSync'
 
 interface Props {

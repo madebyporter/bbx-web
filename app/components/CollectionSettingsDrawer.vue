@@ -12,7 +12,7 @@
           v-model="collectionName"
           type="text"
           placeholder="Collection name"
-          class="p-3 border border-neutral-700 rounded bg-neutral-900 text-neutral-200"
+          class="p-3 border border-neutral-700 rounded-sm bg-neutral-900 text-neutral-200"
           :disabled="isSaving"
         />
         <p v-if="nameError" class="text-xs text-red-500">{{ nameError }}</p>
@@ -31,11 +31,11 @@
         />
         <p v-if="artworkError" class="text-xs text-red-500">{{ artworkError }}</p>
 
-        <label class="flex items-center gap-3 p-3 border border-neutral-700 rounded bg-neutral-900/50 cursor-pointer hover:border-neutral-600">
+        <label class="flex items-center gap-3 p-3 border border-neutral-700 rounded-sm bg-neutral-900/50 cursor-pointer hover:border-neutral-600">
           <input
             v-model="showOnProfile"
             type="checkbox"
-            class="size-4 rounded border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-400"
+            class="size-4 rounded-sm border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-400"
             :disabled="isSaving"
           />
           <div class="flex flex-col gap-0.5 min-w-0">

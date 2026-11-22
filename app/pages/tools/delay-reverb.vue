@@ -10,12 +10,11 @@
       <!-- BPM input -->
       <div class="flex flex-col gap-2 max-w-xs">
         <label for="tools-bpm" class="nav-header">BPM</label>
-        <input
+        <FormInputText
           id="tools-bpm"
           v-model="bpmInput"
           type="text"
           autocomplete="off"
-          class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400"
           @click="onBpmInputClick"
         />
       </div>
@@ -150,6 +149,7 @@ import { computed, ref, onMounted } from 'vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
 import CopyValueCard from '~/components/CopyValueCard.vue'
 import CopyCursorToast from '~/components/CopyCursorToast.vue'
+import FormInputText from '~/components/FormInputText.vue'
 import {
   calculateDelayRows,
   calculateReverbRows,

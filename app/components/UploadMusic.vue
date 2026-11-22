@@ -2,7 +2,7 @@
   <MasterDrawer :show="props.show" @update:show="(val) => emit('update:show', val)">
     <template #header>
       <div
-        class="grow flex items-center justify-between h-[50px] border border-dashed rounded p-2 cursor-pointer transition-colors w-full"
+        class="grow flex items-center justify-between h-[50px] border border-dashed rounded-sm p-2 cursor-pointer transition-colors w-full"
         :class="isDragging ? 'border-[#e6b85b] bg-[#e6b85b]/10' : 'border-[#e6b85b]'"
         @drop.prevent="handleDrop"
         @dragover.prevent="isDragging = true"
@@ -86,7 +86,7 @@
           <!-- Zero state placeholder / alternate drop zone -->
           <div
             v-if="selectedFiles.length === 0"
-            class="border border-dashed divide-y divide-dashed rounded h-[356px] flex flex-col shrink-0 w-full cursor-pointer transition-colors"
+            class="border border-dashed divide-y divide-dashed rounded-sm h-[356px] flex flex-col shrink-0 w-full cursor-pointer transition-colors"
             :class="isDragging ? 'border-[#e6b85b] divide-[#e6b85b] bg-[#e6b85b]/5' : 'border-neutral-800 hover:border-neutral-700 divide-neutral-800 hover:divide-neutral-700'"
             @drop.prevent="handleDrop"
             @dragover.prevent="isDragging = true"
@@ -140,7 +140,7 @@
           <div
             v-for="(file, index) in selectedFiles"
             :key="index"
-            class="bg-neutral-800/30 rounded flex flex-col gap-1"
+            class="bg-neutral-800/30 rounded-sm flex flex-col gap-1"
           >
             <!-- Card header -->
             <div class="flex items-start gap-2 p-2">

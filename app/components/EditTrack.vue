@@ -47,7 +47,7 @@
                 />
                 
                 <!-- Current File -->
-                <div v-if="props.trackToEdit?.storage_path && !newFile" class="flex items-center justify-between p-3 border border-neutral-700 rounded bg-neutral-900/50">
+                <div v-if="props.trackToEdit?.storage_path && !newFile" class="flex items-center justify-between p-3 border border-neutral-700 rounded-sm bg-neutral-900/50">
                   <div class="flex flex-col gap-1">
                     <span class="text-sm text-neutral-300">Current file:</span>
                     <span class="text-xs text-neutral-400">{{ currentFileName }}</span>
@@ -67,7 +67,7 @@
                 </div>
                 
                 <!-- New File Selected -->
-                <div v-if="newFile" class="flex items-center justify-between p-3 border border-neutral-700 rounded bg-neutral-900/50">
+                <div v-if="newFile" class="flex items-center justify-between p-3 border border-neutral-700 rounded-sm bg-neutral-900/50">
                   <div class="flex items-center gap-2">
                     <span class="text-sm text-neutral-300">New file:</span>
                     <span class="text-sm text-amber-400">{{ newFile.name }}</span>
@@ -114,26 +114,29 @@
             <!-- Title (full width) -->
             <div class="col-span-2">
               <label class="text-sm text-neutral-400">Title <span class="text-red-500">*</span></label>
-              <input v-model="metadata.title" type="text" required
-                class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+              <FormInputText v-model="metadata.title" type="text" required />
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="text-sm text-neutral-400">Artist</label>
-                <input v-model="metadata.artist" type="text"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                <FormInputText v-model="metadata.artist" type="text" />
               </div>
               <div>
                 <label class="text-sm text-neutral-400">Version</label>
-                <input v-model="metadata.version" type="text" placeholder="e.g. v1.0, v2.5"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                <FormInputText
+                  v-model="metadata.version"
+                  type="text"
+                  placeholder="e.g. v1.0, v2.5"
+                />
               </div>
               <div class="col-span-2">
                 <label class="text-sm text-neutral-400">Track Group</label>
-                <input v-model="metadata.track_group_name" type="text"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                  placeholder="e.g., art-dealer-dark" />
+                <FormInputText
+                  v-model="metadata.track_group_name"
+                  type="text"
+                  placeholder="e.g., art-dealer-dark"
+                />
                 <p class="text-xs text-neutral-500 mt-1">
                   Groups related tracks/versions together. Changes affect this track only.
                 </p>
@@ -143,7 +146,7 @@
               <div class="col-span-2">
                 <label class="text-sm text-neutral-400">Status</label>
                 <select v-if="!showNewStatusInput" v-model="metadata.status_id"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 outline-none"
+                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 outline-none"
                   @change="(e) => { if ((e.target as HTMLSelectElement).value === 'new') { showNewStatusInput = true; metadata.status_id = null } }">
                   <option :value="null">No Status</option>
                   <option v-for="status in statuses" :key="status.id" :value="status.id">
@@ -152,9 +155,13 @@
                   <option value="new">+ Create New Status</option>
                 </select>
                 <div v-else class="flex gap-2">
-                  <input v-model="newStatusName" type="text" placeholder="Enter status name"
-                    class="flex-1 p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                    @keydown.enter.prevent />
+                  <FormInputText
+                    v-model="newStatusName"
+                    type="text"
+                    placeholder="Enter status name"
+                    :full-width="false"
+                    @keydown.enter.prevent
+                  />
                   <Button
                     type="button"
                     variant="ghost"
@@ -178,7 +185,7 @@
                     <input 
                       type="checkbox" 
                       v-model="metadata.is_public"
-                      class="w-4 h-4 border border-neutral-700 rounded bg-neutral-900 checked:bg-amber-400 checked:border-amber-400 focus:ring-amber-400"
+                      class="w-4 h-4 border border-neutral-700 rounded-sm bg-neutral-900 checked:bg-amber-400 checked:border-amber-400 focus:ring-amber-400"
                     />
                     <span class="text-sm text-neutral-300">Public</span>
                   </label>
@@ -195,14 +202,12 @@
               </div>
               <div>
                 <label class="text-sm text-neutral-400">Genre</label>
-                <input v-model="metadata.genre" type="text"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                <FormInputText v-model="metadata.genre" type="text" />
               </div>
               <div>
                 <label class="text-sm text-neutral-400">BPM</label>
                 <div class="flex gap-2">
-                  <input v-model.number="metadata.bpm" type="number"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                  <FormInputText v-model="metadata.bpm" type="number" />
                   <Button
                     type="button"
                     variant="outlined"
@@ -224,8 +229,11 @@
               <div>
                 <label class="text-sm text-neutral-400">Key</label>
                 <div class="flex gap-2">
-                  <input v-model="metadata.key" type="text" placeholder="e.g. C Major, A Minor"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                  <FormInputText
+                    v-model="metadata.key"
+                    type="text"
+                    placeholder="e.g. C Major, A Minor"
+                  />
                   <Button
                     type="button"
                     variant="outlined"
@@ -246,17 +254,15 @@
               </div>
               <div>
                 <label class="text-sm text-neutral-400">Year</label>
-                <input v-model.number="metadata.year" type="number"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                <FormInputText v-model="metadata.year" type="number" />
               </div>
               <div class="col-span-2">
                 <label class="text-sm text-neutral-400">Mood</label>
                 <div class="flex gap-2">
-                  <input
+                  <FormInputText
                     v-model="metadata.mood"
                     type="text"
                     placeholder="e.g. Dark, Happy"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
                   />
                   <Button
                     type="button"
@@ -341,6 +347,7 @@ import { analyzeBPM, analyzeKey, analyzeMoodFromAudio } from '~/composables/useA
 import { useArtwork } from '~/composables/useArtwork'
 import MasterDrawer from './MasterDrawer.vue'
 import ArtworkPicker from './ArtworkPicker.vue'
+import FormInputText from './FormInputText.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
 import { deleteAudio, downloadAudioBlob, uploadAudio } from '~/utils/trackAudioStorage'

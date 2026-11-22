@@ -211,7 +211,7 @@
           />
           <div
             v-if="isOwnProfile"
-            class="cursor-pointer p-1 bg-transparent rounded hover:bg-neutral-700 border border-neutral-700"
+            class="cursor-pointer p-1 bg-transparent rounded-sm hover:bg-neutral-700 border border-neutral-700"
             title="Manage collections"
             @click="openCollectionModal(track, $event)"
           >
@@ -226,7 +226,7 @@
             v-if="statuses.length > 0"
             :value="track.status_id || ''"
             @change="handleStatusChange(track.id, $event)"
-            class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-xs text-neutral-200 cursor-pointer outline-none"
+            class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded-sm text-xs text-neutral-200 cursor-pointer outline-none"
           >
             <option value="">No Status</option>
             <option v-for="status in statuses" :key="status.id" :value="status.id">

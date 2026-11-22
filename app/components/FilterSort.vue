@@ -128,7 +128,7 @@
               <input
                 type="checkbox"
                 v-model="filters.latestVersionOnly"
-                class="mt-1 h-4 w-4 rounded border border-neutral-800 bg-transparent accent-amber-400"
+                class="mt-1 h-4 w-4 rounded-sm border border-neutral-800 bg-transparent accent-amber-400"
               />
               <span class="flex flex-col gap-1">
                 <span class="text-sm font-medium">Latest versions only</span>

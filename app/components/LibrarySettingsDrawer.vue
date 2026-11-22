@@ -10,25 +10,23 @@
 
         <div class="flex flex-col gap-2">
           <label class="text-sm text-neutral-400">Display Name</label>
-          <input
+          <FormInputText
             v-model="draftDisplayName"
             type="text"
             placeholder="Enter display name"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400"
             :disabled="isSaving"
           />
         </div>
 
         <div class="flex flex-col gap-2">
           <label class="text-sm text-neutral-400">Username</label>
-          <input
+          <FormInputText
             v-model="draftUsername"
             type="text"
             placeholder="Enter username"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400"
             :class="{ 'border-red-500': usernameError }"
             :disabled="isSaving"
-            @input="usernameError = null"
+            @update:model-value="usernameError = null"
           />
           <p v-if="usernameError" class="text-xs text-red-500">{{ usernameError }}</p>
           <p v-else class="text-xs text-neutral-500">
@@ -42,21 +40,20 @@
             v-model="draftBio"
             rows="4"
             placeholder="Tell visitors about yourself"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[96px]"
+            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[96px]"
             :disabled="isSaving"
           />
         </div>
 
         <div class="flex flex-col gap-2">
           <label class="text-sm text-neutral-400">Website</label>
-          <input
+          <FormInputText
             v-model="draftWebsite"
             type="text"
             placeholder="https://example.com"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400"
             :class="{ 'border-red-500': websiteError }"
             :disabled="isSaving"
-            @input="websiteError = null"
+            @update:model-value="websiteError = null"
           />
           <p v-if="websiteError" class="text-xs text-red-500">{{ websiteError }}</p>
         </div>
@@ -70,7 +67,7 @@
         <div
           v-for="row in activeSocialRows"
           :key="row.platform"
-          class="flex flex-col gap-2 p-3 border border-neutral-700 rounded bg-neutral-900/50"
+          class="flex flex-col gap-2 p-3 border border-neutral-700 rounded-sm bg-neutral-900/50"
         >
           <div class="flex items-center justify-between gap-2">
             <span class="text-sm text-neutral-300">{{ getPlatformDisplayName(row.platform) }}</span>
@@ -83,11 +80,10 @@
               Remove
             </button>
           </div>
-          <input
+          <FormInputText
             v-model="draftSocialLinks[row.platform]"
             type="text"
             placeholder="https://"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400"
             :disabled="isSaving"
           />
         </div>
@@ -114,12 +110,12 @@
           <label
             v-for="panel in panelOptions"
             :key="panel.key"
-            class="flex items-center gap-3 p-3 border border-neutral-700 rounded bg-neutral-900/50 cursor-pointer hover:border-neutral-600"
+            class="flex items-center gap-3 p-3 border border-neutral-700 rounded-sm bg-neutral-900/50 cursor-pointer hover:border-neutral-600"
           >
             <input
               v-model="draftPanels[panel.key]"
               type="checkbox"
-              class="size-4 rounded border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-400"
+              class="size-4 rounded-sm border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-400"
               :disabled="isSaving"
             />
             <span class="text-sm text-neutral-200">{{ panel.label }}</span>
@@ -162,6 +158,7 @@ import { useRouter } from 'vue-router'
 import MasterDrawer from '~/components/MasterDrawer.vue'
 import ManageMembers from '~/components/ManageMembers.vue'
 import Button from '~/components/Button.vue'
+import FormInputText from '~/components/FormInputText.vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'

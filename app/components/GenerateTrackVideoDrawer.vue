@@ -153,7 +153,7 @@
             id="video-dimension"
             v-model="selectedDimension"
             :disabled="isGenerating"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option
               v-for="option in TRACK_VIDEO_DIMENSION_OPTIONS"
@@ -243,15 +243,14 @@
 
         <div class="flex flex-col gap-2">
           <label for="video-padding" class="text-sm font-medium text-neutral-200">Padding (px)</label>
-          <input
+          <FormInputText
             id="video-padding"
             type="text"
             inputmode="numeric"
-            :value="coverPaddingPx"
+            :model-value="coverPaddingPx"
             placeholder="0"
             :disabled="isGenerating"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
-            @input="handlePaddingInput"
+            @update:model-value="onPaddingModelUpdate"
             @focus="handlePaddingFocus"
           />
           <p class="text-xs text-neutral-500">
@@ -265,7 +264,7 @@
             id="video-quality"
             v-model="selectedQuality"
             :disabled="isGenerating"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option
               v-for="option in TRACK_VIDEO_QUALITY_OPTIONS"
@@ -408,6 +407,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import MasterDrawer from '~/components/MasterDrawer.vue'
 import Button from '~/components/Button.vue'
+import FormInputText from '~/components/FormInputText.vue'
 import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
 import {
   isTrackVideoEncoderLoaded,
@@ -641,10 +641,8 @@ function handleCustomBackgroundInput(event: Event) {
   selectedBackgroundPreset.value = 'custom'
 }
 
-function handlePaddingInput(event: Event) {
-  const input = event.target as HTMLInputElement
-  const digits = input.value.replace(/\D/g, '')
-  input.value = digits
+function onPaddingModelUpdate(value: string | number | null) {
+  const digits = String(value ?? '').replace(/\D/g, '')
   coverPaddingPx.value = digits === '' ? 0 : Number(digits)
 }
 

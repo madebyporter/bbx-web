@@ -13,7 +13,7 @@
           <select
             v-model="selectedPrivacyValue"
             :disabled="isProcessing"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 cursor-pointer outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 cursor-pointer outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option :value="null">{{ privacyDropdownText }}</option>
             <option :value="true">Make All Public</option>

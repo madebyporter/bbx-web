@@ -2,8 +2,8 @@
   <div class="flex flex-col gap-0 text-neutral-300 grow h-fit">
     <template v-if="!pageShellReady">
       <div class="p-4 border-b border-neutral-800">
-        <div class="h-8 w-48 max-w-full rounded bg-neutral-800 animate-pulse mb-2" />
-        <div class="h-4 w-32 rounded bg-neutral-800 animate-pulse" />
+        <div class="h-8 w-48 max-w-full rounded-sm bg-neutral-800 animate-pulse mb-2" />
+        <div class="h-4 w-32 rounded-sm bg-neutral-800 animate-pulse" />
       </div>
       <TracksTableSkeleton
         :is-own-profile="isOwnProfile"

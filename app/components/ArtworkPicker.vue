@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-3 border border-neutral-700 rounded bg-neutral-900/50 p-3">
+  <div class="flex flex-col gap-3 border border-neutral-700 rounded-sm bg-neutral-900/50 p-3">
     <!-- Current artwork -->
     <div
       v-if="showCurrent"
@@ -141,7 +141,7 @@
     <!-- Generate -->
     <div v-else-if="activeTab === 'generate'" class="flex flex-col gap-2">
       <div
-        class="flex flex-col gap-2 p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 focus-within:border-amber-400"
+        class="flex flex-col gap-2 p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 focus-within:border-amber-400"
       >
         <textarea
           v-model="coverDirection"
@@ -193,7 +193,7 @@
         <select
           v-if="coverModels.length"
           v-model="selectedCoverModel"
-          class="select-field p-2 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 text-sm outline-none focus:border-amber-400 cursor-pointer min-w-[11rem]"
+          class="select-field p-2 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 text-sm outline-none focus:border-amber-400 cursor-pointer min-w-[11rem]"
           :disabled="disabled || busy || loadingCoverModels"
         >
           <option v-for="model in coverModels" :key="model.id" :value="model.id">

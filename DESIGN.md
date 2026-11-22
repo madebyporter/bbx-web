@@ -7,9 +7,16 @@ Use the right primitive for the interaction:
 | Need | Use |
 |------|-----|
 | Actions / CTAs (submit, cancel, mode switch with button chrome) | `Button` (`app/components/Button.vue`) |
+| Text / number field | `FormInputText` (`app/components/FormInputText.vue`) |
 | Text links (navigate or inline “forgot password” style links) | `<a>` or `NuxtLink` with `.text-link` |
 | Action that should *look* like a link (no button chrome) | `Button variant="link"` (gold, same as `.text-link`) |
 | Icon-only hit targets (close, clear, menu) | A plain `<div class="p-2">` (or `<button type="button" class="p-2">` when a real button is required for forms/a11y) wrapping an Iconoir icon |
+
+### Form controls
+
+- **Text / number:** always use `FormInputText`. Sizes: `md` (default, `p-3`), `sm` (`p-2.5`). Supports `type` (`text`, `number`, `email`, …), `fullWidth` (default true; set `false` for `flex-1` rows).
+- Do **not** re-paste the border/padding stack on raw `<input type="text|number|email">` in drawers/forms.
+- **Selects / textareas:** still raw until `FormSelect` / `FormTextarea` exist.
 
 ### Button hierarchy
 
@@ -34,7 +41,7 @@ Rules of thumb:
 
 - Always use `Button` for labeled actions. Variants: `primary`, `secondary`, `ghost`, `outlined`, `danger`, `link`.
 - **Outlined:** bordered tertiary (`border-neutral-700`, hover fill). Use for generate/analyze beside fields — do not hand-roll the same border classes on `ghost`.
-- **Square / generate:** `square` prop — icon-only, `aspect-square`, height matches the sibling input in a flex row (`self-stretch`). Pair with `variant="outlined"`. Example: `<Button variant="outlined" square>`.
+- **Square / generate:** `square` prop — icon-only fixed square (`size-12` / `size-10` with `size="sm"`) matching standard input height. Pair with `variant="outlined"`. Example: `<Button variant="outlined" square>`.
 - Do **not** use raw `<button class="text-link …">` for full-width or chrome actions. Prefer `variant="ghost"` for quiet chrome, or `variant="link"` when it must look like a gold text link but remains an action.
 - Example: “Don’t have an account?” / “Already have an account?” / “Back to Sign In” → `<Button variant="ghost" class="w-full">` (auth mode switch) or `variant="link"` when gold link styling is intended.
 

@@ -70,8 +70,8 @@ const sizeClasses: Record<Size, string> = {
 }
 
 const responsiveSizeClasses: Record<Size, string> = {
-  md: 'px-2.5 md:px-4 py-2 text-base',
-  sm: 'px-2.5 md:px-3 py-1.5 text-sm',
+  md: 'px-2.5 md:px-4 py-2 text-base min-w-12',
+  sm: 'px-2.5 md:px-3 py-1.5 text-sm min-w-8',
 }
 
 const baseClasses =
@@ -80,21 +80,26 @@ const baseClasses =
 const linkBaseClasses =
   'inline h-fit w-fit font-medium transition-colors cursor-pointer disabled:cursor-not-allowed'
 
-const squareClasses =
-  '!aspect-square !p-0 shrink-0 h-auto !w-auto self-stretch min-h-10 min-w-10'
+// Fixed box — flex stretch + aspect-ratio is unreliable (w-auto ignores ratio; w-0 collapses).
+// size-12 matches p-3 inputs; size-10 matches denser p-2.5 rows when size="sm".
+const squareSizeClasses: Record<Size, string> = {
+  md: 'aspect-square size-12 min-w-12',
+  sm: 'aspect-square size-8 min-w-8',
+}
 
 const classes = computed(() => {
   const isLinkVariant = props.variant === 'link'
-  const sizeClass = isLinkVariant || props.square
+  const sizeClass = isLinkVariant
     ? ''
-    : props.responsiveLabel
-      ? responsiveSizeClasses[props.size]
-      : sizeClasses[props.size]
+    : props.square
+      ? squareSizeClasses[props.size]
+      : props.responsiveLabel
+        ? responsiveSizeClasses[props.size]
+        : sizeClasses[props.size]
 
   return [
     isLinkVariant ? linkBaseClasses : baseClasses,
     sizeClass,
-    props.square ? squareClasses : '',
     variantClasses[props.variant],
     props.fullWidth && !props.square ? 'w-full' : '',
     attrs.class,
