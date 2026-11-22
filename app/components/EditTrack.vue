@@ -1,7 +1,13 @@
 <template>
   <MasterDrawer ref="drawerRef" :show="props.show" @update:show="(val) => emit('update:show', val)">
     <template #header>
-      <h2 class="text-2xl">Edit Track</h2>
+      <h2
+        class="text-2xl flex items-center min-w-0 gap-1.5 w-full"
+        :title="editHeaderTitle"
+      >
+        <span class="shrink-0">Edit</span>
+        <span class="truncate">{{ editHeaderName }}</span>
+      </h2>
     </template>
     <template v-if="canNavigateTracks" #header-actions>
       <Button
@@ -472,6 +478,16 @@ const metadata = ref<TrackMetadata>({
 })
 
 const editGenreOrphan = computed(() => orphanGenreOption(metadata.value.genre))
+
+const editHeaderName = computed(() => {
+  const fromForm = metadata.value.title?.trim()
+  if (fromForm) return fromForm
+  const fromTrack = props.trackToEdit?.title?.trim()
+  if (fromTrack) return fromTrack
+  return 'Track'
+})
+
+const editHeaderTitle = computed(() => `Edit ${editHeaderName.value}`)
 
 const collections = ref<Collection[]>([])
 const selectedCollectionIds = ref<number[]>([])
