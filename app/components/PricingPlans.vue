@@ -39,9 +39,9 @@
         class="border border-neutral-800 rounded-xl p-6 bg-neutral-900/50 animate-pulse"
         :class="compact ? 'p-4' : 'p-6'"
       >
-        <div class="h-6 w-24 bg-neutral-800 rounded mb-3" />
-        <div class="h-4 w-full bg-neutral-800 rounded mb-6" />
-        <div class="h-8 w-20 bg-neutral-800 rounded mb-6" />
+        <div class="h-6 w-24 bg-neutral-800 rounded-sm mb-3" />
+        <div class="h-4 w-full bg-neutral-800 rounded-sm mb-6" />
+        <div class="h-8 w-20 bg-neutral-800 rounded-sm mb-6" />
         <div class="space-y-2">
           <div class="h-3 w-3/4 bg-neutral-800 rounded" />
           <div class="h-3 w-2/3 bg-neutral-800 rounded" />
@@ -68,7 +68,7 @@
       >
         <div
           v-if="plan.badge"
-          class="absolute -top-3 left-6 text-xs px-2 py-1 rounded bg-amber-500 text-black font-semibold"
+          class="absolute -top-3 left-6 text-xs px-2 py-1 rounded-sm bg-amber-500 text-black font-semibold"
         >
           {{ plan.badge }}
         </div>

@@ -46,7 +46,7 @@
               v-if="statuses.length > 0"
               :value="track.status_id || ''"
               @change="updateTrackStatus(track.id, $event.target.value ? parseInt($event.target.value) : null)"
-              class="px-3 py-2 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-sm text-neutral-200 cursor-pointer outline-none min-w-[160px] w-full md:w-auto"
+              class="px-3 py-2 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded-sm text-sm text-neutral-200 cursor-pointer outline-none min-w-[160px] w-full md:w-auto"
             >
               <option value="">No Status</option>
               <option v-for="status in statuses" :key="status.id" :value="status.id">
@@ -131,7 +131,7 @@
         <div class="space-y-2">
           <NuxtLink v-for="otherTrack in groupTracks.filter(t => t.id !== track.id)" :key="otherTrack.id"
             :to="`/u/${username}/t/${generateTrackSlug(otherTrack)}`"
-            class="block p-3 bg-neutral-800/30 hover:bg-neutral-800/50 rounded transition-colors">
+            class="block p-3 bg-neutral-800/30 hover:bg-neutral-800/50 rounded-sm transition-colors">
             <div class="font-medium">{{ otherTrack.title }}</div>
             <div class="text-sm text-neutral-400">Version: {{ otherTrack.version }}</div>
           </NuxtLink>

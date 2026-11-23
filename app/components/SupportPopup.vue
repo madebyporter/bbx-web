@@ -57,7 +57,7 @@
             <select
               id="support-type"
               v-model="type"
-              class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 text-sm outline-none focus:border-amber-400 cursor-pointer"
+              class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 text-sm outline-none focus:border-amber-400 cursor-pointer"
               required
             >
               <option value="Bugs">Bugs</option>
@@ -74,7 +74,7 @@
               autocomplete="name"
               maxlength="200"
               required
-              class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 text-sm placeholder-neutral-500 outline-none focus:border-amber-400"
+              class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 text-sm placeholder-neutral-500 outline-none focus:border-amber-400"
             />
           </fieldset>
 
@@ -86,7 +86,7 @@
               type="email"
               autocomplete="email"
               required
-              class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 text-sm placeholder-neutral-500 outline-none focus:border-amber-400"
+              class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 text-sm placeholder-neutral-500 outline-none focus:border-amber-400"
             />
           </fieldset>
 
@@ -100,7 +100,7 @@
               minlength="3"
               maxlength="200"
               placeholder="Short summary for the issue title"
-              class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 text-sm placeholder-neutral-500 outline-none focus:border-amber-400"
+              class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 text-sm placeholder-neutral-500 outline-none focus:border-amber-400"
             />
           </fieldset>
 
@@ -114,7 +114,7 @@
               minlength="10"
               maxlength="10000"
               placeholder="Describe your idea or what went wrong..."
-              class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 text-sm placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[7rem]"
+              class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 text-sm placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[7rem]"
             />
           </fieldset>
 
@@ -125,7 +125,7 @@
               ref="fileInputRef"
               type="file"
               accept="image/jpeg,image/png"
-              class="block w-full text-sm text-neutral-400 file:mr-2 file:rounded file:border file:border-neutral-700 file:bg-neutral-800 file:px-2 file:py-1.5 file:text-sm file:font-medium file:text-neutral-200 hover:file:bg-neutral-700 cursor-pointer"
+              class="block w-full text-sm text-neutral-400 file:mr-2 file:rounded-sm file:border file:border-neutral-700 file:bg-neutral-800 file:px-2 file:py-1.5 file:text-sm file:font-medium file:text-neutral-200 hover:file:bg-neutral-700 cursor-pointer"
               @change="onFileSelected"
             />
             <p class="text-[11px] text-neutral-500 leading-snug">
@@ -133,7 +133,7 @@
             </p>
             <div
               v-if="attachmentPreviewUrl"
-              class="relative rounded border border-neutral-700 overflow-hidden max-h-32 w-full bg-neutral-800"
+              class="relative rounded-sm border border-neutral-700 overflow-hidden max-h-32 w-full bg-neutral-800"
             >
               <img
                 :src="attachmentPreviewUrl"
@@ -142,7 +142,7 @@
               />
               <button
                 type="button"
-                class="absolute top-1 right-1 rounded bg-neutral-900/80 text-neutral-200 text-xs px-1.5 py-0.5 cursor-pointer"
+                class="absolute top-1 right-1 rounded-sm bg-neutral-900/80 text-neutral-200 text-xs px-1.5 py-0.5 cursor-pointer"
                 @click="clearAttachment"
               >
                 Remove

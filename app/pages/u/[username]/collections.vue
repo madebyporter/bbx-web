@@ -1,5 +1,5 @@
 <template>
-  <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col gap-8 text-neutral-300">
+  <div class="col-span-full max-w-full lg:max-w-none p-2 lg:p-0 flex flex-col text-neutral-300">
     <PageContentSkeleton v-if="!pageShellReady" />
     
     <div v-else-if="!profileUserId" class="text-neutral-500 p-4">
@@ -8,11 +8,23 @@
 
     <template v-else>
       <!-- Header -->
-      <div class="p-4">
-        <h1 class="text-3xl font-bold mb-2">Collections</h1>
-        <p class="text-neutral-400">
-          {{ filteredCollections.length }} {{ filteredCollections.length === 1 ? 'collection' : 'collections' }}
-        </p>
+      <div class="p-4 flex flex-row items-center justify-between gap-4 border-b border-neutral-800">
+        <div class="flex flex-col gap-1">
+          <h1 class="text-3xl font-bold">Collections</h1>
+          <p class="text-neutral-400">
+            {{ filteredCollections.length }} {{ filteredCollections.length === 1 ? 'collection' : 'collections' }}
+          </p>
+        </div>
+        <Button
+          v-if="isOwnProfile"
+          variant="secondary"
+          size="sm"
+          class="btn shrink-0 gap-1.5"
+          @click="showNewCollectionDrawer = true"
+        >
+          <Plus class="w-4 h-4 shrink-0" />
+          Add collection
+        </Button>
       </div>
 
       <!-- Collections Table -->
@@ -21,23 +33,6 @@
           <p class="text-neutral-500">
             {{ isOwnProfile ? 'No collections yet. Create one to group tracks for review or sharing.' : 'No collections available.' }}
           </p>
-          <div v-if="isOwnProfile" class="flex flex-col gap-2 w-full max-w-sm">
-            <input
-              v-model="newCollectionName"
-              type="text"
-              placeholder="Collection name"
-              class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400"
-              :disabled="creatingCollection"
-              @keydown.enter.prevent="handleCreateCollection"
-            />
-            <Button
-              full-width
-              :disabled="creatingCollection || !newCollectionName.trim()"
-              @click="handleCreateCollection"
-            >
-              {{ creatingCollection ? 'Creating...' : 'Create collection' }}
-            </Button>
-          </div>
         </div>
       </div>
       
@@ -81,7 +76,7 @@
                     >
                       {{ collection.name }}
                     </NuxtLink>
-                    <span v-if="collection.is_shared" class="text-xs px-2 py-0.5 bg-neutral-700 text-neutral-300 rounded shrink-0">
+                    <span v-if="collection.is_shared" class="text-xs px-2 py-0.5 bg-neutral-700 text-neutral-300 rounded-sm shrink-0">
                       Shared with me
                     </span>
                   </div>
@@ -111,6 +106,13 @@
       </div>
     </template>
 
+    <NewCollectionDrawer
+      v-if="isOwnProfile"
+      v-model:show="showNewCollectionDrawer"
+      :existing-slugs="ownedCollectionSlugs"
+      @created="handleCollectionCreated"
+    />
+
     <CollectionSettingsDrawer
       v-if="selectedCollection"
       v-model:show="showSettingsDrawer"
@@ -120,6 +122,7 @@
       :collection-artwork-path="selectedCollection.artwork_path"
       :collection-artwork-provider="selectedCollection.artwork_provider"
       :collection-show-on-profile="!!selectedCollection.show_on_profile"
+      :collection-cover-direction="selectedCollection.cover_direction"
       @collection-updated="handleCollectionUpdated"
       @collection-deleted="handleCollectionDeleted"
     />
@@ -131,20 +134,18 @@ import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useSupabase } from '~/utils/supabase'
-import { useToast } from '~/composables/useToast'
 import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
 import CollectionSettingsDrawer from '~/components/CollectionSettingsDrawer.vue'
+import NewCollectionDrawer from '~/components/NewCollectionDrawer.vue'
 import Button from '~/components/Button.vue'
-import { Settings } from '@iconoir/vue'
+import { Plus, Settings } from '@iconoir/vue'
 import { usePageShellReady } from '~/composables/usePageShellReady'
 import { prefetchArtworkUrls } from '~/composables/useArtworkUrlCache'
-import { generateUniqueSlug } from '~/utils/collections'
 
 const route = useRoute()
 const router = useRouter()
 const { user } = useAuth()
 const { supabase } = useSupabase()
-const { showSuccess, showError } = useToast()
 
 // Inject search handler registration functions
 const registerSearchHandler = inject<(handler: (query: string) => void) => void>('registerSearchHandler')
@@ -158,8 +159,7 @@ const username = ref('')
 const searchQuery = ref('')
 const showSettingsDrawer = ref(false)
 const selectedCollection = ref<any | null>(null)
-const newCollectionName = ref('')
-const creatingCollection = ref(false)
+const showNewCollectionDrawer = ref(false)
 
 const pageShellReady = computed(() => !loading.value)
 usePageShellReady(pageShellReady)
@@ -179,6 +179,13 @@ const filteredCollections = computed(() => {
     return name.includes(query) || description.includes(query)
   })
 })
+
+const ownedCollectionSlugs = computed(() =>
+  collections.value
+    .filter((c) => !c.is_shared)
+    .map((c) => c.slug)
+    .filter(Boolean),
+)
 
 watch(
   filteredCollections,
@@ -323,42 +330,10 @@ const openCollectionSettings = (collection: any) => {
   showSettingsDrawer.value = true
 }
 
-const handleCreateCollection = async () => {
-  const name = newCollectionName.value.trim()
-  if (!name || !supabase || !user.value || !isOwnProfile.value) return
-
-  creatingCollection.value = true
-  try {
-    const existingSlugs = collections.value
-      .filter((c) => !c.is_shared)
-      .map((c) => c.slug)
-      .filter(Boolean)
-    const slug = generateUniqueSlug(name, existingSlugs)
-
-    const { data, error } = await supabase
-      .from('collections')
-      .insert({
-        user_id: user.value.id,
-        name,
-        description: null,
-        slug,
-      })
-      .select()
-      .single()
-
-    if (error) throw error
-
-    showSuccess('Collection created')
-    newCollectionName.value = ''
-    await fetchCollections()
-    if (data?.slug) {
-      await router.push(`/u/${username.value}/c/${data.slug}`)
-    }
-  } catch (err: any) {
-    console.error('Error creating collection:', err)
-    showError(err.message || 'Failed to create collection')
-  } finally {
-    creatingCollection.value = false
+const handleCollectionCreated = async (payload: { id: number; name: string; slug: string }) => {
+  await fetchCollections()
+  if (payload?.slug) {
+    await router.push(`/u/${username.value}/c/${payload.slug}`)
   }
 }
 
@@ -368,6 +343,7 @@ const handleCollectionUpdated = (
   artworkPath: string | null = null,
   artworkProvider: string | null = null,
   showOnProfile = false,
+  coverDirection: string | null = null,
 ) => {
   if (!selectedCollection.value) return
 
@@ -382,6 +358,7 @@ const handleCollectionUpdated = (
       artwork_path: artworkPath,
       artwork_provider: artworkProvider,
       show_on_profile: showOnProfile,
+      cover_direction: coverDirection,
     }
   }
 
@@ -392,6 +369,7 @@ const handleCollectionUpdated = (
     artwork_path: artworkPath,
     artwork_provider: artworkProvider,
     show_on_profile: showOnProfile,
+    cover_direction: coverDirection,
   }
 }
 

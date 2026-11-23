@@ -83,7 +83,7 @@
       <div v-if="isOwnProfile && showViewModeSelector" class="relative">
         <Button
           variant="ghost"
-          class="!px-3 !py-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded gap-2"
+          class="!px-3 !py-2 text-sm border border-neutral-700 hover:border-neutral-600 rounded-sm gap-2"
           @click="emit('update:showViewMenu', !showViewMenu)"
         >
           {{ viewMode === 'final' ? 'Show Final' : 'Show All Versions' }}
@@ -93,7 +93,7 @@
         </Button>
         <div
           v-if="showViewMenu"
-          class="absolute right-0 mt-2 w-56 bg-neutral-800 border border-neutral-700 rounded shadow-lg z-50"
+          class="absolute right-0 mt-2 w-56 bg-neutral-800 border border-neutral-700 rounded-sm shadow-lg z-50"
         >
           <Button
             variant="ghost"

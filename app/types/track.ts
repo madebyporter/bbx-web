@@ -9,6 +9,8 @@ export interface Track {
   storage_provider?: StorageProvider
   artwork_path?: string | null
   artwork_provider?: StorageProvider
+  /** Optional AI cover direction prompt for reuse / regeneration. */
+  cover_direction?: string | null
   /** R2 key for the latest paid cloud-saved generated video. */
   video_path?: string | null
   video_provider?: StorageProvider

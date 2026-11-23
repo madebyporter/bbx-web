@@ -204,7 +204,7 @@
                     <div class="truncate text-neutral-100">{{ row.title }}</div>
                     <div class="truncate text-xs text-neutral-500">{{ row.version }}</div>
                   </div>
-                  <span class="inline-flex items-center px-2 py-0.5 bg-neutral-700 rounded text-[10px] text-neutral-200 shrink-0">
+                  <span class="inline-flex items-center px-2 py-0.5 bg-neutral-700 rounded-sm text-[10px] text-neutral-200 shrink-0">
                     {{ row.collection }}
                   </span>
                 </div>
@@ -243,7 +243,7 @@
                     Vocal sits great — maybe pull the ad-libs up 1dB on the hook?
                   </p>
                 </div>
-                <div class="px-2 py-2 border border-neutral-700 rounded text-[10px] text-neutral-500 focus-within:border-amber-500/50">
+                <div class="px-2 py-2 border border-neutral-700 rounded-sm text-[10px] text-neutral-500 focus-within:border-amber-500/50">
                   Add a comment…
                 </div>
               </div>

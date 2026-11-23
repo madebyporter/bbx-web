@@ -52,13 +52,6 @@
           <p class="text-xs text-neutral-500">
             Platforms get these fields on sync. Fill required fields before syncing.
           </p>
-          <input
-            ref="artworkFileInput"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov"
-            class="hidden"
-            @change="uploadArtworkInline"
-          >
           <ul class="flex flex-col gap-1.5">
             <li
               v-for="field in metadataFields"
@@ -93,7 +86,7 @@
                     :href="artworkPreviewUrl"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="size-8 rounded overflow-hidden border border-neutral-700 bg-neutral-950 shrink-0"
+                    class="size-8 rounded-sm overflow-hidden border border-neutral-700 bg-neutral-950 shrink-0"
                     title="Open cover full size"
                     @click.stop
                   >
@@ -130,7 +123,7 @@
                   <input
                     v-model="draftText"
                     type="text"
-                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
+                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
                     :placeholder="field.label"
                     @change="persistTextField(field.key)"
                     @keydown.enter.prevent="persistTextField(field.key)"
@@ -141,16 +134,22 @@
                 <template v-else-if="field.key === 'genre'">
                   <select
                     v-model="draftGenre"
-                    class="select-field w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
+                    class="select-field w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
                     @change="persistGenre"
                   >
                     <option value="">Select genre…</option>
                     <option
-                      v-for="genre in TRACK_GENRES"
-                      :key="genre"
-                      :value="genre"
+                      v-if="syncGenreOrphan"
+                      :value="syncGenreOrphan"
                     >
-                      {{ genre }}
+                      {{ syncGenreOrphan }} (current)
+                    </option>
+                    <option
+                      v-for="genre in genres"
+                      :key="genre.id"
+                      :value="genre.name"
+                    >
+                      {{ genre.name }}
                     </option>
                   </select>
                 </template>
@@ -164,14 +163,13 @@
                       min="0"
                       max="300"
                       placeholder="e.g. 120"
-                      class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
+                      class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
                       @change="persistBpm"
                     >
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                      variant="outlined"
+                      square
                       :disabled="analyzingBpm || !localTrack?.storage_path"
                       title="Analyze BPM"
                       @click="analyzeBpmInline"
@@ -189,7 +187,7 @@
                   <div class="flex gap-2">
                     <select
                       v-model="draftKey"
-                      class="select-field w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
+                      class="select-field w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer"
                       @change="persistKey"
                     >
                       <option value="">Select key…</option>
@@ -209,9 +207,8 @@
                     </select>
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                      variant="outlined"
+                      square
                       :disabled="analyzingKey || !localTrack?.storage_path"
                       title="Analyze Key"
                       @click="analyzeKeyInline"
@@ -247,9 +244,8 @@
                     </div>
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                      variant="outlined"
+                      square
                       :disabled="detectingMoods || !localTrack?.storage_path"
                       title="Detect moods"
                       @click="detectMoodsInline"
@@ -270,16 +266,15 @@
                     rows="6"
                     maxlength="2000"
                     placeholder="Optional sync description for YouTube / SoundCloud…"
-                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[120px]"
+                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[120px]"
                     :disabled="generatingDescription"
                     @change="persistDescription"
                   />
                   <div class="flex flex-wrap items-center gap-2">
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      class="shrink-0 !p-0 size-10 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                      variant="outlined"
+                      square
                       :disabled="generatingDescription || !localTrack?.title || !localTrack?.artist"
                       title="Generate description"
                       @click="generateDescriptionInline"
@@ -300,66 +295,18 @@
 
                 <!-- Artwork -->
                 <template v-else-if="field.key === 'artwork'">
-                  <textarea
-                    v-model="coverDirection"
-                    rows="8"
-                    :maxlength="COVER_DIRECTION_MAX"
-                    placeholder="Optional cover direction…"
-                    class="w-full p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 resize-y min-h-[180px]"
-                    :disabled="generatingArtwork || uploadingArtwork"
+                  <ArtworkPicker
+                    :model-value="artworkSelection"
+                    v-model:cover-direction="coverDirection"
+                    kind="track"
+                    :current-path="localTrack?.artwork_path"
+                    :current-provider="localTrack?.artwork_provider"
+                    :current-entity-id="localTrack?.id"
+                    :generate-context="syncArtworkGenerateContext"
+                    :disabled="persistingArtwork"
+                    @update:model-value="onSyncArtworkSelection"
                   />
-                  <div
-                    v-if="generatingArtwork || uploadingArtwork"
-                    class="flex flex-col gap-1.5"
-                  >
-                    <div class="w-full bg-neutral-800 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        class="bg-amber-500 h-1.5 rounded-full transition-all duration-300"
-                        :class="coverProgress > 0 && coverProgress < 100 ? '' : 'animate-pulse'"
-                        :style="{ width: `${Math.max(coverProgress, 8)}%` }"
-                      />
-                    </div>
-                    <p class="text-xs text-amber-400">
-                      {{ coverProgressLabel || (uploadingArtwork ? 'Uploading…' : 'Generating…') }}
-                    </p>
-                  </div>
-                  <div class="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      :disabled="generatingArtwork || uploadingArtwork"
-                      @click="openArtworkFilePicker"
-                    >
-                      Upload
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      :disabled="generatingArtwork || uploadingArtwork || !canGenerateArtwork"
-                      @click="generateArtworkInline"
-                    >
-                      {{ generatingArtwork ? 'Generating…' : 'Generate cover' }}
-                    </Button>
-                    <select
-                      v-if="coverModels.length"
-                      v-model="selectedCoverModel"
-                      class="select-field p-2 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 text-sm outline-none focus:border-amber-400 cursor-pointer min-w-[11rem]"
-                      :disabled="generatingArtwork || uploadingArtwork || loadingCoverModels"
-                      :title="selectedCoverModelHint"
-                    >
-                      <option
-                        v-for="model in coverModels"
-                        :key="model.id"
-                        :value="model.id"
-                      >
-                        {{ model.label }}
-                      </option>
-                    </select>
-                  </div>
                   <p v-if="artworkError" class="text-xs text-red-500">{{ artworkError }}</p>
-                  <p v-else class="text-xs text-neutral-500">
-                    Upload your own or generate from title, artist, genre, and mood.
-                  </p>
                 </template>
               </div>
             </li>
@@ -391,7 +338,7 @@
                 <input
                   v-model="youtubeSelected"
                   type="checkbox"
-                  class="rounded border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-500"
+                  class="rounded-sm border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-500"
                   :disabled="syncing"
                 >
                 <span class="text-neutral-100">YouTube</span>
@@ -452,7 +399,7 @@
                   v-model="draftYoutubeTitle"
                   type="text"
                   maxlength="100"
-                  class="w-full min-w-0 p-2.5 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
+                  class="w-full min-w-0 p-2.5 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400"
                   :placeholder="localTrack?.title || 'YouTube title'"
                   :disabled="syncing || patchingField || generatingYoutubeTitle"
                   @change="persistYoutubeTitle"
@@ -460,9 +407,8 @@
                 >
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  class="shrink-0 !p-0 aspect-square w-auto self-stretch border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                  variant="outlined"
+                  square
                   :disabled="
                     generatingYoutubeTitle ||
                     syncing ||
@@ -495,7 +441,7 @@
               <input
                 v-model="soundcloudSelected"
                 type="checkbox"
-                class="rounded border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-500"
+                class="rounded-sm border-neutral-600 bg-neutral-900 text-amber-500 focus:ring-amber-500"
                 :disabled="syncing"
               >
               <span class="text-neutral-100">SoundCloud</span>
@@ -604,6 +550,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { CheckCircle, CircleSpark } from '@iconoir/vue'
 import MasterDrawer from '~/components/MasterDrawer.vue'
+import ArtworkPicker from '~/components/ArtworkPicker.vue'
 import Button from '~/components/Button.vue'
 import { useAuthHeaders } from '~/composables/useAuthHeaders'
 import { useEntitlements } from '~/composables/useEntitlements'
@@ -622,9 +569,12 @@ import { uploadTrackVideoToYouTube } from '~/composables/useYouTubeUpload'
 import { usePublishSiteOrigin } from '~/composables/useSiteOrigin'
 import { captureVideoFrameAsFile } from '~/utils/captureVideoFrame'
 import { downloadAudioBlob } from '~/utils/trackAudioStorage'
-import { TRACK_GENRES, TRACK_KEYS } from '~/utils/trackMetadataOptions'
-import { COVER_DIRECTION_MAX } from '~/utils/coverDirection'
+import { TRACK_KEYS } from '~/utils/trackMetadataOptions'
+import { useGenres } from '~/composables/useGenres'
 import type { Track } from '~/types/track'
+import type { ArtworkSelection } from '~/types/artworkSelection'
+import { normalizeArtworkProvider } from '~/utils/artworkStorage'
+import { COVER_DIRECTION_MAX } from '~/utils/coverDirection'
 import {
   getMetadataFieldStatuses,
   hasRequiredMetadata,
@@ -659,6 +609,7 @@ const {
   validateAndProcessArtwork,
 } = useArtwork()
 const { supabase } = useSupabase()
+const { genres, ensureLoaded: ensureGenresLoaded, orphanGenreOption } = useGenres()
 
 const localTrack = ref<Track | null>(null)
 
@@ -666,6 +617,7 @@ const localTrack = ref<Track | null>(null)
 const expandedField = ref<MetadataFieldKey | null>(null)
 const draftText = ref('')
 const draftGenre = ref('')
+const syncGenreOrphan = computed(() => orphanGenreOption(draftGenre.value))
 const draftBpm = ref<number | null>(null)
 const draftKey = ref('')
 const draftMoods = ref<BeatboxMoodTag[]>([])
@@ -673,55 +625,20 @@ const draftDescription = ref('')
 const draftYoutubeTitle = ref('')
 const generatingYoutubeTitle = ref(false)
 const youtubeTitleError = ref<string | null>(null)
-const coverDirection = ref('')
 const generatingDescription = ref(false)
 const descriptionError = ref<string | null>(null)
 
 const analyzingBpm = ref(false)
 const analyzingKey = ref(false)
 const detectingMoods = ref(false)
-const generatingArtwork = ref(false)
-const uploadingArtwork = ref(false)
-const coverProgress = ref(0)
-const coverProgressLabel = ref('')
-const artworkFileInput = ref<HTMLInputElement | null>(null)
-const coverModels = ref<Array<{ id: string; label: string; provider: string; hint: string }>>([])
-const selectedCoverModel = ref('')
-const loadingCoverModels = ref(false)
-
-const selectedCoverModelHint = computed(() => {
-  const match = coverModels.value.find((m) => m.id === selectedCoverModel.value)
-  return match?.hint || 'Cover generation model'
-})
+const artworkSelection = ref<ArtworkSelection>({ kind: 'unchanged' })
+const coverDirection = ref('')
+const persistingArtwork = ref(false)
 const bpmError = ref<string | null>(null)
 const keyError = ref<string | null>(null)
 const moodError = ref<string | null>(null)
 const artworkError = ref<string | null>(null)
 const patchingField = ref(false)
-let coverWaitTimer: ReturnType<typeof setInterval> | null = null
-
-function clearCoverWaitTimer() {
-  if (coverWaitTimer) {
-    clearInterval(coverWaitTimer)
-    coverWaitTimer = null
-  }
-}
-
-function setCoverProgress(percent: number, label: string) {
-  coverProgress.value = Math.min(100, Math.max(0, percent))
-  coverProgressLabel.value = label
-}
-
-/** While waiting on the opaque generate API, creep progress so the bar stays alive. */
-function startCoverWaitPulse(from = 12, to = 48) {
-  clearCoverWaitTimer()
-  setCoverProgress(from, 'Generating with AI…')
-  coverWaitTimer = setInterval(() => {
-    if (coverProgress.value < to) {
-      coverProgress.value = Math.min(to, coverProgress.value + 1)
-    }
-  }, 400)
-}
 
 const soundcloudConnected = ref(false)
 const soundcloudUsername = ref<string | null>(null)
@@ -871,48 +788,45 @@ function hydrateDraftsForField(key: MetadataFieldKey) {
   if (key === 'key') draftKey.value = String(track.key || '').trim()
   if (key === 'mood') draftMoods.value = moodTagsFromTrack(track)
   if (key === 'description') draftDescription.value = String(track.description || '').trim()
-  if (key === 'artwork') coverDirection.value = ''
+  if (key === 'artwork') artworkSelection.value = { kind: 'unchanged' }
 }
 
-async function loadCoverModels() {
-  if (loadingCoverModels.value) return
-  loadingCoverModels.value = true
+async function persistCoverDirectionOnly() {
+  if (!localTrack.value?.id) return
+  const next = coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || null
+  const prev = String(localTrack.value.cover_direction || '').trim() || null
+  if (next === prev) return
   try {
-    const headers = await useAuthHeaders()
-    if (!headers.Authorization) return
-    const data = await $fetch<{
-      models: Array<{ id: string; label: string; provider: string; hint: string }>
-      defaultModelId: string | null
-    }>('/api/integrations/cover/models', { headers })
-    coverModels.value = data.models || []
-    if (
-      !selectedCoverModel.value ||
-      !coverModels.value.some((m) => m.id === selectedCoverModel.value)
-    ) {
-      selectedCoverModel.value = data.defaultModelId || coverModels.value[0]?.id || ''
-    }
-  } catch (err) {
-    console.warn('Failed to load cover models:', err)
-  } finally {
-    loadingCoverModels.value = false
+    await patchLocalTrack({ cover_direction: next })
+  } catch {
+    /* toasted in patchLocalTrack */
   }
 }
 
 function toggleExpandField(key: MetadataFieldKey) {
   if (expandedField.value === key) {
+    if (key === 'artwork') {
+      void persistCoverDirectionOnly()
+    }
     expandedField.value = null
     return
   }
   hydrateDraftsForField(key)
+  if (key === 'artwork') {
+    coverDirection.value = String(localTrack.value?.cover_direction || '').slice(
+      0,
+      COVER_DIRECTION_MAX,
+    )
+  }
   expandedField.value = key
-  if (key === 'artwork') void loadCoverModels()
 }
 
-const canGenerateArtwork = computed(() => {
-  const title = localTrack.value?.title?.trim()
-  const artist = localTrack.value?.artist?.trim()
-  return Boolean(title && artist)
-})
+const syncArtworkGenerateContext = computed(() => ({
+  title: localTrack.value?.title?.trim() || '',
+  artist: localTrack.value?.artist?.trim() || '',
+  genre: localTrack.value?.genre?.trim() || undefined,
+  mood: moodTagsFromTrack(localTrack.value).join(', ') || undefined,
+}))
 
 async function patchLocalTrack(partial: Record<string, unknown>) {
   if (!localTrack.value?.id || !supabase) return null
@@ -1150,10 +1064,7 @@ async function detectMoodsInline() {
 async function persistArtworkFile(file: File, successMessage: string) {
   if (!localTrack.value?.id || !supabase) return
 
-  setCoverProgress(70, 'Processing image…')
   const { file: processedFile } = await validateAndProcessArtwork(file)
-
-  setCoverProgress(82, 'Uploading to storage…')
   const uploaded = await uploadArtwork(processedFile, 'track')
 
   if (localTrack.value.artwork_path) {
@@ -1171,104 +1082,71 @@ async function persistArtworkFile(file: File, successMessage: string) {
     }
   }
 
-  setCoverProgress(92, 'Saving to track…')
   await patchLocalTrack({
     artwork_path: uploaded.artwork_path,
     artwork_provider: uploaded.artwork_provider,
+    cover_direction: coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || null,
   })
   await refreshArtworkPreview()
-  setCoverProgress(100, 'Done')
   showSuccess(successMessage)
 }
 
-function openArtworkFilePicker() {
-  artworkFileInput.value?.click()
-}
+async function onSyncArtworkSelection(selection: ArtworkSelection) {
+  artworkSelection.value = selection
+  if (selection.kind === 'unchanged' || !localTrack.value?.id || persistingArtwork.value) return
 
-async function uploadArtworkInline(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file || uploadingArtwork.value || generatingArtwork.value || !localTrack.value?.id) {
-    input.value = ''
-    return
-  }
-
-  uploadingArtwork.value = true
+  persistingArtwork.value = true
   artworkError.value = null
-  setCoverProgress(15, 'Reading file…')
   try {
-    await persistArtworkFile(file, 'Cover uploaded')
-  } catch (err: unknown) {
-    artworkError.value = err instanceof Error ? err.message : 'Failed to upload cover'
-  } finally {
-    uploadingArtwork.value = false
-    coverProgress.value = 0
-    coverProgressLabel.value = ''
-    input.value = ''
-  }
-}
-
-async function generateArtworkInline() {
-  if (
-    !canGenerateArtwork.value ||
-    generatingArtwork.value ||
-    uploadingArtwork.value ||
-    !localTrack.value?.id ||
-    !supabase
-  ) {
-    return
-  }
-
-  generatingArtwork.value = true
-  artworkError.value = null
-  setCoverProgress(8, 'Starting…')
-  startCoverWaitPulse(12, 48)
-  try {
-    const title = localTrack.value.title.trim()
-    const artist = localTrack.value.artist.trim()
-    const moodStr = moodTagsFromTrack(localTrack.value).join(', ') || undefined
-
-    setCoverProgress(18, 'Generating with AI…')
-    const { generateCoverViaJob } = await import('~/utils/coverGenerateClient')
-    const result = await generateCoverViaJob({
-      title,
-      artist,
-      genre: localTrack.value.genre?.trim() || undefined,
-      mood: moodStr,
-      direction: coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || undefined,
-      model: selectedCoverModel.value || undefined,
-    })
-
-    clearCoverWaitTimer()
-    setCoverProgress(55, 'Decoding image…')
-    const binary = atob(result.base64)
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-    const blob = new Blob([bytes], { type: result.mimeType || 'image/png' })
-    const file = new File([blob], result.filename || 'cover-ai.png', {
-      type: result.mimeType || 'image/png',
-    })
-
-    await persistArtworkFile(file, 'Cover saved')
-  } catch (err: any) {
-    const statusCode = Number(err?.statusCode || err?.status || err?.response?.status || 0)
-    const raw =
-      err?.data?.statusMessage || err?.message || 'Failed to generate cover'
-    if (
-      statusCode === 504 ||
-      statusCode === 408 ||
-      /504|gateway timeout|timed?\s*out/i.test(String(raw))
-    ) {
-      artworkError.value =
-        'Cover generation timed out. Wait for the background job or try Flare (faster).'
-    } else {
-      artworkError.value = raw
+    if (selection.kind === 'file') {
+      await persistArtworkFile(selection.file, 'Cover saved')
+    } else if (selection.kind === 'reuse') {
+      if (
+        localTrack.value.artwork_path &&
+        localTrack.value.artwork_path !== selection.path
+      ) {
+        try {
+          await deleteArtwork(
+            {
+              id: localTrack.value.id,
+              artwork_path: localTrack.value.artwork_path,
+              artwork_provider: localTrack.value.artwork_provider,
+            },
+            'track',
+          )
+        } catch (err) {
+          console.warn('Failed to delete previous artwork:', err)
+        }
+      }
+      await patchLocalTrack({
+        artwork_path: selection.path,
+        artwork_provider: selection.provider,
+        cover_direction: coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || null,
+      })
+      await refreshArtworkPreview()
+      showSuccess('Cover updated')
+    } else if (selection.kind === 'remove' && localTrack.value.artwork_path) {
+      await deleteArtwork(
+        {
+          id: localTrack.value.id,
+          artwork_path: localTrack.value.artwork_path,
+          artwork_provider: localTrack.value.artwork_provider,
+        },
+        'track',
+      )
+      await patchLocalTrack({
+        artwork_path: null,
+        artwork_provider: normalizeArtworkProvider(null),
+        cover_direction: coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || null,
+      })
+      await refreshArtworkPreview()
+      showSuccess('Cover removed')
     }
+    artworkSelection.value = { kind: 'unchanged' }
+  } catch (err: unknown) {
+    artworkError.value = err instanceof Error ? err.message : 'Failed to update cover'
   } finally {
-    clearCoverWaitTimer()
-    generatingArtwork.value = false
-    coverProgress.value = 0
-    coverProgressLabel.value = ''
+    persistingArtwork.value = false
   }
 }
 
@@ -1709,11 +1587,18 @@ watch(
     preserveStateOnClose.value = false
     if (!returningFromVideo) {
       localTrack.value = props.track ? { ...props.track } : null
+      coverDirection.value = String(localTrack.value?.cover_direction || '').slice(
+        0,
+        COVER_DIRECTION_MAX,
+      )
       hydrateYoutubeTitleDraft(localTrack.value)
       syncError.value = null
       expandedField.value = null
     }
-    await refreshDrawerData({ preserveSelections: returningFromVideo })
+    await Promise.all([
+      ensureGenresLoaded(),
+      refreshDrawerData({ preserveSelections: returningFromVideo }),
+    ])
   },
 )
 
@@ -1722,6 +1607,7 @@ watch(
   (track) => {
     if (props.show && track) {
       localTrack.value = { ...track }
+      coverDirection.value = String(track.cover_direction || '').slice(0, COVER_DIRECTION_MAX)
       hydrateYoutubeTitleDraft(localTrack.value)
     }
   },
@@ -1757,7 +1643,6 @@ if (import.meta.client) {
 }
 
 onUnmounted(() => {
-  clearCoverWaitTimer()
   if (!import.meta.client) return
   window.removeEventListener('track-updated', onTrackUpdated)
   window.removeEventListener('track-video-ready', onTrackVideoReady)

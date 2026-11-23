@@ -26,7 +26,7 @@
           <NuxtLink
             v-if="profileUserType === 'creator'"
             to="/producers"
-            class="inline-flex items-center justify-center font-medium transition-colors bg-neutral-800 text-neutral-200 hover:bg-neutral-700 px-4 py-2 text-base rounded min-h-8"
+            class="inline-flex items-center justify-center font-medium transition-colors bg-neutral-800 text-neutral-200 hover:bg-neutral-700 px-4 py-2 text-base rounded-sm min-h-8"
           >
             Browse producers
           </NuxtLink>
@@ -51,6 +51,7 @@
       >
         <CollectionPicker
           v-if="showCollectionModal"
+          ref="collectionPickerRef"
           v-model="selectedCollectionIds"
           :collections="userCollections"
           :disabled="collectionSaving"
@@ -131,25 +132,13 @@
           isCurrentlyPlaying(track) ? 'is-playing bg-neutral-800/70 lg:top-0 lg:backdrop-blur-sm' : 'hover:bg-neutral-800'
         ]" :style="tableGridStyle">
         <div class="flex items-center justify-center gap-1">
-          <!-- Bulk Selection Mode: Show Checkbox -->
-          <template v-if="bulkSelectionMode">
-            <Button variant="ghost" class="!p-0 text-neutral-400 hover:text-neutral-200" @click="toggleTrackSelection(track.id)">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <rect v-if="!selectedTrackIds.has(track.id)" x="4" y="4" width="16" height="16" rx="2"
-                  stroke-width="2" />
-                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </Button>
-          </template>
-
-          <!-- Stem Player Mode: Show Mute/Solo -->
-          <template v-else-if="isStemPlayerActive">
+          <!-- Stem Player Mode: Show Mute/Solo (not during bulk select) -->
+          <template v-if="isStemPlayerActive && !bulkSelectionMode">
             <Button
               variant="ghost"
               size="sm"
               :class="[
-                '!px-2 !py-1 text-xs rounded transition-colors',
+                '!px-2 !py-1 text-xs rounded-sm transition-colors',
                 getStemTrack(track.id)?.isMuted
                   ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
                   : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
@@ -163,7 +152,7 @@
               variant="ghost"
               size="sm"
               :class="[
-                '!px-2 !py-1 text-xs rounded transition-colors',
+                '!px-2 !py-1 text-xs rounded-sm transition-colors',
                 getStemTrack(track.id)?.isSolo
                   ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
                   : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
@@ -175,7 +164,7 @@
             </Button>
           </template>
 
-          <!-- Normal Mode: Show Play Button -->
+          <!-- Cover art: play normally, or checkbox overlay in bulk mode -->
           <PlayerButton
             v-else
             variant="art"
@@ -184,16 +173,44 @@
             :artwork-entity-id="track.id"
             artwork-kind="track"
             :artwork-is-video="isVideoArtwork(track.artwork_path)"
-            :class="isCurrentlyPlaying(track) ? 'text-orange-400' : ''"
-            :title="isCurrentlyPlaying(track) ? 'Pause' : 'Play'"
-            @click="handlePlayClick(track, index)"
+            :class="[
+              'justify-center items-center',
+              !bulkSelectionMode && isCurrentlyPlaying(track) ? 'text-orange-400' : '',
+              bulkSelectionMode ? 'text-white' : '',
+            ]"
+            :title="bulkSelectionMode
+              ? (selectedTrackIds.has(track.id) ? 'Deselect' : 'Select')
+              : (isCurrentlyPlaying(track) ? 'Pause' : 'Play')"
+            @click="bulkSelectionMode ? toggleTrackSelection(track.id) : handlePlayClick(track, index)"
           >
-            <svg v-if="isCurrentlyPlaying(track)" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-            </svg>
-            <svg v-else class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+            <template v-if="bulkSelectionMode">
+              <svg class="w-5 h-5 drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect
+                  v-if="!selectedTrackIds.has(track.id)"
+                  x="4"
+                  y="4"
+                  width="16"
+                  height="16"
+                  rx="2"
+                  stroke-width="2"
+                />
+                <path
+                  v-else
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </template>
+            <template v-else>
+              <svg v-if="isCurrentlyPlaying(track)" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+              </svg>
+              <svg v-else class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </template>
           </PlayerButton>
         </div>
         <div class="overflow-hidden min-w-0">
@@ -221,7 +238,7 @@
             :owner-username="getTrackOwnerUsername(track)"
           />
           <div
-            class="cursor-pointer p-1 bg-transparent rounded hover:bg-neutral-700 border border-neutral-700"
+            class="cursor-pointer p-1 bg-transparent rounded-sm hover:bg-neutral-700 border border-neutral-700"
             title="Manage collections"
             @click="openCollectionModal(track, $event)"
           >
@@ -234,7 +251,7 @@
         <div v-if="showStatusColumn" class="text-neutral-400 overflow-hidden">
           <select v-if="statuses.length > 0" :value="track.status_id || ''"
             @change="handleStatusChange(track.id, $event)"
-            class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded text-xs text-neutral-200 cursor-pointer outline-none">
+            class="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 hover:border-neutral-600 rounded-sm text-xs text-neutral-200 cursor-pointer outline-none">
             <option value="">No Status</option>
             <option v-for="status in statuses" :key="status.id" :value="status.id">
               {{ status.name }}
@@ -392,7 +409,8 @@ const zeroStateBody = computed(() => {
 })
 const emit = defineEmits<{
   'edit-track': [track: Track]
-  'tracks-deleted': []
+  'tracks-deleted': [trackIds?: number[]]
+  'track-collections-updated': [payload: { trackId: number; collections: Array<{ name: string; slug: string }> }]
   'track-shortlisted': [trackId: number]
   'track-unshortlisted': [trackId: number]
   'load-more': []
@@ -410,8 +428,10 @@ const statuses = ref<Array<{ id: number; name: string }>>([])
 // Bulk selection state
 const bulkSelectionMode = ref(false)
 const selectedTrackIds = ref(new Set<number>())
+const selectedTracksCache = ref(new Map<number, Track>())
 const clickCount = ref(0)
 const showBulkActionsDrawer = ref(false)
+const selectingAll = ref(false)
 
 // Shortlist state
 const shortlistedTrackIds = ref(new Set<number>())
@@ -425,6 +445,7 @@ const selectedCollectionIds = ref<number[]>([])
 const pendingCollections = ref<Array<{ tempId: number; name: string }>>([])
 const userCollections = ref<Array<{ id: number; name: string; slug: string }>>([])
 const collectionSaving = ref(false)
+const collectionPickerRef = ref<{ commitPendingNew?: () => void } | null>(null)
 
 const collectionModalTitle = computed(() => {
   const title = collectionModalTrack.value?.title?.trim()
@@ -498,9 +519,15 @@ function formatTrackStat(trackId: number, field: 'plays' | 'listeners' | 'avgLis
   return `${stat.completionRate}%`
 }
 
-// Get selected tracks as array
+// Get selected tracks as array (includes off-screen / not-yet-rendered rows from select-all)
 const selectedTracksArray = computed(() => {
-  return props.tracks.filter(track => selectedTrackIds.value.has(track.id))
+  const byId = new Map(selectedTracksCache.value)
+  for (const track of props.tracks) {
+    byId.set(track.id, track)
+  }
+  return [...selectedTrackIds.value]
+    .map((id) => byId.get(id))
+    .filter((track): track is Track => !!track)
 })
 
 // Handle scroll-to-track event
@@ -687,46 +714,83 @@ const updateTrackStatus = async (trackId: number, statusId: number | null) => {
   }
 }
 
+const applyTrackSelection = (tracks: Track[]) => {
+  const nextIds = new Set<number>()
+  const nextCache = new Map<number, Track>()
+  for (const track of tracks) {
+    if (track?.id == null) continue
+    nextIds.add(track.id)
+    nextCache.set(track.id, track)
+  }
+  selectedTrackIds.value = nextIds
+  selectedTracksCache.value = nextCache
+}
+
+const selectAllTracks = async () => {
+  const pool =
+    props.resolveFullQueue != null
+      ? await props.resolveFullQueue()
+      : props.tracks
+  applyTrackSelection(pool?.length ? pool : props.tracks)
+}
+
 // Bulk selection handlers
-const handleHeaderCheckboxClick = () => {
+const handleHeaderCheckboxClick = async () => {
+  if (selectingAll.value) return
   clickCount.value++
-  
+
   if (clickCount.value === 1) {
     // Activate bulk mode
     bulkSelectionMode.value = true
     selectedTrackIds.value.clear()
+    selectedTracksCache.value.clear()
   } else if (clickCount.value === 2) {
-    // Select all
-    props.tracks.forEach(track => selectedTrackIds.value.add(track.id))
+    // Select all matching tracks (not just the currently loaded page)
+    selectingAll.value = true
+    try {
+      await selectAllTracks()
+    } finally {
+      selectingAll.value = false
+    }
   } else if (clickCount.value === 3) {
     // Deselect all
     selectedTrackIds.value.clear()
+    selectedTracksCache.value.clear()
   } else {
     // Deactivate bulk mode
     bulkSelectionMode.value = false
     selectedTrackIds.value.clear()
+    selectedTracksCache.value.clear()
     clickCount.value = 0
   }
 }
 
 const toggleTrackSelection = (trackId: number) => {
-  if (selectedTrackIds.value.has(trackId)) {
-    selectedTrackIds.value.delete(trackId)
+  const nextIds = new Set(selectedTrackIds.value)
+  const nextCache = new Map(selectedTracksCache.value)
+  if (nextIds.has(trackId)) {
+    nextIds.delete(trackId)
+    nextCache.delete(trackId)
   } else {
-    selectedTrackIds.value.add(trackId)
+    nextIds.add(trackId)
+    const track = props.tracks.find((t) => t.id === trackId)
+    if (track) nextCache.set(trackId, track)
   }
+  selectedTrackIds.value = nextIds
+  selectedTracksCache.value = nextCache
 }
 
 // Handle tracks deleted from bulk actions drawer
-const handleTracksDeleted = () => {
+const handleTracksDeleted = (trackIds: number[] = []) => {
   // Clear selection and exit bulk mode
   bulkSelectionMode.value = false
   selectedTrackIds.value.clear()
+  selectedTracksCache.value.clear()
   clickCount.value = 0
   showBulkActionsDrawer.value = false
   
-  // Notify parent to refetch
-  emit('tracks-deleted')
+  // Pass IDs so parent can patch the list without a full refetch
+  emit('tracks-deleted', trackIds)
 }
 
 // Handle tracks updated from bulk actions drawer
@@ -737,8 +801,8 @@ const handleTracksUpdated = () => {
   clickCount.value = 0
   showBulkActionsDrawer.value = false
   
-  // Notify parent to refetch
-  emit('tracks-deleted') // Reuse same event to trigger refetch
+  // No IDs — parent falls back to refetch for bulk metadata updates
+  emit('tracks-deleted')
 }
 
 // Handle bulk actions drawer close
@@ -1024,6 +1088,8 @@ const syncTrackCollections = async (trackId: number, trackGroupName?: string) =>
 const saveCollections = async () => {
   if (!supabase || !user.value || !collectionModalTrack.value || collectionSaving.value) return
 
+  collectionPickerRef.value?.commitPendingNew?.()
+
   collectionSaving.value = true
   const toastId = showProcessing('Saving collections...')
 
@@ -1069,15 +1135,21 @@ const saveCollections = async () => {
       pendingCollections.value = []
     }
 
+    const trackId = collectionModalTrack.value.id
     await syncTrackCollections(
-      collectionModalTrack.value.id,
+      trackId,
       collectionModalTrack.value.track_group_name
     )
+
+    const updatedCollections = selectedCollectionIds.value
+      .map((id) => userCollections.value.find((c) => c.id === id))
+      .filter((c): c is { id: number; name: string; slug: string } => !!c)
+      .map(({ name, slug }) => ({ name, slug }))
 
     removeToast(toastId)
     showSuccess('Collections updated')
     closeCollectionModal()
-    emit('tracks-deleted')
+    emit('track-collections-updated', { trackId, collections: updatedCollections })
   } catch (error) {
     removeToast(toastId)
     showError('Failed to save collections')

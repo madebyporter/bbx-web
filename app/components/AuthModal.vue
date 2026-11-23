@@ -87,7 +87,7 @@
 
               <div
                 v-if="authError === 'unconfirmed'"
-                class="p-3 rounded bg-amber-500/10 border border-amber-500/30 text-sm text-neutral-300"
+                class="p-3 rounded-sm bg-amber-500/10 border border-amber-500/30 text-sm text-neutral-300"
               >
                 <p class="mb-2" id="auth-error-desc">{{ authErrorMessage }}</p>
                 <button
@@ -117,7 +117,7 @@
                     required
                     data-autofocus
                     :aria-describedby="authError === 'unconfirmed' ? 'auth-error-desc' : undefined"
-                    class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500"
+                    class="w-full p-2 rounded-sm bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500"
                   />
                 </div>
                 <div class="flex flex-col gap-2" v-if="step !== 'forgot'">
@@ -127,7 +127,7 @@
                     v-model="password"
                     type="password"
                     required
-                    class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500"
+                    class="w-full p-2 rounded-sm bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500"
                   />
                 </div>
                 <div class="flex flex-col gap-2" v-if="step === 'signup'">
@@ -136,7 +136,7 @@
                     id="auth-user-type"
                     v-model="userType"
                     required
-                    class="w-full p-2 rounded bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500"
+                    class="w-full p-2 rounded-sm bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-amber-500"
                   >
 
                     <option value="audio_pro">Audio Pro (producer, engineer, etc.)</option>

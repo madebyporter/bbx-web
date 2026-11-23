@@ -2,7 +2,7 @@
   <MasterDrawer :show="props.show" @update:show="(val) => emit('update:show', val)">
     <template #header>
       <div
-        class="grow flex items-center justify-between h-[50px] border border-dashed rounded p-2 cursor-pointer transition-colors w-full"
+        class="grow flex items-center justify-between h-[50px] border border-dashed rounded-sm p-2 cursor-pointer transition-colors w-full"
         :class="isDragging ? 'border-[#e6b85b] bg-[#e6b85b]/10' : 'border-[#e6b85b]'"
         @drop.prevent="handleDrop"
         @dragover.prevent="isDragging = true"
@@ -86,7 +86,7 @@
           <!-- Zero state placeholder / alternate drop zone -->
           <div
             v-if="selectedFiles.length === 0"
-            class="border border-dashed divide-y divide-dashed rounded h-[356px] flex flex-col shrink-0 w-full cursor-pointer transition-colors"
+            class="border border-dashed divide-y divide-dashed rounded-sm h-[356px] flex flex-col shrink-0 w-full cursor-pointer transition-colors"
             :class="isDragging ? 'border-[#e6b85b] divide-[#e6b85b] bg-[#e6b85b]/5' : 'border-neutral-800 hover:border-neutral-700 divide-neutral-800 hover:divide-neutral-700'"
             @drop.prevent="handleDrop"
             @dragover.prevent="isDragging = true"
@@ -140,7 +140,7 @@
           <div
             v-for="(file, index) in selectedFiles"
             :key="index"
-            class="bg-neutral-800/30 rounded flex flex-col gap-1"
+            class="bg-neutral-800/30 rounded-sm flex flex-col gap-1"
           >
             <!-- Card header -->
             <div class="flex items-start gap-2 p-2">
@@ -194,59 +194,24 @@
             <!-- Artwork -->
             <div class="flex flex-col gap-2 p-2">
               <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Artwork</label>
-              <div class="flex items-start gap-2 px-2">
-                <input
-                  :ref="(el) => setArtworkInput(index, el as HTMLInputElement | null)"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov"
-                  class="hidden"
+              <div class="px-2">
+                <ArtworkPicker
+                  :model-value="file.artworkSelection"
+                  :cover-direction="file.coverDirection"
+                  kind="track"
+                  :current-path="file.inheritedArtworkPath"
+                  :current-provider="file.inheritedArtworkProvider"
+                  :generate-context="{
+                    title: file.metadata.title || '',
+                    artist: file.metadata.artist || '',
+                    genre: file.metadata.genre || undefined,
+                    mood: file.metadata.mood || undefined,
+                  }"
                   :disabled="isUploading"
-                  @change="(e) => handleArtworkSelect(e, index)"
+                  @update:model-value="(sel) => setArtworkSelection(index, sel)"
+                  @update:cover-direction="(val) => setCoverDirection(index, val)"
                 />
-                <button
-                  type="button"
-                  class="size-16 shrink-0 rounded-sm border border-dashed border-[#3b3b3b] hover:border-neutral-600 overflow-hidden flex items-center justify-center bg-transparent disabled:opacity-50 cursor-pointer"
-                  :disabled="isUploading"
-                  @click="triggerArtworkSelect(index)"
-                >
-                  <video
-                    v-if="file.artworkPreview && file.artworkIsVideo"
-                    :src="file.artworkPreview"
-                    autoplay
-                    muted
-                    loop
-                    playsinline
-                    class="size-full object-cover"
-                  />
-                  <img
-                    v-else-if="file.artworkPreview"
-                    :src="file.artworkPreview"
-                    alt="Artwork preview"
-                    class="size-full object-cover"
-                  />
-                  <span v-else class="text-[10px] text-[#545454] text-center px-1">Add cover</span>
-                </button>
-                <div class="flex flex-col gap-1 min-w-0">
-                  <p class="text-[10px] text-[#545454]">
-                    JPG, PNG, WebP, GIF, MP4, MOV. Max 10MB, 1600x1600.
-                  </p>
-                  <p
-                    v-if="file.inheritedArtworkPath && !file.artworkFile"
-                    class="text-[10px] text-[#545454]"
-                  >
-                    Using artwork from existing version
-                  </p>
-                  <button
-                    v-if="file.artworkFile || file.inheritedArtworkPath"
-                    type="button"
-                    class="text-[10px] text-red-400 hover:text-red-300 text-left cursor-pointer"
-                    :disabled="isUploading"
-                    @click="removeArtwork(index)"
-                  >
-                    Remove
-                  </button>
-                  <p v-if="file.artworkError" class="text-[10px] text-red-500">{{ file.artworkError }}</p>
-                </div>
+                <p v-if="file.artworkError" class="text-[10px] text-red-500 mt-1">{{ file.artworkError }}</p>
               </div>
             </div>
 
@@ -315,12 +280,26 @@
             <div class="flex gap-1">
               <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
                 <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Genre</label>
-                <input
+                <select
                   v-model="file.metadata.genre"
-                  type="text"
-                  :class="inputClass"
+                  :class="['select-field', inputClass, 'cursor-pointer']"
                   :disabled="isUploading"
-                />
+                >
+                  <option value="">Select genre…</option>
+                  <option
+                    v-if="orphanGenreOption(file.metadata.genre)"
+                    :value="orphanGenreOption(file.metadata.genre)!"
+                  >
+                    {{ orphanGenreOption(file.metadata.genre) }} (current)
+                  </option>
+                  <option
+                    v-for="genre in genres"
+                    :key="genre.id"
+                    :value="genre.name"
+                  >
+                    {{ genre.name }}
+                  </option>
+                </select>
               </div>
               <div class="flex flex-col gap-2 p-2 flex-1 min-w-0">
                 <label class="text-xs font-semibold text-[#ccc] px-2 h-3 flex items-center">Mood</label>
@@ -379,22 +358,22 @@
           </div>
         </div>
 
-        <!-- Upload Button -->
-        <div class="sticky bottom-0 border-t border-[#262626] p-2 bg-neutral-900 shrink-0">
-          <Button
-            type="submit"
-            full-width
-            :disabled="isUploading || selectedFiles.length === 0"
-          >
-            {{ uploadButtonText }}
-          </Button>
-        </div>
-
         <!-- Global Errors -->
         <div v-if="globalError" class="text-red-500 text-sm px-2">
           {{ globalError }}
         </div>
       </form>
+    </template>
+
+    <template v-if="!showSuccessMessage" #footer>
+      <Button
+        type="button"
+        full-width
+        :disabled="isUploading || selectedFiles.length === 0"
+        @click="onSubmit"
+      >
+        {{ uploadButtonText }}
+      </Button>
     </template>
   </MasterDrawer>
 </template>
@@ -407,10 +386,14 @@ import { useAuth } from '~/composables/useAuth'
 import { usePlayer } from '~/composables/usePlayer'
 import { useToast } from '~/composables/useToast'
 import { useAnalytics } from '~/composables/useAnalytics'
-import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
+import { useArtwork } from '~/composables/useArtwork'
+import { useGenres } from '~/composables/useGenres'
 import MasterDrawer from './MasterDrawer.vue'
+import ArtworkPicker from './ArtworkPicker.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import Button from './Button.vue'
+import type { ArtworkSelection } from '~/types/artworkSelection'
+import { COVER_DIRECTION_MAX } from '~/utils/coverDirection'
 import { generateUniqueSlug } from '~/utils/collections'
 import { findOrCreateTrackGroup } from '~/utils/trackGroups'
 import { uploadAudio } from '~/utils/trackAudioStorage'
@@ -448,12 +431,11 @@ interface SelectedFile {
   progress: number
   error: string | null
   uploadedSoundId: number | null
-  artworkFile: File | null
-  artworkPreview: string | null
+  artworkSelection: ArtworkSelection
   artworkError: string | null
-  artworkIsVideo: boolean
   inheritedArtworkPath: string | null
   inheritedArtworkProvider: StorageProvider | null
+  coverDirection: string
 }
 
 interface Collection {
@@ -470,7 +452,8 @@ const { supabase } = useSupabase()
 const { user } = useAuth()
 const { capture } = useAnalytics()
 const { entitlements, refresh: refreshEntitlements } = useEntitlements()
-const { validateAndProcessArtwork, uploadArtwork, deleteArtwork, resolveArtworkUrlForEntity } = useArtwork()
+const { uploadArtwork, deleteArtwork } = useArtwork()
+const { genres, ensureLoaded: ensureGenresLoaded, orphanGenreOption } = useGenres()
 const { addTrackToQueue, queueSourceId, replaceCurrentVersion } = usePlayer()
 const { showError, showSuccess } = useToast()
 const showUpgradePrompt = ref(false)
@@ -572,7 +555,6 @@ const uploadedCount = ref(0)
 const collections = ref<Collection[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const reuploadInputs = ref<Record<number, HTMLInputElement | null>>({})
-const artworkInputs = ref<Record<number, HTMLInputElement | null>>({})
 const globalError = ref<string | null>(null)
 const pendingCollections = ref<Map<number, Array<{ tempId: number, name: string }>>>(new Map())
 const currentCollectionId = ref<number | null>(null)
@@ -597,47 +579,25 @@ const triggerReupload = (index: number) => {
   reuploadInputs.value[index]?.click()
 }
 
-const setArtworkInput = (index: number, el: HTMLInputElement | null) => {
-  artworkInputs.value[index] = el
-}
-
-const triggerArtworkSelect = (index: number) => {
-  artworkInputs.value[index]?.click()
-}
-
-const handleArtworkSelect = async (event: Event, index: number) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
-
+const setCoverDirection = (index: number, value: string) => {
   const fileData = selectedFiles.value[index]
   if (!fileData) return
+  fileData.coverDirection = value.slice(0, COVER_DIRECTION_MAX)
+}
 
-  try {
-    const { file: processedFile, preview } = await validateAndProcessArtwork(file)
-    fileData.artworkFile = processedFile
-    fileData.artworkPreview = preview
-    fileData.artworkError = null
-    fileData.artworkIsVideo = isVideoArtwork(processedFile.name)
+const setArtworkSelection = (index: number, selection: ArtworkSelection) => {
+  const fileData = selectedFiles.value[index]
+  if (!fileData) return
+  fileData.artworkSelection = selection
+  fileData.artworkError = null
+  if (selection.kind === 'remove' || selection.kind === 'file') {
     fileData.inheritedArtworkPath = null
     fileData.inheritedArtworkProvider = null
-  } catch (error: any) {
-    fileData.artworkError = error.message || 'Invalid artwork file'
   }
-
-  if (target) target.value = ''
-}
-
-const removeArtwork = (index: number) => {
-  const fileData = selectedFiles.value[index]
-  if (!fileData) return
-
-  fileData.artworkFile = null
-  fileData.artworkPreview = null
-  fileData.artworkError = null
-  fileData.artworkIsVideo = false
-  fileData.inheritedArtworkPath = null
-  fileData.inheritedArtworkProvider = null
+  if (selection.kind === 'reuse') {
+    fileData.inheritedArtworkPath = selection.path
+    fileData.inheritedArtworkProvider = selection.provider
+  }
 }
 
 const queueCollectionCreation = (name: string, fileIndex: number) => {
@@ -726,6 +686,7 @@ const fetchCurrentCollection = async () => {
 }
 
 onMounted(async () => {
+  await ensureGenresLoaded()
   if (!supabase || !user.value) return
   
   try {
@@ -997,20 +958,14 @@ const processFiles = async (files: File[]) => {
 
     const inheritedArtworkPath = prefillData?.artwork_path || null
     const inheritedArtworkProvider = (prefillData?.artwork_provider as StorageProvider | null) || null
-    let artworkPreview: string | null = null
-    let artworkIsVideo = false
-
-    if (inheritedArtworkPath && prefillData?.artworkSourceId) {
-      artworkPreview = await resolveArtworkUrlForEntity(
-        {
-          id: prefillData.artworkSourceId,
-          artwork_path: inheritedArtworkPath,
-          artwork_provider: inheritedArtworkProvider,
-        },
-        'track',
-      )
-      artworkIsVideo = isVideoArtwork(inheritedArtworkPath)
-    }
+    const artworkSelection: ArtworkSelection =
+      inheritedArtworkPath
+        ? {
+            kind: 'reuse',
+            path: inheritedArtworkPath,
+            provider: normalizeArtworkProvider(inheritedArtworkProvider),
+          }
+        : { kind: 'unchanged' }
     
     selectedFiles.value.push({
       file,
@@ -1037,12 +992,11 @@ const processFiles = async (files: File[]) => {
       progress: 0,
       error: warningMessage,
       uploadedSoundId: null,
-      artworkFile: null,
-      artworkPreview,
+      artworkSelection,
       artworkError: null,
-      artworkIsVideo,
       inheritedArtworkPath,
       inheritedArtworkProvider,
+      coverDirection: '',
     })
   }
 }
@@ -1155,13 +1109,17 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
   let uploadedNewArtwork = false
   
   try {
-    if (fileData.artworkFile) {
+    const artSel = fileData.artworkSelection
+    if (artSel.kind === 'file') {
       fileData.progress = 5
-      const uploadedArtwork = await uploadArtwork(fileData.artworkFile, 'track')
+      const uploadedArtwork = await uploadArtwork(artSel.file, 'track')
       artworkPath = uploadedArtwork.artwork_path
       artworkProvider = uploadedArtwork.artwork_provider
       uploadedNewArtwork = true
-    } else if (fileData.inheritedArtworkPath) {
+    } else if (artSel.kind === 'reuse') {
+      artworkPath = artSel.path
+      artworkProvider = artSel.provider
+    } else if (fileData.inheritedArtworkPath && artSel.kind === 'unchanged') {
       artworkPath = fileData.inheritedArtworkPath
       artworkProvider = fileData.inheritedArtworkProvider || 'supabase'
     }
@@ -1196,6 +1154,8 @@ const uploadFile = async (fileData: SelectedFile): Promise<boolean> => {
         storage_provider: uploadResult.storage_provider,
         artwork_path: artworkPath,
         artwork_provider: resolvedArtworkProvider,
+        cover_direction:
+          fileData.coverDirection.trim().slice(0, COVER_DIRECTION_MAX) || null,
         title: fileData.metadata.title || null,
         artist: fileData.metadata.artist || null,
         version: fileData.metadata.version || 'v1.0',

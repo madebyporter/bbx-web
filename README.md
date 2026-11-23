@@ -275,6 +275,51 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.72.18
+  - Fix delayReverbCalculator syntax error blocking Netlify build
+- 0.72.17
+  - Track/collection removals update the table in place (no skeleton refresh)
+- 0.72.16
+  - Collection save updates track tags in place (no table skeleton refresh)
+- 0.72.15
+  - Bulk Actions: dirty-field metadata edit (artist, status, genre, year, mood, BPM, key, collections)
+- 0.72.14
+  - Track table: checkbox over cover art; select-all uses full filtered list
+- 0.72.13
+  - Edit Track drawer header shows track title with truncate
+- 0.72.12
+  - Genre select from Supabase BMI∪ASCAP list (Edit, Upload, Sync, Filter)
+- 0.72.11
+  - Edit Track: prev/next chevrons in drawer header; MasterDrawer close uses square Button
+- 0.72.10
+  - Add FormInputText; migrate drawer/tool text and number fields to shared field chrome
+- 0.72.9
+  - Button `square` uses fixed size-12/size-10 (flex stretch + aspect-ratio is unreliable)
+- 0.72.8
+  - Fix Button `square`: flex `w-auto` ignored aspect-ratio; use `w-0` + stretch so width follows height
+- 0.72.7
+  - Button `outlined` variant for bordered generate/analyze controls (replaces ghost + border classes)
+- 0.72.6
+  - Button `square` prop for generate/analyze controls (aspect-square, matches input height)
+- 0.72.5
+  - Edit Track: mood detect (full width), Delete as text link under copy metadata, Collections input height match
+- 0.72.4
+  - Fix collection settings save leaving the collection page stuck on skeleton
+- 0.72.3
+  - ArtworkPicker current thumbnail opens full size in a new tab
+- 0.72.2
+  - Persist AI cover direction per track/collection; Generate chips (No logos, No people, No text, …)
+- 0.72.1
+  - Artwork Browse is a single horizontal scroll row; drawer CTAs moved into MasterDrawer footer
+- 0.72.0
+  - Shared ArtworkPicker with Browse / Generate / Upload tabs for collection and track artwork
+  - Wire ArtworkPicker into Collection Settings, New Collection, Edit Track, Track Sync, and Upload Track
+- 0.71.1
+  - Style Add collection as a small secondary button with Plus icon (matches Analytics)
+- 0.71.0
+  - Add collection button on Collections page opens a New collection drawer
+- 0.70.49
+  - Flush typed “new collection” draft on modal Save so tracks can be created and linked without pressing Enter
 - 0.70.48
   - Hide “Track sync to SoundCloud” on pricing until SoundCloud sync is ready
 - 0.70.47

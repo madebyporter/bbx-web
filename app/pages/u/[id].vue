@@ -4,9 +4,9 @@
       <ProfileHeaderSkeleton />
       <div class="grow min-w-0 overflow-x-hidden border-t border-neutral-800">
         <div class="flex flex-row justify-between items-center gap-4 p-4 border-b border-neutral-800">
-          <div class="h-6 w-16 rounded bg-neutral-800 animate-pulse" />
+          <div class="h-6 w-16 rounded-sm bg-neutral-800 animate-pulse" />
           <div class="flex items-stretch gap-2">
-            <div class="h-9 w-24 rounded bg-neutral-800 animate-pulse" />
+            <div class="h-9 w-24 rounded-sm bg-neutral-800 animate-pulse" />
           </div>
         </div>
         <TracksTableSkeleton
@@ -207,7 +207,7 @@
         </div>
         <div class="flex items-stretch gap-2">
           <p v-if="loading" class="text-sm text-neutral-500 flex items-center">
-            <span class="h-4 w-16 rounded bg-neutral-800 animate-pulse inline-block" />
+            <span class="h-4 w-16 rounded-sm bg-neutral-800 animate-pulse inline-block" />
           </p>
           <p v-else class="text-sm text-neutral-500 flex items-center">
             {{ totalTrackCount }} {{ totalTrackCount === 1 ? 'track' : 'tracks' }}
@@ -298,7 +298,8 @@
         :analytics-loading="analyticsLoading"
         :resolve-full-queue="resolveFullPlaybackQueue"
         @edit-track="handleEdit"
-        @tracks-deleted="() => { fetchTracks(); refreshEntitlements(true) }"
+        @tracks-deleted="handleTracksDeleted"
+        @track-collections-updated="handleTrackCollectionsUpdated"
         @track-shortlisted="handleTrackShortlisted"
         @track-unshortlisted="handleTrackUnshortlisted"
         @load-more="handleLoadMore"
@@ -1260,6 +1261,44 @@ const fetchTracks = async () => {
   await loadTracksPage({ page: 0, append: false })
 }
 
+const handleTrackCollectionsUpdated = (payload: {
+  trackId: number
+  collections: Array<{ name: string; slug: string }>
+}) => {
+  const patch = (list: TrackWithCollections[]) =>
+    list.map((track) =>
+      track.id === payload.trackId
+        ? { ...track, collections: payload.collections }
+        : track
+    )
+
+  tracks.value = patch(tracks.value)
+  if (clientTrackCache.value) {
+    clientTrackCache.value = patch(clientTrackCache.value)
+  }
+}
+
+const removeTracksLocally = (trackIds: number[]) => {
+  if (trackIds.length === 0) return
+  const idSet = new Set(trackIds)
+  tracks.value = tracks.value.filter((track) => !idSet.has(track.id))
+  if (clientTrackCache.value) {
+    clientTrackCache.value = clientTrackCache.value.filter((track) => !idSet.has(track.id))
+  }
+  totalTrackCount.value = Math.max(0, totalTrackCount.value - trackIds.length)
+}
+
+const handleTracksDeleted = (trackIds?: number[]) => {
+  if (trackIds?.length) {
+    removeTracksLocally(trackIds)
+    refreshEntitlements(true)
+    return
+  }
+  // Bulk metadata updates still use this event without IDs
+  void fetchTracks()
+  refreshEntitlements(true)
+}
+
 const handleLoadMore = () => {
   if (loadingMore.value || loading.value || !hasMoreTracks.value) return
   void loadTracksPage({ page: currentPage.value + 1, append: true })
@@ -1294,10 +1333,13 @@ onActivated(() => {
 
 const handleEdit = (track: any) => {
   // Emit event to parent layout to open modal in edit mode
-  const event = new CustomEvent('edit-track', { 
-    detail: track,
+  const event = new CustomEvent('edit-track', {
+    detail: {
+      track,
+      trackList: filteredTracks.value,
+    },
     bubbles: true,
-    composed: true
+    composed: true,
   })
   window.dispatchEvent(event)
 }
@@ -1391,16 +1433,21 @@ defineExpose({
 const handleTrackUpdate = async (event: any) => {
   const updatedTrack = event?.detail?.track
   
+  if (updatedTrack?.deleted && updatedTrack.id != null) {
+    removeTracksLocally([updatedTrack.id])
+    refreshEntitlements(true)
+    return
+  }
+
   if (updatedTrack) {
     // Update the specific track in place instead of refetching everything
     const index = tracks.value.findIndex(t => t.id === updatedTrack.id)
     if (index !== -1) {
       // Preserve scroll position by updating in place
       tracks.value[index] = updatedTrack
-    } else {
     }
   } else {
-    // Fallback: refetch if no track data provided (e.g., track deleted)
+    // Fallback: refetch if no track data provided
     await fetchTracks()
   }
 }

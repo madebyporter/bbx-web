@@ -47,15 +47,38 @@
           <div v-if="!coverFile" class="flex flex-col gap-3">
             <div class="flex flex-col gap-1.5">
               <label for="cover-direction" class="text-sm font-medium text-neutral-200">Direction</label>
-              <textarea
-                id="cover-direction"
-                v-model="coverDirection"
-                rows="8"
-                :maxlength="COVER_DIRECTION_MAX"
-                placeholder="e.g. neon bounce energy, city night, bold shapes…"
-                class="w-full p-3 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[180px]"
-                :disabled="generatingCover || detectingMoods || isGenerating"
-              />
+              <div
+                class="flex flex-col gap-2 p-3 bg-neutral-800 border border-neutral-700 rounded-md focus-within:border-amber-500"
+              >
+                <textarea
+                  id="cover-direction"
+                  v-model="coverDirection"
+                  rows="6"
+                  :maxlength="COVER_DIRECTION_MAX"
+                  placeholder="e.g. neon bounce energy, city night, bold shapes…"
+                  class="w-full bg-transparent text-neutral-200 placeholder-neutral-500 focus:outline-none resize-y min-h-[140px]"
+                  :disabled="generatingCover || detectingMoods || isGenerating"
+                />
+                <div class="flex flex-wrap gap-1.5 pt-1 border-t border-neutral-700">
+                  <Button
+                    v-for="chip in COVER_DIRECTION_CHIPS"
+                    :key="chip"
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    class="!h-7 !px-2 !text-xs border"
+                    :class="
+                      isCoverDirectionChipActive(coverDirection, chip)
+                        ? 'border-amber-400/60 bg-amber-400/10 text-amber-300'
+                        : 'border-neutral-700 text-neutral-400 hover:text-neutral-200'
+                    "
+                    :disabled="generatingCover || detectingMoods || isGenerating"
+                    @click="onToggleCoverChip(chip)"
+                  >
+                    {{ chip }}
+                  </Button>
+                </div>
+              </div>
               <p class="text-xs text-neutral-500">
                 Optional album-art direction. Prefer scenes/mood over body or pose descriptions — OpenAI may block sexualized prompts.
               </p>
@@ -130,7 +153,7 @@
             id="video-dimension"
             v-model="selectedDimension"
             :disabled="isGenerating"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option
               v-for="option in TRACK_VIDEO_DIMENSION_OPTIONS"
@@ -220,15 +243,14 @@
 
         <div class="flex flex-col gap-2">
           <label for="video-padding" class="text-sm font-medium text-neutral-200">Padding (px)</label>
-          <input
+          <FormInputText
             id="video-padding"
             type="text"
             inputmode="numeric"
-            :value="coverPaddingPx"
+            :model-value="coverPaddingPx"
             placeholder="0"
             :disabled="isGenerating"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 outline-none focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
-            @input="handlePaddingInput"
+            @update:model-value="onPaddingModelUpdate"
             @focus="handlePaddingFocus"
           />
           <p class="text-xs text-neutral-500">
@@ -242,7 +264,7 @@
             id="video-quality"
             v-model="selectedQuality"
             :disabled="isGenerating"
-            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 text-neutral-200 outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option
               v-for="option in TRACK_VIDEO_QUALITY_OPTIONS"
@@ -385,6 +407,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import MasterDrawer from '~/components/MasterDrawer.vue'
 import Button from '~/components/Button.vue'
+import FormInputText from '~/components/FormInputText.vue'
 import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
 import {
   isTrackVideoEncoderLoaded,
@@ -421,7 +444,12 @@ import {
   type BeatboxMoodTag,
 } from '~/composables/useAudioAnalyzer'
 import type { Track } from '~/types/track'
-import { COVER_DIRECTION_MAX } from '~/utils/coverDirection'
+import {
+  COVER_DIRECTION_CHIPS,
+  COVER_DIRECTION_MAX,
+  isCoverDirectionChipActive,
+  toggleCoverDirectionChip,
+} from '~/utils/coverDirection'
 
 const props = withDefaults(
   defineProps<{
@@ -613,10 +641,8 @@ function handleCustomBackgroundInput(event: Event) {
   selectedBackgroundPreset.value = 'custom'
 }
 
-function handlePaddingInput(event: Event) {
-  const input = event.target as HTMLInputElement
-  const digits = input.value.replace(/\D/g, '')
-  input.value = digits
+function onPaddingModelUpdate(value: string | number | null) {
+  const digits = String(value ?? '').replace(/\D/g, '')
   coverPaddingPx.value = digits === '' ? 0 : Number(digits)
 }
 
@@ -847,9 +873,17 @@ async function preloadEncoder() {
   }
 }
 
+function onToggleCoverChip(chip: string) {
+  coverDirection.value = toggleCoverDirectionChip(coverDirection.value || '', chip).slice(
+    0,
+    COVER_DIRECTION_MAX,
+  )
+}
+
 async function initializeDrawer() {
   resetDrawerState()
   selectedDimension.value = props.preferLandscape ? 'landscape' : 'square'
+  coverDirection.value = String(props.track?.cover_direction || '').slice(0, COVER_DIRECTION_MAX)
   trackMoodWasEmpty.value = trackMoodIsEmpty(props.track?.mood)
   selectedMoods.value = parseTrackMoods(props.track?.mood)
   cloudVideoPath.value =
@@ -974,14 +1008,17 @@ async function persistCoverToTrack(file: File) {
     }
   }
 
+  const nextDirection = coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || null
+
   const { data, error } = await supabase
     .from('sounds')
     .update({
       artwork_path: uploaded.artwork_path,
       artwork_provider: uploaded.artwork_provider,
+      cover_direction: nextDirection,
     })
     .eq('id', props.track.id)
-    .select('id, artwork_path, artwork_provider')
+    .select('id, artwork_path, artwork_provider, cover_direction')
     .maybeSingle()
 
   if (error) {
@@ -989,8 +1026,15 @@ async function persistCoverToTrack(file: File) {
   }
 
   dispatchTrackUpdated({
-    artwork_path: data?.artwork_path ?? uploaded.artwork_path,
-    artwork_provider: data?.artwork_provider ?? uploaded.artwork_provider,
+    artwork_path:
+      (typeof data?.artwork_path === 'string' ? data.artwork_path : null) ??
+      uploaded.artwork_path,
+    artwork_provider:
+      (typeof data?.artwork_provider === 'string'
+        ? (data.artwork_provider as Track['artwork_provider'])
+        : null) ?? uploaded.artwork_provider,
+    cover_direction:
+      typeof data?.cover_direction === 'string' ? data.cover_direction : nextDirection,
   })
 }
 

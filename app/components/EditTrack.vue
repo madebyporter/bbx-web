@@ -1,7 +1,37 @@
 <template>
   <MasterDrawer ref="drawerRef" :show="props.show" @update:show="(val) => emit('update:show', val)">
     <template #header>
-      <h2 class="text-2xl">Edit Track</h2>
+      <h2
+        class="text-2xl flex items-center min-w-0 gap-1.5 w-full"
+        :title="editHeaderTitle"
+      >
+        <span class="shrink-0">Edit</span>
+        <span class="truncate">{{ editHeaderName }}</span>
+      </h2>
+    </template>
+    <template v-if="canNavigateTracks" #header-actions>
+      <Button
+        type="button"
+        variant="outlined"
+        square
+        title="Previous track"
+        aria-label="Previous track"
+        :disabled="!hasPrevTrack"
+        @click="goToPrevTrack"
+      >
+        <NavArrowUp class="size-5" stroke-width="1.5" />
+      </Button>
+      <Button
+        type="button"
+        variant="outlined"
+        square
+        title="Next track"
+        aria-label="Next track"
+        :disabled="!hasNextTrack"
+        @click="goToNextTrack"
+      >
+        <NavArrowDown class="size-5" stroke-width="1.5" />
+      </Button>
     </template>
 
     <!-- Success Message -->
@@ -27,7 +57,7 @@
 
     <!-- Edit Form -->
     <template v-else>
-      <div class="flex flex-col gap-4 justify-between grow h-full">
+      <div class="flex flex-col gap-4 justify-between grow">
         <!-- Track Metadata -->
         <div class="grow h-fit">
           <div class="flex flex-col gap-4">
@@ -47,7 +77,7 @@
                 />
                 
                 <!-- Current File -->
-                <div v-if="props.trackToEdit?.storage_path && !newFile" class="flex items-center justify-between p-3 border border-neutral-700 rounded bg-neutral-900/50">
+                <div v-if="props.trackToEdit?.storage_path && !newFile" class="flex items-center justify-between p-3 border border-neutral-700 rounded-sm bg-neutral-900/50">
                   <div class="flex flex-col gap-1">
                     <span class="text-sm text-neutral-300">Current file:</span>
                     <span class="text-xs text-neutral-400">{{ currentFileName }}</span>
@@ -67,7 +97,7 @@
                 </div>
                 
                 <!-- New File Selected -->
-                <div v-if="newFile" class="flex items-center justify-between p-3 border border-neutral-700 rounded bg-neutral-900/50">
+                <div v-if="newFile" class="flex items-center justify-between p-3 border border-neutral-700 rounded-sm bg-neutral-900/50">
                   <div class="flex items-center gap-2">
                     <span class="text-sm text-neutral-300">New file:</span>
                     <span class="text-sm text-amber-400">{{ newFile.name }}</span>
@@ -98,140 +128,45 @@
             <!-- Artwork -->
             <div class="col-span-2 border-b border-neutral-800 pb-4">
               <label class="text-sm text-neutral-400 mb-2 block">Artwork</label>
-              <div class="flex flex-col gap-2">
-                <input
-                  ref="artworkInput"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov"
-                  class="hidden"
-                  @change="handleArtworkSelect"
-                />
-
-                <div
-                  v-if="displayArtworkPreview"
-                  class="flex items-center justify-between p-3 border border-neutral-700 rounded bg-neutral-900/50"
-                >
-                  <div class="flex items-center gap-3 min-w-0">
-                    <div class="size-16 rounded-sm overflow-hidden bg-neutral-800 shrink-0">
-                      <video
-                        v-if="displayArtworkIsVideo"
-                        :src="displayArtworkPreview"
-                        autoplay
-                        muted
-                        loop
-                        playsinline
-                        class="size-full object-cover"
-                      />
-                      <img
-                        v-else
-                        :src="displayArtworkPreview"
-                        alt="Track artwork"
-                        class="size-full object-cover"
-                      />
-                    </div>
-                    <div class="flex flex-col gap-1 min-w-0">
-                      <span class="text-sm text-neutral-300">
-                        {{ newArtworkFile ? (generatedArtworkPending ? 'Generated artwork:' : 'New artwork:') : 'Current artwork' }}
-                      </span>
-                      <span v-if="newArtworkFile" class="text-xs text-amber-400 truncate">{{ newArtworkFile.name }}</span>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2 shrink-0">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      class="border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
-                      :disabled="isUpdating || generatingArtwork"
-                      @click="artworkInput?.click()"
-                    >
-                      Choose New File
-                    </Button>
-                    <button
-                      v-if="canRemoveArtwork"
-                      type="button"
-                      class="text-link text-sm text-red-400 hover:text-red-300 no-underline"
-                      @click="removeArtworkSelection"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-
-                <div
-                  v-else
-                  class="flex items-center justify-between p-3 border border-neutral-700 rounded bg-neutral-900/50"
-                >
-                  <span class="text-sm text-neutral-500">No artwork</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    class="border border-neutral-700 hover:border-neutral-600 bg-neutral-900 text-neutral-200"
-                    :disabled="isUpdating || generatingArtwork"
-                    @click="artworkInput?.click()"
-                  >
-                    Choose File
-                  </Button>
-                </div>
-
-                <div class="flex flex-col gap-2">
-                  <label for="edit-cover-direction" class="text-sm text-neutral-400">Cover direction</label>
-                  <textarea
-                    id="edit-cover-direction"
-                    v-model="coverDirection"
-                    rows="8"
-                    :maxlength="COVER_DIRECTION_MAX"
-                    placeholder="Optional — e.g. red moon over city skyline…"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[180px]"
-                    :disabled="isUpdating || generatingArtwork"
-                  />
-                  <div class="flex flex-wrap items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      :disabled="isUpdating || generatingArtwork || !canGenerateArtwork"
-                      @click="handleGenerateArtwork"
-                    >
-                      {{ generatingArtwork ? 'Generating cover…' : 'Generate cover' }}
-                    </Button>
-                    <p class="text-xs text-neutral-500">
-                      Uses title, artist, genre, and mood. Saves to Cloudflare R2 + your track.
-                    </p>
-                  </div>
-                </div>
-
-                <p v-if="artworkError" class="text-xs text-red-500">{{ artworkError }}</p>
-                <p class="text-xs text-neutral-500">
-                  JPG, PNG, WebP, GIF, MP4, MOV. Max 10MB, 1600x1600.
-                </p>
-              </div>
+              <ArtworkPicker
+                v-model="artworkSelection"
+                v-model:cover-direction="coverDirection"
+                kind="track"
+                :current-path="trackToEdit?.artwork_path"
+                :current-provider="trackToEdit?.artwork_provider"
+                :current-entity-id="trackToEdit?.id"
+                :generate-context="artworkGenerateContext"
+                :disabled="isUpdating"
+              />
+              <p v-if="artworkError" class="text-xs text-red-500 mt-2">{{ artworkError }}</p>
             </div>
 
             <!-- Title (full width) -->
             <div class="col-span-2">
               <label class="text-sm text-neutral-400">Title <span class="text-red-500">*</span></label>
-              <input v-model="metadata.title" type="text" required
-                class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+              <FormInputText v-model="metadata.title" type="text" required />
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="text-sm text-neutral-400">Artist</label>
-                <input v-model="metadata.artist" type="text"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                <FormInputText v-model="metadata.artist" type="text" />
               </div>
               <div>
                 <label class="text-sm text-neutral-400">Version</label>
-                <input v-model="metadata.version" type="text" placeholder="e.g. v1.0, v2.5"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                <FormInputText
+                  v-model="metadata.version"
+                  type="text"
+                  placeholder="e.g. v1.0, v2.5"
+                />
               </div>
               <div class="col-span-2">
                 <label class="text-sm text-neutral-400">Track Group</label>
-                <input v-model="metadata.track_group_name" type="text"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                  placeholder="e.g., art-dealer-dark" />
+                <FormInputText
+                  v-model="metadata.track_group_name"
+                  type="text"
+                  placeholder="e.g., art-dealer-dark"
+                />
                 <p class="text-xs text-neutral-500 mt-1">
                   Groups related tracks/versions together. Changes affect this track only.
                 </p>
@@ -241,7 +176,7 @@
               <div class="col-span-2">
                 <label class="text-sm text-neutral-400">Status</label>
                 <select v-if="!showNewStatusInput" v-model="metadata.status_id"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900 outline-none"
+                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 outline-none"
                   @change="(e) => { if ((e.target as HTMLSelectElement).value === 'new') { showNewStatusInput = true; metadata.status_id = null } }">
                   <option :value="null">No Status</option>
                   <option v-for="status in statuses" :key="status.id" :value="status.id">
@@ -250,9 +185,13 @@
                   <option value="new">+ Create New Status</option>
                 </select>
                 <div v-else class="flex gap-2">
-                  <input v-model="newStatusName" type="text" placeholder="Enter status name"
-                    class="flex-1 p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900"
-                    @keydown.enter.prevent />
+                  <FormInputText
+                    v-model="newStatusName"
+                    type="text"
+                    placeholder="Enter status name"
+                    :full-width="false"
+                    @keydown.enter.prevent
+                  />
                   <Button
                     type="button"
                     variant="ghost"
@@ -276,7 +215,7 @@
                     <input 
                       type="checkbox" 
                       v-model="metadata.is_public"
-                      class="w-4 h-4 border border-neutral-700 rounded bg-neutral-900 checked:bg-amber-400 checked:border-amber-400 focus:ring-amber-400"
+                      class="w-4 h-4 border border-neutral-700 rounded-sm bg-neutral-900 checked:bg-amber-400 checked:border-amber-400 focus:ring-amber-400"
                     />
                     <span class="text-sm text-neutral-300">Public</span>
                   </label>
@@ -293,19 +232,34 @@
               </div>
               <div>
                 <label class="text-sm text-neutral-400">Genre</label>
-                <input v-model="metadata.genre" type="text"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                <select
+                  v-model="metadata.genre"
+                  class="select-field w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded-sm bg-neutral-900 outline-none cursor-pointer"
+                >
+                  <option value="">Select genre…</option>
+                  <option
+                    v-if="editGenreOrphan"
+                    :value="editGenreOrphan"
+                  >
+                    {{ editGenreOrphan }} (current)
+                  </option>
+                  <option
+                    v-for="genre in genres"
+                    :key="genre.id"
+                    :value="genre.name"
+                  >
+                    {{ genre.name }}
+                  </option>
+                </select>
               </div>
               <div>
                 <label class="text-sm text-neutral-400">BPM</label>
                 <div class="flex gap-2">
-                  <input v-model.number="metadata.bpm" type="number"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                  <FormInputText v-model="metadata.bpm" type="number" />
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                    variant="outlined"
+                    square
                     :disabled="isAnalyzingBpm"
                     title="Analyze BPM"
                     @click="analyzeBPMForTrack"
@@ -323,13 +277,15 @@
               <div>
                 <label class="text-sm text-neutral-400">Key</label>
                 <div class="flex gap-2">
-                  <input v-model="metadata.key" type="text" placeholder="e.g. C Major, A Minor"
-                    class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                  <FormInputText
+                    v-model="metadata.key"
+                    type="text"
+                    placeholder="e.g. C Major, A Minor"
+                  />
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    class="px-3 py-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
+                    variant="outlined"
+                    square
                     :disabled="isAnalyzingKey"
                     title="Analyze Key"
                     @click="analyzeKeyForTrack"
@@ -346,69 +302,86 @@
               </div>
               <div>
                 <label class="text-sm text-neutral-400">Year</label>
-                <input v-model.number="metadata.year" type="number"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                <FormInputText v-model="metadata.year" type="number" />
               </div>
-              <div>
+              <div class="col-span-2">
                 <label class="text-sm text-neutral-400">Mood</label>
-                <input v-model="metadata.mood" type="text" placeholder="e.g. Dark, Happy"
-                  class="w-full p-3 border border-neutral-700 hover:border-neutral-600 rounded bg-neutral-900" />
+                <div class="flex gap-2">
+                  <FormInputText
+                    v-model="metadata.mood"
+                    type="text"
+                    placeholder="e.g. Dark, Happy"
+                  />
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    square
+                    :disabled="isAnalyzingMood"
+                    title="Detect moods"
+                    @click="analyzeMoodForTrack"
+                  >
+                    <CircleSpark v-if="!isAnalyzingMood" width="20" height="20" stroke-width="1.5" />
+                    <svg v-else class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </Button>
+                </div>
+                <p v-if="moodAnalysisError" class="text-xs text-red-500 mt-1">{{ moodAnalysisError }}</p>
+                <p v-else-if="isAnalyzingMood" class="text-xs text-amber-400 mt-1">Detecting moods…</p>
               </div>
 
-              <!-- Copy Metadata Button -->
-              <div v-if="metadata.track_group_name" class="col-span-2 border-t border-neutral-800 pt-4">
+              <!-- Copy Metadata + Delete -->
+              <div class="col-span-2 border-t border-neutral-800 pt-4 flex flex-col gap-3">
+                <template v-if="metadata.track_group_name">
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    full-width
+                    class="!p-2"
+                    :disabled="isCopyingMetadata"
+                    @click="copyMetadataFromGroup"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    {{ isCopyingMetadata ? 'Copying...' : 'Copy Metadata from Group Versions' }}
+                  </Button>
+                  <p class="text-xs text-neutral-500">
+                    {{ copyMetadataMessage || 'Auto-fills empty fields from the most complete version in this group' }}
+                  </p>
+                </template>
                 <Button
                   type="button"
-                  variant="ghost"
-                  full-width
-                  class="p-2 border border-neutral-700 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-400"
-                  :disabled="isCopyingMetadata"
-                  @click="copyMetadataFromGroup"
+                  variant="link"
+                  class="self-start text-sm text-red-400 hover:text-red-300 no-underline"
+                  :disabled="isUpdating"
+                  @click="handleDelete"
                 >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  {{ isCopyingMetadata ? 'Copying...' : 'Copy Metadata from Group Versions' }}
+                  Delete track
                 </Button>
-                <p class="text-xs text-neutral-500 mt-2">
-                  {{ copyMetadataMessage || 'Auto-fills empty fields from the most complete version in this group' }}
-                </p>
               </div>
             </div>
 
-            <!-- Delete Button -->
-            <div class="pt-4 border-t border-neutral-800">
-              <Button
-                type="button"
-                variant="ghost"
-                full-width
-                class="border border-red-500 hover:bg-red-500/10 p-2 text-red-500 hover:text-red-400 text-sm"
-                @click="handleDelete"
-              >
-                Delete Track
-              </Button>
-            </div>
           </div>
-        </div>
-
-        <!-- Update Button -->
-        <div class="sticky bottom-0 flex justify-end bg-neutral-900">
-          <Button
-            variant="secondary"
-            class="btn w-full"
-            full-width
-            :disabled="isUpdating"
-            @click="onSubmit"
-          >
-            {{ isUpdating ? 'Updating...' : 'Update Track' }}
-          </Button>
         </div>
 
         <!-- Error Message -->
         <div v-if="error" class="text-red-500 text-sm mt-4">
           {{ error }}
         </div>
+      </div>
+    </template>
+
+    <template v-if="!showSuccessMessage" #footer>
+      <div class="flex flex-row gap-3 justify-end">
+        <Button
+          :disabled="isUpdating"
+          @click="onSubmit"
+        >
+          {{ isUpdating ? 'Updating...' : 'Update Track' }}
+        </Button>
       </div>
     </template>
   </MasterDrawer>
@@ -418,24 +391,32 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import { useAuth } from '~/composables/useAuth'
-import { analyzeBPM, analyzeKey } from '~/composables/useAudioAnalyzer'
-import { isVideoArtwork, useArtwork } from '~/composables/useArtwork'
+import { analyzeBPM, analyzeKey, analyzeMoodFromAudio } from '~/composables/useAudioAnalyzer'
+import { useArtwork } from '~/composables/useArtwork'
+import { useGenres } from '~/composables/useGenres'
 import MasterDrawer from './MasterDrawer.vue'
+import ArtworkPicker from './ArtworkPicker.vue'
+import FormInputText from './FormInputText.vue'
 import CollectionSelect from './CollectionSelect.vue'
 import { generateSlug, generateUniqueSlug } from '~/utils/collections'
 import { deleteAudio, downloadAudioBlob, uploadAudio } from '~/utils/trackAudioStorage'
 import { normalizeArtworkProvider } from '~/utils/artworkStorage'
 import { useAuthHeaders } from '~/composables/useAuthHeaders'
+import type { ArtworkSelection } from '~/types/artworkSelection'
 import { COVER_DIRECTION_MAX } from '~/utils/coverDirection'
-import { CircleSpark } from '@iconoir/vue'
+import { CircleSpark, NavArrowDown, NavArrowUp } from '@iconoir/vue'
 
 interface Props {
   show: boolean
   trackToEdit: any | null
+  /** Visible library/collection list for prev/next navigation. */
+  trackList?: any[]
 }
 
-const props = defineProps<Props>()
-const emit = defineEmits(['update:show', 'track-updated'])
+const props = withDefaults(defineProps<Props>(), {
+  trackList: () => [],
+})
+const emit = defineEmits(['update:show', 'track-updated', 'navigate-track'])
 
 interface TrackMetadata {
   title: string
@@ -465,13 +446,8 @@ interface Collection {
 
 const { supabase } = useSupabase()
 const { user } = useAuth()
-const {
-  getArtworkUrl,
-  validateAndProcessArtwork,
-  uploadArtwork,
-  deleteArtwork,
-  resolveArtworkUrlForEntity,
-} = useArtwork()
+const { uploadArtwork, deleteArtwork } = useArtwork()
+const { genres, ensureLoaded: ensureGenresLoaded, orphanGenreOption } = useGenres()
 
 const drawerRef = ref<any>(null)
 const isUpdating = ref(false)
@@ -483,11 +459,14 @@ const isAnalyzingBpm = ref(false)
 const bpmAnalysisError = ref<string | null>(null)
 const isAnalyzingKey = ref(false)
 const keyAnalysisError = ref<string | null>(null)
+const isAnalyzingMood = ref(false)
+const moodAnalysisError = ref<string | null>(null)
 
 const metadata = ref<TrackMetadata>({
   title: '',
   artist: '',
   version: 'v1.0',
+  track_group_name: '',
   collection_name: '',
   genre: '',
   mood: '',
@@ -497,6 +476,18 @@ const metadata = ref<TrackMetadata>({
   status_id: null,
   is_public: true
 })
+
+const editGenreOrphan = computed(() => orphanGenreOption(metadata.value.genre))
+
+const editHeaderName = computed(() => {
+  const fromForm = metadata.value.title?.trim()
+  if (fromForm) return fromForm
+  const fromTrack = props.trackToEdit?.title?.trim()
+  if (fromTrack) return fromTrack
+  return 'Track'
+})
+
+const editHeaderTitle = computed(() => `Edit ${editHeaderName.value}`)
 
 const collections = ref<Collection[]>([])
 const selectedCollectionIds = ref<number[]>([])
@@ -509,55 +500,54 @@ const newFile = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const fileError = ref<string | null>(null)
 const newFileDuration = ref<number | null>(null)
-const newArtworkFile = ref<File | null>(null)
-const artworkInput = ref<HTMLInputElement | null>(null)
-const artworkPreview = ref<string | null>(null)
+const artworkSelection = ref<ArtworkSelection>({ kind: 'unchanged' })
 const artworkError = ref<string | null>(null)
-const removeArtworkFlag = ref(false)
 const coverDirection = ref('')
-const generatingArtwork = ref(false)
-const generatedArtworkPending = ref(false)
 
-const canGenerateArtwork = computed(() => {
-  return Boolean(metadata.value.title?.trim() && metadata.value.artist?.trim())
+const artworkGenerateContext = computed(() => ({
+  title: metadata.value.title?.trim() || '',
+  artist: metadata.value.artist?.trim() || '',
+  genre: metadata.value.genre?.trim() || undefined,
+  mood: metadata.value.mood?.trim() || undefined,
+}))
+
+const navigateTrackList = computed(() =>
+  (props.trackList || []).filter((t) => t && t.id != null),
+)
+
+const currentTrackIndex = computed(() => {
+  const id = props.trackToEdit?.id
+  if (id == null) return -1
+  return navigateTrackList.value.findIndex((t) => Number(t.id) === Number(id))
 })
 
-const currentArtworkUrl = ref<string | null>(null)
+const canNavigateTracks = computed(
+  () => navigateTrackList.value.length > 1 && currentTrackIndex.value >= 0,
+)
 
-const loadCurrentArtworkUrl = async () => {
-  if (!props.trackToEdit?.artwork_path || removeArtworkFlag.value) {
-    currentArtworkUrl.value = getArtworkUrl(
-      props.trackToEdit?.artwork_path,
-      props.trackToEdit?.artwork_provider,
-    )
-    return
-  }
+const hasPrevTrack = computed(() => currentTrackIndex.value > 0)
 
-  currentArtworkUrl.value = await resolveArtworkUrlForEntity(
-    {
-      id: props.trackToEdit.id,
-      artwork_path: props.trackToEdit.artwork_path,
-      artwork_provider: props.trackToEdit.artwork_provider,
-    },
-    'track',
-  )
+const hasNextTrack = computed(
+  () =>
+    currentTrackIndex.value >= 0 &&
+    currentTrackIndex.value < navigateTrackList.value.length - 1,
+)
+
+const goToPrevTrack = () => {
+  if (!hasPrevTrack.value) return
+  const track = navigateTrackList.value[currentTrackIndex.value - 1]
+  if (!track) return
+  showSuccessMessage.value = false
+  emit('navigate-track', track)
 }
 
-const displayArtworkPreview = computed(() => {
-  if (artworkPreview.value) return artworkPreview.value
-  if (!removeArtworkFlag.value && currentArtworkUrl.value) return currentArtworkUrl.value
-  return null
-})
-
-const displayArtworkIsVideo = computed(() => {
-  if (newArtworkFile.value) return isVideoArtwork(newArtworkFile.value.name)
-  if (!removeArtworkFlag.value) return isVideoArtwork(props.trackToEdit?.artwork_path)
-  return false
-})
-
-const canRemoveArtwork = computed(() => {
-  return !!newArtworkFile.value || (!!props.trackToEdit?.artwork_path && !removeArtworkFlag.value)
-})
+const goToNextTrack = () => {
+  if (!hasNextTrack.value) return
+  const track = navigateTrackList.value[currentTrackIndex.value + 1]
+  if (!track) return
+  showSuccessMessage.value = false
+  emit('navigate-track', track)
+}
 
 // Define functions before watch to avoid hoisting issues
 const loadTrackCollections = async (trackId: number) => {
@@ -714,132 +704,6 @@ const handleFileSelect = async (event: Event) => {
   }
 }
 
-const handleArtworkSelect = async (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-
-  if (!file) {
-    return
-  }
-
-  try {
-    const { file: processedFile, preview } = await validateAndProcessArtwork(file)
-    newArtworkFile.value = processedFile
-    artworkPreview.value = preview
-    artworkError.value = null
-    removeArtworkFlag.value = false
-    generatedArtworkPending.value = false
-  } catch (err: any) {
-    artworkError.value = err.message || 'Invalid artwork file'
-    newArtworkFile.value = null
-    artworkPreview.value = null
-    generatedArtworkPending.value = false
-  }
-
-  if (target) target.value = ''
-}
-
-const handleGenerateArtwork = async () => {
-  if (!canGenerateArtwork.value || generatingArtwork.value || !props.trackToEdit?.id || !supabase) {
-    return
-  }
-
-  const title = metadata.value.title.trim()
-  const artist = metadata.value.artist.trim()
-  generatingArtwork.value = true
-  artworkError.value = null
-
-  try {
-    const { generateCoverViaJob } = await import('~/utils/coverGenerateClient')
-    const result = await generateCoverViaJob({
-      title,
-      artist,
-      genre: metadata.value.genre?.trim() || undefined,
-      mood: metadata.value.mood?.trim() || undefined,
-      direction: coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || undefined,
-    })
-
-    const binary = atob(result.base64)
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-    const blob = new Blob([bytes], { type: result.mimeType || 'image/png' })
-    const file = new File([blob], result.filename || 'cover-ai.png', {
-      type: result.mimeType || 'image/png',
-    })
-    const { file: processedFile, preview } = await validateAndProcessArtwork(file)
-
-    // Persist immediately: R2 object + sounds.artwork_* in Supabase
-    const uploaded = await uploadArtwork(processedFile, 'track')
-    if (props.trackToEdit.artwork_path) {
-      try {
-        await deleteArtwork(
-          {
-            id: props.trackToEdit.id,
-            artwork_path: props.trackToEdit.artwork_path,
-            artwork_provider: props.trackToEdit.artwork_provider,
-          },
-          'track',
-        )
-      } catch (err) {
-        console.warn('Failed to delete previous artwork after cover generate:', err)
-      }
-    }
-
-    const { data, error: updateError } = await supabase
-      .from('sounds')
-      .update({
-        artwork_path: uploaded.artwork_path,
-        artwork_provider: uploaded.artwork_provider,
-      })
-      .eq('id', props.trackToEdit.id)
-      .select()
-      .maybeSingle()
-
-    if (updateError) throw updateError
-
-    const updatedTrack = data
-      ? { ...props.trackToEdit, ...data }
-      : {
-          ...props.trackToEdit,
-          artwork_path: uploaded.artwork_path,
-          artwork_provider: uploaded.artwork_provider,
-        }
-
-    // Already saved — don't stage as pending Update Track upload
-    newArtworkFile.value = null
-    artworkPreview.value = preview
-    removeArtworkFlag.value = false
-    generatedArtworkPending.value = false
-    props.trackToEdit.artwork_path = updatedTrack.artwork_path
-    props.trackToEdit.artwork_provider = updatedTrack.artwork_provider
-    await loadCurrentArtworkUrl()
-    emit('track-updated', updatedTrack)
-    window.dispatchEvent(
-      new CustomEvent('track-updated', {
-        detail: { track: updatedTrack },
-        bubbles: true,
-      }),
-    )
-  } catch (err: any) {
-    artworkError.value =
-      err?.data?.statusMessage || err?.message || 'Failed to generate cover'
-    generatedArtworkPending.value = false
-  } finally {
-    generatingArtwork.value = false
-  }
-}
-
-const removeArtworkSelection = () => {
-  newArtworkFile.value = null
-  artworkPreview.value = null
-  artworkError.value = null
-  generatedArtworkPending.value = false
-  removeArtworkFlag.value = true
-  if (artworkInput.value) {
-    artworkInput.value.value = ''
-  }
-}
-
 const queueCollectionCreation = (name: string) => {
   if (!name.trim()) return
   
@@ -966,8 +830,7 @@ const syncCollections = async (trackId: number) => {
 
 // Fetch collections and statuses on mount
 onMounted(async () => {
-  await fetchCollections()
-  await fetchStatuses()
+  await Promise.all([fetchCollections(), fetchStatuses(), ensureGenresLoaded()])
 })
 
 // Watch for trackToEdit changes to populate form and load collections
@@ -976,18 +839,11 @@ watch(() => props.trackToEdit, async (newTrack) => {
   newFile.value = null
   newFileDuration.value = null
   fileError.value = null
-  newArtworkFile.value = null
-  artworkPreview.value = null
+  artworkSelection.value = { kind: 'unchanged' }
   artworkError.value = null
-  removeArtworkFlag.value = false
   coverDirection.value = ''
-  generatedArtworkPending.value = false
-  generatingArtwork.value = false
   if (fileInput.value) {
     fileInput.value.value = ''
-  }
-  if (artworkInput.value) {
-    artworkInput.value.value = ''
   }
 
   if (newTrack) {
@@ -1009,10 +865,10 @@ watch(() => props.trackToEdit, async (newTrack) => {
       status_id: newTrack.status_id || null,
       is_public: newTrack.is_public !== undefined ? newTrack.is_public : true
     }
+    coverDirection.value = String(newTrack.cover_direction || '').slice(0, COVER_DIRECTION_MAX)
     
     // Load track's current collections
     await loadTrackCollections(newTrack.id)
-    await loadCurrentArtworkUrl()
   }
 }, { immediate: true })
 
@@ -1069,6 +925,28 @@ const analyzeKeyForTrack = async () => {
     setTimeout(() => { keyAnalysisError.value = null }, 5000)
   } finally {
     isAnalyzingKey.value = false
+  }
+}
+
+const analyzeMoodForTrack = async () => {
+  if (!supabase || !props.trackToEdit || !props.trackToEdit.storage_path) {
+    moodAnalysisError.value = 'Cannot analyze: track data unavailable'
+    return
+  }
+
+  isAnalyzingMood.value = true
+  moodAnalysisError.value = null
+
+  try {
+    const audioData = await downloadAudioBlob(props.trackToEdit, supabase)
+    const moods = await analyzeMoodFromAudio(audioData)
+    metadata.value.mood = moods.length ? moods.join(', ') : ''
+  } catch (err: any) {
+    console.error('Mood analysis failed:', err)
+    moodAnalysisError.value = err.message || 'Failed to detect moods'
+    setTimeout(() => { moodAnalysisError.value = null }, 5000)
+  } finally {
+    isAnalyzingMood.value = false
   }
 }
 
@@ -1330,8 +1208,9 @@ const onSubmit = async () => {
       }
     }
 
-    if (newArtworkFile.value) {
-      const uploadedArtwork = await uploadArtwork(newArtworkFile.value, 'track')
+    const selection = artworkSelection.value
+    if (selection.kind === 'file') {
+      const uploadedArtwork = await uploadArtwork(selection.file, 'track')
       if (props.trackToEdit.artwork_path) {
         await deleteArtwork(
           {
@@ -1344,7 +1223,20 @@ const onSubmit = async () => {
       }
       updateData.artwork_path = uploadedArtwork.artwork_path
       updateData.artwork_provider = uploadedArtwork.artwork_provider
-    } else if (removeArtworkFlag.value && props.trackToEdit.artwork_path) {
+    } else if (selection.kind === 'reuse') {
+      if (props.trackToEdit.artwork_path && props.trackToEdit.artwork_path !== selection.path) {
+        await deleteArtwork(
+          {
+            id: props.trackToEdit.id,
+            artwork_path: props.trackToEdit.artwork_path,
+            artwork_provider: props.trackToEdit.artwork_provider,
+          },
+          'track',
+        )
+      }
+      updateData.artwork_path = selection.path
+      updateData.artwork_provider = selection.provider
+    } else if (selection.kind === 'remove' && props.trackToEdit.artwork_path) {
       await deleteArtwork(
         {
           id: props.trackToEdit.id,
@@ -1356,6 +1248,9 @@ const onSubmit = async () => {
       updateData.artwork_path = null
       updateData.artwork_provider = normalizeArtworkProvider(null)
     }
+
+    updateData.cover_direction =
+      coverDirection.value.trim().slice(0, COVER_DIRECTION_MAX) || null
     
     const { data, error: updateError } = await supabase
       .from('sounds')
@@ -1399,17 +1294,16 @@ const onSubmit = async () => {
     newFile.value = null
     newFileDuration.value = null
     fileError.value = null
-    newArtworkFile.value = null
-    artworkPreview.value = null
+    artworkSelection.value = { kind: 'unchanged' }
     artworkError.value = null
-    removeArtworkFlag.value = false
-    generatedArtworkPending.value = false
-    coverDirection.value = ''
+    if (updatedTrackData?.cover_direction != null) {
+      coverDirection.value = String(updatedTrackData.cover_direction || '').slice(
+        0,
+        COVER_DIRECTION_MAX,
+      )
+    }
     if (fileInput.value) {
       fileInput.value.value = ''
-    }
-    if (artworkInput.value) {
-      artworkInput.value.value = ''
     }
     
     showSuccessMessage.value = true
@@ -1457,7 +1351,7 @@ const handleDelete = async () => {
     
     if (dbError) throw dbError
     
-    emit('track-updated', null) // Pass null to indicate deletion (trigger refetch)
+    emit('track-updated', { id: props.trackToEdit.id, deleted: true })
     handleClose() // Close modal with animation
     
   } catch (err: any) {

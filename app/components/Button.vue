@@ -17,7 +17,7 @@
 <script setup lang="ts">
 import { computed, useAttrs } from 'vue'
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link'
+type Variant = 'primary' | 'secondary' | 'ghost' | 'outlined' | 'danger' | 'link'
 type Size = 'md' | 'sm'
 type ButtonType = 'button' | 'submit' | 'reset'
 
@@ -28,6 +28,8 @@ const props = withDefaults(
     type?: ButtonType
     disabled?: boolean
     fullWidth?: boolean
+    /** Icon-only hit target matching adjacent input height (aspect-square + stretch). */
+    square?: boolean
     responsiveLabel?: boolean
     label?: string
   }>(),
@@ -37,6 +39,7 @@ const props = withDefaults(
     type: 'button',
     disabled: false,
     fullWidth: false,
+    square: false,
     responsiveLabel: false,
     label: undefined,
   }
@@ -53,6 +56,8 @@ const variantClasses: Record<Variant, string> = {
     'bg-neutral-700 text-neutral-200 hover:bg-neutral-600 disabled:opacity-50 disabled:hover:bg-neutral-700',
   ghost:
     'bg-transparent text-neutral-400 hover:text-neutral-300 disabled:opacity-50',
+  outlined:
+    'bg-transparent border border-neutral-700 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-400 disabled:opacity-50',
   danger:
     'bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:hover:bg-red-600',
   link:
@@ -60,34 +65,43 @@ const variantClasses: Record<Variant, string> = {
 }
 
 const sizeClasses: Record<Size, string> = {
-  md: 'px-4 py-2 text-base rounded',
-  sm: 'px-3 py-1.5 text-sm rounded',
+  md: 'px-4 py-2 text-base',
+  sm: 'px-3 py-1.5 text-sm',
 }
 
 const responsiveSizeClasses: Record<Size, string> = {
-  md: 'px-2.5 md:px-4 py-2 text-base rounded',
-  sm: 'px-2.5 md:px-3 py-1.5 text-sm rounded',
+  md: 'px-2.5 md:px-4 py-2 text-base min-w-12',
+  sm: 'px-2.5 md:px-3 py-1.5 text-sm min-w-8',
 }
 
 const baseClasses =
-  'inline-flex items-center justify-center font-medium transition-colors cursor-pointer disabled:cursor-not-allowed whitespace-nowrap min-h-8 min-w-8'
+  'rounded-sm inline-flex items-center justify-center font-medium transition-colors cursor-pointer disabled:cursor-not-allowed whitespace-nowrap min-h-8 min-w-8'
 
 const linkBaseClasses =
   'inline h-fit w-fit font-medium transition-colors cursor-pointer disabled:cursor-not-allowed'
+
+// Fixed box — flex stretch + aspect-ratio is unreliable (w-auto ignores ratio; w-0 collapses).
+// size-12 matches p-3 inputs; size-10 matches denser p-2.5 rows when size="sm".
+const squareSizeClasses: Record<Size, string> = {
+  md: 'aspect-square !p-0 size-12 min-w-12',
+  sm: 'aspect-square !p-0 size-8 min-w-8',
+}
 
 const classes = computed(() => {
   const isLinkVariant = props.variant === 'link'
   const sizeClass = isLinkVariant
     ? ''
-    : props.responsiveLabel
-      ? responsiveSizeClasses[props.size]
-      : sizeClasses[props.size]
+    : props.square
+      ? squareSizeClasses[props.size]
+      : props.responsiveLabel
+        ? responsiveSizeClasses[props.size]
+        : sizeClasses[props.size]
 
   return [
     isLinkVariant ? linkBaseClasses : baseClasses,
     sizeClass,
     variantClasses[props.variant],
-    props.fullWidth ? 'w-full' : '',
+    props.fullWidth && !props.square ? 'w-full' : '',
     attrs.class,
   ]
 })

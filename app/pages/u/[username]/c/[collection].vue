@@ -2,8 +2,8 @@
   <div class="flex flex-col gap-0 text-neutral-300 grow h-fit">
     <template v-if="!pageShellReady">
       <div class="p-4 border-b border-neutral-800">
-        <div class="h-8 w-48 max-w-full rounded bg-neutral-800 animate-pulse mb-2" />
-        <div class="h-4 w-32 rounded bg-neutral-800 animate-pulse" />
+        <div class="h-8 w-48 max-w-full rounded-sm bg-neutral-800 animate-pulse mb-2" />
+        <div class="h-4 w-32 rounded-sm bg-neutral-800 animate-pulse" />
       </div>
       <TracksTableSkeleton
         :is-own-profile="isOwnProfile"
@@ -74,7 +74,8 @@
           :active-filter-chips="activeFiltersForDisplay"
           :resolve-full-queue="resolveFullPlaybackQueue"
           @edit-track="handleEdit"
-          @tracks-removed="fetchTracks"
+          @tracks-removed="handleTracksRemoved"
+          @track-collections-updated="handleTrackCollectionsUpdated"
           @load-more="handleLoadMore"
         />
       </div>
@@ -90,6 +91,7 @@
       :collection-artwork-path="collection.artwork_path"
       :collection-artwork-provider="collection.artwork_provider"
       :collection-show-on-profile="!!collection.show_on_profile"
+      :collection-cover-direction="collection.cover_direction"
       @collection-updated="handleCollectionUpdated"
       @collection-deleted="handleCollectionDeleted"
     />
@@ -666,12 +668,46 @@ const fetchTracks = async (options: { finalizeLoading?: boolean } = {}) => {
   }
 }
 
+const handleTrackCollectionsUpdated = (payload: {
+  trackId: number
+  collections: Array<{ name: string; slug: string }>
+}) => {
+  const patch = (list: any[]) =>
+    list.map((track) =>
+      track.id === payload.trackId
+        ? { ...track, collections: payload.collections }
+        : track
+    )
+
+  tracks.value = patch(tracks.value)
+  unfilteredTracks.value = patch(unfilteredTracks.value)
+}
+
+const removeTracksLocally = (trackIds: number[]) => {
+  if (trackIds.length === 0) return
+  const idSet = new Set(trackIds)
+  tracks.value = tracks.value.filter((track) => !idSet.has(track.id))
+  unfilteredTracks.value = unfilteredTracks.value.filter((track) => !idSet.has(track.id))
+}
+
+const handleTracksRemoved = (trackIds?: number[]) => {
+  if (trackIds?.length) {
+    removeTracksLocally(trackIds)
+    return
+  }
+  // Bulk metadata updates still use this event without IDs
+  void fetchTracks()
+}
+
 const handleEdit = (track: any) => {
   // Emit event to parent layout to open modal in edit mode
-  const event = new CustomEvent('edit-track', { 
-    detail: track,
+  const event = new CustomEvent('edit-track', {
+    detail: {
+      track,
+      trackList: displayedTracks.value,
+    },
     bubbles: true,
-    composed: true
+    composed: true,
   })
   window.dispatchEvent(event)
 }
@@ -901,10 +937,16 @@ defineExpose({
 const { updateCurrentTrack } = usePlayer()
 
 const handleTrackUpdate = (event?: CustomEvent) => {
-  
+  const updatedTrack = event?.detail?.track
+
+  if (updatedTrack?.deleted && updatedTrack.id != null) {
+    removeTracksLocally([updatedTrack.id])
+    return
+  }
+
   // If event has track data, update the player if it's the current track
-  if (event?.detail?.track) {
-    updateCurrentTrack(event.detail.track)
+  if (updatedTrack) {
+    updateCurrentTrack(updatedTrack)
   }
   
   fetchTracks()
@@ -917,21 +959,25 @@ const handleCollectionUpdated = async (
   artworkPath: string | null = null,
   artworkProvider: string | null = null,
   showOnProfile = false,
+  coverDirection: string | null = null,
 ) => {
-  if (collection.value) {
-    collection.value.name = newName
-    collection.value.slug = newSlug
-    collection.value.artwork_path = artworkPath
-    collection.value.artwork_provider = artworkProvider
-    collection.value.show_on_profile = showOnProfile
-    
-    // Update URL if slug changed
-    if (newSlug !== route.params.collection) {
-      await router.replace(`/u/${route.params.username}/c/${newSlug}`)
-    }
-    
-    // Refetch collection to ensure we have latest data
-    await fetchCollection()
+  if (!collection.value) return
+
+  // Patch in place — do not call fetchCollection() here. That path uses
+  // fetchTracks({ finalizeLoading: false }) and leaves tracksLoading stuck true,
+  // which keeps pageShellReady false (full-page skeleton) until refresh.
+  collection.value = {
+    ...collection.value,
+    name: newName,
+    slug: newSlug,
+    artwork_path: artworkPath,
+    artwork_provider: artworkProvider,
+    show_on_profile: showOnProfile,
+    cover_direction: coverDirection,
+  }
+
+  if (newSlug !== route.params.collection) {
+    await router.replace(`/u/${route.params.username}/c/${newSlug}`)
   }
 }
 

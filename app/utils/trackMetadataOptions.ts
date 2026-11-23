@@ -1,20 +1,8 @@
-/** Canonical genre labels (filter + Sync inline editor). */
-export const TRACK_GENRES = [
-  'Electronic',
-  'Hip-Hop',
-  'Trap',
-  'Ambient',
-  'House',
-  'Techno',
-  'Drum & Bass',
-  'Dubstep',
-  'Pop',
-  'Rock',
-  'Jazz',
-  'Classical',
-] as const
-
-export type TrackGenre = (typeof TRACK_GENRES)[number]
+/**
+ * Genre options live in Supabase `public.genres` (BMI ∪ ASCAP seed).
+ * Use `useGenres()` in UI — do not hardcode producer micro-styles here.
+ * Seed source: supabase/migrations/20261122000000_genres.sql
+ */
 
 /** Canonical musical keys (filter + Sync inline editor). */
 export const TRACK_KEYS = [

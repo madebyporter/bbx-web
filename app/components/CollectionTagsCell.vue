@@ -11,7 +11,7 @@
     <template v-else-if="collections.length === 1">
       <NuxtLink
         :to="collectionLink(collections[0])"
-        class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white whitespace-nowrap no-underline"
+        class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded-sm text-xs text-neutral-200 hover:text-white whitespace-nowrap no-underline"
       >
         {{ collections[0].name }}
       </NuxtLink>
@@ -22,12 +22,12 @@
       <div ref="dropdownAnchorRef" class="relative flex gap-1 items-center shrink-0">
         <NuxtLink
           :to="collectionLink(collections[0])"
-          class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white whitespace-nowrap no-underline"
+          class="inline-flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded-sm text-xs text-neutral-200 hover:text-white whitespace-nowrap no-underline"
         >
           {{ collections[0].name }}
         </NuxtLink>
         <div
-          class="p-2 py-0.5 border border-neutral-800 rounded text-xs text-neutral-200 hover:text-white whitespace-nowrap"
+          class="p-2 py-0.5 border border-neutral-800 rounded-sm text-xs text-neutral-200 hover:text-white whitespace-nowrap"
         >
           +{{ collections.length - 1 }}
       </div>
@@ -42,7 +42,7 @@
             v-for="collection in remainingCollections"
             :key="collection.slug"
             :to="collectionLink(collection)"
-            class="flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded text-xs text-neutral-200 hover:text-white whitespace-nowrap no-underline w-full text-left"
+            class="flex items-center px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 rounded-sm text-xs text-neutral-200 hover:text-white whitespace-nowrap no-underline w-full text-left"
             @click="closeDropdown"
           >
             {{ collection.name }}
