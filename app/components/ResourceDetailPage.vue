@@ -4,7 +4,7 @@
       <LoadingLogo />
     </div>
 
-    <div v-else-if="!resource" class="flex flex-col items-center justify-center p-8 h-full grow text-neutral-500">
+    <div v-else-if="showNotFound" class="flex flex-col items-center justify-center p-8 h-full grow text-neutral-500">
       <h2 class="text-xl font-bold mb-2">Resource not found</h2>
       <p class="text-sm">The {{ resourceTypeLabel }} you're looking for doesn't exist.</p>
       <NuxtLink :to="listPath" class="mt-4 text-amber-400 hover:text-amber-500 transition-colors">
@@ -91,9 +91,19 @@
             </div>
           </div>
           <div v-if="isReady && isAdmin" class="p-4 border-b border-neutral-800 grid grid-cols-2 gap-4 items-center">
-            <div><h2 class="text-white text-lg font-bold">Admin</h2></div>
-            <div class="flex flex-row gap-4">
-              <Button variant="secondary" class="btn" @click="onEdit">Edit</Button>
+            <div class="flex flex-col gap-1">
+              <h2 class="text-white text-lg font-bold">Admin</h2>
+              <p v-if="resource.status === 'pending'" class="text-xs text-amber-400">Pending approval</p>
+            </div>
+            <div class="flex flex-row gap-2 justify-end flex-wrap">
+              <Button
+                v-if="resource.status === 'pending'"
+                :disabled="isApproving"
+                @click="onApprove"
+              >
+                {{ isApproving ? 'Approving…' : 'Approve' }}
+              </Button>
+              <Button variant="secondary" @click="onEdit">Edit</Button>
               <Button variant="danger" @click="onDelete">Delete</Button>
             </div>
           </div>
@@ -176,13 +186,13 @@ const { isAdmin, isReady } = useAuth()
 const { showSuccess, showError } = useToast()
 const { capture } = useAnalytics()
 const detailViewTracked = ref(false)
+const isApproving = ref(false)
 const handleEdit = inject<(resource: Resource) => void>('handleEdit')
 
-// Fetch resource data server-side for SEO
+// Stable key so SSR payload matches client hydration (isAdmin flips after mount)
 const { data: resourceData, pending: resourcePending, refresh } = await useAsyncData(
   () => `resource-${props.typeSlug}-${props.slug}`,
   async () => {
-    const fetchStartTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
     const fetchContext = process.server ? 'SERVER' : process.client ? 'CLIENT' : 'UNKNOWN'
     
     if (!supabase) {
@@ -190,10 +200,9 @@ const { data: resourceData, pending: resourcePending, refresh } = await useAsync
     }
     
     try {
-      const data = await fetchResourceBySlug(props.slug, typeConfig.value.dbTypeSlug)
-      const fetchEndTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
-      const fetchDuration = fetchEndTime - fetchStartTime
-      return data
+      return await fetchResourceBySlug(props.slug, typeConfig.value.dbTypeSlug, {
+        allowUnapproved: isAdmin.value,
+      })
     } catch (error) {
       const fetchEndTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
       console.error(`[SEO-TIMING] useAsyncData callback ERROR | Context: ${fetchContext} | Timestamp: ${fetchEndTime}ms | Error:`, error)
@@ -207,7 +216,23 @@ const { data: resourceData, pending: resourcePending, refresh } = await useAsync
 )
 
 const resource = computed(() => resourceData.value)
-const showLoading = computed(() => resourcePending.value && !resourceData.value)
+// Wait for auth before treating missing rows as not-found (admins may load pending)
+const showLoading = computed(
+  () => (resourcePending.value || !isReady.value) && !resourceData.value,
+)
+const showNotFound = computed(
+  () => isReady.value && !resourcePending.value && !resourceData.value,
+)
+
+// After auth resolves, admins refetch so pending resources can load (client-only)
+watch(
+  [isAdmin, isReady],
+  async ([admin, ready]) => {
+    if (!import.meta.client || !ready || !admin || resourceData.value) return
+    await refresh()
+  },
+  { flush: 'post' },
+)
 
 watch(
   () => resource.value?.id,
@@ -366,6 +391,25 @@ const handleImageError = (event: Event) => {
 const onEdit = () => {
   if (resource.value && handleEdit) {
     handleEdit(resource.value as Resource)
+  }
+}
+
+const onApprove = async () => {
+  if (!resource.value || !supabase) return
+  isApproving.value = true
+  try {
+    const { error } = await supabase
+      .from('resources')
+      .update({ status: 'approved' })
+      .eq('id', resource.value.id)
+
+    if (error) throw error
+    showSuccess('Resource approved.')
+    await refresh()
+  } catch (e: any) {
+    showError(e?.message || 'Failed to approve resource.')
+  } finally {
+    isApproving.value = false
   }
 }
 

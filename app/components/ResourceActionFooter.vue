@@ -25,7 +25,7 @@
       :href="resourceLink"
       target="_blank"
       rel="noopener noreferrer"
-      class="btn grow flex items-center justify-center"
+      class="grow flex items-center justify-center rounded-sm px-4 py-2 text-base font-medium bg-amber-500 text-black hover:bg-amber-600 transition-colors"
     >
       Download
     </a>

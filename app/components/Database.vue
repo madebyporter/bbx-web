@@ -184,14 +184,32 @@ interface Resource {
   status?: 'pending' | 'approved' | 'rejected'
 }
 
-const props = defineProps<{
-  canEdit: boolean
+const props = withDefaults(defineProps<{
+  canEdit?: boolean
   type?: string
+}>(), {
+  canEdit: false,
+})
+
+const emit = defineEmits<{
+  'edit-resource': [resource: Resource]
+  'show-signup': []
+  'update:resources': [resources: Resource[]]
+  'update:count': [count: number]
 }>()
 
 const { supabase } = useSupabase()
 const auth = useAuth()
 const resources = ref<Resource[]>([])
+
+watch(
+  resources,
+  (list) => {
+    emit('update:resources', list)
+    emit('update:count', list.length)
+  },
+  { deep: true, immediate: true }
+)
 const currentSort = ref<SortParams>({ sortBy: 'created_at', sortDirection: 'desc' })
 const currentFilters = ref<ResourceFilters>({
   price: { free: false, paid: false },
@@ -448,8 +466,6 @@ watch(() => auth.user, async (newUser, oldUser) => {
   } else {
   }
 }, { immediate: true })
-
-const emit = defineEmits(['edit-resource', 'show-signup'])
 
 const editResource = (resource: Resource) => {
   emit('edit-resource', resource)

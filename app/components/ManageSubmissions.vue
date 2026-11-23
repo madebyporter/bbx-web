@@ -4,13 +4,19 @@
       <h2 class="text-2xl">Admin</h2>
     </template>
     
-    <div class="pt-8 space-y-12">
-      <AdminPlans :active="props.show && props.canEdit" />
+    <div class="flex flex-col gap-8 *:border *:border-neutral-800 *:p-4 *:rounded-md">
+      <AdminAccordionSection
+        v-model="openPlans"
+        title="Plans and billing"
+      >
+        <AdminPlans :active="props.show && props.canEdit" />
+      </AdminAccordionSection>
 
-      <!-- Manage Submissions Section -->
-      <div>
-        <h2 class="text-xl font-semibold mb-6">Manage Submissions</h2>
-        
+      <AdminAccordionSection
+        v-model="openResources"
+        title="Manage Resources"
+        :show-new="hasNewResources"
+      >
         <div v-if="loading" class="flex justify-center items-center py-8">
           <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500"></div>
         </div>
@@ -23,7 +29,7 @@
           <p class="text-neutral-400">No pending submissions</p>
         </div>
         
-        <div v-else class="space-y-6">
+        <div v-else class="flex flex-col gap-4">
           <!-- Submission Card -->
           <div 
             v-for="resource in resources" 
@@ -31,14 +37,14 @@
             class="flex flex-col border border-neutral-800 rounded-lg p-4 overflow-hidden"
           >
             <!-- Submission Content -->
-            <div class="flex flex-col lg:flex-row gap-4 p-6">
+            <div class="flex flex-col gap-4">
               <!-- Image -->
-              <div class="w-[160px] h-[160px] aspect-square rounded-md overflow-hidden bg-neutral-900">
+              <div class="w-full h-auto rounded-md overflow-hidden bg-neutral-900">
                 <img 
                   v-if="resource.image_url"
                   :src="resource.image_url" 
                   :alt="resource.name"
-                  class="w-full h-full aspect-square object-cover"
+                  class="w-full h-full aspect-4/3 object-cover"
                 />
                 <div 
                   v-else 
@@ -85,29 +91,39 @@
             </div>
 
             <!-- Submission Actions -->
-            <div class="flex gap-3 p-4 bg-neutral-900 border-t border-neutral-800">
+            <div class="flex flex-col gap-3 p-4 bg-neutral-900 border-t border-neutral-800">
               <Button
-                class="flex-1 bg-green-600 text-white hover:bg-green-700"
-                @click="approveResource(resource.id)"
+                variant="secondary"
+                class="w-full"
+                @click="editResource(resource)"
               >
-                Approve
+                Edit
               </Button>
-              <Button
-                variant="danger"
-                class="flex-1"
-                @click="rejectResource(resource.id)"
-              >
-                Reject
-              </Button>
+              <div class="flex gap-3">
+                <Button
+                  class="flex-1 bg-green-600 text-white hover:bg-green-700"
+                  @click="approveResource(resource.id)"
+                >
+                  Approve
+                </Button>
+                <Button
+                  variant="danger"
+                  class="flex-1"
+                  @click="rejectResource(resource.id)"
+                >
+                  Reject
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </AdminAccordionSection>
 
-      <!-- Manage Users Section -->
-      <div>
-        <h2 class="text-xl font-semibold mb-6">Manage Users</h2>
-        
+      <AdminAccordionSection
+        v-model="openUsers"
+        title="Manage Users"
+        :show-new="hasNewUsers"
+      >
         <div v-if="loadingUsers" class="flex justify-center items-center py-8">
           <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500"></div>
         </div>
@@ -139,15 +155,17 @@
             </div>
           </div>
         </div>
-      </div>
+      </AdminAccordionSection>
     </div>
   </MasterDrawer>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { useSupabase } from '~/utils/supabase'
 import MasterDrawer from './MasterDrawer.vue'
+
+const NEW_USER_DAYS = 7
 
 const props = defineProps({
   show: {
@@ -162,11 +180,27 @@ const props = defineProps({
 
 const emit = defineEmits(['update:show'])
 const { supabase } = useSupabase()
+const handleEdit = inject('handleEdit')
 
 const resources = ref([])
 const loading = ref(true)
 const users = ref([])
 const loadingUsers = ref(false)
+
+const openPlans = ref(false)
+const openResources = ref(false)
+const openUsers = ref(false)
+
+const hasNewResources = computed(() => resources.value.length > 0)
+
+const hasNewUsers = computed(() => {
+  const cutoff = Date.now() - NEW_USER_DAYS * 24 * 60 * 60 * 1000
+  return users.value.some((user) => {
+    if (!user.created_at) return false
+    const created = new Date(user.created_at).getTime()
+    return !Number.isNaN(created) && created >= cutoff
+  })
+})
 
 const fetchResources = async () => {
   loading.value = true
@@ -206,6 +240,24 @@ const fetchResources = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const editResource = (resource) => {
+  if (!handleEdit) return
+  handleEdit({
+    id: resource.id,
+    name: resource.name,
+    slug: resource.slug,
+    creator: resource.creator,
+    price: resource.price,
+    link: resource.link,
+    description: resource.description ?? null,
+    image_url: resource.image_url,
+    os: resource.os || [],
+    tags: resource.tags || [],
+    type: resource.resource_types,
+  })
+  emit('update:show', false)
 }
 
 const approveResource = async (id) => {
@@ -264,7 +316,7 @@ const fetchUsers = async () => {
     // Fallback: fetch from user_profiles (works without the migration)
     const { data: profilesData, error: profilesError } = await supabase
       .from('user_profiles')
-      .select('id, username, display_name')
+      .select('id, username, display_name, created_at')
       .order('created_at', { ascending: false })
 
     if (profilesError) {
@@ -278,7 +330,8 @@ const fetchUsers = async () => {
       username: profile.username,
       display_name: profile.display_name,
       email: null,
-      last_sign_in_at: null
+      last_sign_in_at: null,
+      created_at: profile.created_at || null
     }))
   } catch (error) {
     console.error('Error fetching users:', error)
@@ -302,6 +355,11 @@ const formatDate = (dateString) => {
   } catch (error) {
     return 'Invalid date'
   }
+}
+
+function syncOpenFromNew() {
+  if (hasNewResources.value) openResources.value = true
+  if (hasNewUsers.value) openUsers.value = true
 }
 
 // Fetch pending submissions once admin auth is ready (isAdmin can load after mount)
@@ -328,4 +386,8 @@ watch(() => props.show, (newVal) => {
     fetchUsers()
   }
 })
-</script> 
+
+watch([hasNewResources, hasNewUsers], () => {
+  syncOpenFromNew()
+})
+</script>

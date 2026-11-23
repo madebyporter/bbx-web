@@ -275,6 +275,18 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.72.24
+  - Resource detail: Download is primary CTA; Post Comment is secondary
+- 0.72.23
+  - Resource detail Admin: Approve button (left of Edit) when status is pending
+- 0.72.22
+  - Fix software detail sidebar list vanishing from isAdmin useAsyncData key hydration mismatch
+- 0.72.21
+  - Submit Resource: move Submit/Update into MasterDrawer CTA footer
+- 0.72.20
+  - Fix software/kits item count; admins can open/edit pending resources (list hover, detail, Admin Manage Resources)
+- 0.72.19
+  - Admin drawer: collapsible Plans and billing, Manage Resources, Manage Users sections with optional New tags
 - 0.72.18
   - Fix delayReverbCalculator syntax error blocking Netlify build
 - 0.72.17

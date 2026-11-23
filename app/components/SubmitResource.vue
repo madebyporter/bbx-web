@@ -258,7 +258,7 @@
             <span class="text-red-500">*</span>
           </label>
           <div 
-            class="image-drop-zone relative w-full min-h-[522px] lg:w-full lg:h-full transition-colors duration-200"
+            class="image-drop-zone relative w-full h-fit transition-colors duration-200"
             @dragover.prevent="handleDragOver"
             @dragleave.prevent="handleDragLeave"
             @drop.prevent="handleDrop"
@@ -275,12 +275,12 @@
               @change="handleImageSelect"
             />
             <div 
-              class="absolute inset-0 border border-neutral-800 hover:border-neutral-700 rounded-md flex items-center justify-center overflow-hidden z-10 aspect-square"
+              class="relative inset-0 border border-neutral-800 hover:border-neutral-700 rounded-md flex items-center justify-center overflow-hidden z-10"
             >
               <img 
                 v-if="imagePreview" 
                 :src="imagePreview" 
-                class="w-full h-full object-cover"
+                class="w-full h-auto object-cover"
                 alt="Preview"
               />
               <div v-else class="flex flex-col items-center gap-2 p-4 text-center">
@@ -293,16 +293,18 @@
           <p v-if="imageError" class="text-red-500 text-sm mt-1">{{ imageError }}</p>
           <span v-if="errors.image" class="text-red-500 text-sm">{{ errors.image }}</span>
         </fieldset>
-        <Button
-          type="submit"
-          variant="secondary"
-          class="btn w-full"
-          :disabled="isSubmitting"
-          @click="onSubmit"
-        >
-          {{ submitButtonText }}
-        </Button>
       </form>
+    </template>
+
+    <template v-if="!showSuccessMessage" #footer>
+      <Button
+        type="button"
+        full-width
+        :disabled="isSubmitting"
+        @click="onSubmit"
+      >
+        {{ submitButtonText }}
+      </Button>
     </template>
   </MasterDrawer>
 </template>

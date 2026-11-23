@@ -37,6 +37,7 @@
           class="w-full p-3 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 resize-y min-h-[100px]"
           rows="4" />
         <Button
+          variant="secondary"
           class="self-start"
           :disabled="!newComment.trim() || submitting"
           @click="handleSubmitComment"

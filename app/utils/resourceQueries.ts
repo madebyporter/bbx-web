@@ -598,7 +598,11 @@ export const getUserCollection = async (): Promise<Resource[]> => {
 }
 
 // Fetch a resource by slug
-export const fetchResourceBySlug = async (slug: string, typeSlug?: string): Promise<Resource | null> => {
+export const fetchResourceBySlug = async (
+  slug: string,
+  typeSlug?: string,
+  options: { allowUnapproved?: boolean } = {},
+): Promise<Resource | null> => {
   const { supabase } = useSupabase()
   
   if (!supabase) {
@@ -627,7 +631,12 @@ export const fetchResourceBySlug = async (slug: string, typeSlug?: string): Prom
         )
       `)
       .eq('slug', slug)
-      .eq('status', 'approved')
+
+    if (options.allowUnapproved) {
+      query = query.in('status', ['approved', 'pending'])
+    } else {
+      query = query.eq('status', 'approved')
+    }
     
     // Filter by type if specified
     if (typeSlug) {
