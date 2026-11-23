@@ -24,11 +24,14 @@ import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAsyncData } from '#app'
 import { useSupabase } from '~/utils/supabase'
+import { useAuth } from '~/composables/useAuth'
 
 const props = defineProps<{
   typeSlug: 'software' | 'kits'
   currentSlug: string
 }>()
+
+const { isAdmin } = useAuth()
 
 type SidebarItem = {
   id: number
@@ -73,7 +76,7 @@ const dbTypeSlug = computed(() => {
   return props.typeSlug === 'kits' ? 'sounds' : props.typeSlug
 })
 
-// Fetch sidebar items
+// Stable key so SSR payload matches client hydration (isAdmin flips after mount)
 const sidebar = await useAsyncData<SidebarItem[]>(
   `${props.typeSlug}-sidebar-list`,
   async () => {
@@ -89,13 +92,20 @@ const sidebar = await useAsyncData<SidebarItem[]>(
     const typeId = (typeData as unknown as ResourceTypeRow | null)?.id
     if (typeError || !typeId) return []
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('resources')
       .select('id, name, slug')
-      .eq('status', 'approved')
       .eq('type_id', typeId)
       .not('slug', 'is', null)
       .order('name', { ascending: true })
+
+    if (isAdmin.value) {
+      query = query.in('status', ['approved', 'pending'])
+    } else {
+      query = query.eq('status', 'approved')
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error(`Error fetching ${props.typeSlug} sidebar list:`, error)
@@ -109,6 +119,16 @@ const sidebar = await useAsyncData<SidebarItem[]>(
 
 const loading = sidebar.pending
 const items = computed<SidebarItem[]>(() => (sidebar.data.value as unknown as SidebarItem[]))
+
+// After auth resolves, admins refetch so pending resources appear (client-only)
+watch(
+  isAdmin,
+  async (admin) => {
+    if (!import.meta.client || !admin) return
+    await sidebar.refresh()
+  },
+  { flush: 'post' },
+)
 
 // Save scroll position whenever user scrolls
 const handleSidebarScroll = () => {
@@ -134,7 +154,12 @@ watch(() => props.currentSlug, async () => {
 })
 
 // Restore scroll position on mount
-onMounted(() => {
+onMounted(async () => {
+  // Auth may already be ready when this page mounts
+  if (isAdmin.value) {
+    await sidebar.refresh()
+  }
+
   if (sidebarRef.value) {
     // Add scroll listener to save position
     sidebarRef.value.addEventListener('scroll', handleSidebarScroll, { passive: true })

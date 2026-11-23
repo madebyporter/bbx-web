@@ -14,7 +14,11 @@
     <Database 
       ref="database" 
       type="software"
+      :can-edit="isAdmin"
       @show-signup="$emit('show-signup')"
+      @edit-resource="onEditResource"
+      @update:resources="onResourcesUpdate"
+      @update:count="resourceCount = $event"
     />
   </div>
   <!-- Render child routes (detail pages) -->
@@ -29,8 +33,7 @@ import Database from '~/components/Database.vue'
 import LibraryHeader from '~/components/LibraryHeader.vue'
 import PageContentSkeleton from '~/components/PageContentSkeleton.vue'
 import { usePageShellReady } from '~/composables/usePageShellReady'
-import { fetchApprovedResourcesForSearch } from '~/utils/resourceQueries'
-import { unwrapExposedRef } from '~/utils/unwrapExposedRef'
+import { fetchApprovedResourcesForSearch, type Resource } from '~/utils/resourceQueries'
 
 const RESOURCE_SEARCH_FIELDS = ['name', 'creator', 'tags']
 
@@ -105,6 +108,8 @@ interface FilterSortParams {
 
 const { isAdmin } = useAuth()
 const database = ref<InstanceType<typeof Database> | null>(null)
+const listResources = ref<Resource[]>([])
+const resourceCount = ref(0)
 
 const { data: searchContextData } = await useAsyncData(
   'software-search-context',
@@ -112,20 +117,23 @@ const { data: searchContextData } = await useAsyncData(
   { server: true, default: () => [] }
 )
 
-// Computed property for resource count
-const resourceCount = computed(() => {
-  const resources = unwrapExposedRef(database.value?.resources)
-  return Array.isArray(resources) ? resources.length : 0
-})
-
 // Inject context items registration functions from layout
 const registerContextItems = inject<(items: any[], fields: string[]) => void>('registerContextItems')
 const unregisterContextItems = inject<() => void>('unregisterContextItems')
 const openFilterModal = inject<() => void>('openFilterModal')
 const clearFilterSort = inject<(() => void) | null>('clearFilterSort', null)
 const hasActiveFilterSort = inject<ComputedRef<boolean>>('hasActiveFilterSort', computed(() => false))
+const handleEdit = inject<(resource: Resource) => void>('handleEdit')
 
 defineEmits(['edit-resource', 'show-signup'])
+
+const onResourcesUpdate = (resources: Resource[]) => {
+  listResources.value = resources
+}
+
+const onEditResource = (resource: Resource) => {
+  handleEdit?.(resource)
+}
 
 // Handle open filter/sort from LibraryHeader
 const handleOpenFilterSort = () => {
@@ -143,9 +151,8 @@ const syncSearchContext = () => {
     return
   }
 
-  const fromList = unwrapExposedRef(database.value?.resources)
-  if (route.path === '/software' && Array.isArray(fromList) && fromList.length > 0) {
-    registerContextItems(fromList, RESOURCE_SEARCH_FIELDS)
+  if (route.path === '/software' && listResources.value.length > 0) {
+    registerContextItems(listResources.value, RESOURCE_SEARCH_FIELDS)
     return
   }
 
@@ -155,7 +162,7 @@ const syncSearchContext = () => {
 }
 
 // Keep search context in sync on list, detail, and sidebar-only routes.
-watch(() => database.value?.resources, () => syncSearchContext(), { deep: true })
+watch(listResources, () => syncSearchContext(), { deep: true })
 watch(() => route.path, () => syncSearchContext())
 watch(searchContextData, () => syncSearchContext(), { immediate: true })
 

@@ -1,14 +1,11 @@
 <template>
   <div class="space-y-10">
     <div>
-      <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h2 class="text-xl font-semibold">Plans and billing</h2>
-        <div class="flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" :disabled="busy" @click="updatePortal">
-            Update Customer Portal
-          </Button>
-          <Button variant="primary" size="sm" @click="startCreate">Add plan</Button>
-        </div>
+      <div class="flex flex-wrap items-center justify-end gap-2 mb-6">
+        <Button variant="secondary" size="sm" :disabled="busy" @click="updatePortal">
+          Update Customer Portal
+        </Button>
+        <Button variant="primary" size="sm" @click="startCreate">Add plan</Button>
       </div>
 
       <p v-if="message" class="text-sm text-amber-400 mb-4">{{ message }}</p>

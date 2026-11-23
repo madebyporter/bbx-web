@@ -161,9 +161,25 @@ const props = withDefaults(defineProps<Props>(), {
   canEdit: false
 })
 
+const emit = defineEmits<{
+  'edit-resource': [resource: Resource]
+  'show-signup': []
+  'update:resources': [resources: Resource[]]
+  'update:count': [count: number]
+}>()
+
 const { supabase } = useSupabase()
 const auth = useAuth()
 const resources = ref<Resource[]>([])
+
+watch(
+  resources,
+  (list) => {
+    emit('update:resources', list)
+    emit('update:count', list.length)
+  },
+  { deep: true, immediate: true }
+)
 const useCounts = ref<{[key: number]: number}>({})
 const userUsedResources = ref<{[key: number]: boolean}>({})
 const currentSort = ref<{sortBy: string, sortDirection: 'asc' | 'desc'}>({ 
@@ -530,8 +546,6 @@ const getResourceDetailUrl = (resource: Resource): string => {
   const basePath = typePathMap[resource.type.slug] || '/software'
   return `${basePath}/${resource.slug}`
 }
-
-const emit = defineEmits(['edit-resource', 'show-signup'])
 
 const editResource = (resource: Resource) => {
   emit('edit-resource', resource)
