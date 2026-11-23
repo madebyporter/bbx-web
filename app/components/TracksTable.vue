@@ -409,7 +409,7 @@ const zeroStateBody = computed(() => {
 })
 const emit = defineEmits<{
   'edit-track': [track: Track]
-  'tracks-deleted': []
+  'tracks-deleted': [trackIds?: number[]]
   'track-collections-updated': [payload: { trackId: number; collections: Array<{ name: string; slug: string }> }]
   'track-shortlisted': [trackId: number]
   'track-unshortlisted': [trackId: number]
@@ -781,7 +781,7 @@ const toggleTrackSelection = (trackId: number) => {
 }
 
 // Handle tracks deleted from bulk actions drawer
-const handleTracksDeleted = () => {
+const handleTracksDeleted = (trackIds: number[] = []) => {
   // Clear selection and exit bulk mode
   bulkSelectionMode.value = false
   selectedTrackIds.value.clear()
@@ -789,8 +789,8 @@ const handleTracksDeleted = () => {
   clickCount.value = 0
   showBulkActionsDrawer.value = false
   
-  // Notify parent to refetch
-  emit('tracks-deleted')
+  // Pass IDs so parent can patch the list without a full refetch
+  emit('tracks-deleted', trackIds)
 }
 
 // Handle tracks updated from bulk actions drawer
@@ -801,8 +801,8 @@ const handleTracksUpdated = () => {
   clickCount.value = 0
   showBulkActionsDrawer.value = false
   
-  // Notify parent to refetch
-  emit('tracks-deleted') // Reuse same event to trigger refetch
+  // No IDs — parent falls back to refetch for bulk metadata updates
+  emit('tracks-deleted')
 }
 
 // Handle bulk actions drawer close

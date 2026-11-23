@@ -1351,7 +1351,7 @@ const handleDelete = async () => {
     
     if (dbError) throw dbError
     
-    emit('track-updated', null) // Pass null to indicate deletion (trigger refetch)
+    emit('track-updated', { id: props.trackToEdit.id, deleted: true })
     handleClose() // Close modal with animation
     
   } catch (err: any) {

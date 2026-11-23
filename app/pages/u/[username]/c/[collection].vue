@@ -74,7 +74,7 @@
           :active-filter-chips="activeFiltersForDisplay"
           :resolve-full-queue="resolveFullPlaybackQueue"
           @edit-track="handleEdit"
-          @tracks-removed="fetchTracks"
+          @tracks-removed="handleTracksRemoved"
           @track-collections-updated="handleTrackCollectionsUpdated"
           @load-more="handleLoadMore"
         />
@@ -683,6 +683,22 @@ const handleTrackCollectionsUpdated = (payload: {
   unfilteredTracks.value = patch(unfilteredTracks.value)
 }
 
+const removeTracksLocally = (trackIds: number[]) => {
+  if (trackIds.length === 0) return
+  const idSet = new Set(trackIds)
+  tracks.value = tracks.value.filter((track) => !idSet.has(track.id))
+  unfilteredTracks.value = unfilteredTracks.value.filter((track) => !idSet.has(track.id))
+}
+
+const handleTracksRemoved = (trackIds?: number[]) => {
+  if (trackIds?.length) {
+    removeTracksLocally(trackIds)
+    return
+  }
+  // Bulk metadata updates still use this event without IDs
+  void fetchTracks()
+}
+
 const handleEdit = (track: any) => {
   // Emit event to parent layout to open modal in edit mode
   const event = new CustomEvent('edit-track', {
@@ -921,10 +937,16 @@ defineExpose({
 const { updateCurrentTrack } = usePlayer()
 
 const handleTrackUpdate = (event?: CustomEvent) => {
-  
+  const updatedTrack = event?.detail?.track
+
+  if (updatedTrack?.deleted && updatedTrack.id != null) {
+    removeTracksLocally([updatedTrack.id])
+    return
+  }
+
   // If event has track data, update the player if it's the current track
-  if (event?.detail?.track) {
-    updateCurrentTrack(event.detail.track)
+  if (updatedTrack) {
+    updateCurrentTrack(updatedTrack)
   }
   
   fetchTracks()

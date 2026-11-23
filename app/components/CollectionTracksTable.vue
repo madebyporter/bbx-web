@@ -369,7 +369,7 @@ function handleUploadToCollection() {
 
 const emit = defineEmits<{
   'edit-track': [track: Track]
-  'tracks-removed': []
+  'tracks-removed': [trackIds?: number[]]
   'track-collections-updated': [payload: { trackId: number; collections: Array<{ name: string; slug: string }> }]
   'track-removed-from-collection': [trackId: number]
   'load-more': []
@@ -715,7 +715,7 @@ const toggleTrackSelection = (trackId: number) => {
 }
 
 // Handle tracks removed from bulk actions drawer
-const handleTracksRemoved = () => {
+const handleTracksRemoved = (trackIds: number[] = []) => {
   // Clear selection and exit bulk mode
   bulkSelectionMode.value = false
   selectedTrackIds.value.clear()
@@ -723,8 +723,8 @@ const handleTracksRemoved = () => {
   clickCount.value = 0
   showBulkActionsDrawer.value = false
   
-  // Notify parent to refetch
-  emit('tracks-removed')
+  // Pass IDs so parent can patch the list without a full refetch
+  emit('tracks-removed', trackIds)
 }
 
 // Handle tracks updated from bulk actions drawer
@@ -735,8 +735,8 @@ const handleTracksUpdated = () => {
   clickCount.value = 0
   showBulkActionsDrawer.value = false
   
-  // Notify parent to refetch
-  emit('tracks-removed') // Reuse same event to trigger refetch
+  // No IDs — parent falls back to refetch for bulk metadata updates
+  emit('tracks-removed')
 }
 
 // Handle bulk actions drawer close
@@ -1040,7 +1040,7 @@ const handleRemoveFromCollection = async (trackId: number) => {
     removeToast(toastId)
     showSuccess('Track removed from collection')
     emit('track-removed-from-collection', trackId)
-    emit('tracks-removed') // Trigger refetch
+    emit('tracks-removed', [trackId])
   } catch (error) {
     removeToast(toastId)
     showError('Failed to remove track from collection')

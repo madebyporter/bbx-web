@@ -298,7 +298,7 @@
         :analytics-loading="analyticsLoading"
         :resolve-full-queue="resolveFullPlaybackQueue"
         @edit-track="handleEdit"
-        @tracks-deleted="() => { fetchTracks(); refreshEntitlements(true) }"
+        @tracks-deleted="handleTracksDeleted"
         @track-collections-updated="handleTrackCollectionsUpdated"
         @track-shortlisted="handleTrackShortlisted"
         @track-unshortlisted="handleTrackUnshortlisted"
@@ -1278,6 +1278,27 @@ const handleTrackCollectionsUpdated = (payload: {
   }
 }
 
+const removeTracksLocally = (trackIds: number[]) => {
+  if (trackIds.length === 0) return
+  const idSet = new Set(trackIds)
+  tracks.value = tracks.value.filter((track) => !idSet.has(track.id))
+  if (clientTrackCache.value) {
+    clientTrackCache.value = clientTrackCache.value.filter((track) => !idSet.has(track.id))
+  }
+  totalTrackCount.value = Math.max(0, totalTrackCount.value - trackIds.length)
+}
+
+const handleTracksDeleted = (trackIds?: number[]) => {
+  if (trackIds?.length) {
+    removeTracksLocally(trackIds)
+    refreshEntitlements(true)
+    return
+  }
+  // Bulk metadata updates still use this event without IDs
+  void fetchTracks()
+  refreshEntitlements(true)
+}
+
 const handleLoadMore = () => {
   if (loadingMore.value || loading.value || !hasMoreTracks.value) return
   void loadTracksPage({ page: currentPage.value + 1, append: true })
@@ -1412,16 +1433,21 @@ defineExpose({
 const handleTrackUpdate = async (event: any) => {
   const updatedTrack = event?.detail?.track
   
+  if (updatedTrack?.deleted && updatedTrack.id != null) {
+    removeTracksLocally([updatedTrack.id])
+    refreshEntitlements(true)
+    return
+  }
+
   if (updatedTrack) {
     // Update the specific track in place instead of refetching everything
     const index = tracks.value.findIndex(t => t.id === updatedTrack.id)
     if (index !== -1) {
       // Preserve scroll position by updating in place
       tracks.value[index] = updatedTrack
-    } else {
     }
   } else {
-    // Fallback: refetch if no track data provided (e.g., track deleted)
+    // Fallback: refetch if no track data provided
     await fetchTracks()
   }
 }

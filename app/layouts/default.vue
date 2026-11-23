@@ -638,8 +638,8 @@ const refreshDatabase = (updatedTrack?: any) => {
     })
     window.dispatchEvent(event)
     
-    // Also update player if track was updated
-    if (updatedTrack) {
+    // Also update player if track was updated (skip delete payloads)
+    if (updatedTrack && !updatedTrack.deleted) {
       const { updateCurrentTrack } = usePlayer()
       updateCurrentTrack(updatedTrack)
     }

@@ -231,7 +231,7 @@ type DirtyKey =
 const props = defineProps<Props>()
 const emit = defineEmits<{
   'update:show': [value: boolean]
-  'tracks-deleted': []
+  'tracks-deleted': [trackIds: number[]]
   'tracks-updated': []
   'close': []
 }>()
@@ -562,7 +562,7 @@ const handleDelete = async () => {
         showSuccess(`Successfully removed ${count} track${count > 1 ? 's' : ''} from collection`)
         
         // Emit delete event (reused for collection removal)
-        emit('tracks-deleted')
+        emit('tracks-deleted', selectedIds)
         
         // Close drawer after successful removal
         handleClose()
@@ -582,6 +582,7 @@ const handleDelete = async () => {
 
   try {
     let deleteErrors = 0
+    const deletedIds: number[] = []
 
     // Delete files from storage and records from database
     for (const track of props.selectedTracks) {
@@ -606,6 +607,8 @@ const handleDelete = async () => {
         if (dbError) {
           console.error('Database deletion error:', dbError)
           deleteErrors++
+        } else {
+          deletedIds.push(track.id)
         }
       } catch (error) {
         console.error('Error deleting track:', error)
@@ -623,8 +626,10 @@ const handleDelete = async () => {
       showError('Failed to delete tracks')
     }
 
-    // Emit delete event
-    emit('tracks-deleted')
+    // Emit delete event with successfully deleted IDs for local list patch
+    if (deletedIds.length > 0) {
+      emit('tracks-deleted', deletedIds)
+    }
 
     // Close drawer after successful deletion
     handleClose()
