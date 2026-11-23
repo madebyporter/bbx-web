@@ -275,6 +275,8 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.72.25
+  - Admin Manage Users: Q[x] new users + monthly active users stats cards with period compare
 - 0.72.24
   - Resource detail: Download is primary CTA; Post Comment is secondary
 - 0.72.23

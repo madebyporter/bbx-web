@@ -4,7 +4,7 @@
       <h2 class="text-2xl">Admin</h2>
     </template>
     
-    <div class="flex flex-col gap-8 *:border *:border-neutral-800 *:p-4 *:rounded-md">
+    <div class="flex flex-col gap-4 *:border *:border-neutral-800 *:p-4 *:rounded-md">
       <AdminAccordionSection
         v-model="openPlans"
         title="Plans and billing"
@@ -132,25 +132,40 @@
           <p class="text-neutral-400">You don't have permission to manage users</p>
         </div>
         
-        <div v-else-if="users.length === 0" class="text-center py-8">
-          <p class="text-neutral-400">No users found</p>
-        </div>
-        
-        <div v-else class="grid grid-cols-1 gap-4">
-          <div
-            v-for="user in users"
-            :key="user.id"
-            class="border border-neutral-800 rounded-lg p-4"
-          >
-            <div class="flex flex-col gap-2">
-              <NuxtLink
-                :to="user.username ? `/u/${user.username}` : `/u/${user.id}`"
-                class="font-medium text-white hover:text-amber-400 transition-colors"
-              >
-                {{ user.display_name || user.username || user.email || 'Unknown User' }}
-              </NuxtLink>
-              <div v-if="user.last_sign_in_at" class="text-sm text-neutral-400">
-                <span class="text-neutral-500">Last logged in:</span> {{ formatDate(user.last_sign_in_at) }}
+        <div v-else class="flex flex-col gap-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1 border border-neutral-800 rounded-lg p-4">
+              <p class="text-sm text-neutral-400">{{ quarterNewUsersTitle }}</p>
+              <p class="text-2xl font-semibold text-white">{{ quarterNewUsers }}</p>
+              <p class="text-xs text-neutral-500">{{ quarterCompareLabel }}</p>
+            </div>
+            <div class="flex flex-col gap-1 border border-neutral-800 rounded-lg p-4">
+              <p class="text-sm text-neutral-400">Monthly active users</p>
+              <p class="text-2xl font-semibold text-white">{{ mau }}</p>
+              <p class="text-xs text-neutral-500">{{ mauCompareLabel }}</p>
+            </div>
+          </div>
+
+          <div v-if="users.length === 0" class="text-center py-8">
+            <p class="text-neutral-400">No users found</p>
+          </div>
+
+          <div v-else class="grid grid-cols-1 gap-4">
+            <div
+              v-for="user in users"
+              :key="user.id"
+              class="border border-neutral-800 rounded-lg p-4"
+            >
+              <div class="flex flex-col gap-2">
+                <NuxtLink
+                  :to="user.username ? `/u/${user.username}` : `/u/${user.id}`"
+                  class="font-medium text-white hover:text-amber-400 transition-colors"
+                >
+                  {{ user.display_name || user.username || user.email || 'Unknown User' }}
+                </NuxtLink>
+                <div v-if="user.last_sign_in_at" class="text-sm text-neutral-400">
+                  <span class="text-neutral-500">Last logged in:</span> {{ formatDate(user.last_sign_in_at) }}
+                </div>
               </div>
             </div>
           </div>
@@ -200,6 +215,122 @@ const hasNewUsers = computed(() => {
     const created = new Date(user.created_at).getTime()
     return !Number.isNaN(created) && created >= cutoff
   })
+})
+
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function quarterIndex(date) {
+  return Math.floor(date.getMonth() / 3)
+}
+
+function quarterLabel(year, qIndex) {
+  return `Q${qIndex + 1}`
+}
+
+function quarterBounds(year, qIndex) {
+  const start = new Date(year, qIndex * 3, 1)
+  const end = new Date(year, qIndex * 3 + 3, 1)
+  return { start, end }
+}
+
+function previousQuarter(year, qIndex) {
+  if (qIndex === 0) return { year: year - 1, qIndex: 3 }
+  return { year, qIndex: qIndex - 1 }
+}
+
+function monthBounds(year, month) {
+  const start = new Date(year, month, 1)
+  const end = new Date(year, month + 1, 1)
+  return { start, end }
+}
+
+function previousMonth(year, month) {
+  if (month === 0) return { year: year - 1, month: 11 }
+  return { year, month: month - 1 }
+}
+
+function countInRange(list, field, start, end) {
+  return list.reduce((count, user) => {
+    const raw = user[field]
+    if (!raw) return count
+    const t = new Date(raw).getTime()
+    if (Number.isNaN(t)) return count
+    if (t >= start.getTime() && t < end.getTime()) return count + 1
+    return count
+  }, 0)
+}
+
+function signedCompareLabel(current, previous, vsLabel) {
+  const delta = current - previous
+  const sign = delta > 0 ? '+' : ''
+  return `${sign}${delta} vs ${vsLabel}`
+}
+
+const now = computed(() => new Date())
+
+const currentQuarterMeta = computed(() => {
+  const d = now.value
+  const year = d.getFullYear()
+  const qIndex = quarterIndex(d)
+  return { year, qIndex, ...quarterBounds(year, qIndex) }
+})
+
+const previousQuarterMeta = computed(() => {
+  const { year, qIndex } = currentQuarterMeta.value
+  const prev = previousQuarter(year, qIndex)
+  return { ...prev, ...quarterBounds(prev.year, prev.qIndex) }
+})
+
+const currentMonthMeta = computed(() => {
+  const d = now.value
+  const year = d.getFullYear()
+  const month = d.getMonth()
+  return { year, month, ...monthBounds(year, month) }
+})
+
+const previousMonthMeta = computed(() => {
+  const { year, month } = currentMonthMeta.value
+  const prev = previousMonth(year, month)
+  return { ...prev, ...monthBounds(prev.year, prev.month) }
+})
+
+const quarterNewUsersTitle = computed(() => {
+  const { year, qIndex } = currentQuarterMeta.value
+  return `${quarterLabel(year, qIndex)} New Users`
+})
+
+const quarterNewUsers = computed(() => {
+  const { start, end } = currentQuarterMeta.value
+  return countInRange(users.value, 'created_at', start, end)
+})
+
+const prevQuarterNewUsers = computed(() => {
+  const { start, end } = previousQuarterMeta.value
+  return countInRange(users.value, 'created_at', start, end)
+})
+
+const quarterCompareLabel = computed(() => {
+  const { year, qIndex } = previousQuarterMeta.value
+  return signedCompareLabel(
+    quarterNewUsers.value,
+    prevQuarterNewUsers.value,
+    quarterLabel(year, qIndex),
+  )
+})
+
+const mau = computed(() => {
+  const { start, end } = currentMonthMeta.value
+  return countInRange(users.value, 'last_sign_in_at', start, end)
+})
+
+const prevMau = computed(() => {
+  const { start, end } = previousMonthMeta.value
+  return countInRange(users.value, 'last_sign_in_at', start, end)
+})
+
+const mauCompareLabel = computed(() => {
+  const { month } = previousMonthMeta.value
+  return signedCompareLabel(mau.value, prevMau.value, MONTH_SHORT[month])
 })
 
 const fetchResources = async () => {
