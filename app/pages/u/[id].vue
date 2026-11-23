@@ -299,6 +299,7 @@
         :resolve-full-queue="resolveFullPlaybackQueue"
         @edit-track="handleEdit"
         @tracks-deleted="() => { fetchTracks(); refreshEntitlements(true) }"
+        @track-collections-updated="handleTrackCollectionsUpdated"
         @track-shortlisted="handleTrackShortlisted"
         @track-unshortlisted="handleTrackUnshortlisted"
         @load-more="handleLoadMore"
@@ -1258,6 +1259,23 @@ const loadTracksPage = async (options: {
 
 const fetchTracks = async () => {
   await loadTracksPage({ page: 0, append: false })
+}
+
+const handleTrackCollectionsUpdated = (payload: {
+  trackId: number
+  collections: Array<{ name: string; slug: string }>
+}) => {
+  const patch = (list: TrackWithCollections[]) =>
+    list.map((track) =>
+      track.id === payload.trackId
+        ? { ...track, collections: payload.collections }
+        : track
+    )
+
+  tracks.value = patch(tracks.value)
+  if (clientTrackCache.value) {
+    clientTrackCache.value = patch(clientTrackCache.value)
+  }
 }
 
 const handleLoadMore = () => {

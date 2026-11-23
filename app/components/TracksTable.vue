@@ -410,6 +410,7 @@ const zeroStateBody = computed(() => {
 const emit = defineEmits<{
   'edit-track': [track: Track]
   'tracks-deleted': []
+  'track-collections-updated': [payload: { trackId: number; collections: Array<{ name: string; slug: string }> }]
   'track-shortlisted': [trackId: number]
   'track-unshortlisted': [trackId: number]
   'load-more': []
@@ -1134,15 +1135,21 @@ const saveCollections = async () => {
       pendingCollections.value = []
     }
 
+    const trackId = collectionModalTrack.value.id
     await syncTrackCollections(
-      collectionModalTrack.value.id,
+      trackId,
       collectionModalTrack.value.track_group_name
     )
+
+    const updatedCollections = selectedCollectionIds.value
+      .map((id) => userCollections.value.find((c) => c.id === id))
+      .filter((c): c is { id: number; name: string; slug: string } => !!c)
+      .map(({ name, slug }) => ({ name, slug }))
 
     removeToast(toastId)
     showSuccess('Collections updated')
     closeCollectionModal()
-    emit('tracks-deleted')
+    emit('track-collections-updated', { trackId, collections: updatedCollections })
   } catch (error) {
     removeToast(toastId)
     showError('Failed to save collections')

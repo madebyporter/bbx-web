@@ -275,6 +275,8 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
   - Host OG image on jsDelivr; strip invalid `Set-Cookie: undefined` and skip Accept negotiation for social bots
 - 0.57.22
   - Hide homepage and library behind a full-viewport auth gate until session is known, then show the correct destination
+- 0.72.16
+  - Collection save updates track tags in place (no table skeleton refresh)
 - 0.72.15
   - Bulk Actions: dirty-field metadata edit (artist, status, genre, year, mood, BPM, key, collections)
 - 0.72.14

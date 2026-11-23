@@ -75,6 +75,7 @@
           :resolve-full-queue="resolveFullPlaybackQueue"
           @edit-track="handleEdit"
           @tracks-removed="fetchTracks"
+          @track-collections-updated="handleTrackCollectionsUpdated"
           @load-more="handleLoadMore"
         />
       </div>
@@ -665,6 +666,21 @@ const fetchTracks = async (options: { finalizeLoading?: boolean } = {}) => {
       tracksLoading.value = false
     }
   }
+}
+
+const handleTrackCollectionsUpdated = (payload: {
+  trackId: number
+  collections: Array<{ name: string; slug: string }>
+}) => {
+  const patch = (list: any[]) =>
+    list.map((track) =>
+      track.id === payload.trackId
+        ? { ...track, collections: payload.collections }
+        : track
+    )
+
+  tracks.value = patch(tracks.value)
+  unfilteredTracks.value = patch(unfilteredTracks.value)
 }
 
 const handleEdit = (track: any) => {
