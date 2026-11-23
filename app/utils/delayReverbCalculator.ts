@@ -1,7 +1,7 @@
 /** Format a number to up to 2 decimal places, trimming trailing zeros. */
 export function formatCalcNumber(value: number): string {
   if (!Number.isFinite(value)) return '0'
-  const rounded-sm = Math.round(value * 100) / 100
+  const rounded = Math.round(value * 100) / 100
   return String(rounded)
 }
 
