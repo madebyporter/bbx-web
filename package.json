@@ -1,6 +1,6 @@
 {
   "name": "nuxt-app",
-  "version": "0.72.25",
+  "version": "0.72.26",
   "private": true,
   "type": "module",
   "engines": {

@@ -101,7 +101,6 @@
             <div>Plays</div>
             <div>Listeners</div>
             <div>Avg Listen</div>
-            <div>Completion</div>
           </template>
           <template v-else>
             <div v-if="showCollectionColumn">Collection</div>
@@ -229,7 +228,6 @@
           <div class="text-neutral-300">{{ formatTrackStat(track.id, 'plays') }}</div>
           <div class="text-neutral-300">{{ formatTrackStat(track.id, 'listeners') }}</div>
           <div class="text-neutral-300">{{ formatTrackStat(track.id, 'avgListen') }}</div>
-          <div class="text-neutral-300">{{ formatTrackStat(track.id, 'completion') }}</div>
         </template>
         <template v-else>
         <div v-if="showCollectionColumn" class="text-neutral-400 overflow-visible flex justify-start items-center gap-1 min-w-0">
@@ -507,16 +505,15 @@ useInfiniteScroll({
   onLoadMore: () => emit('load-more'),
 })
 
-function formatTrackStat(trackId: number, field: 'plays' | 'listeners' | 'avgListen' | 'completion'): string {
+function formatTrackStat(trackId: number, field: 'plays' | 'listeners' | 'avgListen'): string {
   if (props.analyticsLoading) return '—'
   const stat = props.trackStats?.get(trackId)
   if (!stat) {
-    return field === 'avgListen' ? '0:00 (0%)' : field === 'completion' ? '0%' : '0'
+    return field === 'avgListen' ? '0:00 (0%)' : '0'
   }
   if (field === 'plays') return stat.plays.toLocaleString()
   if (field === 'listeners') return stat.listeners.toLocaleString()
-  if (field === 'avgListen') return `${formatAnalyticsDuration(stat.avgDuration)} (${stat.avgPercent}%)`
-  return `${stat.completionRate}%`
+  return `${formatAnalyticsDuration(stat.avgDuration)} (${stat.avgPercent}%)`
 }
 
 // Get selected tracks as array (includes off-screen / not-yet-rendered rows from select-all)

@@ -44,7 +44,6 @@ export function buildTrackGridTemplateColumns({
       TRACK_GRID_WIDTH.tiny,
       TRACK_GRID_WIDTH.tiny,
       TRACK_GRID_WIDTH.small,
-      TRACK_GRID_WIDTH.small
     )
   } else {
     if (showCollection) {

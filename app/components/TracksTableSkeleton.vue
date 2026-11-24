@@ -116,7 +116,6 @@ const columns = computed((): SkeletonCol[] => {
       { label: 'Plays', width: TRACK_GRID_WIDTH.tiny, barWidth: '32px', kind: 'text' },
       { label: 'Listeners', width: TRACK_GRID_WIDTH.tiny, barWidth: '32px', kind: 'text' },
       { label: 'Avg Listen', width: TRACK_GRID_WIDTH.small, barWidth: '64px', kind: 'text' },
-      { label: 'Completion', width: TRACK_GRID_WIDTH.small, barWidth: '40px', kind: 'text' },
     )
   } else {
     if (props.showCollection) {
